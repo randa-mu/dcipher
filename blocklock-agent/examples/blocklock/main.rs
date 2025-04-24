@@ -130,7 +130,7 @@ async fn main() -> anyhow::Result<()> {
     let decryption_sender_contract =
         DecryptionSender::new(config.chain.decryption_sender_addr, provider.clone());
     let blocklock_sender_contract =
-        BlocklockSender::new(config.chain.decryption_sender_addr, provider.clone());
+        BlocklockSender::new(config.chain.blocklock_sender_addr, provider.clone());
 
     // If chain id is none, fetch it from the provider
     if config.chain.chain_id.is_none() {
