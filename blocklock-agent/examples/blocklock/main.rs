@@ -19,6 +19,7 @@ use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
+use tokio_util::sync::CancellationToken;
 use tracing_subscriber::FmtSubscriber;
 
 fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
@@ -28,6 +29,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<(), P>,
 ) -> anyhow::Result<(
     NotifyTicker,
+    CancellationToken,
     impl Stopper + 'lt_out,
     impl RequestChannel<Request = DecryptionRequest> + 'lt_out,
 )>
@@ -97,7 +99,7 @@ where
 
     let ticker = NotifyTicker::default();
     let (stopper, channel) = fulfiller.run(ticker.clone());
-    Ok((ticker, stopper, channel))
+    Ok((ticker, ts_stopper, stopper, channel))
 }
 
 #[tokio::main]
@@ -137,7 +139,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Create a fulfiller
-    let (ticker, stopper, channel) = create_threshold_fulfiller(
+    let (ticker, ts_stopper, stopper, channel) = create_threshold_fulfiller(
         &config,
         &nodes_config.unwrap_or_default(),
         decryption_sender_contract.clone(),
@@ -165,19 +167,17 @@ async fn main() -> anyhow::Result<()> {
     let res = tokio::select! {
         _ = sigterm.recv() => {
             println!("received SIGTERM, shutting down...");
-            stopper.stop().await;
             Ok(())
         },
 
         _ = sigint.recv() => {
             println!("received SIGINT, shutting down...");
-            stopper.stop().await;
+            ts_stopper.cancel();
             Ok(())
         },
 
         _ = tokio::signal::ctrl_c() => {
             println!("received ctrl+c, shutting down...");
-            stopper.stop().await;
             Ok(())
         },
 
@@ -191,6 +191,10 @@ async fn main() -> anyhow::Result<()> {
             err // return Result
         }
     };
+
+    // Stop the various components
+    ts_stopper.cancel();
+    stopper.stop().await;
 
     // On success, save the state of the agent
     if res.is_ok() {
