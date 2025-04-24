@@ -1,0 +1,6 @@
+[submodule "blocklock-solidity"]
+	path = blocklock-solidity
+	url = https://github.com/randa-mu/blocklock-solidity.git
+[submodule "marshmallow-crypto"]
+	path = marshmallow-crypto
+	url = https://github.com/randa-mu/marshmallow-crypto
