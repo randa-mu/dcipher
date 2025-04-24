@@ -1,0 +1,5 @@
+**/node_modules/
+**/target/
+Dockerfile
+.dockerignore
+.gitignore

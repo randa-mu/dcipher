@@ -1,0 +1,9 @@
+index.js
+index.cjs
+index.d.ts
+src/generated/**
+node_modules
+state.json
+debug/
+target/
+.idea/
