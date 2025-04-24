@@ -620,25 +620,25 @@ mod tests {
         #[derive(Debug)]
         #[sol(rpc)]
         SignatureSchemeAddressProvider,
-        "../../blocklock-solidity/out/SignatureSchemeAddressProvider.sol/SignatureSchemeAddressProvider.json"
+        "../blocklock-solidity/out/SignatureSchemeAddressProvider.sol/SignatureSchemeAddressProvider.json"
     );
     alloy::sol!(
         #[derive(Debug)]
         #[sol(rpc)]
         BlocklockSignatureScheme,
-        "../../blocklock-solidity/out/BlocklockSignatureScheme.sol/BlocklockSignatureScheme.json"
+        "../blocklock-solidity/out/BlocklockSignatureScheme.sol/BlocklockSignatureScheme.json"
     );
     alloy::sol!(
         #[derive(Debug)]
         #[sol(rpc)]
         UUPSProxy,
-        "../../blocklock-solidity/out/UUPSProxy.sol/UUPSProxy.json"
+        "../blocklock-solidity/out/UUPSProxy.sol/UUPSProxy.json"
     );
     alloy::sol!(
         #[derive(Debug)]
         #[sol(rpc)]
         MockBlocklockReceiver,
-        "../../blocklock-solidity/out/MockBlocklockReceiver.sol/MockBlocklockReceiver.json"
+        "../blocklock-solidity/out/MockBlocklockReceiver.sol/MockBlocklockReceiver.json"
     );
 
     fn pk() -> ark_bn254::G2Affine {

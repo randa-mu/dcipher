@@ -35,7 +35,7 @@ COPY --from=planner /app/agent/recipe.json recipe.json
 COPY --from=sol /app/blocklock-solidity/out ../blocklock-solidity/out
 COPY ./marshmallow-crypto ../marshmallow-crypto
 COPY ./superalloy ../superalloy
-COPY ./agent/dcipher-agents ./dcipher-agents
+COPY ./dcipher-agents ../dcipher-agents
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application

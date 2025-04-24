@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-pairing_utils = { path = "../../marshmallow-crypto/pairing_utils" }
+pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
 alloy = { version = "0.12", features = ["default", "provider-ws"] }
 tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync"] }
 tokio-util = "0.7"
