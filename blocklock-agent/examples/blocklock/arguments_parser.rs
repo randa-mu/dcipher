@@ -147,11 +147,7 @@ pub struct KeyConfigArgs {
 #[command(author, version, about, long_about = None)]
 pub struct Libp2pArgs {
     /// Libp2p private key
-    #[arg(
-        long,
-        env = "BLOCKLOCK_LIBP2P_PRIVATE_KEY",
-        default_value = "CAESQDL1LPAFoQdeJzkJPqv7+CFJhhh3VMMzRPUk8rzN5CUuqVA8w1seXnrqiysk2TJQRIxvwX3X57HW5bq0eJ2cNqA="
-    )]
+    #[arg(long, env = "BLOCKLOCK_LIBP2P_KEY")]
     #[serde(with = "serde_to_string_from_str")]
     pub libp2p_key: Libp2pKeyWrapper,
 
