@@ -123,11 +123,7 @@ pub struct BlockchainArgs {
 #[command(author, version, about, long_about = None)]
 pub struct KeyConfigArgs {
     /// BLS private key for signing
-    #[arg(
-        long,
-        env = "BLOCKLOCK_BLS_PRIVATE_KEY",
-        default_value = "0x08463084163f7d60e9402ba5abad98dc315ad5b111cbeb9090f0ed85d34fd14f"
-    )]
+    #[arg(long, env = "BLOCKLOCK_BLS_KEY")]
     pub bls_key: FrWrapper,
 
     /// Identifier of the node
