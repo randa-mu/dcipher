@@ -22,14 +22,14 @@ RUN npm run build:forge
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
-WORKDIR /app/agent
+WORKDIR /app/blocklock-agent
 
 FROM chef AS planner
 COPY . ../
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
-COPY --from=planner /app/agent/recipe.json recipe.json
+COPY --from=planner /app/blocklock-agent/recipe.json recipe.json
 
 # Build dependencies - this is the caching Docker layer!
 COPY --from=sol /app/blocklock-solidity/out ../blocklock-solidity/out
@@ -39,12 +39,12 @@ COPY ./dcipher-agents ../dcipher-agents
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
-COPY ./agent ./
+COPY ./blocklock-agent ./
 RUN cargo build --release --example blocklock
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libssl3 dnsutils
 WORKDIR /app
-COPY --from=builder /app/agent/target/release/examples/blocklock /usr/local/bin
+COPY --from=builder /app/blocklock-agent/target/release/examples/blocklock /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/blocklock"]
