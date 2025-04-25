@@ -4,3 +4,6 @@
 [submodule "marshmallow-crypto"]
 	path = marshmallow-crypto
 	url = https://github.com/randa-mu/marshmallow-crypto
+[submodule "randomness-solidity"]
+	path = randomness-solidity
+	url = https://github.com/randa-mu/randomness-solidity
