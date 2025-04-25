@@ -846,8 +846,6 @@ mod tests {
     where
         P: Provider + WalletProvider,
     {
-        let BlocklockCondition::BlockNumber(BlockNumber(block_number)) = condition;
-
         // Create stream to log events
         let mut decryption_requested_stream = decryption_sender
             .DecryptionRequested_filter()
@@ -859,7 +857,7 @@ mod tests {
             .into_stream();
 
         mockblocklock_receiver
-            .createTimelockRequestWithSubscription(500_000, U256::from(block_number), ct)
+            .createTimelockRequestWithSubscription(500_000, condition.try_into().unwrap(), ct)
             .send()
             .await
             .unwrap()
