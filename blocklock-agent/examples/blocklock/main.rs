@@ -86,7 +86,6 @@ where
         blocklock_sender_contract,
         args.chain.min_confirmations,
         Duration::from_secs(args.chain.confirmations_timeout_secs),
-        args.chain.max_gas_price_wei,
         args.chain.gas_buffer_percent,
     );
 

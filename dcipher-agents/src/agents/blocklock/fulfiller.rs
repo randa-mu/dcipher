@@ -3,6 +3,7 @@
 //! per fulfillment.
 
 use crate::agents::blocklock::contracts::BlocklockSender;
+use crate::agents::blocklock::contracts::TypesLib::BlocklockRequest;
 use crate::decryption_sender::SignedDecryptionRequest;
 use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::TransactionFulfiller;
@@ -43,6 +44,12 @@ pub enum BlocklockFulfillerError {
 
     #[error("not enough funds in subscription to cover request")]
     SubscriptionInsufficientFunds,
+
+    #[error("the fee to cover the request was insufficient")]
+    DirectFundingInsufficientFee,
+
+    #[error("the current gas cost is too high")]
+    CurrentGasCostTooHigh,
 }
 
 /// Implementation of [`TransactionFulfiller`] where each call is done in a separate transaction.
@@ -52,7 +59,6 @@ pub struct BlocklockFulfiller<P> {
     blocklock_sender_instance: BlocklockSender::BlocklockSenderInstance<(), P>,
     required_confirmations: u64,
     timeout: Duration,
-    max_gas_price: u128,
     gas_buffer_percent: u16,
 }
 
@@ -63,7 +69,6 @@ impl<P> BlocklockFulfiller<P> {
         blocklock_sender_instance: BlocklockSender::BlocklockSenderInstance<(), P>,
         required_confirmations: u64,
         timeout: Duration,
-        max_gas_price_wei: u64,
         gas_buffer_percent: u16,
     ) -> Self {
         Self {
@@ -71,7 +76,6 @@ impl<P> BlocklockFulfiller<P> {
             blocklock_sender_instance,
             required_confirmations,
             timeout,
-            max_gas_price: u128::from(max_gas_price_wei),
             gas_buffer_percent,
         }
     }
@@ -145,34 +149,16 @@ impl<P> BlocklockFulfiller<P>
 where
     P: Provider,
 {
-    /// Dynamically computes a custom gas price using the current gas price estimated by the rpc, and
-    /// a gas buffer. The function also bounds the gas_price to a maximum amount.
-    /// The final gas cost is computed as
-    /// `gas_cost = min(max_gas_price, (rpc_gas_est * (100 + buffer_percent)) / 100`
-    async fn get_gas_price(&self) -> Result<u128, BlocklockFulfillerError> {
-        let current_gas_price = self
-            .decryption_sender_instance
+    /// Get the current gas price from the rpc provider
+    async fn get_current_gas_price(&self) -> Result<u128, BlocklockFulfillerError> {
+        self.decryption_sender_instance
             .provider()
             .get_gas_price()
             .await
             .map_err(|e| {
                 tracing::error!(error = ?e, "Failed to obtain current gas price");
                 BlocklockFulfillerError::RpcWithTransportErrorKind(e, "failed to get gas price")
-            })?;
-
-        // Add the gas buffer to the current price
-        let mut gas_price =
-            (current_gas_price * (100 + u128::from(self.gas_buffer_percent))) / 100u128;
-        if gas_price > self.max_gas_price {
-            tracing::warn!(
-                gas_price_with_buffer = gas_price,
-                max_gas_price = self.max_gas_price,
-                "Current gas price with buffer is higher than the maximum gas price"
-            );
-            gas_price = self.max_gas_price;
-        }
-
-        Ok(gas_price)
+            })
     }
 
     #[tracing::instrument(skip_all,
@@ -223,14 +209,17 @@ where
             BlocklockFulfillerError::MultiCall(e)
         })?;
 
-        // Obtain an estimated gas price
-        let custom_gas_price = self.get_gas_price().await?;
+        // Calculate flat fee from config
+        let flat_fee_wei = 1_000_000_000_000u128 * u128::from(config.fulfillmentFlatFeeNativePPM); // cannot overflow, 2**40 * 2**32
 
-        // Get the estimated request price using our base gas fee
-        let request_price = self
+        // Get the current network price
+        let current_gas_price = self.get_current_gas_price().await?;
+
+        // Get the estimated request price using the current network gas price
+        let estimated_cost = self
             .blocklock_sender_instance
             .calculateRequestPriceNative(decryption_request.callbackGasLimit)
-            .gas_price(custom_gas_price)
+            .gas_price(current_gas_price)
             .call()
             .await
             .map_err(|e| {
@@ -241,18 +230,22 @@ where
                 )
             })?;
 
-        // Calculate flat fee
-        let flat_fee_wei = 1_000_000_000_000u128 * u128::from(config.fulfillmentFlatFeeNativePPM); // cannot overflow, 2**40 * 2**32
-
-        // Calculate max cost base on our fee and the request price
-        let request_price = u128::try_from(request_price._0).map_err(|e| {
+        // Ensure that the estimated price allows to at least cover our flat fee
+        let estimated_cost = u128::try_from(estimated_cost._0).map_err(|e| {
             BlocklockFulfillerError::SolFromUint(e, "failed to cast request price to u128")
         })?;
-        if request_price < flat_fee_wei {
+        let Some(available_for_gas) = estimated_cost.checked_sub(flat_fee_wei) else {
             // Request price is too low
             Err(BlocklockFulfillerError::RequestPriceTooLow)?
+        };
+
+        // Ensure that the user can cover the estimated price
+        if blocklock_request._0.subId.is_zero() {
+            self.is_direct_funding_covered(&blocklock_request._0, estimated_cost)?;
+        } else {
+            self.is_subscription_funding_covered(&blocklock_request._0, estimated_cost)
+                .await?;
         }
-        let available_for_gas = request_price - flat_fee_wei;
 
         // Estimate gas limit for fulfillDecryptionRequest call
         let estimated_gas = self
@@ -262,14 +255,14 @@ where
                 ready_request.decryption_key.clone(),
                 ready_request.signature.clone().into_owned(),
             )
-            .gas_price(custom_gas_price)
+            .gas_price(current_gas_price)
             .estimate_gas()
             .await
             .map_err(|e| {
                 tracing::error!(
                     error = ?e,
                     signature = %ready_request.signature,
-                    gas_price = custom_gas_price,
+                    gas_price = current_gas_price,
                     "Failed to simulate call to DecryptionSender::fulfillDecryptionRequest"
                 );
                 BlocklockFulfillerError::Contract(
@@ -278,18 +271,17 @@ where
                 )
             })?;
 
-        // Calculate total estimated cost in wei
-        let mut estimated_cost = custom_gas_price * u128::from(estimated_gas);
+        // Now, we set the gas price to the maximum price, such that our flat fee is covered
+        let max_affordable_gas_price = available_for_gas / u128::from(estimated_gas);
 
         // Log all the parameters
         tracing::debug!(
             flat_fee_native = config.fulfillmentFlatFeeNativePPM,
             flat_fee_wei,
-            request_price,
-            estimated_gas,
-            custom_gas_price = custom_gas_price,
             estimated_cost,
-            max_allowed_gas = available_for_gas,
+            estimated_gas,
+            current_gas_price,
+            custom_gas_price = max_affordable_gas_price,
             available_for_gas,
             "call parameters"
         );
@@ -297,63 +289,22 @@ where
         tracing::info!(
             request_id = %ready_request.id,
             estimated_gas,
-            custom_gas_price = custom_gas_price,
+            current_gas_price,
+            custom_gas_price = max_affordable_gas_price,
             estimated_cost,
-            max_allowed_gas = available_for_gas,
             "Calculated estimated gas cost for request"
         );
 
-        // Lower the gas price if the estimated cost is too high
-        let gas_price = if estimated_cost > available_for_gas {
-            let max_affordable_gas_price = available_for_gas / u128::from(estimated_gas);
+        // Make sure that the max affordable gas is higher than the current gas with a buffer
+        let current_gas_with_buffer =
+            (current_gas_price * (100u128 + self.gas_buffer_percent as u128)) / 100u128;
+        if max_affordable_gas_price < current_gas_with_buffer {
             tracing::warn!(
-                request_id = %ready_request.id,
-                estimated_gas,
-                custom_gas_price = custom_gas_price,
-                reduced_gas_price = max_affordable_gas_price,
-                estimated_cost,
-                max_allowed_gas = available_for_gas,
-                "Estimated cost too high, reducing gas cost"
+                max_affordable_gas_price,
+                current_gas_with_buffer,
+                "Maximum affordable gas price is currently insufficient"
             );
-
-            // Update the estimated_cost
-            estimated_cost = max_affordable_gas_price * u128::from(estimated_gas);
-
-            max_affordable_gas_price
-        } else {
-            custom_gas_price
-        };
-
-        // If the user has a subscription, ensure that they can cover the gas costs
-        if !blocklock_request._0.subId.is_zero() {
-            let sub = self
-                .blocklock_sender_instance
-                .getSubscription(blocklock_request._0.subId)
-                .call()
-                .await
-                .map_err(|e| {
-                    tracing::error!(
-                        error = ?e,
-                        sub_id = %blocklock_request._0.subId,
-                        "Failed to call BlocklockSender::getSubscription"
-                    );
-                    BlocklockFulfillerError::Contract(
-                        e,
-                        "failed to call BlocklockSender::getSubscription",
-                    )
-                })?;
-
-            let native_balance = sub.nativeBalance; // native balance in wei
-            if estimated_cost > u128::try_from(native_balance).expect("u128 must hold a u96") {
-                tracing::warn!(
-                    request_id = %ready_request.id,
-                    estimated_cost,
-                    subscription_balance = ?native_balance,
-                    subscription_id = ?blocklock_request._0.subId,
-                    "Not enough funds in subscription to cover request"
-                );
-                Err(BlocklockFulfillerError::SubscriptionInsufficientFunds)?
-            }
+            Err(BlocklockFulfillerError::CurrentGasCostTooHigh)?
         }
 
         // Send the transaction with a custom gas cost and gas price
@@ -364,7 +315,7 @@ where
                 ready_request.decryption_key,
                 ready_request.signature.clone().into_owned(),
             )
-            .max_fee_per_gas(gas_price)
+            .max_fee_per_gas(max_affordable_gas_price)
             .gas(estimated_gas)
             .send()
             .await
@@ -402,101 +353,65 @@ where
 
         Ok(tx_hash_future)
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-    use crate::agents::blocklock::contracts::BlocklockSender;
-    use crate::agents::blocklock::fulfiller::BlocklockFulfiller;
-    use crate::decryption_sender::contracts::DecryptionSender;
-    use alloy::eips::eip4895::GWEI_TO_WEI;
-    use alloy::network::Ethereum;
-    use alloy::primitives::{Address, U128};
-    use alloy::providers::{Provider, ProviderCall, RootProvider};
-    use alloy::rpc::client::NoParams;
-    use std::time::Duration;
+    /// Direct funding: ensure that the user has paid enough
+    fn is_direct_funding_covered(
+        &self,
+        blocklock_request: &BlocklockRequest,
+        estimated_cost: u128,
+    ) -> Result<(), BlocklockFulfillerError> {
+        let direct_funding_fee_paid: u128 = blocklock_request
+            .directFundingFeePaid
+            .try_into()
+            .map_err(|e| {
+                BlocklockFulfillerError::SolFromUint(e, "failed to cast direct funding fee paid")
+            })?;
 
-    #[derive(Clone)]
-    struct GasProvider {
-        curr_gas_price: Arc<std::sync::Mutex<u128>>,
-    }
-
-    impl Provider for GasProvider {
-        fn root(&self) -> &RootProvider<Ethereum> {
-            unimplemented!("test provider")
+        if direct_funding_fee_paid < estimated_cost {
+            tracing::warn!(
+                paid_fee = direct_funding_fee_paid,
+                estimated_cost,
+                "User has not paid enough with direct funding to cover estimated fulfillment cost."
+            );
+            Err(BlocklockFulfillerError::SubscriptionInsufficientFunds)?
         }
 
-        fn get_gas_price(&self) -> ProviderCall<NoParams, U128, u128> {
-            ProviderCall::Ready(Some(Ok(*self.curr_gas_price.lock().unwrap())))
+        Ok(())
+    }
+
+    async fn is_subscription_funding_covered(
+        &self,
+        blocklock_request: &BlocklockRequest,
+        estimated_cost: u128,
+    ) -> Result<(), BlocklockFulfillerError> {
+        let sub = self
+            .blocklock_sender_instance
+            .getSubscription(blocklock_request.subId)
+            .call()
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    error = ?e,
+                    sub_id = %blocklock_request.subId,
+                    "Failed to call BlocklockSender::getSubscription"
+                );
+                BlocklockFulfillerError::Contract(
+                    e,
+                    "failed to call BlocklockSender::getSubscription",
+                )
+            })?;
+
+        let native_balance = sub.nativeBalance; // native balance in wei
+        if estimated_cost > u128::try_from(native_balance).expect("u128 must hold a u96") {
+            tracing::warn!(
+                estimated_cost,
+                subscription_balance = ?native_balance,
+                subscription_id = ?blocklock_request.subId,
+                "Not enough funds in subscription to cover request"
+            );
+            Err(BlocklockFulfillerError::SubscriptionInsufficientFunds)?
         }
-    }
 
-    #[tokio::test]
-    async fn gas_estimate_should_triple() {
-        let provider = GasProvider {
-            curr_gas_price: Arc::new(0u128.into()),
-        };
-
-        let decryption_sender_instance =
-            DecryptionSender::new(Address::default(), provider.clone());
-        let blocklock_sender_instance = BlocklockSender::new(Address::default(), provider.clone());
-
-        // 10 gwei
-        let max_gas_price_wei = 10 * GWEI_TO_WEI;
-        let gas_buffer_percent = 200;
-        let tx_fulfiller = BlocklockFulfiller::new(
-            decryption_sender_instance,
-            blocklock_sender_instance,
-            1,
-            Duration::from_secs(10),
-            max_gas_price_wei,
-            gas_buffer_percent,
-        );
-
-        // Set current price to 1 gwei
-        let price = u128::from(GWEI_TO_WEI);
-        *provider.curr_gas_price.lock().unwrap() = price;
-        assert_eq!(
-            provider.get_gas_price().await.unwrap(),
-            price
-        );
-
-        let gas_price = tx_fulfiller.get_gas_price().await.unwrap();
-        assert_eq!(gas_price, 3 * u128::from(GWEI_TO_WEI));
-    }
-
-    #[tokio::test]
-    async fn gas_estimate_should_not_go_above_max() {
-        let provider = GasProvider {
-            curr_gas_price: Arc::new(0u128.into()),
-        };
-
-        let decryption_sender_instance =
-            DecryptionSender::new(Address::default(), provider.clone());
-        let blocklock_sender_instance = BlocklockSender::new(Address::default(), provider.clone());
-
-        // 10 gwei
-        let max_gas_price_wei = 10 * GWEI_TO_WEI;
-        let gas_buffer_percent = 200;
-        let tx_fulfiller = BlocklockFulfiller::new(
-            decryption_sender_instance,
-            blocklock_sender_instance,
-            1,
-            Duration::from_secs(10),
-            max_gas_price_wei,
-            gas_buffer_percent,
-        );
-
-        // Set current price to 100 gwei
-        let price = 100 * u128::from(GWEI_TO_WEI);
-        *provider.curr_gas_price.lock().unwrap() = price;
-        assert_eq!(
-            provider.get_gas_price().await.unwrap(),
-            price
-        );
-
-        let gas_price = tx_fulfiller.get_gas_price().await.unwrap();
-        assert_eq!(gas_price, u128::from(max_gas_price_wei));
+        Ok(())
     }
 }
