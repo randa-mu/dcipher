@@ -95,8 +95,12 @@ pub struct BlockchainArgs {
     pub max_tx_per_tick: usize,
 
     /// Base gas price used to fulfil transactions
-    #[arg(long, env = "BLOCKLOCK_BASE_GAS_PRICE_WEI")]
-    pub base_gas_price_wei: u64,
+    #[arg(long, env = "BLOCKLOCK_MAX_GAS_PRICE_WEI")]
+    pub max_gas_price_wei: u64,
+
+    /// Base gas price used to fulfil transactions
+    #[arg(long, env = "BLOCKLOCK_GAS_BUFFER_PERCENT", default_value = "200")]
+    pub gas_buffer_percent: u16,
 
     /// Minimum number of confirmations to wait for before considering a transaction confirmed
     #[arg(long, env = "BLOCKLOCK_SYNC_BATCH_SIZE", default_value = "20")]
