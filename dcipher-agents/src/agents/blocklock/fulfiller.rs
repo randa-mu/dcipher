@@ -6,6 +6,7 @@ use crate::agents::blocklock::contracts::BlocklockSender;
 use crate::agents::blocklock::contracts::TypesLib::BlocklockRequest;
 use crate::decryption_sender::SignedDecryptionRequest;
 use crate::decryption_sender::contracts::DecryptionSender;
+use crate::decryption_sender::contracts::TypesLib::DecryptionRequest;
 use crate::fulfiller::TransactionFulfiller;
 use alloy::primitives::TxHash;
 use alloy::providers::{MulticallBuilder, Provider, WalletProvider};
@@ -195,19 +196,19 @@ where
         let (blocklock_request, config) = MulticallBuilder::new(
             self.blocklock_sender_instance.provider(),
         )
-        // Get blocklock request details
-        .add(self.blocklock_sender_instance.getRequest(ready_request.id))
-        // Get flat fee from config
-        .add(self.blocklock_sender_instance.getConfig())
-        .aggregate()
-        .await
-        .map_err(|e| {
-            tracing::error!(
+            // Get blocklock request details
+            .add(self.blocklock_sender_instance.getRequest(ready_request.id))
+            // Get flat fee from config
+            .add(self.blocklock_sender_instance.getConfig())
+            .aggregate()
+            .await
+            .map_err(|e| {
+                tracing::error!(
                 error = ?e,
                 "Failed to call multicall(BlocklockSender::getRequest, BlocklockSender::getConfig)"
             );
-            BlocklockFulfillerError::MultiCall(e)
-        })?;
+                BlocklockFulfillerError::MultiCall(e)
+            })?;
 
         // Calculate flat fee from config
         let flat_fee_wei = 1_000_000_000_000u128 * u128::from(config.fulfillmentFlatFeeNativePPM); // cannot overflow, 2**40 * 2**32
@@ -215,37 +216,18 @@ where
         // Get the current network price
         let current_gas_price = self.get_current_gas_price().await?;
 
-        // Get the estimated request price using the current network gas price
-        let estimated_cost = self
-            .blocklock_sender_instance
-            .calculateRequestPriceNative(decryption_request.callbackGasLimit)
-            .gas_price(current_gas_price)
-            .call()
-            .await
-            .map_err(|e| {
-                tracing::error!(error = ?e, "Failed to call BlocklockSender::calculateRequestPriceNative");
-                BlocklockFulfillerError::Contract(
-                    e,
-                    "failed to call BlocklockSender::calculateRequestPriceNative",
-                )
-            })?;
-
-        // Ensure that the estimated price allows to at least cover our flat fee
-        let estimated_cost = u128::try_from(estimated_cost._0).map_err(|e| {
-            BlocklockFulfillerError::SolFromUint(e, "failed to cast request price to u128")
-        })?;
-        let Some(available_for_gas) = estimated_cost.checked_sub(flat_fee_wei) else {
-            // Request price is too low
-            Err(BlocklockFulfillerError::RequestPriceTooLow)?
-        };
-
         // Ensure that the user can cover the estimated price
-        if blocklock_request._0.subId.is_zero() {
-            self.is_direct_funding_covered(&blocklock_request._0, estimated_cost)?;
+        let available_for_gas = if blocklock_request._0.subId.is_zero() {
+            self.available_for_gas_direct_funding(&blocklock_request._0)?
         } else {
-            self.is_subscription_funding_covered(&blocklock_request._0, estimated_cost)
-                .await?;
-        }
+            self.available_for_gas_subscription(
+                &decryption_request,
+                &blocklock_request._0,
+                current_gas_price,
+                flat_fee_wei,
+            )
+                .await?
+        };
 
         // Estimate gas limit for fulfillDecryptionRequest call
         let estimated_gas = self
@@ -278,7 +260,6 @@ where
         tracing::debug!(
             flat_fee_native = config.fulfillmentFlatFeeNativePPM,
             flat_fee_wei,
-            estimated_cost,
             estimated_gas,
             current_gas_price,
             custom_gas_price = max_affordable_gas_price,
@@ -291,7 +272,6 @@ where
             estimated_gas,
             current_gas_price,
             custom_gas_price = max_affordable_gas_price,
-            estimated_cost,
             "Calculated estimated gas cost for request"
         );
 
@@ -355,35 +335,49 @@ where
     }
 
     /// Direct funding: ensure that the user has paid enough
-    fn is_direct_funding_covered(
+    fn available_for_gas_direct_funding(
         &self,
         blocklock_request: &BlocklockRequest,
-        estimated_cost: u128,
-    ) -> Result<(), BlocklockFulfillerError> {
-        let direct_funding_fee_paid: u128 = blocklock_request
+    ) -> Result<u128, BlocklockFulfillerError> {
+        blocklock_request
             .directFundingFeePaid
             .try_into()
             .map_err(|e| {
                 BlocklockFulfillerError::SolFromUint(e, "failed to cast direct funding fee paid")
-            })?;
-
-        if direct_funding_fee_paid < estimated_cost {
-            tracing::warn!(
-                paid_fee = direct_funding_fee_paid,
-                estimated_cost,
-                "User has not paid enough with direct funding to cover estimated fulfillment cost."
-            );
-            Err(BlocklockFulfillerError::SubscriptionInsufficientFunds)?
-        }
-
-        Ok(())
+            })
     }
 
-    async fn is_subscription_funding_covered(
+    async fn available_for_gas_subscription(
         &self,
+        decryption_request: &DecryptionRequest,
         blocklock_request: &BlocklockRequest,
-        estimated_cost: u128,
-    ) -> Result<(), BlocklockFulfillerError> {
+        current_gas_price: u128,
+        flat_fee_wei: u128,
+    ) -> Result<u128, BlocklockFulfillerError> {
+        // Get the estimated request price using the current network gas price
+        let estimated_cost = self
+            .blocklock_sender_instance
+            .calculateRequestPriceNative(decryption_request.callbackGasLimit)
+            .gas_price(current_gas_price)
+            .call()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = ?e, "Failed to call BlocklockSender::calculateRequestPriceNative");
+                BlocklockFulfillerError::Contract(
+                    e,
+                    "failed to call BlocklockSender::calculateRequestPriceNative",
+                )
+            })?;
+
+        // Ensure that the estimated price allows to at least cover our flat fee
+        let estimated_cost = u128::try_from(estimated_cost._0).map_err(|e| {
+            BlocklockFulfillerError::SolFromUint(e, "failed to cast request price to u128")
+        })?;
+        let Some(available_for_gas) = estimated_cost.checked_sub(flat_fee_wei) else {
+            // Request price is too low
+            Err(BlocklockFulfillerError::RequestPriceTooLow)?
+        };
+
         let sub = self
             .blocklock_sender_instance
             .getSubscription(blocklock_request.subId)
@@ -412,6 +406,6 @@ where
             Err(BlocklockFulfillerError::SubscriptionInsufficientFunds)?
         }
 
-        Ok(())
+        Ok(available_for_gas)
     }
 }
