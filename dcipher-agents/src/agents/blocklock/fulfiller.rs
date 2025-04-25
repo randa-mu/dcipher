@@ -364,7 +364,7 @@ where
                 ready_request.decryption_key,
                 ready_request.signature.clone().into_owned(),
             )
-            .gas_price(gas_price)
+            .max_fee_per_gas(gas_price)
             .gas(estimated_gas)
             .send()
             .await
