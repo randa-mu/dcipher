@@ -143,7 +143,7 @@ where
 
 impl<P> BlocklockFulfiller<P>
 where
-    P: Provider + WalletProvider,
+    P: Provider,
 {
     /// Dynamically computes a custom gas price using the current gas price estimated by the rpc, and
     /// a gas buffer. The function also bounds the gas_price to a maximum amount.
@@ -189,7 +189,10 @@ where
     ) -> Result<
         impl Future<Output = Result<TxHash, alloy::providers::PendingTransactionError>> + 'a,
         BlocklockFulfillerError,
-    > {
+    >
+    where
+        P: WalletProvider,
+    {
         // Get the complete request details
         let decryption_request = self
             .decryption_sender_instance
@@ -398,5 +401,102 @@ where
             });
 
         Ok(tx_hash_future)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use crate::agents::blocklock::contracts::BlocklockSender;
+    use crate::agents::blocklock::fulfiller::BlocklockFulfiller;
+    use crate::decryption_sender::contracts::DecryptionSender;
+    use alloy::eips::eip4895::GWEI_TO_WEI;
+    use alloy::network::Ethereum;
+    use alloy::primitives::{Address, U128};
+    use alloy::providers::{Provider, ProviderCall, RootProvider};
+    use alloy::rpc::client::NoParams;
+    use std::time::Duration;
+
+    #[derive(Clone)]
+    struct GasProvider {
+        curr_gas_price: Arc<std::sync::Mutex<u128>>,
+    }
+
+    impl Provider for GasProvider {
+        fn root(&self) -> &RootProvider<Ethereum> {
+            unimplemented!("test provider")
+        }
+
+        fn get_gas_price(&self) -> ProviderCall<NoParams, U128, u128> {
+            ProviderCall::Ready(Some(Ok(*self.curr_gas_price.lock().unwrap())))
+        }
+    }
+
+    #[tokio::test]
+    async fn gas_estimate_should_triple() {
+        let provider = GasProvider {
+            curr_gas_price: Arc::new(0u128.into()),
+        };
+
+        let decryption_sender_instance =
+            DecryptionSender::new(Address::default(), provider.clone());
+        let blocklock_sender_instance = BlocklockSender::new(Address::default(), provider.clone());
+
+        // 10 gwei
+        let max_gas_price_wei = 10 * GWEI_TO_WEI;
+        let gas_buffer_percent = 200;
+        let tx_fulfiller = BlocklockFulfiller::new(
+            decryption_sender_instance,
+            blocklock_sender_instance,
+            1,
+            Duration::from_secs(10),
+            max_gas_price_wei,
+            gas_buffer_percent,
+        );
+
+        // Set current price to 1 gwei
+        let price = u128::from(GWEI_TO_WEI);
+        *provider.curr_gas_price.lock().unwrap() = price;
+        assert_eq!(
+            provider.get_gas_price().await.unwrap(),
+            price
+        );
+
+        let gas_price = tx_fulfiller.get_gas_price().await.unwrap();
+        assert_eq!(gas_price, 3 * u128::from(GWEI_TO_WEI));
+    }
+
+    #[tokio::test]
+    async fn gas_estimate_should_not_go_above_max() {
+        let provider = GasProvider {
+            curr_gas_price: Arc::new(0u128.into()),
+        };
+
+        let decryption_sender_instance =
+            DecryptionSender::new(Address::default(), provider.clone());
+        let blocklock_sender_instance = BlocklockSender::new(Address::default(), provider.clone());
+
+        // 10 gwei
+        let max_gas_price_wei = 10 * GWEI_TO_WEI;
+        let gas_buffer_percent = 200;
+        let tx_fulfiller = BlocklockFulfiller::new(
+            decryption_sender_instance,
+            blocklock_sender_instance,
+            1,
+            Duration::from_secs(10),
+            max_gas_price_wei,
+            gas_buffer_percent,
+        );
+
+        // Set current price to 100 gwei
+        let price = 100 * u128::from(GWEI_TO_WEI);
+        *provider.curr_gas_price.lock().unwrap() = price;
+        assert_eq!(
+            provider.get_gas_price().await.unwrap(),
+            price
+        );
+
+        let gas_price = tx_fulfiller.get_gas_price().await.unwrap();
+        assert_eq!(gas_price, u128::from(max_gas_price_wei));
     }
 }
