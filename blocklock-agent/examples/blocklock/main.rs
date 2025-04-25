@@ -4,7 +4,7 @@ mod healthcheck;
 use crate::arguments_parser::{BlocklockArgs, BlocklockConfig, NodesConfiguration};
 use crate::healthcheck::healthcheck;
 use alloy::network::EthereumWallet;
-use alloy::providers::{Provider, ProviderBuilder};
+use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
 use blocklock_agent::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
@@ -34,7 +34,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     impl RequestChannel<Request = DecryptionRequest> + 'lt_out,
 )>
 where
-    P: Provider + Clone + 'static,
+    P: Provider + WalletProvider + Clone + 'static,
 {
     // Parse key
     let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().into();
@@ -86,7 +86,7 @@ where
         blocklock_sender_contract,
         args.chain.min_confirmations,
         Duration::from_secs(args.chain.confirmations_timeout_secs),
-        args.chain.base_gas_price_wei,
+        args.chain.gas_buffer_percent,
     );
 
     // Create a ticker-based fulfiller
