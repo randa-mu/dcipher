@@ -32,37 +32,29 @@ pub enum BlocklockConditionDecodeError {
 
 impl BlocklockCondition {
     pub fn from_slice(bytes: &[u8]) -> Result<Self, BlocklockConditionDecodeError> {
-        let block_number: u64 = U256::abi_decode(bytes, true)
-            .map_err(|e| {
-                BlocklockConditionDecodeError::AbiDecode(e, "could not decode block number as U256")
-            })?
-            .try_into()?;
-        Ok(BlocklockCondition::BlockNumber(block_number.into()))
-
         // Implementation with condition prefix, currently not supported by contracts
-        // match bytes[0] {
-        //     b'B' => {
-        //         let block_number: u64 = U256::abi_decode(&bytes[1..], true)
-        //             .map_err(|e| {
-        //                 BlocklockConditionDecodeError::AbiDecode(
-        //                     e,
-        //                     "could not decode block number as U256",
-        //                 )
-        //             })?
-        //             .try_into()?;
-        //         Ok(BlocklockCondition::BlockNumber(block_number.into()))
-        //     }
-        //
-        //     _ => Err(BlocklockConditionDecodeError::MissingBlockNumberPrefix),
-        // }
+        match bytes[0] {
+            b'B' => {
+                let block_number: u64 = U256::abi_decode(&bytes[1..], true)
+                    .map_err(|e| {
+                        BlocklockConditionDecodeError::AbiDecode(
+                            e,
+                            "could not decode block number as U256",
+                        )
+                    })?
+                    .try_into()?;
+                Ok(BlocklockCondition::BlockNumber(block_number.into()))
+            }
+
+            _ => Err(BlocklockConditionDecodeError::MissingBlockNumberPrefix),
+        }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             BlocklockCondition::BlockNumber(BlockNumber(block_u64)) => {
-                U256::from(*block_u64).abi_encode()
                 // Implementation with condition prefix, currently not supported by contracts
-                // [vec![b'B'], U256::from(*block_u64).abi_encode()].concat()
+                [vec![b'B'], U256::from(*block_u64).abi_encode()].concat()
             }
         }
     }
