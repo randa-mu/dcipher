@@ -4,12 +4,12 @@
 mod aggregation;
 mod libp2p;
 
-use crate::decryption_sender::threshold_signer::aggregation::lagrange_points_interpolate_at;
-use crate::decryption_sender::threshold_signer::libp2p::LibP2PNode;
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::fulfiller::RequestSigningRegistry;
 use crate::ibe_helper::{IbeCipherSuite, IbeCiphertext};
 use crate::ser::EvmSerialize;
+use crate::signer::RequestSigningRegistry;
+use crate::signer::threshold_signer::aggregation::lagrange_points_interpolate_at;
+use crate::signer::threshold_signer::libp2p::LibP2PNode;
 use alloy::primitives::Bytes;
 use ark_ec::{AffineRepr, CurveGroup};
 use lru::LruCache;

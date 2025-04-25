@@ -12,7 +12,7 @@ use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSav
 use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
 use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
 use dcipher_agents::decryption_sender::contracts::DecryptionSender;
-use dcipher_agents::decryption_sender::threshold_signer::ThresholdSigner;
+use dcipher_agents::signer::threshold_signer::ThresholdSigner;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;

@@ -3,14 +3,14 @@
 pub mod contracts;
 pub mod single_call_fulfiller;
 pub mod single_party_signer;
-pub mod threshold_signer;
 
 use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::RetryStrategy;
 use crate::fulfiller::ticker::TickerFulfiller;
-use crate::fulfiller::{Identifier, RequestSigningRegistry, TransactionFulfiller};
+use crate::fulfiller::{Identifier, TransactionFulfiller};
 use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
 use crate::ser::{EvmDeserialize, IbeIdentityOnBn254G1CiphertextError};
+use crate::signer::RequestSigningRegistry;
 use alloy::primitives::{Bytes, U256};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -75,7 +75,7 @@ impl Identifier for DecryptionRequest {
 }
 
 impl<'lt_cow> SignedDecryptionRequest<'lt_cow> {
-    fn new(id: U256, decryption_key: Bytes, signature: Cow<'lt_cow, Bytes>) -> Self {
+    pub(crate) fn new(id: U256, decryption_key: Bytes, signature: Cow<'lt_cow, Bytes>) -> Self {
         Self {
             id,
             decryption_key,

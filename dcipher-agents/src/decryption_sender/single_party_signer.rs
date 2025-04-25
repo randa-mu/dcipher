@@ -2,9 +2,9 @@
 //! signatures and decryption keys are issued immediately.
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::fulfiller::RequestSigningRegistry;
 use crate::ibe_helper::{IbeCipherSuite, IbeCiphertext};
 use crate::ser::EvmSerialize;
+use crate::signer::RequestSigningRegistry;
 use alloy::primitives::Bytes;
 use ark_ec::AffineRepr;
 use std::borrow::Cow;
