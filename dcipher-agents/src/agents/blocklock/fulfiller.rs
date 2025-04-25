@@ -7,7 +7,7 @@ use crate::decryption_sender::SignedDecryptionRequest;
 use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::TransactionFulfiller;
 use alloy::primitives::TxHash;
-use alloy::providers::{MulticallBuilder, Provider};
+use alloy::providers::{MulticallBuilder, Provider, WalletProvider};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use std::time::Duration;
@@ -17,8 +17,8 @@ pub enum BlocklockFulfillerError {
     #[error(transparent)]
     PendingTransaction(#[from] alloy::providers::PendingTransactionError),
 
-    #[error(transparent)]
-    Contract(#[from] alloy::contract::Error),
+    #[error("contract error: {1}")]
+    Contract(#[source] alloy::contract::Error, &'static str),
 
     #[error(transparent)]
     MultiCall(#[from] alloy::providers::MulticallError),
@@ -70,7 +70,7 @@ impl<P> BlocklockFulfiller<P> {
 
 impl<P> TransactionFulfiller for BlocklockFulfiller<P>
 where
-    P: Provider + 'static,
+    P: Provider + WalletProvider + 'static,
 {
     type SignedRequest = SignedDecryptionRequest<'static>;
     type Error = BlocklockFulfillerError;
@@ -134,8 +134,16 @@ where
 
 impl<P> BlocklockFulfiller<P>
 where
-    P: Provider,
+    P: Provider + WalletProvider,
 {
+    #[tracing::instrument(skip_all,
+        fields(
+            decryption_sender_addr = %self.decryption_sender_instance.address(),
+            blocklock_sender_addr = %self.decryption_sender_instance.address(),
+            wallet_address = %self.decryption_sender_instance.provider().default_signer_address(),
+            request_id = %ready_request.id
+        ))
+    ]
     async fn fulfil_blocklock_request<'a>(
         &self,
         ready_request: SignedDecryptionRequest<'a>,
@@ -147,18 +155,30 @@ where
             .decryption_sender_instance
             .getRequest(ready_request.id)
             .call()
-            .await?
+            .await
+            .map_err(|e| {
+                tracing::error!(error = ?e, "Failed to call DecryptionSender::getRequest");
+                BlocklockFulfillerError::Contract(e, "failed to call DecryptionSender::getRequest")
+            })?
             ._0;
 
         // Group 2 calls into a multicall to reduce RPC usage
-        let (blocklock_request, config) =
-            MulticallBuilder::new(self.blocklock_sender_instance.provider())
-                // Get blocklock request details
-                .add(self.blocklock_sender_instance.getRequest(ready_request.id))
-                // Get flat fee from config
-                .add(self.blocklock_sender_instance.getConfig())
-                .aggregate()
-                .await?;
+        let (blocklock_request, config) = MulticallBuilder::new(
+            self.blocklock_sender_instance.provider(),
+        )
+        // Get blocklock request details
+        .add(self.blocklock_sender_instance.getRequest(ready_request.id))
+        // Get flat fee from config
+        .add(self.blocklock_sender_instance.getConfig())
+        .aggregate()
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                error = ?e,
+                "Failed to call multicall(BlocklockSender::getRequest, BlocklockSender::getConfig)"
+            );
+            BlocklockFulfillerError::MultiCall(e)
+        })?;
 
         // Get the estimated request price using our base gas fee
         let request_price = self
@@ -166,7 +186,14 @@ where
             .calculateRequestPriceNative(decryption_request.callbackGasLimit)
             .gas_price(self.custom_gas_price)
             .call()
-            .await?;
+            .await
+            .map_err(|e| {
+                tracing::error!(error = ?e, "Failed to call BlocklockSender::calculateRequestPriceNative");
+                BlocklockFulfillerError::Contract(
+                    e,
+                    "failed to call BlocklockSender::calculateRequestPriceNative",
+                )
+            })?;
 
         // Calculate flat fee
         let flat_fee_wei = 1_000_000_000_000u128 * u128::from(config.fulfillmentFlatFeeNativePPM); // cannot overflow, 2**40 * 2**32
@@ -191,7 +218,19 @@ where
             )
             .gas_price(self.custom_gas_price)
             .estimate_gas()
-            .await?
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    error = ?e,
+                    signature = %ready_request.signature,
+                    gas_price = self.custom_gas_price,
+                    "Failed to simulate call to DecryptionSender::fulfillDecryptionRequest"
+                );
+                BlocklockFulfillerError::Contract(
+                    e,
+                    "failed to call DecryptionSender::fulfillDecryptionRequest",
+                )
+            })?
             .into();
 
         // Calculate total estimated cost in wei
@@ -246,7 +285,19 @@ where
                 .blocklock_sender_instance
                 .getSubscription(blocklock_request._0.subId)
                 .call()
-                .await?;
+                .await
+                .map_err(|e| {
+                    tracing::error!(
+                        error = ?e,
+                        sub_id = %blocklock_request._0.subId,
+                        "Failed to call BlocklockSender::getSubscription"
+                    );
+                    BlocklockFulfillerError::Contract(
+                        e,
+                        "failed to call BlocklockSender::getSubscription",
+                    )
+                })?;
+
             let native_balance = sub.nativeBalance; // native balance in wei
             if estimated_cost > u128::try_from(native_balance).expect("u128 must hold a u96") {
                 tracing::warn!(
@@ -266,14 +317,25 @@ where
             .fulfillDecryptionRequest(
                 ready_request.id,
                 ready_request.decryption_key,
-                ready_request.signature.into_owned(),
+                ready_request.signature.clone().into_owned(),
             )
             .gas_price(gas_price)
             .gas(estimated_gas.try_into().map_err(|e| {
                 BlocklockFulfillerError::TryFromInt(e, "estimated gas cost does not fit in u64")
             })?)
             .send()
-            .await?;
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    error = ?e,
+                    signature = %ready_request.signature,
+                    "Failed to send fulfillment transaction"
+                );
+                BlocklockFulfillerError::Contract(
+                    e,
+                    "failed to call real DecryptionSender::fulfillDecryptionRequest",
+                )
+            })?;
 
         let tx_hash_future = pending_tx
             .with_required_confirmations(self.required_confirmations)
@@ -285,12 +347,12 @@ where
                     Err(e) => Err(e)?,
                 };
 
-                tracing::error!(
+                tracing::info!(
                     request_id = %ready_request.id,
                     fulfilled_block_number = receipt.block_number,
                     gas_used = receipt.gas_used,
                     gas_price = receipt.effective_gas_price,
-                    "got receipt"
+                    "Obtained receipt for transaction"
                 );
                 Ok(receipt.transaction_hash)
             });
