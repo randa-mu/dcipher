@@ -11,6 +11,9 @@ use blocklock_agent::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
 use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSavedState};
 use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
 use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
+use dcipher_agents::decryption_sender::async_signer::{
+    DecryptionSenderAsyncSigner, DecryptionSenderAsyncSignerError,
+};
 use dcipher_agents::decryption_sender::contracts::DecryptionSender;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
@@ -65,14 +68,14 @@ where
         sk,
     );
     let ts = ThresholdSigner::new(
-        cs,
+        cs.clone(),
         args.key_config.n.get(),
         args.key_config.t.get(),
         args.key_config.node_id.get(),
         pks,
     );
 
-    let (ts_stopper, signing_registry) = ts.run(
+    let (ts_stopper, signer) = ts.run(
         args.libp2p.libp2p_key.clone().into(),
         args.libp2p.libp2p_listen_addr.clone(),
         addresses,
@@ -91,7 +94,8 @@ where
 
     // Create a ticker-based fulfiller
     let fulfiller = DecryptionSenderFulfillerConfig::new_fulfiller(
-        signing_registry,
+        cs,
+        signer,
         single_call_tx_fulfiller,
         args.chain.max_tx_per_tick,
         dcipher_agents::fulfiller::RetryStrategy::Never,
