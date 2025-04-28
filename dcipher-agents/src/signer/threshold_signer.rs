@@ -328,7 +328,7 @@ where
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Copy, Clone, Debug)]
 pub enum AsyncThresholdSignerError {
     #[error("cannot wait on the same message to sign twice")]
     MessageAlreadyRegistered,

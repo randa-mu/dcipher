@@ -1,5 +1,6 @@
 //! Module with signers / tx fulfillers used by the decryption sender contract.
 
+pub mod async_signer;
 pub mod contracts;
 pub mod single_call_fulfiller;
 pub mod single_party_signer;
@@ -96,6 +97,14 @@ impl TryFrom<&DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
     type Error = IbeIdentityOnBn254G1CiphertextError;
 
     fn try_from(value: &DecryptionRequest) -> Result<Self, Self::Error> {
+        EvmDeserialize::deser(&value.ciphertext)
+    }
+}
+
+impl TryFrom<DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
+    type Error = IbeIdentityOnBn254G1CiphertextError;
+
+    fn try_from(value: DecryptionRequest) -> Result<Self, Self::Error> {
         EvmDeserialize::deser(&value.ciphertext)
     }
 }
