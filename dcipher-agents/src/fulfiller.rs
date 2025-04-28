@@ -5,7 +5,6 @@ pub(crate) mod ticker;
 
 pub use failure::RetryStrategy;
 
-use crate::signer::RequestSigningRegistry;
 use futures_util::future::BoxFuture;
 use std::hash::Hash;
 
@@ -17,9 +16,9 @@ pub trait Fulfiller {
     /// Type of signed request processed by the fulfiller.
     type SignedRequest: Identifier + Send + Sync + 'static;
 
-    /// A [`RequestSigningRegistry`] used to obtain a [`SignedRequest`](Self::SignedRequest)
-    /// from a [`Request`](Self::Request).
-    type RequestSigningRegistry: RequestSigningRegistry<Request = Self::Request, SignedRequest = Self::SignedRequest>;
+    /// An unconstrained type that used to transform a [`Request`](Self::Request)
+    /// into a [`SignedRequest`](Self::SignedRequest)
+    type Signer;
 
     /// A [`TransactionFulfiller`] used to register the [`SignedRequest`](Self::SignedRequest) by
     /// generally sending a transaction to a blockchain.
@@ -43,7 +42,7 @@ pub trait TickerBasedFulfiller: Fulfiller {
 
 /// Types implementing [`Identifier`] provide a field that can be used as an identifier.
 pub trait Identifier {
-    type Id: std::fmt::Display + Ord + Eq + Hash + ToOwned + Send + Sync + 'static;
+    type Id: std::fmt::Display + Ord + Eq + Hash + Clone + Send + Sync + 'static;
 
     /// Returns a reference to a field that can be used as an identifier
     fn id(&self) -> &Self::Id;

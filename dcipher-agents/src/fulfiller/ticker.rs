@@ -3,40 +3,43 @@
 
 use crate::fulfiller::failure::{RequestRetryStrategy, RetryStrategy, RetryableRequest};
 use crate::fulfiller::{
-    Fulfiller, Identifier, RequestChannel, RequestSigningRegistry, Stopper, Ticker,
-    TickerBasedFulfiller, TransactionFulfiller,
+    Fulfiller, Identifier, RequestChannel, Stopper, Ticker, TickerBasedFulfiller,
+    TransactionFulfiller,
 };
-use itertools::{Either, Itertools};
+use crate::signer::AsynchronousSigner;
+use futures_util::stream::FuturesUnordered;
+use futures_util::{FutureExt, StreamExt};
 use std::collections::VecDeque;
+use std::marker::PhantomData;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use tracing::instrument;
 
 /// Alias of the type used to store requests
-type PendingRequestStorage<R> = Arc<tokio::sync::Mutex<Vec<R>>>;
 type ReadyRequestStorage<SR> = Arc<tokio::sync::Mutex<VecDeque<SR>>>;
 type RetryRequestStorage<SR> = Arc<tokio::sync::Mutex<VecDeque<RetryableRequest<SR>>>>;
 
 /// Structure used to fulfill requests by requesting a signed request from a [`RequestSigningRegistry`],
 /// before submitting it to a [`TransactionFulfiller`] with multiple attempts.
-pub struct TickerFulfiller<R, SR, RS, TF> {
+pub struct TickerFulfiller<R, SR, S, TF> {
     // Storage for pending, ready and requests to retry
-    pending_requests: PendingRequestStorage<R>,
     ready_requests: ReadyRequestStorage<SR>,
     retry_requests: RetryRequestStorage<SR>,
 
     // Number of requests that were processed this tick, use a mutex for longer locks
-    num_fulfilment_curr_tick: tokio::sync::Mutex<usize>,
+    num_left_to_fulfil_curr_tick: tokio::sync::Mutex<usize>,
 
     // Real transaction fulfiller
     fulfiller: TF,
 
     // Registry used to request and fetch ReadyRequests
-    signing_registry: Arc<RS>,
+    signer: Arc<S>,
 
     // Various configuration parameters
     max_fulfilment_per_tick: usize,
     retry_strategy: RetryStrategy,
+
+    _r: PhantomData<R>,
 }
 
 /// Implementation of a [`RequestChannel`] using tokio's unbounded channel.
@@ -49,47 +52,47 @@ pub struct OneshotStopper {
     tx: tokio::sync::oneshot::Sender<()>,
 }
 
-impl<R, SR, RS, TF> TickerFulfiller<R, SR, RS, TF> {
+impl<R, SR, S, TF> TickerFulfiller<R, SR, S, TF> {
     pub(crate) fn new(
-        signing_registry: RS,
+        signer: S,
         transaction_fulfiller: TF,
         max_fulfilment_per_tick: usize,
         retry_strategy: RetryStrategy,
     ) -> Self {
         Self {
-            pending_requests: Arc::new(tokio::sync::Mutex::new(Vec::new())),
             ready_requests: Arc::new(tokio::sync::Mutex::new(VecDeque::new())),
             retry_requests: Arc::new(tokio::sync::Mutex::new(VecDeque::new())),
-            num_fulfilment_curr_tick: max_fulfilment_per_tick.into(),
+            num_left_to_fulfil_curr_tick: max_fulfilment_per_tick.into(),
             fulfiller: transaction_fulfiller,
-            signing_registry: Arc::new(signing_registry),
+            signer: Arc::new(signer),
             max_fulfilment_per_tick,
             retry_strategy,
+            _r: PhantomData,
         }
     }
 }
 
-impl<R, SR, RS, TF> Fulfiller for TickerFulfiller<R, SR, RS, TF>
+impl<R, SR, S, TF> Fulfiller for TickerFulfiller<R, SR, S, TF>
 where
     R: Identifier + Send + Sync + 'static,
     SR: Identifier + Send + Sync + 'static,
-    RS: RequestSigningRegistry<Request = R, SignedRequest = SR>,
+    S: AsynchronousSigner<R> + Send + Sync + 'static,
     TF: TransactionFulfiller<SignedRequest = SR>,
 {
     type Request = R;
     type SignedRequest = SR;
-    type RequestSigningRegistry = RS;
+    type Signer = S;
     type TransactionFulfiller = TF;
 
     type RequestChannel = UnboundedRequestChannel<R>;
     type Stop = OneshotStopper;
 }
 
-impl<R, SR, RS, TF> TickerBasedFulfiller for TickerFulfiller<R, SR, RS, TF>
+impl<R, SR, S, TF> TickerBasedFulfiller for TickerFulfiller<R, SR, S, TF>
 where
     R: Identifier + Send + Sync + 'static,
     SR: Identifier + Send + Sync + 'static,
-    RS: RequestSigningRegistry<Request = R, SignedRequest = SR>,
+    S: AsynchronousSigner<R, Signature = SR> + Send + Sync + 'static,
     TF: TransactionFulfiller<SignedRequest = SR>,
 {
     fn run(self, ticker: impl Ticker) -> (Self::Stop, Self::RequestChannel) {
@@ -119,11 +122,11 @@ where
     }
 }
 
-impl<R, SR, RS, TF> TickerFulfiller<R, SR, RS, TF>
+impl<R, SR, S, TF> TickerFulfiller<R, SR, S, TF>
 where
     R: Identifier + Send + Sync + 'static,
     SR: Identifier + Send + Sync + 'static,
-    RS: RequestSigningRegistry<Request = R, SignedRequest = SR>,
+    S: AsynchronousSigner<R, Signature = SR> + Send + Sync + 'static,
     TF: TransactionFulfiller<SignedRequest = SR>,
 {
     #[tracing::instrument(skip_all)]
@@ -151,10 +154,7 @@ where
             ticker.tick().await;
 
             // Reset the number of fulfilled requests this tick
-            *self.num_fulfilment_curr_tick.lock().await = self.max_fulfilment_per_tick;
-
-            // Process pending requests
-            self.process_pending_requests().await;
+            *self.num_left_to_fulfil_curr_tick.lock().await = self.max_fulfilment_per_tick;
 
             // Get a vec of requests to fulfil
             let requests_to_fulfil = self.requests_to_fulfil().await;
@@ -176,22 +176,67 @@ where
         mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<R>>,
         cancellation_token: CancellationToken,
     ) {
+        let cloned_token = cancellation_token.clone();
         let inner_fn = async move {
             tracing::debug!("Recv task processing new requests started");
+            let mut signatures = FuturesUnordered::new(); // <BoxFuture<'a, Result<S::Signature, S::Error>>>;
 
             loop {
-                tracing::trace!("Waiting for new requests");
-                let Some(requests) = rx.recv().await else {
-                    tracing::error!("Requests receiving channel closed... Exiting recv task.");
-                    return;
-                };
-                tracing::debug!(
-                    n_requests = requests.len(),
-                    "Received new requests through channel"
-                );
+                tokio::select! {
+                    // Handle new requests
+                    requests = rx.recv() => {
+                        let Some(requests) = requests else {
+                            tracing::error!("Requests receiving channel closed... Exiting recv task.");
+                            return;
+                        };
+                        tracing::debug!(
+                            n_requests = requests.len(),
+                            "Received new requests through channel"
+                        );
 
-                // Process only the newly arrived requests, pending requests will be processed on the next tick.
-                self.process_requests(requests).await;
+                        // Request a new signature for each request
+                        let futs = requests.into_iter().map(|r| {
+                            let request_id = r.id().clone();
+                            self.signer.async_sign(r).map(|res| (request_id, res)).boxed()
+                        });
+                        signatures.extend(futs);
+                    },
+
+                    // Handle new signature
+                    signed_request = signatures.next(), if !signatures.is_empty() => {
+                        match signed_request.expect("signed_request cannot return None due to precondition") {
+                            (id, Ok(req)) => {
+                                tracing::info!(request_id = %id, "Obtained signed request");
+
+                                // Can we process the signature immediately?
+                                let fulfil_now = {
+                                    let mut num_left_to_fulfil_curr_tick = self.num_left_to_fulfil_curr_tick.lock().await;
+                                    if *num_left_to_fulfil_curr_tick > 0 {
+                                        *num_left_to_fulfil_curr_tick -= 1;
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                };
+
+                                if fulfil_now {
+                                    let req = RetryableRequest::new(req, self.retry_strategy);
+                                    tokio::task::spawn(
+                                        self.clone().fulfil_requests_task(vec![req], cloned_token.clone()),
+                                    );
+                                } else {
+                                    self.ready_requests
+                                        .lock()
+                                        .await
+                                        .push_back(req);
+                                }
+                            }
+                            (id, Err(e)) => {
+                                tracing::error!(error = ?e, request_id = %id, "Failed to obtain signed request from signer");
+                            }
+                        }
+                    }
+                }
             }
         };
 
@@ -204,67 +249,10 @@ where
         }
     }
 
-    /// Helper function that attempts to obtain signed requests from the pending requests.
-    async fn process_pending_requests(&self) {
-        let requests: Vec<_> = self.pending_requests.lock().await.drain(..).collect();
-        if requests.is_empty() {
-            tracing::debug!("No pending requests to process");
-        } else {
-            self.process_requests(requests).await;
-        }
-    }
-
-    /// Process requests by attempting to transform them into signed requests through the
-    /// signing registry.
-    async fn process_requests(&self, requests: Vec<R>) {
-        let n_pending_requests = requests.len();
-        tracing::debug!(
-            "Trying to fetch `{n_pending_requests}` requests from the signing registry"
-        );
-        // Forward the requests to the signer registry and collect
-        let signed_requests: Vec<_> = self
-            .signing_registry
-            .try_fetch_signed_requests(requests.iter())
-            .collect();
-
-        // Partition requests based on whether they were signed or not
-        let (signed_requests, pending_decryption_requests): (Vec<_>, Vec<_>) = requests
-            .into_iter()
-            .zip(signed_requests)
-            .partition_map(|(req, signed_request)| {
-                if let Some(signed_request) = signed_request {
-                    Either::Left(signed_request)
-                } else {
-                    Either::Right(req)
-                }
-            });
-
-        tracing::info!(
-            "Obtained `{}` signed requests out of `{n_pending_requests}` from the signing registry",
-            signed_requests.len()
-        );
-
-        // Store the pending requests
-        {
-            let mut pending_requests = self.pending_requests.lock().await;
-            pending_decryption_requests.into_iter().for_each(|req| {
-                pending_requests.push(req);
-            });
-        } // drop mutex guard
-
-        // Store the signed requests
-        {
-            let mut ready_requests = self.ready_requests.lock().await;
-            signed_requests.into_iter().for_each(|req| {
-                ready_requests.push_back(req);
-            });
-        } // drop mutex guard
-    }
-
     /// Generates a vector of requests to fulfil for this tck.
     async fn requests_to_fulfil(&self) -> Vec<RetryableRequest<SR>> {
         // Lock mutex until the end of the function
-        let mut num_fulfilment_curr_tick = self.num_fulfilment_curr_tick.lock().await;
+        let mut num_fulfilment_curr_tick = self.num_left_to_fulfil_curr_tick.lock().await;
 
         // First, try to use fresh ready requests
         let mut ready_requests = self.ready_requests.lock().await;
@@ -424,7 +412,6 @@ mod tests {
         let sk: Fr = MontFp!("0102030405060708091011121314151617181920");
         let cs = IbeIdentityOnBn254G1Suite::new_signer(b"TEST_IBE", 31337, sk);
         let signer = StandaloneSigner::new(cs.clone());
-        let signer_registry = signer.registry();
 
         // Static ephemeral pk / condition
         let eph_pk = ark_bn254::g2::G2Affine::generator();
@@ -432,22 +419,20 @@ mod tests {
 
         let retry_strategy = RetryStrategy::Never;
         let retry_never_fulfiller =
-            TickerFulfiller::new(signer_registry, FakeFulfiller, 100, retry_strategy);
+            TickerFulfiller::new(signer.clone(), FakeFulfiller, 100, retry_strategy);
 
-        // Add a pending request to the fulfiller
+        // Add a ready request to the fulfiller
         let req = DecryptionRequest {
             id: U256::from(1u64),
             condition,
             ciphertext: create_ciphertext(eph_pk),
         };
+        let signed_req = signer.async_sign(req.clone()).await.unwrap();
         retry_never_fulfiller
-            .pending_requests
+            .ready_requests
             .lock()
             .await
-            .push(req.clone());
-
-        // Process pending requests, this should transform the request into a ReadyRequest
-        retry_never_fulfiller.process_pending_requests().await;
+            .push_back(signed_req);
         assert_eq!(retry_never_fulfiller.ready_requests.lock().await.len(), 1);
         assert_eq!(
             retry_never_fulfiller.ready_requests.lock().await[0].id(),
@@ -468,7 +453,6 @@ mod tests {
         // The request should be dropped
         assert_eq!(retry_never_fulfiller.retry_requests.lock().await.len(), 0);
         assert_eq!(retry_never_fulfiller.ready_requests.lock().await.len(), 0);
-        assert_eq!(retry_never_fulfiller.pending_requests.lock().await.len(), 0);
     }
 
     #[tokio::test]
@@ -479,7 +463,6 @@ mod tests {
         let sk: Fr = MontFp!("0102030405060708091011121314151617181920");
         let cs = IbeIdentityOnBn254G1Suite::new_signer(b"TEST_IBE", 31337, sk);
         let signer = StandaloneSigner::new(cs.clone());
-        let signer_registry = signer.registry();
 
         // Static ephemeral pk / condition
         let eph_pk = ark_bn254::g2::G2Affine::generator();
@@ -487,22 +470,20 @@ mod tests {
 
         let retry_strategy = RetryStrategy::Times(2);
         let retries_fulfiller =
-            TickerFulfiller::new(signer_registry, FakeFulfiller, 100, retry_strategy);
+            TickerFulfiller::new(signer.clone(), FakeFulfiller, 100, retry_strategy);
 
-        // Add a pending request to the fulfiller
+        // Add a ready request to the fulfiller
         let req = DecryptionRequest {
             id: U256::from(1u64),
             condition,
             ciphertext: create_ciphertext(eph_pk),
         };
+        let signed_req = signer.async_sign(req.clone()).await.unwrap();
         retries_fulfiller
-            .pending_requests
+            .ready_requests
             .lock()
             .await
-            .push(req.clone());
-
-        // Process pending requests, this should transform the request into a ReadyRequest
-        retries_fulfiller.process_pending_requests().await;
+            .push_back(signed_req);
         assert_eq!(retries_fulfiller.ready_requests.lock().await.len(), 1);
         assert_eq!(
             retries_fulfiller.ready_requests.lock().await[0].id(),
@@ -521,7 +502,6 @@ mod tests {
         // The request should be added to retry_requests
         assert_eq!(retries_fulfiller.retry_requests.lock().await.len(), 1);
         assert_eq!(retries_fulfiller.ready_requests.lock().await.len(), 0);
-        assert_eq!(retries_fulfiller.pending_requests.lock().await.len(), 0);
 
         // Get a vec of requests to fulfil
         let requests_to_fulfil = retries_fulfiller.requests_to_fulfil().await;
@@ -533,7 +513,6 @@ mod tests {
         // The request should be added to retry_requests
         assert_eq!(retries_fulfiller.retry_requests.lock().await.len(), 1);
         assert_eq!(retries_fulfiller.ready_requests.lock().await.len(), 0);
-        assert_eq!(retries_fulfiller.pending_requests.lock().await.len(), 0);
 
         // Get a vec of requests to fulfil
         let requests_to_fulfil = retries_fulfiller.requests_to_fulfil().await;
@@ -545,6 +524,5 @@ mod tests {
         // The request should be dropped on the third try (initial attempt + two retries)
         assert_eq!(retries_fulfiller.retry_requests.lock().await.len(), 0);
         assert_eq!(retries_fulfiller.ready_requests.lock().await.len(), 0);
-        assert_eq!(retries_fulfiller.pending_requests.lock().await.len(), 0);
     }
 }

@@ -11,15 +11,15 @@ use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::{Identifier, TransactionFulfiller};
 use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
 use crate::ser::{EvmDeserialize, IbeIdentityOnBn254G1CiphertextError};
-use crate::signer::RequestSigningRegistry;
+use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
 /// Helper struct used to instantiate a [`DecryptionSenderFulfiller`], an implementation of [`TickerFulfiller`].
-pub struct DecryptionSenderFulfillerConfig<RS, TF>(
-    PhantomData<fn(RS) -> RS>,
+pub struct DecryptionSenderFulfillerConfig<S, TF>(
+    PhantomData<fn(S) -> S>,
     PhantomData<fn(TF) -> TF>,
 );
 
@@ -27,23 +27,20 @@ pub struct DecryptionSenderFulfillerConfig<RS, TF>(
 pub type DecryptionSenderFulfiller<RS, TF> =
     TickerFulfiller<DecryptionRequest, SignedDecryptionRequest<'static>, RS, TF>;
 
-impl<RS, TF> DecryptionSenderFulfillerConfig<RS, TF>
+impl<S, TF> DecryptionSenderFulfillerConfig<S, TF>
 where
-    RS: RequestSigningRegistry<
-            Request = DecryptionRequest,
-            SignedRequest = SignedDecryptionRequest<'static>,
-        >,
+    S: AsynchronousSigner<DecryptionRequest, Signature = SignedDecryptionRequest<'static>>,
     TF: TransactionFulfiller<SignedRequest = SignedDecryptionRequest<'static>>,
 {
     /// Instantiate a [`DecryptionSenderFulfiller<RS, TF>`](DecryptionSenderFulfiller).
     pub fn new_fulfiller(
-        signing_registry: RS,
+        signer: S,
         transaction_fulfiller: TF,
         max_fulfillment_per_tick: usize,
         retry_strategy: RetryStrategy,
-    ) -> DecryptionSenderFulfiller<RS, TF> {
+    ) -> DecryptionSenderFulfiller<S, TF> {
         TickerFulfiller::new(
-            signing_registry,
+            signer,
             transaction_fulfiller,
             max_fulfillment_per_tick,
             retry_strategy,
