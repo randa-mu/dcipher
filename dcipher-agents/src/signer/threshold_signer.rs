@@ -5,7 +5,7 @@ mod aggregation;
 mod libp2p;
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::ibe_helper::{IbeCipherSuite, IbeCiphertext};
+use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite, PairingIbeSigner};
 use crate::ser::EvmSerialize;
 use crate::signer::RequestSigningRegistry;
 use crate::signer::threshold_signer::aggregation::lagrange_points_interpolate_at;
@@ -23,19 +23,28 @@ use tokio_util::sync::CancellationToken;
 
 type SharedSignatureCache<CS> = Arc<
     std::sync::Mutex<
-        LruCache<Vec<u8>, (<CS as IbeCipherSuite>::IdentityGroup, Cow<'static, Bytes>)>,
+        LruCache<
+            Vec<u8>,
+            (
+                <CS as PairingIbeCipherSuite>::IdentityGroup,
+                Cow<'static, Bytes>,
+            ),
+        >,
     >,
 >;
 
 type SharedPartialsCache<CS> = Arc<
     std::sync::Mutex<
-        LruCache<Vec<u8>, HashMap<u16, PartialSignature<<CS as IbeCipherSuite>::IdentityGroup>>>,
+        LruCache<
+            Vec<u8>,
+            HashMap<u16, PartialSignature<<CS as PairingIbeCipherSuite>::IdentityGroup>>,
+        >,
     >,
 >;
 
 pub struct Registry<CS>
 where
-    CS: IbeCipherSuite,
+    CS: PairingIbeCipherSuite,
 {
     cs: CS,
     signatures_cache: SharedSignatureCache<CS>,
@@ -62,7 +71,7 @@ struct PartialSignatureWithMessage<G> {
 /// Threshold signer that relies on libp2p to exchange partial signatures.
 pub struct ThresholdSigner<CS>
 where
-    CS: IbeCipherSuite,
+    CS: PairingIbeCipherSuite,
 {
     // Signatures cache
     signatures_cache: SharedSignatureCache<CS>,
@@ -70,9 +79,8 @@ where
     // Map from conditions to partials
     partials_cache: SharedPartialsCache<CS>,
 
-    // Ciphersuite and secret key
+    // Ciphersuite + Signer
     cs: CS,
-    sk: <CS::IdentityGroup as AffineRepr>::ScalarField,
 
     // Threshold parameters
     n: u16,
@@ -83,19 +91,12 @@ where
 
 impl<CS> ThresholdSigner<CS>
 where
-    CS: IbeCipherSuite + Clone + Send + Sync + 'static,
+    CS: PairingIbeSigner + Clone + Send + Sync + 'static,
     CS::IdentityGroup: EvmSerialize + PointSerializeCompressed + PointDeserializeCompressed,
     Registry<CS>: RequestSigningRegistry,
 {
     /// Create a new threshold signer by specifying the various threshold scheme parameters.
-    pub fn new(
-        cs: CS,
-        sk: <CS::IdentityGroup as AffineRepr>::ScalarField,
-        n: u16,
-        t: u16,
-        id: u16,
-        pks: Vec<CS::PublicKeyGroup>,
-    ) -> Self {
+    pub fn new(cs: CS, n: u16, t: u16, id: u16, pks: Vec<CS::PublicKeyGroup>) -> Self {
         Self {
             signatures_cache: Arc::new(std::sync::Mutex::new(LruCache::new(
                 const { NonZeroUsize::new(64).unwrap() }, // cache with 64 conditions
@@ -104,7 +105,6 @@ where
                 const { NonZeroUsize::new(64).unwrap() }, // cache with 64 conditions
             ))),
             cs,
-            sk,
             n,
             t,
             id,
@@ -197,7 +197,7 @@ where
 
                 tracing::info!(condition = ?condition, "Received new condition to sign");
                 let condition_identity = self.cs.h1(&condition);
-                let sig = self.cs.decryption_key(&self.sk, condition_identity);
+                let sig = self.cs.decryption_key(condition_identity);
                 let partial = PartialSignatureWithMessage {
                     sig,
                     m: condition.clone(),
@@ -338,7 +338,7 @@ pub enum RegistryError {
 
 impl<CS> Registry<CS>
 where
-    CS: IbeCipherSuite,
+    CS: PairingIbeCipherSuite,
     for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
     for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,
@@ -372,7 +372,7 @@ where
 
 impl<CS> RequestSigningRegistry for Registry<CS>
 where
-    CS: IbeCipherSuite + Send + Sync + 'static,
+    CS: PairingIbeCipherSuite + Send + Sync + 'static,
     for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
     for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,
@@ -428,7 +428,6 @@ mod tests {
         let n = 3;
         let t = 2;
         let g2 = ark_bn254::G2Affine::generator();
-        let cs = IbeIdentityOnBn254G1Suite::new(b"TEST", 31337);
 
         let _sk: Fr =
             MontFp!("7685086713915354683875500702831995067084988389812060097318430034144315778947");
@@ -444,13 +443,17 @@ mod tests {
             .map(|pki| pki.into_affine())
             .collect::<Vec<_>>();
 
+        let cs1 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk1);
+        let cs2 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk2);
+        let cs3 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk3);
+
         let libp2p_sk1 = ::libp2p::identity::Keypair::generate_ed25519();
         let libp2p_sk2 = ::libp2p::identity::Keypair::generate_ed25519();
         let libp2p_sk3 = ::libp2p::identity::Keypair::generate_ed25519();
 
-        let ts1 = ThresholdSigner::new(cs.clone(), sk1, n, t, 1, pks.clone());
-        let ts2 = ThresholdSigner::new(cs.clone(), sk2, n, t, 2, pks.clone());
-        let ts3 = ThresholdSigner::new(cs.clone(), sk3, n, t, 3, pks.clone());
+        let ts1 = ThresholdSigner::new(cs1, n, t, 1, pks.clone());
+        let ts2 = ThresholdSigner::new(cs2, n, t, 2, pks.clone());
+        let ts3 = ThresholdSigner::new(cs3, n, t, 3, pks.clone());
 
         let addr_1: ::libp2p::Multiaddr = "/ip4/127.0.0.1/tcp/32140".parse().unwrap();
         let addr_2: ::libp2p::Multiaddr = "/ip4/127.0.0.1/tcp/32141".parse().unwrap();

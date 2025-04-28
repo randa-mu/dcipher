@@ -2,20 +2,18 @@
 //! signatures and decryption keys are issued immediately.
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::ibe_helper::{IbeCipherSuite, IbeCiphertext};
+use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite, PairingIbeSigner};
 use crate::ser::EvmSerialize;
 use crate::signer::RequestSigningRegistry;
 use alloy::primitives::Bytes;
-use ark_ec::AffineRepr;
 use std::borrow::Cow;
 
 pub struct StandaloneRegistry<CS>
 where
-    CS: IbeCipherSuite,
+    CS: PairingIbeCipherSuite,
 {
-    // Ciphersuite and secret key
+    // Ciphersuite + Signer
     cs: CS,
-    sk: <CS::IdentityGroup as AffineRepr>::ScalarField,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -24,15 +22,15 @@ pub enum StandaloneRegistryError {
     ParseDecryptionRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
-pub struct StandaloneSigner<CS: IbeCipherSuite>(StandaloneRegistry<CS>);
+pub struct StandaloneSigner<CS: PairingIbeCipherSuite>(StandaloneRegistry<CS>);
 
 impl<CS> StandaloneSigner<CS>
 where
-    CS: IbeCipherSuite,
+    CS: PairingIbeSigner,
     StandaloneRegistry<CS>: RequestSigningRegistry,
 {
-    pub fn new(cs: CS, sk: <CS::IdentityGroup as AffineRepr>::ScalarField) -> Self {
-        Self(StandaloneRegistry { cs, sk })
+    pub fn new(cs: CS) -> Self {
+        Self(StandaloneRegistry { cs })
     }
 
     pub fn registry(self) -> StandaloneRegistry<CS> {
@@ -42,7 +40,7 @@ where
 
 impl<CS> StandaloneRegistry<CS>
 where
-    CS: IbeCipherSuite + Send + Sync + 'static,
+    CS: PairingIbeSigner + Send + Sync + 'static,
     for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
     for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,
@@ -54,7 +52,7 @@ where
     ) -> Result<SignedDecryptionRequest<'static>, StandaloneRegistryError> {
         // Generate a signature (also a decryption key in this context) for each condition
         let identity = self.cs.h1(&req.condition);
-        let sig = self.cs.decryption_key(&self.sk, identity);
+        let sig = self.cs.decryption_key(identity);
         let sig_bytes = Cow::<'_, Bytes>::Owned(EvmSerialize::ser_bytes(&sig));
         // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
         let ct: CS::Ciphertext = match req.try_into() {
@@ -78,7 +76,7 @@ where
 
 impl<CS> RequestSigningRegistry for StandaloneRegistry<CS>
 where
-    CS: IbeCipherSuite + Send + Sync + 'static,
+    CS: PairingIbeSigner + Send + Sync + 'static,
     for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
     for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,

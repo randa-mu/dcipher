@@ -12,10 +12,10 @@ use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSav
 use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
 use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
 use dcipher_agents::decryption_sender::contracts::DecryptionSender;
-use dcipher_agents::signer::threshold_signer::ThresholdSigner;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
+use dcipher_agents::signer::threshold_signer::ThresholdSigner;
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -57,15 +57,15 @@ where
     }
 
     // Create a threshold signer
-    let cs = IbeIdentityOnBn254G1Suite::new(
+    let cs = IbeIdentityOnBn254G1Suite::new_signer(
         b"BLOCKLOCK",
         args.chain
             .chain_id
             .expect("chain id must have been set here"),
+        sk,
     );
     let ts = ThresholdSigner::new(
         cs,
-        sk,
         args.key_config.n.get(),
         args.key_config.t.get(),
         args.key_config.node_id.get(),

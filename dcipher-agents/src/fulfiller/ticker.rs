@@ -421,9 +421,9 @@ mod tests {
         use ark_bn254::Fr;
 
         // bn254 ciphersuite
-        let cs = IbeIdentityOnBn254G1Suite::new(b"TEST_IBE", 31337);
         let sk: Fr = MontFp!("0102030405060708091011121314151617181920");
-        let signer = StandaloneSigner::new(cs.clone(), sk);
+        let cs = IbeIdentityOnBn254G1Suite::new_signer(b"TEST_IBE", 31337, sk);
+        let signer = StandaloneSigner::new(cs.clone());
         let signer_registry = signer.registry();
 
         // Static ephemeral pk / condition
@@ -476,9 +476,9 @@ mod tests {
         use ark_bn254::Fr;
 
         // bn254 ciphersuite
-        let cs = IbeIdentityOnBn254G1Suite::new(b"TEST_IBE", 31337);
         let sk: Fr = MontFp!("0102030405060708091011121314151617181920");
-        let signer = StandaloneSigner::new(cs.clone(), sk);
+        let cs = IbeIdentityOnBn254G1Suite::new_signer(b"TEST_IBE", 31337, sk);
+        let signer = StandaloneSigner::new(cs.clone());
         let signer_registry = signer.registry();
 
         // Static ephemeral pk / condition

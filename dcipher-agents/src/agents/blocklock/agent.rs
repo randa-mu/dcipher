@@ -587,7 +587,7 @@ mod tests {
     use crate::decryption_sender::contracts::DecryptionSender::{
         DecryptionRequested, DecryptionSenderInstance,
     };
-    use crate::ibe_helper::{IbeCipherSuite, IbeIdentityOnBn254G1Suite};
+    use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
     use crate::ser::EvmSerialize;
     use alloy::consensus::constants::ETH_TO_WEI;
     use alloy::hex;
@@ -1230,9 +1230,9 @@ mod tests {
         .await;
 
         // Create ciphersuite for blocklock
-        let cs = IbeIdentityOnBn254G1Suite::new(b"BLOCKLOCK", 31337);
+        let cs = IbeIdentityOnBn254G1Suite::new_signer(b"BLOCKLOCK", 31337, SK);
         let identity = cs.h1(&condition.to_bytes());
-        let signature = cs.decryption_key(&SK, identity); // the signature is the ibe decryption key
+        let signature = cs.decryption_key(identity); // the signature is the ibe decryption key
 
         // Manually fulfil request 1
         decryption_sender
@@ -1282,7 +1282,7 @@ mod tests {
         let (decryption_sender, mockblocklock_receiver) = deploy_contracts(provider.clone()).await;
 
         // Create ciphersuite for blocklock
-        let cs = IbeIdentityOnBn254G1Suite::new(b"BLOCKLOCK", 31337);
+        let cs = IbeIdentityOnBn254G1Suite::new_signer(b"BLOCKLOCK", 31337, SK);
 
         let request_channel_buffer = RequestChannelBuffer::default();
         let mut blocklock = BlocklockAgent::new(
@@ -1346,7 +1346,7 @@ mod tests {
 
         // Manually fulfil request 1
         let identity = cs.h1(req_1_block_plus_5.condition.as_ref());
-        let signature = cs.decryption_key(&SK, identity); // the signature is the ibe decryption key
+        let signature = cs.decryption_key(identity); // the signature is the ibe decryption key
         decryption_sender
             .fulfillDecryptionRequest(
                 U256::from(1),

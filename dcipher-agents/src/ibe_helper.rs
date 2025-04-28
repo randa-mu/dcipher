@@ -8,7 +8,7 @@ use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, Group};
 
 /// Partial cipher suite for the IBE scheme described in <https://eprint.iacr.org/2023/189>, Algorithms 1-2
-pub trait IbeCipherSuite {
+pub trait PairingIbeCipherSuite {
     type IdentityGroup: AffineRepr;
     type PublicKeyGroup: AffineRepr;
     type TargetGroup: Group;
@@ -33,16 +33,6 @@ pub trait IbeCipherSuite {
         public_key: Self::PublicKeyGroup,
     ) -> bool;
 
-    /// Obtain a decryption key using a secret key and an identity.
-    fn decryption_key(
-        &self,
-        secret_key: &<Self::IdentityGroup as AffineRepr>::ScalarField,
-        identity: Self::IdentityGroup,
-    ) -> Self::IdentityGroup {
-        let ibe_key = identity * secret_key;
-        ibe_key.into()
-    }
-
     /// Preprocess the IBE decryption key using a decryption key and a ciphertext's ephemeral public key.
     /// Given a decryption key \pi_\rho = \[sk\] ID_\rho and an ephemeral public key U, return the
     /// mask H_2(e(\pi_\rho, U))
@@ -57,6 +47,13 @@ pub trait IbeCipherSuite {
         // Return the mask H_2(e(\pi_\rho, U))
         self.h2(&shared_key)
     }
+}
+
+/// Signer for an IBE scheme as described in <https://eprint.iacr.org/2023/189>, Algorithms 1-2
+/// that can be used to obtain decryption keys on an identity.
+pub trait PairingIbeSigner: PairingIbeCipherSuite {
+    /// Obtain a decryption key using a secret key and an identity.
+    fn decryption_key(&self, identity: Self::IdentityGroup) -> Self::IdentityGroup;
 }
 
 /// Ciphertext output through IBE.
@@ -79,12 +76,12 @@ mod bn254 {
     use digest::core_api::BlockSizeUser;
     use pairing_utils::hash_to_curve::CustomPairingHashToCurve;
     use std::ops::Neg;
-
     /// Cipher suite for IBE w/ identity on bn254 G1.
     #[derive(Clone, Debug)]
-    pub struct IbeIdentityOnBn254G1Suite {
+    pub struct IbeIdentityOnBn254G1Suite<S = ()> {
         h1_dst: Vec<u8>,
         h2_dst: Vec<u8>,
+        sk: S,
     }
 
     impl IbeIdentityOnBn254G1Suite {
@@ -93,6 +90,7 @@ mod bn254 {
             Self {
                 h1_dst: Self::h1_dst(dst_prefix, &suffix),
                 h2_dst: Self::h2_dst(dst_prefix, &suffix),
+                sk: (),
             }
         }
 
@@ -100,6 +98,7 @@ mod bn254 {
             Self {
                 h1_dst: Self::h1_dst(dst_prefix, b""),
                 h2_dst: Self::h2_dst(dst_prefix, b""),
+                sk: (),
             }
         }
 
@@ -134,6 +133,23 @@ mod bn254 {
             }
             dst
         }
+
+        pub fn new_signer<S>(
+            dst_prefix: &[u8],
+            chain_id: u64,
+            sk: S,
+        ) -> IbeIdentityOnBn254G1Suite<S>
+        where
+            ark_bn254::G1Affine: std::ops::Mul<S, Output = ark_bn254::G1Projective>
+                + for<'a> std::ops::Mul<&'a S, Output = ark_bn254::G1Projective>,
+        {
+            let suffix = format!("0x{chain_id:064x}").as_bytes().to_vec();
+            IbeIdentityOnBn254G1Suite {
+                h1_dst: Self::h1_dst(dst_prefix, &suffix),
+                h2_dst: Self::h2_dst(dst_prefix, &suffix),
+                sk,
+            }
+        }
     }
 
     /// Ciphertext for IBE w/ identity on bn254 G1.
@@ -148,7 +164,7 @@ mod bn254 {
         }
     }
 
-    impl IbeCipherSuite for IbeIdentityOnBn254G1Suite {
+    impl<S> PairingIbeCipherSuite for IbeIdentityOnBn254G1Suite<S> {
         type IdentityGroup = <ark_bn254::Bn254 as Pairing>::G1Affine;
         type PublicKeyGroup = <ark_bn254::Bn254 as Pairing>::G2Affine;
         type TargetGroup = PairingOutput<ark_bn254::Bn254>;
@@ -177,6 +193,10 @@ mod bn254 {
                 .expect("ExpanderXmd returned a number of bytes != 32")
         }
 
+        fn pairing(&self, a: Self::IdentityGroup, b: Self::PublicKeyGroup) -> Self::TargetGroup {
+            ark_bn254::Bn254::pairing(a, b)
+        }
+
         fn verify_decryption_key(
             &self,
             m: &[u8],
@@ -197,9 +217,17 @@ mod bn254 {
             )
             .is_zero()
         }
+    }
 
-        fn pairing(&self, a: Self::IdentityGroup, b: Self::PublicKeyGroup) -> Self::TargetGroup {
-            ark_bn254::Bn254::pairing(a, b)
+    impl<S> PairingIbeSigner for IbeIdentityOnBn254G1Suite<S>
+    where
+        S: Clone,
+        ark_bn254::G1Affine: std::ops::Mul<S, Output = ark_bn254::G1Projective>
+            + for<'a> std::ops::Mul<&'a S, Output = ark_bn254::G1Projective>,
+    {
+        fn decryption_key(&self, identity: Self::IdentityGroup) -> Self::IdentityGroup {
+            let ibe_key = identity * self.sk.clone();
+            ibe_key.into()
         }
     }
 
