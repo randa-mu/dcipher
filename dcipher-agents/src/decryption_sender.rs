@@ -5,11 +5,12 @@ pub mod contracts;
 pub mod single_call_fulfiller;
 pub mod single_party_signer;
 
+use crate::decryption_sender::async_signer::DecryptionSenderAsyncSigner;
 use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::RetryStrategy;
 use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::{Identifier, TransactionFulfiller};
-use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
+use crate::ibe_helper::{IbeIdentityOnBn254G1Ciphertext, PairingIbeCipherSuite};
 use crate::ser::{EvmDeserialize, IbeIdentityOnBn254G1CiphertextError};
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
@@ -18,7 +19,8 @@ use std::borrow::Cow;
 use std::marker::PhantomData;
 
 /// Helper struct used to instantiate a [`DecryptionSenderFulfiller`], an implementation of [`TickerFulfiller`].
-pub struct DecryptionSenderFulfillerConfig<S, TF>(
+pub struct DecryptionSenderFulfillerConfig<CS, S, TF>(
+    PhantomData<fn(CS) -> CS>,
     PhantomData<fn(S) -> S>,
     PhantomData<fn(TF) -> TF>,
 );
@@ -27,18 +29,23 @@ pub struct DecryptionSenderFulfillerConfig<S, TF>(
 pub type DecryptionSenderFulfiller<RS, TF> =
     TickerFulfiller<DecryptionRequest, SignedDecryptionRequest<'static>, RS, TF>;
 
-impl<S, TF> DecryptionSenderFulfillerConfig<S, TF>
+impl<CS, S, TF> DecryptionSenderFulfillerConfig<CS, S, TF>
 where
-    S: AsynchronousSigner<DecryptionRequest, Signature = SignedDecryptionRequest<'static>>,
+    CS: PairingIbeCipherSuite,
+    S: AsynchronousSigner<Bytes>,
     TF: TransactionFulfiller<SignedRequest = SignedDecryptionRequest<'static>>,
+    DecryptionSenderAsyncSigner<CS, S, Bytes>:
+        AsynchronousSigner<DecryptionRequest, Signature = SignedDecryptionRequest<'static>>,
 {
     /// Instantiate a [`DecryptionSenderFulfiller<RS, TF>`](DecryptionSenderFulfiller).
     pub fn new_fulfiller(
+        cs: CS,
         signer: S,
         transaction_fulfiller: TF,
         max_fulfillment_per_tick: usize,
         retry_strategy: RetryStrategy,
-    ) -> DecryptionSenderFulfiller<S, TF> {
+    ) -> DecryptionSenderFulfiller<DecryptionSenderAsyncSigner<CS, S, Bytes>, TF> {
+        let signer = DecryptionSenderAsyncSigner::new(cs, signer);
         TickerFulfiller::new(
             signer,
             transaction_fulfiller,
