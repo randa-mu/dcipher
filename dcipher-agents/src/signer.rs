@@ -21,15 +21,13 @@ pub trait RequestSigningRegistry: Send + Sync + 'static {
         'lt_r: 'lt_self;
 }
 
-pub trait AsynchronousSigner<M>
-where
-    M: AsRef<[u8]>,
-{
+pub trait AsynchronousSigner<M> {
     type Error: std::error::Error + Send + Sync + 'static;
 
     type Signature;
 
-    fn sign(&self, m: M) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send;
+    fn async_sign(&self, m: M)
+    -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send;
 }
 
 pub trait BlsSigner: BlsVerifier {
