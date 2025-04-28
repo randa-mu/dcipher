@@ -196,19 +196,19 @@ where
         let (blocklock_request, config) = MulticallBuilder::new(
             self.blocklock_sender_instance.provider(),
         )
-            // Get blocklock request details
-            .add(self.blocklock_sender_instance.getRequest(ready_request.id))
-            // Get flat fee from config
-            .add(self.blocklock_sender_instance.getConfig())
-            .aggregate()
-            .await
-            .map_err(|e| {
-                tracing::error!(
+        // Get blocklock request details
+        .add(self.blocklock_sender_instance.getRequest(ready_request.id))
+        // Get flat fee from config
+        .add(self.blocklock_sender_instance.getConfig())
+        .aggregate()
+        .await
+        .map_err(|e| {
+            tracing::error!(
                 error = ?e,
                 "Failed to call multicall(BlocklockSender::getRequest, BlocklockSender::getConfig)"
             );
-                BlocklockFulfillerError::MultiCall(e)
-            })?;
+            BlocklockFulfillerError::MultiCall(e)
+        })?;
 
         // Calculate flat fee from config
         let flat_fee_wei = 1_000_000_000_000u128 * u128::from(config.fulfillmentFlatFeeNativePPM); // cannot overflow, 2**40 * 2**32
@@ -226,7 +226,7 @@ where
                 current_gas_price,
                 flat_fee_wei,
             )
-                .await?
+            .await?
         };
 
         // Estimate gas limit for fulfillDecryptionRequest call
