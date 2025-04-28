@@ -1,4 +1,4 @@
-//! Concrete implementation of a [`RequestSigningRegistry`] for a (t, n) threshold network of
+//! Concrete implementation of a [`AsynchronousSigner`] for a (t, n) threshold network of
 //! participants.
 
 mod aggregation;

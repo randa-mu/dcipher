@@ -1,25 +1,24 @@
+//! Various traits and implementations used to sign messages.
+
 use crate::ibe_helper::{PairingIbeCipherSuite, PairingIbeSigner};
 use ark_ec::AffineRepr;
 use std::convert::Infallible;
 
 pub mod threshold_signer;
 
+/// An asynchronous signer is used to generate a signature asynchronously.
 pub trait AsynchronousSigner<M> {
     type Error: std::error::Error + Send + Sync + 'static;
 
     type Signature;
 
+    /// Obtain a future that resolves into a signature.
     fn async_sign(&self, m: M)
     -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send;
 }
 
-pub trait BlsSigner: BlsVerifier {
-    type Error: std::error::Error + Send + Sync + 'static;
-
-    /// Sign a message using the signer's private key.
-    fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error>;
-}
-
+/// A BLS verifier defines the groups used by an instantiation of a BLS signature scheme and a
+/// verification function.
 pub trait BlsVerifier {
     type SignatureGroup: AffineRepr;
     type PublicKeyGroup: AffineRepr;
@@ -33,6 +32,15 @@ pub trait BlsVerifier {
     ) -> bool;
 }
 
+/// A BLS signer extends the [`BlsVerifier`] trait by providing a signature function.
+pub trait BlsSigner: BlsVerifier {
+    type Error: std::error::Error + Send + Sync + 'static;
+
+    /// Sign a message using the signer's private key.
+    fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error>;
+}
+
+/// Blanket implementation of a BLS verifier for all [`PairingIbeCipherSuite`].
 impl<CS> BlsVerifier for CS
 where
     CS: PairingIbeCipherSuite,
@@ -50,6 +58,7 @@ where
     }
 }
 
+/// Blanket implementation of a BLS verifier for all [`PairingIbeSigner`].
 impl<CS> BlsSigner for CS
 where
     CS: PairingIbeSigner,
