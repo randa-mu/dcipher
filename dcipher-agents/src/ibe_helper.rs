@@ -17,10 +17,10 @@ pub trait PairingIbeCipherSuite {
     type Ciphertext: IbeCiphertext<EphemeralPublicKey = Self::PublicKeyGroup>;
 
     /// Cryptographic hash function H_1: \{0, 1\}^\ast \rightarrow IdentityGroup
-    fn h1(&self, m: &[u8]) -> Self::IdentityGroup;
+    fn h1(&self, identity: &[u8]) -> Self::IdentityGroup;
 
     /// Cryptographic hash function H_2: G_T \rightarrow \{0, 1\}^\ell
-    fn h2(&self, m: &Self::TargetGroup) -> Self::HashOutput;
+    fn h2(&self, identity: &Self::TargetGroup) -> Self::HashOutput;
 
     /// Pairing function e: IdentityGroup \times PublicKeyGroup \rightarrow G_T
     fn pairing(&self, a: Self::IdentityGroup, b: Self::PublicKeyGroup) -> Self::TargetGroup;
@@ -28,7 +28,7 @@ pub trait PairingIbeCipherSuite {
     /// Outputs true if the decryption key is valid under the specified message and public key.
     fn verify_decryption_key(
         &self,
-        m: &[u8],
+        identity: &[u8],
         decryption_key: Self::IdentityGroup,
         public_key: Self::PublicKeyGroup,
     ) -> bool;
@@ -171,17 +171,18 @@ mod bn254 {
         type HashOutput = [u8; 32];
         type Ciphertext = IbeIdentityOnBn254G1Ciphertext;
 
-        fn h1(&self, m: &[u8]) -> Self::IdentityGroup {
-            ark_bn254::Bn254::hash_to_g1_custom::<sha3::Keccak256>(m, self.h1_dst.as_ref())
+        fn h1(&self, identity: &[u8]) -> Self::IdentityGroup {
+            ark_bn254::Bn254::hash_to_g1_custom::<sha3::Keccak256>(identity, self.h1_dst.as_ref())
                 .into_affine()
         }
 
-        fn h2(&self, m: &Self::TargetGroup) -> Self::HashOutput {
+        fn h2(&self, identity: &Self::TargetGroup) -> Self::HashOutput {
             // encode m as BE(m.c0.c0.c0) || BE(m.c0.c0.c1) || BE(m.c0.c1.c0) || ...
-            let m: Vec<_> =
-                m.0.to_base_prime_field_elements()
-                    .flat_map(|ci| ci.into_bigint().to_bytes_be())
-                    .collect();
+            let m: Vec<_> = identity
+                .0
+                .to_base_prime_field_elements()
+                .flat_map(|ci| ci.into_bigint().to_bytes_be())
+                .collect();
 
             let xmd = expander::ExpanderXmd {
                 hasher: sha3::Keccak256::default(),
@@ -199,7 +200,7 @@ mod bn254 {
 
         fn verify_decryption_key(
             &self,
-            m: &[u8],
+            identity: &[u8],
             decryption_key: Self::IdentityGroup,
             public_key: Self::PublicKeyGroup,
         ) -> bool {
@@ -210,7 +211,7 @@ mod bn254 {
                 return false;
             }
 
-            let m = self.h1(m);
+            let m = self.h1(identity);
             ark_bn254::Bn254::multi_pairing(
                 [m.neg(), decryption_key],
                 [public_key, Self::PublicKeyGroup::generator()],
