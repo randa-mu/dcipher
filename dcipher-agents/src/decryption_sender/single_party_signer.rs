@@ -2,7 +2,7 @@
 //! signatures and decryption keys are issued immediately.
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite, PairingIbeSigner};
+use crate::ibe_helper::{IbeCiphertext, PairingIbeSigner};
 use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
