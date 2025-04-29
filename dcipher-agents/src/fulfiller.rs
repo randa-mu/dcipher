@@ -16,9 +16,9 @@ pub trait Fulfiller {
     /// Type of signed request processed by the fulfiller.
     type SignedRequest: Identifier + Send + Sync + 'static;
 
-    /// A [`RequestSigningRegistry`] used to obtain a [`SignedRequest`](Self::SignedRequest)
-    /// from a [`Request`](Self::Request).
-    type RequestSigningRegistry: RequestSigningRegistry<Request = Self::Request, SignedRequest = Self::SignedRequest>;
+    /// An unconstrained type that used to transform a [`Request`](Self::Request)
+    /// into a [`SignedRequest`](Self::SignedRequest)
+    type Signer;
 
     /// A [`TransactionFulfiller`] used to register the [`SignedRequest`](Self::SignedRequest) by
     /// generally sending a transaction to a blockchain.
@@ -42,7 +42,7 @@ pub trait TickerBasedFulfiller: Fulfiller {
 
 /// Types implementing [`Identifier`] provide a field that can be used as an identifier.
 pub trait Identifier {
-    type Id: std::fmt::Display + Ord + Eq + Hash + ToOwned + Send + Sync + 'static;
+    type Id: std::fmt::Display + Ord + Eq + Hash + Clone + Send + Sync + 'static;
 
     /// Returns a reference to a field that can be used as an identifier
     fn id(&self) -> &Self::Id;
@@ -67,22 +67,6 @@ pub trait Stopper {
 /// Ticker used to provide fulfillment frequency to the fulfiller.
 pub trait Ticker: Send + Sync + 'static {
     fn tick(&mut self) -> impl Future<Output = ()> + Send;
-}
-
-/// Registry used to request signatures on requests.
-pub trait RequestSigningRegistry: Send + Sync + 'static {
-    type Request: Identifier;
-    type SignedRequest: Identifier;
-
-    /// Attempts to fetch signed requests from the signing registry if they are available.
-    /// If not, the implementation should asynchronously fetch the request and prepare it for
-    /// future calls.
-    fn try_fetch_signed_requests<'lt_self, 'lt_r, 'lt_rr>(
-        &'lt_self self,
-        inputs: impl IntoIterator<Item = &'lt_r Self::Request> + 'lt_self,
-    ) -> impl Iterator<Item = Option<Self::SignedRequest>> + 'lt_self
-    where
-        'lt_r: 'lt_self;
 }
 
 /// Final stage of the fulfiller responsible to submit signed requests, typically to a blockchain.

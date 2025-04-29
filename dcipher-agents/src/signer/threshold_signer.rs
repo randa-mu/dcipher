@@ -1,45 +1,39 @@
-//! Concrete implementation of a [`RequestSigningRegistry`] for a (t, n) threshold network of
+//! Concrete implementation of a [`AsynchronousSigner`] for a (t, n) threshold network of
 //! participants.
 
 mod aggregation;
 mod libp2p;
 
-use crate::decryption_sender::threshold_signer::aggregation::lagrange_points_interpolate_at;
-use crate::decryption_sender::threshold_signer::libp2p::LibP2PNode;
-use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::fulfiller::RequestSigningRegistry;
-use crate::ibe_helper::{IbeCipherSuite, IbeCiphertext};
 use crate::ser::EvmSerialize;
-use alloy::primitives::Bytes;
+use crate::signer::threshold_signer::aggregation::lagrange_points_interpolate_at;
+use crate::signer::threshold_signer::libp2p::LibP2PNode;
+use crate::signer::{AsynchronousSigner, BlsSigner, BlsVerifier};
 use ark_ec::{AffineRepr, CurveGroup};
+use itertools::Either;
 use lru::LruCache;
 use pairing_utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
-type SharedSignatureCache<CS> = Arc<
-    std::sync::Mutex<
-        LruCache<Vec<u8>, (<CS as IbeCipherSuite>::IdentityGroup, Cow<'static, Bytes>)>,
-    >,
->;
+type SignatureGroup<BLS> = <BLS as BlsVerifier>::SignatureGroup;
 
-type SharedPartialsCache<CS> = Arc<
-    std::sync::Mutex<
-        LruCache<Vec<u8>, HashMap<u16, PartialSignature<<CS as IbeCipherSuite>::IdentityGroup>>>,
-    >,
->;
+type SignatureOrChannel<BLS> =
+    Either<SignatureGroup<BLS>, tokio::sync::oneshot::Sender<SignatureGroup<BLS>>>;
 
-pub struct Registry<CS>
+type SharedSignatureCache<BLS> = Arc<std::sync::Mutex<LruCache<Vec<u8>, SignatureOrChannel<BLS>>>>;
+
+type SharedPartialsCache<BLS> =
+    Arc<std::sync::Mutex<LruCache<Vec<u8>, HashMap<u16, PartialSignature<SignatureGroup<BLS>>>>>>;
+
+pub struct AsyncThresholdSigner<BLS>
 where
-    CS: IbeCipherSuite,
+    BLS: BlsSigner,
 {
-    cs: CS,
-    signatures_cache: SharedSignatureCache<CS>,
-    new_condition: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
+    signatures_cache: SharedSignatureCache<BLS>,
+    new_message_to_sign: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -60,51 +54,41 @@ struct PartialSignatureWithMessage<G> {
 }
 
 /// Threshold signer that relies on libp2p to exchange partial signatures.
-pub struct ThresholdSigner<CS>
+pub struct ThresholdSigner<BLS>
 where
-    CS: IbeCipherSuite,
+    BLS: BlsSigner,
 {
     // Signatures cache
-    signatures_cache: SharedSignatureCache<CS>,
+    signatures_cache: SharedSignatureCache<BLS>,
 
-    // Map from conditions to partials
-    partials_cache: SharedPartialsCache<CS>,
+    // Map from messages to partials
+    partials_cache: SharedPartialsCache<BLS>,
 
-    // Ciphersuite and secret key
-    cs: CS,
-    sk: <CS::IdentityGroup as AffineRepr>::ScalarField,
+    // Ciphersuite + Signer
+    signer: BLS,
 
     // Threshold parameters
     n: u16,
     t: u16,
     id: u16,
-    pks: Vec<CS::PublicKeyGroup>,
+    pks: Vec<BLS::PublicKeyGroup>,
 }
 
-impl<CS> ThresholdSigner<CS>
+impl<BLS> ThresholdSigner<BLS>
 where
-    CS: IbeCipherSuite + Clone + Send + Sync + 'static,
-    CS::IdentityGroup: EvmSerialize + PointSerializeCompressed + PointDeserializeCompressed,
-    Registry<CS>: RequestSigningRegistry,
+    BLS: BlsSigner + Clone + Send + Sync + 'static,
+    SignatureGroup<BLS>: EvmSerialize + PointSerializeCompressed + PointDeserializeCompressed,
 {
     /// Create a new threshold signer by specifying the various threshold scheme parameters.
-    pub fn new(
-        cs: CS,
-        sk: <CS::IdentityGroup as AffineRepr>::ScalarField,
-        n: u16,
-        t: u16,
-        id: u16,
-        pks: Vec<CS::PublicKeyGroup>,
-    ) -> Self {
+    pub fn new(cs: BLS, n: u16, t: u16, id: u16, pks: Vec<BLS::PublicKeyGroup>) -> Self {
         Self {
             signatures_cache: Arc::new(std::sync::Mutex::new(LruCache::new(
-                const { NonZeroUsize::new(64).unwrap() }, // cache with 64 conditions
+                const { NonZeroUsize::new(64).unwrap() }, // cache with 64 messages
             ))),
             partials_cache: Arc::new(std::sync::Mutex::new(LruCache::new(
-                const { NonZeroUsize::new(64).unwrap() }, // cache with 64 conditions
+                const { NonZeroUsize::new(64).unwrap() }, // cache with 64 messages
             ))),
-            cs,
-            sk,
+            signer: cs,
             n,
             t,
             id,
@@ -120,7 +104,7 @@ where
         libp2p_peer_addresses: Vec<::libp2p::Multiaddr>,
         libp2p_peer_ids: Vec<::libp2p::PeerId>,
         short_peer_ids: Vec<u16>,
-    ) -> (CancellationToken, Registry<CS>) {
+    ) -> (CancellationToken, AsyncThresholdSigner<BLS>) {
         if libp2p_peer_addresses.len() != usize::from(self.n - 1)
             || libp2p_peer_ids.len() != usize::from(self.n - 1)
             || short_peer_ids.len() != usize::from(self.n - 1)
@@ -135,10 +119,9 @@ where
         let (tx_libp2p_to_signer, rx_signer_from_libp2p) = tokio::sync::mpsc::unbounded_channel();
 
         // Create a registry
-        let registry = Registry {
-            cs: arc_self.cs.clone(),
+        let registry = AsyncThresholdSigner {
             signatures_cache: arc_self.signatures_cache.clone(),
-            new_condition: tx_registry_to_signer,
+            new_message_to_sign: tx_registry_to_signer,
         };
 
         // Create a libp2p instance
@@ -160,7 +143,7 @@ where
             .expect("failed to run libp2p node");
 
         // Spawn task that handles signing requests from registry
-        tokio::task::spawn(arc_self.clone().recv_new_conditions(
+        tokio::task::spawn(arc_self.clone().recv_new_messages(
             rx_signer_to_registry,
             tx_signer_to_libp2p,
             cancellation_token.child_token(),
@@ -176,40 +159,46 @@ where
         (cancellation_token, registry)
     }
 
-    async fn recv_new_conditions(
+    async fn recv_new_messages(
         self: Arc<Self>,
-        mut rx_conditions: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>,
+        mut rx_messages: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>,
         tx_to_libp2p: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
         cancellation_token: CancellationToken,
     ) {
         let inner_fn = async move {
             loop {
-                let Some(condition) = rx_conditions.recv().await else {
-                    tracing::warn!("Registry has dropped condition sender, exiting recv loop");
+                let Some(message) = rx_messages.recv().await else {
+                    tracing::warn!("Registry has dropped message sender, exiting recv loop");
                     break;
                 };
 
-                // If a partial was already issued, ignore the condition
-                if self.partial_issued(&condition) {
-                    tracing::debug!(condition = ?condition, "Received condition signing request, but request was already signed");
+                // If a partial was already issued, ignore the message
+                if self.partial_issued(&message) {
+                    tracing::debug!(message = ?message, "Received message signing request, but message was already signed");
                     continue;
                 }
 
-                tracing::info!(condition = ?condition, "Received new condition to sign");
-                let condition_identity = self.cs.h1(&condition);
-                let sig = self.cs.decryption_key(&self.sk, condition_identity);
+                tracing::info!(message = ?message, "Received new message to sign");
+
+                let sig = match self.signer.sign(&message) {
+                    Ok(sig) => sig,
+                    Err(e) => {
+                        tracing::error!(error = ?e, message = ?message, "Failed to sign message.");
+                        continue;
+                    }
+                };
                 let partial = PartialSignatureWithMessage {
                     sig,
-                    m: condition.clone(),
+                    m: message.clone(),
                 };
 
                 // Save the signature, and aggregate it if we have enough signatures
-                self.store_and_process_partial(condition, PartialSignature { id: self.id, sig });
+                self.store_and_process_partial(message, PartialSignature { id: self.id, sig });
 
                 // Send it to other nodes with libp2p
                 let m = serde_cbor::to_vec(&partial).expect("serialization should always work");
                 if tx_to_libp2p.send(m).is_err() {
-                    tracing::error!("Failed to send condition to signer: channel closed");
+                    tracing::error!("Failed to send message to signer: channel closed");
                 }
             }
         };
@@ -235,7 +224,7 @@ where
                     break;
                 };
 
-                let partial: PartialSignatureWithMessage<CS::IdentityGroup> =
+                let partial: PartialSignatureWithMessage<SignatureGroup<BLS>> =
                     match serde_cbor::from_slice(&partial) {
                         Ok(partial) => partial,
                         Err(e) => {
@@ -253,7 +242,7 @@ where
                     tracing::error!(sender_id = party_id, "Invalid party_id / pks vector");
                     continue;
                 };
-                if !self.cs.verify_decryption_key(&partial.m, partial.sig, *pk) {
+                if !self.signer.verify(&partial.m, partial.sig, *pk) {
                     tracing::error!(sender_id = party_id, "Received invalid partial signature");
                     continue;
                 }
@@ -279,12 +268,12 @@ where
     }
 
     /// Verify whether a partial has already been issued or not.
-    fn partial_issued(&self, condition: &[u8]) -> bool {
+    fn partial_issued(&self, message: &[u8]) -> bool {
         let mut partials_cache = self
             .partials_cache
             .lock()
             .expect("a thread panicked holding the mutex");
-        let Some(partials_map) = partials_cache.get(condition) else {
+        let Some(partials_map) = partials_cache.get(message) else {
             return false;
         };
 
@@ -294,15 +283,15 @@ where
     /// Store a partial signature to the cache, and aggregate it if there are enough partials.
     fn store_and_process_partial(
         &self,
-        condition: Vec<u8>,
-        partial: PartialSignature<CS::IdentityGroup>,
+        message: Vec<u8>,
+        partial: PartialSignature<SignatureGroup<BLS>>,
     ) {
-        tracing::info!(condition = ?condition, party_id = partial.id, "Storing partial signature on condition");
+        tracing::info!(message = ?message, party_id = partial.id, "Storing partial signature on message");
         let mut partials_cache = self
             .partials_cache
             .lock()
             .expect("a thread panicked with the mutex");
-        let partials = partials_cache.get_or_insert_mut(condition.clone(), HashMap::default);
+        let partials = partials_cache.get_or_insert_mut(message.clone(), HashMap::default);
         partials.insert(
             partial.id,
             PartialSignature {
@@ -319,99 +308,113 @@ where
                 .map(|partial| (u64::from(partial.id), partial.sig.into_group()))
                 .collect::<Vec<_>>();
             let sig = lagrange_points_interpolate_at(&points, 0).into_affine();
-            let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
 
             // We now have a signature, store it
-            self.signatures_cache
+            let mut signatures_cache = self
+                .signatures_cache
                 .lock()
-                .expect("a thread panicked with the mutex")
-                .push(condition, (sig, sig_bytes));
+                .expect("a thread panicked with the mutex");
+            if let Some(Either::Right(tx_channel)) =
+                signatures_cache.put(message, Either::Left(sig))
+            {
+                // If there previously was a channel stored at the entry, also send signature through it
+                if let Err(_) = tx_channel.send(sig) {
+                    tracing::warn!(
+                        "Failed to notify of a new signature through oneshot channel: the future was dropped early"
+                    );
+                }
+            }
         }
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum RegistryError {
-    #[error("cannot parse the ciphertext")]
-    CannotParseCiphertext,
+#[derive(thiserror::Error, Copy, Clone, Debug)]
+pub enum AsyncThresholdSignerError {
+    #[error("cannot wait on the same message to sign twice")]
+    MessageAlreadyRegistered,
+
+    #[error("the message to sign has been dropped from cache")]
+    DroppedFromCache,
+
+    #[error("the channel used to request signatures has been closed")]
+    CannotRequestNewSignatures,
 }
 
-impl<CS> Registry<CS>
+impl<BLS, M> AsynchronousSigner<M> for AsyncThresholdSigner<BLS>
 where
-    CS: IbeCipherSuite,
-    for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
-    for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
-        std::error::Error + Send + Sync + 'static,
-    CS::IdentityGroup: EvmSerialize,
+    BLS: BlsSigner + Send + Sync,
+    M: AsRef<[u8]>,
+    SignatureGroup<BLS>: EvmSerialize,
+    for<'a> &'a SignatureGroup<BLS>: ToOwned,
 {
-    fn get_signed_request(
+    type Error = AsyncThresholdSignerError;
+    type Signature = SignatureGroup<BLS>;
+
+    fn async_sign(
         &self,
-        req: &DecryptionRequest,
-        sig: CS::IdentityGroup,
-        sig_bytes: Cow<'static, Bytes>,
-    ) -> Option<SignedDecryptionRequest<'static>> {
-        // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
-        let ct: CS::Ciphertext = match req.try_into() {
-            Ok(ct) => ct,
-            Err(e) => {
-                // If we fail to generate keys, it is likely due to an invalid ephemeral public key / ciphertext,
-                // not much we can do here.
-                tracing::error!(error = %e, request_id = %req.id, "Failed to generate decryption keys / signature... ignoring request");
-                None?
-            }
-        };
-        let preprocessed_decryption_key = self.cs.preprocess_decryption_key(sig, ct.ephemeral_pk());
-        let signed_req = SignedDecryptionRequest::new(
-            req.id,
-            Bytes::from(preprocessed_decryption_key.as_ref().to_vec()),
-            sig_bytes,
-        );
-        Some(signed_req)
-    }
-}
+        m: M,
+    ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
+        let m = m.as_ref().to_vec();
+        async move {
+            // We have three possibilities here:
+            //  1. The message is not yet present in the map
+            //      => we notify of a new message, insert a oneshot sender in the map, and
+            //         return a future awaiting the signature through the oneshot receiver.
+            //  2. The message is in the map
+            //    2a. it contains a signature
+            //         => return a future that resolves immediately with the signature
+            //    2b. it contains a oneshot sender
+            //         => return an error (cannot await on the same signature twice)
+            //            this could be fixed by using a broadcast channel / vec of oneshot
+            //            senders / wakeup notification + fetching signature
 
-impl<CS> RequestSigningRegistry for Registry<CS>
-where
-    CS: IbeCipherSuite + Send + Sync + 'static,
-    for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
-    for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
-        std::error::Error + Send + Sync + 'static,
-    CS::IdentityGroup: EvmSerialize,
-{
-    type Request = DecryptionRequest;
-    type SignedRequest = SignedDecryptionRequest<'static>;
+            let signature_or_receiver = {
+                let mut signatures_cache = self
+                    .signatures_cache
+                    .lock()
+                    .expect("a thread panicked with the mutex");
 
-    fn try_fetch_signed_requests<'lt_self, 'lt_r, 'lt_rr>(
-        &'lt_self self,
-        inputs: impl IntoIterator<Item = &'lt_r Self::Request> + 'lt_self,
-    ) -> impl Iterator<Item = Option<Self::SignedRequest>> + 'lt_self
-    where
-        'lt_r: 'lt_self,
-    {
-        let mut signatures_cache = self
-            .signatures_cache
-            .lock()
-            .expect("a thread panicked with the mutex");
+                // Use a OnceCell to only create a oneshot tx/rx pair if necessary
+                let mut lazy_rx = std::cell::OnceCell::new();
 
-        let results = inputs
-            .into_iter()
-            .map(|req| {
-                let condition = req.condition.to_vec();
+                // This may drop the LRU entry from the map, which results in the
+                // future owning the corresponding receiver resolving in an error.
+                let signature_or_sender = signatures_cache.get_or_insert(m.clone(), || {
+                    let (tx, rx) = tokio::sync::oneshot::channel();
+                    lazy_rx.set(rx).expect("cannot have been initialized");
+                    Either::Right(tx)
+                });
 
-                // If a signature is available, we can preprocess the decryption key immediately
-                if let Some((sig, sig_bytes)) = signatures_cache.get(&condition) {
-                    self.get_signed_request(req, *sig, sig_bytes.clone())
-                } else {
-                    // Signature not available, request it
-                    if self.new_condition.send(condition).is_err() {
-                        tracing::error!("Failed to send condition to signer: channel closed");
+                match signature_or_sender {
+                    Either::Left(signature) => {
+                        // 2a. The message is in the map and contains a signature
+                        Ok(Either::Left(signature.to_owned()))
                     }
-                    None?
-                }
-            })
-            .collect::<Vec<_>>();
 
-        results.into_iter()
+                    Either::Right(_) => {
+                        // if lazy_rx has been set, we inserted a new item to the map
+                        if let Some(rx) = lazy_rx.take() {
+                            // Notify of the new message to sign
+                            self.new_message_to_sign.send(m.to_vec()).map_err(|_| {
+                                AsyncThresholdSignerError::CannotRequestNewSignatures
+                            })?;
+
+                            Ok(Either::Right(rx))
+                        } else {
+                            Err(AsyncThresholdSignerError::MessageAlreadyRegistered)
+                        }
+                    }
+                }
+            }?;
+
+            // If the signature was cached, return immediately
+            match signature_or_receiver {
+                Either::Left(signature) => Ok(signature),
+                Either::Right(rx) => rx
+                    .await
+                    .map_err(|_| AsyncThresholdSignerError::DroppedFromCache),
+            }
+        }
     }
 }
 
@@ -424,11 +427,10 @@ mod tests {
     use std::time::Duration;
 
     #[tokio::test]
-    async fn libp2p_aggregation() {
+    async fn libp2p_async_threshold_signer() {
         let n = 3;
         let t = 2;
         let g2 = ark_bn254::G2Affine::generator();
-        let cs = IbeIdentityOnBn254G1Suite::new(b"TEST", 31337);
 
         let _sk: Fr =
             MontFp!("7685086713915354683875500702831995067084988389812060097318430034144315778947");
@@ -444,13 +446,17 @@ mod tests {
             .map(|pki| pki.into_affine())
             .collect::<Vec<_>>();
 
+        let cs1 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk1);
+        let cs2 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk2);
+        let cs3 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk3);
+
         let libp2p_sk1 = ::libp2p::identity::Keypair::generate_ed25519();
         let libp2p_sk2 = ::libp2p::identity::Keypair::generate_ed25519();
         let libp2p_sk3 = ::libp2p::identity::Keypair::generate_ed25519();
 
-        let ts1 = ThresholdSigner::new(cs.clone(), sk1, n, t, 1, pks.clone());
-        let ts2 = ThresholdSigner::new(cs.clone(), sk2, n, t, 2, pks.clone());
-        let ts3 = ThresholdSigner::new(cs.clone(), sk3, n, t, 3, pks.clone());
+        let ts1 = ThresholdSigner::new(cs1, n, t, 1, pks.clone());
+        let ts2 = ThresholdSigner::new(cs2, n, t, 2, pks.clone());
+        let ts3 = ThresholdSigner::new(cs3, n, t, 3, pks.clone());
 
         let addr_1: ::libp2p::Multiaddr = "/ip4/127.0.0.1/tcp/32140".parse().unwrap();
         let addr_2: ::libp2p::Multiaddr = "/ip4/127.0.0.1/tcp/32141".parse().unwrap();
@@ -488,34 +494,25 @@ mod tests {
             vec![1, 2],
         );
 
-        let condition = b"my test condition";
-        ch1.new_condition.send(condition.to_vec()).unwrap();
-        ch2.new_condition.send(condition.to_vec()).unwrap();
-        ch3.new_condition.send(condition.to_vec()).unwrap();
+        let message = b"my test message";
+        let fut_sig1 = ch1.async_sign(message.to_vec());
+        let fut_sig2 = ch2.async_sign(message.to_vec());
+        let fut_sig3 = ch3.async_sign(message.to_vec());
 
-        // Since it's all processed asynchronously, try up to 3 times with 200ms wait each try
-        let mut retries = 3;
-        let (c1, c2, c3) = loop {
-            {
-                let cache1 = ch1.signatures_cache.lock().unwrap();
-                let cache2 = ch2.signatures_cache.lock().unwrap();
-                let cache3 = ch3.signatures_cache.lock().unwrap();
-                if !cache1.is_empty() && !cache2.is_empty() && !cache3.is_empty() {
-                    // none of the caches are empty, return them
-                    break (cache1, cache2, cache3);
-                }
-
-                retries -= 1;
-                if retries == 0 {
-                    break (cache1, cache2, cache3);
-                }
+        // Wait for signatures up to 1 second
+        let sigs = tokio::select! {
+            sigs = futures_util::future::join_all([fut_sig1, fut_sig2, fut_sig3]) => {
+                sigs
             }
 
-            tokio::time::sleep(Duration::from_millis(200)).await;
+            _ = tokio::time::sleep(Duration::from_millis(1000)) => {
+                panic!("failed to obtain threshold signatures after waiting 1000ms");
+            }
         };
 
-        assert_eq!(c1.len(), 1);
-        assert_eq!(c2.len(), 1);
-        assert_eq!(c3.len(), 1);
+        assert_eq!(sigs.len(), 3);
+        assert!(sigs[0].is_ok());
+        assert!(sigs[1].is_ok());
+        assert!(sigs[2].is_ok());
     }
 }

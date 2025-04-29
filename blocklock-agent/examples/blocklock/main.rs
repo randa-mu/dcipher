@@ -11,11 +11,14 @@ use blocklock_agent::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
 use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSavedState};
 use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
 use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
+use dcipher_agents::decryption_sender::async_signer::{
+    DecryptionSenderAsyncSigner, DecryptionSenderAsyncSignerError,
+};
 use dcipher_agents::decryption_sender::contracts::DecryptionSender;
-use dcipher_agents::decryption_sender::threshold_signer::ThresholdSigner;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
+use dcipher_agents::signer::threshold_signer::ThresholdSigner;
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -25,8 +28,8 @@ use tracing_subscriber::FmtSubscriber;
 fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     args: &'lt_in BlocklockArgs,
     nodes_config: &'lt_in NodesConfiguration,
-    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<(), P>,
-    blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<(), P>,
+    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<P>,
+    blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
     CancellationToken,
@@ -57,22 +60,22 @@ where
     }
 
     // Create a threshold signer
-    let cs = IbeIdentityOnBn254G1Suite::new(
+    let cs = IbeIdentityOnBn254G1Suite::new_signer(
         b"BLOCKLOCK",
         args.chain
             .chain_id
             .expect("chain id must have been set here"),
+        sk,
     );
     let ts = ThresholdSigner::new(
-        cs,
-        sk,
+        cs.clone(),
         args.key_config.n.get(),
         args.key_config.t.get(),
         args.key_config.node_id.get(),
         pks,
     );
 
-    let (ts_stopper, signing_registry) = ts.run(
+    let (ts_stopper, signer) = ts.run(
         args.libp2p.libp2p_key.clone().into(),
         args.libp2p.libp2p_listen_addr.clone(),
         addresses,
@@ -91,7 +94,8 @@ where
 
     // Create a ticker-based fulfiller
     let fulfiller = DecryptionSenderFulfillerConfig::new_fulfiller(
-        signing_registry,
+        cs,
+        signer,
         single_call_tx_fulfiller,
         args.chain.max_tx_per_tick,
         dcipher_agents::fulfiller::RetryStrategy::Never,

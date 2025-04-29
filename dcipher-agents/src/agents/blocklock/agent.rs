@@ -45,7 +45,7 @@ pub struct BlocklockAgent<F, P> {
     last_seen_request_id: RequestId,
     decryption_requests: HashMap<RequestId, DecryptionRequest>,
     fulfiller_channel: F,
-    decryption_sender: DecryptionSender::DecryptionSenderInstance<(), P>,
+    decryption_sender: DecryptionSender::DecryptionSenderInstance<P>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -60,7 +60,7 @@ impl<F, P> BlocklockAgent<F, P> {
         scheme_id: &str,
         sync_batch_size: usize, // batch size to use when sync'ing state
         fulfiller_channel: F,
-        ro_instance: DecryptionSender::DecryptionSenderInstance<(), P>,
+        ro_instance: DecryptionSender::DecryptionSenderInstance<P>,
     ) -> Self {
         Self {
             scheme_id: scheme_id.to_owned(),
@@ -85,7 +85,7 @@ where
         scheme_id: &str,
         sync_batch_size: usize, // batch size to use when sync'ing state
         fulfiller_channel: F,
-        ro_instance: DecryptionSender::DecryptionSenderInstance<(), P>,
+        ro_instance: DecryptionSender::DecryptionSenderInstance<P>,
         state: BlocklockAgentSavedState,
     ) -> Result<Self, BlocklockAgentError> {
         let mut agent = Self::new(scheme_id, sync_batch_size, fulfiller_channel, ro_instance);
@@ -98,8 +98,7 @@ where
             .await
             .map_err(|e| {
                 BlocklockAgentError::Contract(e, "failed to call getAllUnfulfilledRequestIds")
-            })?
-            ._0;
+            })?;
         let last_request_id = unfulfilled_requests.last().copied();
         let mut unfulfilled_requests: HashSet<_> = HashSet::from_iter(unfulfilled_requests);
 
@@ -385,8 +384,7 @@ where
                     e,
                     "failed to call DecryptionSender::lastRequestID()",
                 )
-            })?
-            ._0;
+            })?;
         let missing_requests = last_request_id.sub(last_seen_request_id);
 
         // Hopefully, we haven't missed more than 2**64 requests
@@ -476,17 +474,17 @@ where
                     // optionally, that are unfulfilled.
                     let requests = req_ids.into_iter().zip(batched_requests).filter_map(|(id, req)| {
                         // A request with a null scheme implies that the request does not exist => error
-                        if req._0.schemeID.is_empty() {
-                            tracing::error!(request_id = %id, returned_request = ?req._0, "Failed to obtain request details");
+                        if req.schemeID.is_empty() {
+                            tracing::error!(request_id = %id, returned_request = ?req, "Failed to obtain request details");
                             None
-                        } else if req._0.schemeID != scheme_id {
+                        } else if req.schemeID != scheme_id {
                             tracing::debug!(request_id = %id, "Ignoring request with unsupported scheme id");
                             None
-                        } else if only_unfulfilled && req._0.isFulfilled {
+                        } else if only_unfulfilled && req.isFulfilled {
                             tracing::debug!(request_id = %id, "Ignoring fulfilled request");
                             None
                         } else {
-                            Some((id, req._0))
+                            Some((id, req))
                         }
                     }).map(|(id, req)| {
                         TypesLibDecryptionRequest::from_typeslib_decryption_request(id, req)
@@ -504,7 +502,7 @@ where
     /// Returns a vector of request ids, and a multicall.
     fn create_multicall_with_ids(
         requests: impl IntoIterator<Item = U256> + ExactSizeIterator,
-        decryption_sender: DecryptionSender::DecryptionSenderInstance<(), P>,
+        decryption_sender: DecryptionSender::DecryptionSenderInstance<P>,
     ) -> (
         Vec<U256>,
         MulticallBuilder<Dynamic<DecryptionSender::getRequestCall>, P, Ethereum>,
@@ -587,7 +585,7 @@ mod tests {
     use crate::decryption_sender::contracts::DecryptionSender::{
         DecryptionRequested, DecryptionSenderInstance,
     };
-    use crate::ibe_helper::{IbeCipherSuite, IbeIdentityOnBn254G1Suite};
+    use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
     use crate::ser::EvmSerialize;
     use alloy::consensus::constants::ETH_TO_WEI;
     use alloy::hex;
@@ -664,8 +662,8 @@ mod tests {
     async fn deploy_contracts<P>(
         provider: P,
     ) -> (
-        DecryptionSenderInstance<(), P>,
-        MockBlocklockReceiverInstance<(), P>,
+        DecryptionSenderInstance<P>,
+        MockBlocklockReceiverInstance<P>,
     )
     where
         P: Provider + WalletProvider + Clone,
@@ -683,7 +681,7 @@ mod tests {
         let blocklock_scheme = BlocklockSignatureScheme::deploy(&provider, pk_x, pk_y)
             .await
             .unwrap();
-        let blocklock_scheme_id = blocklock_scheme.SCHEME_ID().call().await.unwrap()._0;
+        let blocklock_scheme_id = blocklock_scheme.SCHEME_ID().call().await.unwrap();
         signature_scheme_address_provider
             .updateSignatureScheme(blocklock_scheme_id, blocklock_scheme.address().to_owned())
             .send()
@@ -838,8 +836,8 @@ mod tests {
     }
 
     async fn register_ciphertext<P>(
-        decryption_sender: &DecryptionSenderInstance<(), P>,
-        mockblocklock_receiver: &MockBlocklockReceiverInstance<(), P>,
+        decryption_sender: &DecryptionSenderInstance<P>,
+        mockblocklock_receiver: &MockBlocklockReceiverInstance<P>,
         ct: TypesLib::Ciphertext,
         condition: BlocklockCondition,
     ) -> DecryptionRequested
@@ -866,7 +864,7 @@ mod tests {
             .unwrap();
 
         let decryption_requested_log = decryption_requested_stream.next().await.unwrap();
-        DecryptionRequested::decode_log(&decryption_requested_log[0].clone().into(), true)
+        DecryptionRequested::decode_log(&decryption_requested_log[0].clone().into())
             .unwrap()
             .data
     }
@@ -1086,7 +1084,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_sync_with_contract_when_missing_blocks() {
-        let provider = ProviderBuilder::new().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().connect_anvil_with_wallet();
         let (decryption_sender, mockblocklock_receiver) = deploy_contracts(provider).await;
 
         let request_channel_buffer = RequestChannelBuffer::default();
@@ -1143,7 +1141,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_sync_with_contract_when_missing_requests() {
-        let provider = ProviderBuilder::new().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().connect_anvil_with_wallet();
         let (decryption_sender, mockblocklock_receiver) = deploy_contracts(provider).await;
 
         let request_channel_buffer = RequestChannelBuffer::default();
@@ -1169,8 +1167,7 @@ mod tests {
                 .getRequest(U256::from(1))
                 .call()
                 .await
-                .unwrap()
-                ._0;
+                .unwrap();
             DecryptionRequested {
                 requestID: U256::from(req_id),
                 schemeID: req.schemeID,
@@ -1200,7 +1197,7 @@ mod tests {
 
     #[tokio::test]
     async fn sync_should_ignore_fulfilled_requests() {
-        let provider = ProviderBuilder::new().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().connect_anvil_with_wallet();
         let (decryption_sender, mockblocklock_receiver) = deploy_contracts(provider).await;
 
         let request_channel_buffer = RequestChannelBuffer::default();
@@ -1230,9 +1227,9 @@ mod tests {
         .await;
 
         // Create ciphersuite for blocklock
-        let cs = IbeIdentityOnBn254G1Suite::new(b"BLOCKLOCK", 31337);
+        let cs = IbeIdentityOnBn254G1Suite::new_signer(b"BLOCKLOCK", 31337, SK);
         let identity = cs.h1(&condition.to_bytes());
-        let signature = cs.decryption_key(&SK, identity); // the signature is the ibe decryption key
+        let signature = cs.decryption_key(identity); // the signature is the ibe decryption key
 
         // Manually fulfil request 1
         decryption_sender
@@ -1251,8 +1248,7 @@ mod tests {
             .getAllFulfilledRequestIds()
             .call()
             .await
-            .unwrap()
-            ._0;
+            .unwrap();
         assert_eq!(fulfilled_reqs.len(), 1);
         assert_eq!(fulfilled_reqs[0], U256::from(1));
 
@@ -1278,11 +1274,11 @@ mod tests {
 
     #[tokio::test]
     async fn saved_state_should_preserve_conditions() {
-        let provider = ProviderBuilder::new().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().connect_anvil_with_wallet();
         let (decryption_sender, mockblocklock_receiver) = deploy_contracts(provider.clone()).await;
 
         // Create ciphersuite for blocklock
-        let cs = IbeIdentityOnBn254G1Suite::new(b"BLOCKLOCK", 31337);
+        let cs = IbeIdentityOnBn254G1Suite::new_signer(b"BLOCKLOCK", 31337, SK);
 
         let request_channel_buffer = RequestChannelBuffer::default();
         let mut blocklock = BlocklockAgent::new(
@@ -1346,7 +1342,7 @@ mod tests {
 
         // Manually fulfil request 1
         let identity = cs.h1(req_1_block_plus_5.condition.as_ref());
-        let signature = cs.decryption_key(&SK, identity); // the signature is the ibe decryption key
+        let signature = cs.decryption_key(identity); // the signature is the ibe decryption key
         decryption_sender
             .fulfillDecryptionRequest(
                 U256::from(1),

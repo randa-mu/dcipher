@@ -35,7 +35,7 @@ impl BlocklockCondition {
         // Implementation with condition prefix, currently not supported by contracts
         match bytes[0] {
             b'B' => {
-                let block_number: u64 = U256::abi_decode(&bytes[1..], true)
+                let block_number: u64 = U256::abi_decode(&bytes[1..])
                     .map_err(|e| {
                         BlocklockConditionDecodeError::AbiDecode(
                             e,

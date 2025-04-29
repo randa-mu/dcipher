@@ -22,7 +22,7 @@ pub enum SingleCallTxFullfillerError {
 
 /// Implementation of [`TransactionFulfiller`] where each call is done in a separate transaction.
 pub struct SingleCallTxFulfiller<P> {
-    decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<(), P>,
+    decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<P>,
     required_confirmations: u64,
     timeout: Duration,
 }
@@ -30,7 +30,7 @@ pub struct SingleCallTxFulfiller<P> {
 impl<P> SingleCallTxFulfiller<P> {
     /// Creates a new instance with given parameters.
     pub fn new(
-        decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<(), P>,
+        decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<P>,
         required_confirmations: u64,
         timeout: Duration,
     ) -> Self {

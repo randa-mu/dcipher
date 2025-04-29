@@ -51,7 +51,7 @@ impl EvmDeserialize for IbeIdentityOnBn254G1Ciphertext {
     fn deser(bytes: &Bytes) -> Result<Self, Self::Error> {
         use ark_ff::PrimeField;
 
-        let ciphertext = TypesLib::Ciphertext::abi_decode(bytes, true)?;
+        let ciphertext = TypesLib::Ciphertext::abi_decode(bytes)?;
         let x0: [u8; 32] = ciphertext.u.x[0].to_be_bytes();
         let x1: [u8; 32] = ciphertext.u.x[1].to_be_bytes();
         let y0: [u8; 32] = ciphertext.u.y[0].to_be_bytes();

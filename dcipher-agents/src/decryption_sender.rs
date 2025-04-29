@@ -1,24 +1,27 @@
 //! Module with signers / tx fulfillers used by the decryption sender contract.
 
+pub mod async_signer;
 pub mod contracts;
 pub mod single_call_fulfiller;
 pub mod single_party_signer;
-pub mod threshold_signer;
 
+use crate::decryption_sender::async_signer::DecryptionSenderAsyncSigner;
 use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::RetryStrategy;
 use crate::fulfiller::ticker::TickerFulfiller;
-use crate::fulfiller::{Identifier, RequestSigningRegistry, TransactionFulfiller};
-use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
+use crate::fulfiller::{Identifier, TransactionFulfiller};
+use crate::ibe_helper::{IbeIdentityOnBn254G1Ciphertext, PairingIbeCipherSuite};
 use crate::ser::{EvmDeserialize, IbeIdentityOnBn254G1CiphertextError};
+use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
 /// Helper struct used to instantiate a [`DecryptionSenderFulfiller`], an implementation of [`TickerFulfiller`].
-pub struct DecryptionSenderFulfillerConfig<RS, TF>(
-    PhantomData<fn(RS) -> RS>,
+pub struct DecryptionSenderFulfillerConfig<CS, S, TF>(
+    PhantomData<fn(CS) -> CS>,
+    PhantomData<fn(S) -> S>,
     PhantomData<fn(TF) -> TF>,
 );
 
@@ -26,23 +29,25 @@ pub struct DecryptionSenderFulfillerConfig<RS, TF>(
 pub type DecryptionSenderFulfiller<RS, TF> =
     TickerFulfiller<DecryptionRequest, SignedDecryptionRequest<'static>, RS, TF>;
 
-impl<RS, TF> DecryptionSenderFulfillerConfig<RS, TF>
+impl<CS, S, TF> DecryptionSenderFulfillerConfig<CS, S, TF>
 where
-    RS: RequestSigningRegistry<
-            Request = DecryptionRequest,
-            SignedRequest = SignedDecryptionRequest<'static>,
-        >,
+    CS: PairingIbeCipherSuite,
+    S: AsynchronousSigner<Bytes>,
     TF: TransactionFulfiller<SignedRequest = SignedDecryptionRequest<'static>>,
+    DecryptionSenderAsyncSigner<CS, S, Bytes>:
+        AsynchronousSigner<DecryptionRequest, Signature = SignedDecryptionRequest<'static>>,
 {
     /// Instantiate a [`DecryptionSenderFulfiller<RS, TF>`](DecryptionSenderFulfiller).
     pub fn new_fulfiller(
-        signing_registry: RS,
+        cs: CS,
+        signer: S,
         transaction_fulfiller: TF,
         max_fulfillment_per_tick: usize,
         retry_strategy: RetryStrategy,
-    ) -> DecryptionSenderFulfiller<RS, TF> {
+    ) -> DecryptionSenderFulfiller<DecryptionSenderAsyncSigner<CS, S, Bytes>, TF> {
+        let signer = DecryptionSenderAsyncSigner::new(cs, signer);
         TickerFulfiller::new(
-            signing_registry,
+            signer,
             transaction_fulfiller,
             max_fulfillment_per_tick,
             retry_strategy,
@@ -75,7 +80,7 @@ impl Identifier for DecryptionRequest {
 }
 
 impl<'lt_cow> SignedDecryptionRequest<'lt_cow> {
-    fn new(id: U256, decryption_key: Bytes, signature: Cow<'lt_cow, Bytes>) -> Self {
+    pub(crate) fn new(id: U256, decryption_key: Bytes, signature: Cow<'lt_cow, Bytes>) -> Self {
         Self {
             id,
             decryption_key,
@@ -96,6 +101,14 @@ impl TryFrom<&DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
     type Error = IbeIdentityOnBn254G1CiphertextError;
 
     fn try_from(value: &DecryptionRequest) -> Result<Self, Self::Error> {
+        EvmDeserialize::deser(&value.ciphertext)
+    }
+}
+
+impl TryFrom<DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
+    type Error = IbeIdentityOnBn254G1CiphertextError;
+
+    fn try_from(value: DecryptionRequest) -> Result<Self, Self::Error> {
         EvmDeserialize::deser(&value.ciphertext)
     }
 }

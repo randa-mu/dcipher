@@ -35,7 +35,7 @@ enum ChainEvent {
 pub async fn run_agent<F, P>(
     agent: &mut BlocklockAgent<F, P>,
     ticker: NotifyTicker,
-    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<(), P>,
+    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<P>,
 ) -> anyhow::Result<()>
 where
     F: RequestChannel<Request = DecryptionRequest>,
@@ -63,7 +63,7 @@ where
 }
 
 async fn create_events_stream<P>(
-    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<(), P>,
+    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<P>,
 ) -> anyhow::Result<impl Stream<Item = ChainEvent>>
 where
     P: Provider + Clone + 'static,
