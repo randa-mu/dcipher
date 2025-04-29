@@ -56,8 +56,8 @@ pub enum BlocklockFulfillerError {
 /// Implementation of [`TransactionFulfiller`] where each call is done in a separate transaction.
 #[derive(Clone)]
 pub struct BlocklockFulfiller<P> {
-    decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<(), P>,
-    blocklock_sender_instance: BlocklockSender::BlocklockSenderInstance<(), P>,
+    decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<P>,
+    blocklock_sender_instance: BlocklockSender::BlocklockSenderInstance<P>,
     required_confirmations: u64,
     timeout: Duration,
     gas_buffer_percent: u16,
@@ -66,8 +66,8 @@ pub struct BlocklockFulfiller<P> {
 impl<P> BlocklockFulfiller<P> {
     /// Creates a new instance with given parameters.
     pub fn new(
-        decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<(), P>,
-        blocklock_sender_instance: BlocklockSender::BlocklockSenderInstance<(), P>,
+        decryption_sender_instance: DecryptionSender::DecryptionSenderInstance<P>,
+        blocklock_sender_instance: BlocklockSender::BlocklockSenderInstance<P>,
         required_confirmations: u64,
         timeout: Duration,
         gas_buffer_percent: u16,
@@ -189,8 +189,7 @@ where
             .map_err(|e| {
                 tracing::error!(error = ?e, "Failed to call DecryptionSender::getRequest");
                 BlocklockFulfillerError::Contract(e, "failed to call DecryptionSender::getRequest")
-            })?
-            ._0;
+            })?;
 
         // Group 2 calls into a multicall to reduce RPC usage
         let (blocklock_request, config) = MulticallBuilder::new(
@@ -217,12 +216,12 @@ where
         let current_gas_price = self.get_current_gas_price().await?;
 
         // Ensure that the user can cover the estimated price
-        let available_for_gas = if blocklock_request._0.subId.is_zero() {
-            self.available_for_gas_direct_funding(&blocklock_request._0)?
+        let available_for_gas = if blocklock_request.subId.is_zero() {
+            self.available_for_gas_direct_funding(&blocklock_request)?
         } else {
             self.available_for_gas_subscription(
                 &decryption_request,
-                &blocklock_request._0,
+                &blocklock_request,
                 current_gas_price,
                 flat_fee_wei,
             )
@@ -370,7 +369,7 @@ where
             })?;
 
         // Ensure that the estimated price allows to at least cover our flat fee
-        let estimated_cost = u128::try_from(estimated_cost._0).map_err(|e| {
+        let estimated_cost = u128::try_from(estimated_cost).map_err(|e| {
             BlocklockFulfillerError::SolFromUint(e, "failed to cast request price to u128")
         })?;
         let Some(available_for_gas) = estimated_cost.checked_sub(flat_fee_wei) else {

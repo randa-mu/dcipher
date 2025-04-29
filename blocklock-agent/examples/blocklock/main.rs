@@ -28,8 +28,8 @@ use tracing_subscriber::FmtSubscriber;
 fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     args: &'lt_in BlocklockArgs,
     nodes_config: &'lt_in NodesConfiguration,
-    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<(), P>,
-    blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<(), P>,
+    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<P>,
+    blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
     CancellationToken,

@@ -41,14 +41,14 @@ pub async fn create_provider_with_retry(
 
     match rpc_url.scheme() {
         "http" | "https" => {
-            let provider_fn = async || Ok(build_provider().on_http(rpc_url.clone()));
+            let provider_fn = async || Ok(build_provider().connect_http(rpc_url.clone()));
             with_retry(provider_fn, retry_strategy).await
         }
         "ws" | "wss" => {
             let provider_fn = async || {
                 Ok({
                     let ws = WsConnect::new(rpc_url.clone());
-                    build_provider().on_ws(ws).await?
+                    build_provider().connect_ws(ws).await?
                 })
             };
             with_retry(provider_fn, retry_strategy).await
