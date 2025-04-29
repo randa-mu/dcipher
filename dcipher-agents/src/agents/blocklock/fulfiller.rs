@@ -238,7 +238,8 @@ where
             )
             .gas_price(current_gas_price);
 
-        let estimated_gas = gas_estimation_call.clone()
+        let estimated_gas = gas_estimation_call
+            .clone()
             .estimate_gas()
             .await
             .map_err(|e| {

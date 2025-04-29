@@ -1,6 +1,60 @@
 //! Helper structures to manage retries.
 
 use crate::fulfiller::Identifier;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::str::FromStr;
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug)]
+pub enum RetryStrategy {
+    Never,
+    Times(usize),
+}
+
+impl std::fmt::Display for RetryStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RetryStrategy::Never => write!(f, "RetryStrategy::Never"),
+            RetryStrategy::Times(n) => write!(f, "RetryStrategy::Times({})", n),
+        }
+    }
+}
+
+impl FromStr for RetryStrategy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "RetryStrategy::Never" {
+            Ok(RetryStrategy::Never)
+        } else if let Some(inner) = s.strip_prefix("RetryStrategy::Times(").and_then(|s| s.strip_suffix(")")) {
+            inner
+                .parse::<usize>()
+                .map(RetryStrategy::Times)
+                .map_err(|e| format!("Invalid number in Times(): {}", e))
+        } else {
+            Err(format!("Unrecognized retry strategy: {}", s))
+        }
+    }
+}
+
+impl Serialize for RetryStrategy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for RetryStrategy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        RetryStrategy::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(super) struct RetryableRequest<R> {
@@ -15,13 +69,6 @@ impl<R> RetryableRequest<R> {
             retry_strategy: retry_strategy.into(),
         }
     }
-}
-
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug)]
-pub enum RetryStrategy {
-    Never,
-    Times(usize),
 }
 
 #[derive(Clone, PartialOrd, PartialEq, Ord, Eq, Debug)]

@@ -3,6 +3,7 @@ use alloy::transports::http::reqwest;
 use anyhow::anyhow;
 use ark_ff::{BigInteger, PrimeField};
 use clap::Parser;
+use dcipher_agents::fulfiller::RetryStrategy;
 use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -86,13 +87,21 @@ pub struct BlockchainArgs {
     #[arg(long, env = "BLOCKLOCK_CONFIRMATIONS_TIMEOUT", default_value = "60")]
     pub confirmations_timeout_secs: u64,
 
-    /// Minimum number of confirmations to wait for before considering a transaction confirmed
+    /// Number of transactions to fulfil at most in one tick
     #[arg(
         long,
         env = "BLOCKLOCK_MAX_TX_PER_TICK",
         default_value_t = usize::MAX
     )]
     pub max_tx_per_tick: usize,
+
+    /// Strategy used when deciding whether to retry to send a transaction or not.
+    #[arg(
+        long,
+        env = "BLOCKLOCK_TX_RETRY_STRATEGY",
+        default_value_t = RetryStrategy::Never
+    )]
+    pub tx_retry_strategy: RetryStrategy,
 
     /// Base gas price used to fulfil transactions
     #[arg(long, env = "BLOCKLOCK_GAS_BUFFER_PERCENT", default_value = "20")]

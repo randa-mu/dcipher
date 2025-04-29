@@ -128,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
     let provider = ProviderBuilder::default()
         .with_recommended_fillers()
         .wallet(wallet)
-        .on_provider(ro_provider.clone());
+        .connect_provider(ro_provider.clone());
     let decryption_sender_contract_ro =
         DecryptionSender::new(config.chain.decryption_sender_addr, ro_provider);
     let decryption_sender_contract =
