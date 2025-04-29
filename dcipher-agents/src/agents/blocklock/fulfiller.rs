@@ -9,7 +9,7 @@ use crate::decryption_sender::contracts::DecryptionSender;
 use crate::decryption_sender::contracts::TypesLib::DecryptionRequest;
 use crate::fulfiller::TransactionFulfiller;
 use alloy::primitives::TxHash;
-use alloy::providers::{MulticallBuilder, Provider, WalletProvider};
+use alloy::providers::{MulticallBuilder, MulticallItem, Provider, WalletProvider};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use std::time::Duration;
@@ -165,7 +165,7 @@ where
     #[tracing::instrument(skip_all,
         fields(
             decryption_sender_addr = %self.decryption_sender_instance.address(),
-            blocklock_sender_addr = %self.decryption_sender_instance.address(),
+            blocklock_sender_addr = %self.blocklock_sender_instance.address(),
             wallet_address = %self.decryption_sender_instance.provider().default_signer_address(),
             request_id = %ready_request.id
         ))
@@ -229,23 +229,32 @@ where
         };
 
         // Estimate gas limit for fulfillDecryptionRequest call
-        let estimated_gas = self
+        let gas_estimation_call = self
             .decryption_sender_instance
             .fulfillDecryptionRequest(
                 ready_request.id,
                 ready_request.decryption_key.clone(),
                 ready_request.signature.clone().into_owned(),
             )
-            .gas_price(current_gas_price)
+            .gas_price(current_gas_price);
+
+        let estimated_gas = gas_estimation_call.clone()
             .estimate_gas()
             .await
             .map_err(|e| {
+                let calldata = gas_estimation_call.calldata();
+                let input = gas_estimation_call.input();
+                let callback_addr = blocklock_request.callback;
                 tracing::error!(
                     error = ?e,
                     signature = %ready_request.signature,
                     gas_price = current_gas_price,
+                    calldata = %calldata,
+                    input = %input,
+                    callback_addr = %callback_addr,
                     "Failed to simulate call to DecryptionSender::fulfillDecryptionRequest"
                 );
+
                 BlocklockFulfillerError::Contract(
                     e,
                     "failed to call DecryptionSender::fulfillDecryptionRequest",
