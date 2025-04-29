@@ -32,3 +32,4 @@ figment = { version = "0.10.19", features = ["toml"] }
 [patch.crates-io]
 # Use custom patch to fix arkworks' FieldHasher
 ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}
+alloy-eip2930 = { git = 'https://github.com/azixus/eips', branch = "fix/accessList-default"}
