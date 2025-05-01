@@ -1,7 +1,7 @@
 //! Module with structs used for the signature sender contract.
 
 mod async_signer;
-pub(crate) mod contracts;
+pub mod contracts;
 
 use crate::fulfiller::Identifier;
 use crate::signature_sender::contracts::SignatureSender;
