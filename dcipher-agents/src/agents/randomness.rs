@@ -1,6 +1,7 @@
 //! Agent managing the state of the randomness smart contract and forwarding fulfilled request to a
 //! fulfiller's request channel.
 
+use crate::RequestId;
 use crate::fulfiller::RequestChannel;
 use crate::signature_sender::SignatureRequest;
 use crate::signature_sender::contracts::{SignatureSender, TypesLib};
@@ -10,9 +11,6 @@ use alloy::primitives::ruint::FromUintError;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
-
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Debug)]
-pub(super) struct RequestId(U256);
 
 #[derive(thiserror::Error, Debug)]
 enum InternalRandomnessAgentError {
@@ -258,24 +256,6 @@ where
         }
 
         (request_ids, multicall)
-    }
-}
-
-impl From<RequestId> for U256 {
-    fn from(value: RequestId) -> Self {
-        value.0
-    }
-}
-
-impl From<U256> for RequestId {
-    fn from(value: U256) -> Self {
-        Self(value)
-    }
-}
-
-impl AsRef<U256> for RequestId {
-    fn as_ref(&self) -> &U256 {
-        &self.0
     }
 }
 

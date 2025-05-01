@@ -1,6 +1,7 @@
 //! Agent managing the state of the blocklock smart contract and forwarding fulfilled request to a
 //! fulfiller's request channel.
 
+use crate::RequestId;
 use crate::agents::blocklock::BlockNumber;
 use crate::agents::blocklock::condition_resolver::{
     BlocklockConditionResolver, BlocklockConditionResolverError, BlocklockConditionUpdate,
@@ -16,9 +17,6 @@ use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Add, Sub};
-
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, Debug)]
-pub(super) struct RequestId(U256);
 
 #[derive(thiserror::Error, Debug)]
 pub enum BlocklockAgentError {
@@ -537,24 +535,6 @@ impl Default for BlocklockAgentSavedState {
             last_seen_request_id: U256::from(0u64).into(),
             last_seen_block: 0.into(),
         }
-    }
-}
-
-impl From<RequestId> for U256 {
-    fn from(value: RequestId) -> Self {
-        value.0
-    }
-}
-
-impl From<U256> for RequestId {
-    fn from(value: U256) -> Self {
-        Self(value)
-    }
-}
-
-impl AsRef<U256> for RequestId {
-    fn as_ref(&self) -> &U256 {
-        &self.0
     }
 }
 
