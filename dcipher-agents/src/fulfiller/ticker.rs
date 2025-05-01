@@ -302,7 +302,7 @@ where
         tracing::info!("Attempting to fulfil requests");
         let results = self
             .fulfiller
-            .fulfil_decryption_requests(
+            .fulfil_requests(
                 requests_to_fulfil
                     .iter()
                     .map(|retryable_request| &retryable_request.req),
@@ -392,7 +392,7 @@ mod tests {
         type SignedRequest = SignedDecryptionRequest<'static>;
         type Error = FakeError;
 
-        fn fulfil_decryption_requests<'lt_self, 'lt_sr, I>(
+        fn fulfil_requests<'lt_self, 'lt_sr, I>(
             &'lt_self self,
             requests: I,
         ) -> BoxFuture<'lt_self, Vec<Result<(), Self::Error>>>
