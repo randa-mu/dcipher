@@ -4,8 +4,9 @@
 mod aggregation;
 mod libp2p;
 
+pub use aggregation::lagrange_points_interpolate_at;
+
 use crate::ser::EvmSerialize;
-use crate::signer::threshold_signer::aggregation::lagrange_points_interpolate_at;
 use crate::signer::threshold_signer::libp2p::LibP2PNode;
 use crate::signer::{AsynchronousSigner, BlsSigner, BlsVerifier};
 use ark_ec::{AffineRepr, CurveGroup};
