@@ -313,7 +313,14 @@ where
                 )
             })?;
 
-        Ok(estimated_gas)
+        let estimated_gas = estimated_gas
+            .checked_add(blocklock_request.callbackGasLimit.into())
+            .ok_or(BlocklockFulfillerError::IntegerOverflow(
+                "failed to add callback to estimated gas",
+            ))?; // add the callback to the estimate
+
+        // Add buffer to the estimate
+        self.gas_with_buffer(estimated_gas)
     }
 
     /// Estimate the eip 1559 fees
@@ -348,13 +355,6 @@ where
         estimated_gas: u64,
         flat_fee_wei: u128,
     ) -> Result<u64, BlocklockFulfillerError> {
-        let estimated_gas = estimated_gas
-            .checked_add(blocklock_request.callbackGasLimit.into())
-            .ok_or(BlocklockFulfillerError::IntegerOverflow(
-                "failed to add callback to estimated gas",
-            ))?; // add the callback to the estimate
-        let estimated_gas = self.gas_with_buffer(estimated_gas)?; // add buffer to the estimate
-
         // Calculate an upper bound on the request cost
         let gas_price = tx_gas_params
             .max_priority_fee_per_gas
