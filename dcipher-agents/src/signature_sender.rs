@@ -2,6 +2,7 @@
 
 mod async_signer;
 pub mod contracts;
+pub mod fulfiller;
 
 use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::{Identifier, RetryStrategy, TransactionFulfiller};
