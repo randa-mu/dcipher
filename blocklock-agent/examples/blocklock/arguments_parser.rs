@@ -103,9 +103,17 @@ pub struct BlockchainArgs {
     )]
     pub tx_retry_strategy: RetryStrategy,
 
-    /// Base gas price used to fulfil transactions
+    /// Percent used to bump the current gas price when fulfilling transactions
+    #[arg(long, env = "BLOCKLOCK_GAS_PRICE_BUFFER_PERCENT", default_value = "20")]
+    pub gas_price_buffer_percent: u16,
+
+    /// Percent used to bump the gas estimation when fulfilling transactions
     #[arg(long, env = "BLOCKLOCK_GAS_BUFFER_PERCENT", default_value = "20")]
     pub gas_buffer_percent: u16,
+
+    /// Minimum profit required to fulfil transactions
+    #[arg(long, env = "BLOCKLOCK_PROFIT_THRESHOLD_PERCENT", default_value = "20")]
+    pub profit_threshold: u8,
 
     /// Minimum number of confirmations to wait for before considering a transaction confirmed
     #[arg(long, env = "BLOCKLOCK_SYNC_BATCH_SIZE", default_value = "20")]
