@@ -11,9 +11,6 @@ use blocklock_agent::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
 use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSavedState};
 use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
 use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
-use dcipher_agents::decryption_sender::async_signer::{
-    DecryptionSenderAsyncSigner, DecryptionSenderAsyncSignerError,
-};
 use dcipher_agents::decryption_sender::contracts::DecryptionSender;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
@@ -90,6 +87,8 @@ where
         args.chain.min_confirmations,
         Duration::from_secs(args.chain.confirmations_timeout_secs),
         args.chain.gas_buffer_percent,
+        args.chain.gas_price_buffer_percent,
+        args.chain.profit_threshold,
     );
 
     // Create a ticker-based fulfiller
@@ -98,7 +97,7 @@ where
         signer,
         single_call_tx_fulfiller,
         args.chain.max_tx_per_tick,
-        dcipher_agents::fulfiller::RetryStrategy::Never,
+        args.chain.tx_retry_strategy,
     );
 
     let ticker = NotifyTicker::default();

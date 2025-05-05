@@ -26,7 +26,10 @@ impl FromStr for RetryStrategy {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "RetryStrategy::Never" {
             Ok(RetryStrategy::Never)
-        } else if let Some(inner) = s.strip_prefix("RetryStrategy::Times(").and_then(|s| s.strip_suffix(")")) {
+        } else if let Some(inner) = s
+            .strip_prefix("RetryStrategy::Times(")
+            .and_then(|s| s.strip_suffix(")"))
+        {
             inner
                 .parse::<usize>()
                 .map(RetryStrategy::Times)
