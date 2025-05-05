@@ -11,7 +11,7 @@ use dcipher_agents::signer::threshold_signer::{
     AsyncThresholdSigner, ThresholdSigner, lagrange_points_interpolate_at,
 };
 use dcipher_agents::signer::{AsynchronousSigner, BN254SignatureOnG1Signer};
-    use pairing_utils::serialize::point::PointSerializeCompressed;
+use pairing_utils::serialize::point::PointSerializeCompressed;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::net::TcpListener;
