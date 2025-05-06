@@ -74,16 +74,16 @@ impl Metrics {
         METRICS.errors_total.with_label_values(&["storage_error"]).inc();
     }
 
+    pub fn report_fetch_requests_error() {
+        METRICS.errors_total.with_label_values(&["fetch_requests_error"]).inc();
+    }
+
     pub fn report_decryption_requested() {
         METRICS.decryption_requests.inc();
     }
 
     pub fn report_decryption_success() {
         METRICS.decryption_success.inc();
-    }
-
-    pub fn report_fetch_requests_error() {
-        METRICS.errors_total.with_label_values(&["fetch_requests_error"]).inc();
     }
 
     pub fn report_decryption_error(count: u64) {
