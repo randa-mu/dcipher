@@ -9,7 +9,6 @@ use alloy::network::Ethereum;
 use alloy::primitives::U256;
 use alloy::primitives::ruint::FromUintError;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
-use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
 
 #[derive(thiserror::Error, Debug)]
