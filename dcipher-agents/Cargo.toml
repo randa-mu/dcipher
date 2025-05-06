@@ -22,6 +22,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 libp2p = { version = "0.55", features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"] }
 lru = "0.14"
 serde_cbor = "0.10"
+prometheus = "0.14.0"
 
 [dev-dependencies]
 hex = "0.4"

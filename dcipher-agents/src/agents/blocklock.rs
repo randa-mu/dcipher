@@ -8,6 +8,7 @@ pub mod agent;
 mod condition_resolver;
 pub mod contracts;
 pub mod fulfiller;
+pub mod metrics;
 
 /// Supported blocklock conditions.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]

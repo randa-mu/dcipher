@@ -5,6 +5,7 @@ use crate::agents::blocklock::BlockNumber;
 use crate::agents::blocklock::condition_resolver::{
     BlocklockConditionResolver, BlocklockConditionResolverError, BlocklockConditionUpdate,
 };
+use crate::agents::blocklock::metrics::Metrics;
 use crate::decryption_sender::DecryptionRequest;
 use crate::decryption_sender::contracts::{DecryptionSender, TypesLib};
 use crate::fulfiller::RequestChannel;
@@ -127,6 +128,7 @@ where
                 let requests = match batched_requests.await {
                     Ok(requests) => requests,
                     Err(e) => {
+                        Metrics::report_fetch_requests_error();
                         tracing::error!(error = %e, "Failed to get batched requests");
                         continue;
                     }
@@ -312,6 +314,7 @@ where
         match self.sync_state().await {
             Ok(_) => {
                 let num_requests_post_sync = self.decryption_requests.len();
+                Metrics::report_sync_success();
                 tracing::info!(
                     num_requests_pre_sync,
                     num_requests_post_sync,
@@ -319,6 +322,7 @@ where
                 );
             }
             Err(e) => {
+                Metrics::report_sync_error();
                 tracing::error!(error = ?e, "Failed to synchronize state from on-chain contract");
             }
         }
@@ -334,6 +338,7 @@ where
             .condition_resolver
             .add_condition(request_id, decryption_requested.condition.as_ref())
         {
+            Metrics::report_storage_error();
             tracing::error!(error = %e, request_id = ?request_id, "Failed to add request to decryption resolver");
             return;
         }
@@ -341,6 +346,7 @@ where
         // If all went right, add it to the local storage
         self.decryption_requests
             .insert(request_id, decryption_requested);
+        Metrics::report_decryption_requested();
     }
 
     /// Remove requests from the condition resolver and the local storage.
@@ -394,6 +400,7 @@ where
                 "cannot handle more than 2**64 missing requests",
             )
         })?;
+        Metrics::report_missing_events(missing_requests);
         tracing::info!("Sync detected {missing_requests} missing requests");
 
         // Create an iterator of missing requests. Scan returns last_seen_request_id + 1, up to last_request_id
@@ -419,6 +426,7 @@ where
             requests.into_iter().for_each(|req| {
                 if req.inner.isFulfilled {
                     // If the request is fulfilled, remove it from the agent
+                    Metrics::report_decryption_success();
                     self.remove_requests(std::iter::once(&RequestId::from(req.id)));
                 } else {
                     // Otherwise, store it.
@@ -465,6 +473,7 @@ where
                     let batched_requests = match multicall.aggregate().await {
                         Ok(requests) => requests,
                         Err(e) => {
+                            Metrics::report_decryption_error(batch_size as u64);
                             tracing::error!(error = ?e, "Failed to execute multicall");
                             Err(e)?
                         }
@@ -475,9 +484,11 @@ where
                     let requests = req_ids.into_iter().zip(batched_requests).filter_map(|(id, req)| {
                         // A request with a null scheme implies that the request does not exist => error
                         if req.schemeID.is_empty() {
+                            Metrics::report_scheme_error();
                             tracing::error!(request_id = %id, returned_request = ?req, "Failed to obtain request details");
                             None
                         } else if req.schemeID != scheme_id {
+                            Metrics::report_scheme_error();
                             tracing::debug!(request_id = %id, "Ignoring request with unsupported scheme id");
                             None
                         } else if only_unfulfilled && req.isFulfilled {
@@ -763,7 +774,7 @@ mod tests {
                 fulfillment_flat_fee_native_ppm,
                 wei_per_unit_gas,
                 bls_pairing_check_overhead,
-                native_premium_percentage,
+                native_premium_percentage
             )
             .send()
             .await
