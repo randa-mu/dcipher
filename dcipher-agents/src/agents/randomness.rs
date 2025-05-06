@@ -152,7 +152,7 @@ where
         );
 
         // Loop over each chunk
-        for batched_requests in self.batch_get_requests(missing_requests, false) {
+        for batched_requests in self.batch_get_requests(missing_requests, true) {
             // Execute the future to get back requests
             let requests = match batched_requests.await {
                 Ok(requests) => requests,
