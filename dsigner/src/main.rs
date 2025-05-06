@@ -58,8 +58,13 @@ async fn sign_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<SignRequest>,
 ) -> Response {
+    let start = std::time::Instant::now();
+
     // Call the async signing function
     let sig_res = state.async_signer.async_sign(&payload.m).await;
+
+    let duration = start.elapsed();
+    tracing::debug!("Signing operation took {}ms", duration.as_millis());
 
     if let Ok(sig) = sig_res {
         let base64_sig = sig
