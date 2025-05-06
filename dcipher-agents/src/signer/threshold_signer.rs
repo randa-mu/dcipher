@@ -122,7 +122,7 @@ where
         // Create a registry
         let registry = AsyncThresholdSigner {
             signatures_cache: arc_self.signatures_cache.clone(),
-            new_message_to_sign: tx_registry_to_signer,
+            new_message_to_sign: tx_registry_to_signer.clone(),
         };
 
         // Create a libp2p instance
@@ -151,11 +151,11 @@ where
         ));
 
         // Spawn task that handles messages from other nodes
-        tokio::task::spawn(
-            arc_self
-                .clone()
-                .recv_new_signatures(rx_signer_from_libp2p, cancellation_token.child_token()),
-        );
+        tokio::task::spawn(arc_self.clone().recv_new_signatures(
+            rx_signer_from_libp2p,
+            tx_registry_to_signer,
+            cancellation_token.child_token(),
+        ));
 
         (cancellation_token, registry)
     }
@@ -216,6 +216,7 @@ where
     async fn recv_new_signatures(
         self: Arc<Self>,
         mut rx_from_libp2p: tokio::sync::mpsc::UnboundedReceiver<(u16, Vec<u8>)>,
+        new_message_to_sign: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
         cancellation_token: CancellationToken,
     ) {
         let inner_fn = async move {
@@ -250,12 +251,20 @@ where
 
                 // Valid signature, add it to our cache
                 self.store_and_process_partial(
-                    partial.m,
+                    partial.m.clone(),
                     PartialSignature {
                         id: party_id,
                         sig: partial.sig,
                     },
                 );
+
+                // TODO: Refactor threshold signer to make that behaviour configureable
+                //  Upon receiving a valid sig from a party, we should either do nothing,
+                //  or also sign the message.
+                // Add it to the list of message to sign
+                new_message_to_sign
+                    .send(partial.m)
+                    .expect("failed to forward message to signer");
             }
         };
 
