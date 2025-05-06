@@ -64,7 +64,7 @@ pub struct KeyConfigArgs {
     #[arg(
         short,
         env = "DSIGNER_DST",
-        default_value = "dsigner-v01-BN254G1_XMD:KECCAK-256_SVDW_RO"
+        default_value = "dsigner-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_"
     )]
     pub dst: String,
 
