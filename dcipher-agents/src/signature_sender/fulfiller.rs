@@ -6,6 +6,7 @@ use crate::fulfiller::TransactionFulfiller;
 use crate::signature_sender::SignedSignatureRequest;
 use crate::signature_sender::contracts::SignatureSender;
 use alloy::primitives::TxHash;
+use alloy::providers::utils::Eip1559Estimation;
 use alloy::providers::{Provider, WalletProvider};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
@@ -48,6 +49,9 @@ pub enum SignatureFulfillerError {
 
     #[error("the current gas cost is too high")]
     CurrentGasCostTooHigh,
+
+    #[error("integer overflow: {0}")]
+    IntegerOverflow(&'static str),
 }
 
 /// Implementation of [`TransactionFulfiller`] where each call is done in a separate transaction.
@@ -144,16 +148,52 @@ impl<P> SignatureFulfiller<P>
 where
     P: Provider,
 {
-    /// Get the current gas price from the rpc provider
-    async fn get_current_gas_price(&self) -> Result<u128, SignatureFulfillerError> {
-        self.signature_sender_instance
+    fn with_gas_cost_buffer(&self, gas_cost: u128) -> Result<u128, SignatureFulfillerError> {
+        Ok(gas_cost
+            .checked_mul(100u128 + self.gas_buffer_percent as u128)
+            .ok_or(SignatureFulfillerError::IntegerOverflow(
+                "failed to calculate max_priority_fee_per_gas",
+            ))?
+            / 100u128)
+    }
+
+    fn with_gas_buffer(&self, gas: u64) -> Result<u64, SignatureFulfillerError> {
+        Ok(gas
+            .checked_mul(100u64 + self.gas_buffer_percent as u64)
+            .ok_or(SignatureFulfillerError::IntegerOverflow(
+                "failed to calculate max_priority_fee_per_gas",
+            ))?
+            / 100u64)
+    }
+
+    /// Get EIP-1559 estimates for maxPriorityFeePerGas and maxFeePerGas
+    async fn get_eip1559_gas_estimates(
+        &self,
+    ) -> Result<Eip1559Estimation, SignatureFulfillerError> {
+        let Eip1559Estimation {
+            max_priority_fee_per_gas,
+            max_fee_per_gas,
+        } = self
+            .signature_sender_instance
             .provider()
-            .get_gas_price()
+            .estimate_eip1559_fees()
             .await
             .map_err(|e| {
-                tracing::error!(error = ?e, "Failed to obtain current gas price");
-                SignatureFulfillerError::RpcWithTransportErrorKind(e, "failed to get gas price")
-            })
+                SignatureFulfillerError::RpcWithTransportErrorKind(
+                    e,
+                    "failed to get eip 1559 gas estimates",
+                )
+            })?;
+
+        // (max_priority_fee_per_gas * (100 + gas_buffer_percent)) / 100
+        let max_priority_fee_per_gas = self.with_gas_cost_buffer(max_priority_fee_per_gas)?;
+        // (max_fee_per_gas * (100 + gas_buffer_percent)) / 100
+        let max_fee_per_gas = self.with_gas_cost_buffer(max_fee_per_gas)?;
+
+        Ok(Eip1559Estimation {
+            max_fee_per_gas,
+            max_priority_fee_per_gas,
+        })
     }
 
     #[tracing::instrument(skip_all,
@@ -173,13 +213,17 @@ where
     where
         P: WalletProvider,
     {
-        let current_gas_price = self.get_current_gas_price().await?;
+        let Eip1559Estimation {
+            max_fee_per_gas,
+            max_priority_fee_per_gas,
+        } = self.get_eip1559_gas_estimates().await?;
 
         // Estimate gas limit to fulfil the call
         let gas_estimation_call = self
             .signature_sender_instance
             .fulfilSignatureRequest(ready_request.id, ready_request.signature.clone())
-            .gas_price(current_gas_price);
+            .max_fee_per_gas(max_fee_per_gas)
+            .max_priority_fee_per_gas(max_priority_fee_per_gas);
         let estimated_gas = gas_estimation_call
             .clone()
             .estimate_gas()
@@ -189,7 +233,8 @@ where
                 tracing::error!(
                     error = ?e,
                     signature = %ready_request.signature,
-                    gas_price = current_gas_price,
+                    max_fee_per_gas,
+                    max_priority_fee_per_gas,
                     calldata = %calldata,
                     "Failed to simulate call to SignatureSender::fulfilSignatureRequest"
                 );
@@ -201,17 +246,14 @@ where
             })?;
 
         // Make sure that the max affordable gas is higher than the current gas with a buffer
-        let current_gas_with_buffer =
-            (current_gas_price * (100u128 + self.gas_buffer_percent as u128)) / 100u128;
-        let estimated_gas_with_buffer =
-            (estimated_gas * (100u64 + self.gas_buffer_percent as u64)) / 100u64;
+        let estimated_gas_with_buffer = self.with_gas_buffer(estimated_gas)?;
 
         tracing::info!(
             request_id = %ready_request.id,
             estimated_gas,
             estimated_gas_with_buffer,
-            current_gas_price,
-            current_gas_with_buffer,
+            max_fee_per_gas,
+            max_priority_fee_per_gas,
             "Calculated estimated gas cost for request"
         );
 
@@ -219,7 +261,8 @@ where
         let pending_tx = self
             .signature_sender_instance
             .fulfilSignatureRequest(ready_request.id, ready_request.signature.clone())
-            .max_fee_per_gas(current_gas_with_buffer)
+            .max_fee_per_gas(max_fee_per_gas)
+            .max_priority_fee_per_gas(max_priority_fee_per_gas)
             .gas(estimated_gas_with_buffer)
             .send()
             .await
