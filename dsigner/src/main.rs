@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
+use tracing_subscriber::FmtSubscriber;
 
 // Request structure for the sign endpoint
 #[derive(Deserialize)]
@@ -144,6 +145,11 @@ async fn main() -> anyhow::Result<()> {
         config,
         nodes_config,
     } = DSignerConfig::parse()?;
+
+    // Set logging options
+    FmtSubscriber::builder()
+        .with_max_level(config.log_level)
+        .init();
 
     // Initialize and start a threshold signer
     let (cancel, async_signer, group_pk) = get_signer(&config, &nodes_config.unwrap_or_default());
