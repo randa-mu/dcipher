@@ -253,14 +253,8 @@ where
             .with_timeout(Some(self.timeout))
             .get_receipt()
             .map(move |r| {
-                let receipt = match r {
-                    Ok(receipt) => receipt,
-                    Err(e) => {
-                        Metrics::report_decryption_success();
-                        Err(e)?
-                    },
-                };
-
+                let receipt = r?;
+                Metrics::report_decryption_success();
                 tracing::info!(
                     request_id = %ready_request.id,
                     fulfilled_block_number = receipt.block_number,
