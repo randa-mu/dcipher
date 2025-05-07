@@ -1,6 +1,6 @@
 use prometheus::proto::MetricFamily;
 use prometheus::{IntCounter, IntCounterVec, Opts, Registry};
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 
 pub struct Metrics {
     registry: Registry,
@@ -11,7 +11,7 @@ pub struct Metrics {
     decryption_success: IntCounter,
 }
 
-static METRICS: LazyLock<Arc<Metrics>> = LazyLock::new(|| {
+static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
     let registry = Registry::new();
 
     let missing_events = IntCounter::new("missing_events_total", "Missing events seen")
@@ -43,14 +43,14 @@ static METRICS: LazyLock<Arc<Metrics>> = LazyLock::new(|| {
         .register(Box::new(decryption_success.clone()))
         .expect("metrics failed to initialise");
 
-    Arc::new(Metrics {
+    Metrics {
         registry,
         missing_events,
         errors_total,
         sync_success,
         decryption_requests,
         decryption_success,
-    })
+    }
 });
 
 impl Metrics {

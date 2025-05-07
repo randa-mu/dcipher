@@ -488,7 +488,6 @@ where
                             tracing::error!(request_id = %id, returned_request = ?req, "Failed to obtain request details");
                             None
                         } else if req.schemeID != scheme_id {
-                            Metrics::report_scheme_error();
                             tracing::debug!(request_id = %id, "Ignoring request with unsupported scheme id");
                             None
                         } else if only_unfulfilled && req.isFulfilled {
