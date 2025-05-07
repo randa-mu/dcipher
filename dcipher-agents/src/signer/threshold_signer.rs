@@ -73,6 +73,9 @@ where
     t: u16,
     id: u16,
     pks: Vec<BLS::PublicKeyGroup>,
+
+    // Enable the node to broadcast a partial signature upon receiving a valid partial.
+    eager_signing: bool,
 }
 
 impl<BLS> ThresholdSigner<BLS>
@@ -94,7 +97,15 @@ where
             t,
             id,
             pks,
+            eager_signing: false,
         }
+    }
+
+    /// Enable eager signing by automatically submitting a partial signature upon receiving
+    /// a valid partial from another node.
+    pub fn with_eager_signing(mut self) -> Self {
+        self.eager_signing = true;
+        self
     }
 
     /// Runs the threshold signer in a background task and obtain a cancellation token and a registry.
@@ -258,13 +269,15 @@ where
                     },
                 );
 
-                // TODO: Refactor threshold signer to make that behaviour configureable
-                //  Upon receiving a valid sig from a party, we should either do nothing,
-                //  or also sign the message.
-                // Add it to the list of message to sign
-                new_message_to_sign
-                    .send(partial.m)
-                    .expect("failed to forward message to signer");
+                if self.eager_signing {
+                    // If eager signing is enabled and the message has not been signed already,
+                    // request to broadcast a partial signature on that message
+                    if !self.partial_issued(&partial.m) {
+                        new_message_to_sign
+                            .send(partial.m)
+                            .expect("failed to forward message to signer");
+                    }
+                }
             }
         };
 

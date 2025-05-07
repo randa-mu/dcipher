@@ -131,7 +131,8 @@ fn get_signer(
         config.key_config.t.get(),
         config.key_config.node_id.get(),
         pks,
-    );
+    )
+    .with_eager_signing();
 
     let (cancel, async_signer) = ts.run(
         config.libp2p.libp2p_key.clone().into(),
