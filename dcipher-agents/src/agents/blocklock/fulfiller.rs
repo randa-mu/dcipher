@@ -4,13 +4,14 @@
 
 use crate::agents::blocklock::contracts::BlocklockSender;
 use crate::agents::blocklock::contracts::TypesLib::BlocklockRequest;
+use crate::agents::blocklock::metrics::Metrics;
 use crate::decryption_sender::SignedDecryptionRequest;
 use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::TransactionFulfiller;
 use alloy::primitives::TxHash;
 use alloy::providers::{MulticallBuilder, MulticallItem, Provider, WalletProvider};
-use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
 use std::time::Duration;
 
 #[derive(thiserror::Error, Debug)]
@@ -254,7 +255,10 @@ where
             .map(move |r| {
                 let receipt = match r {
                     Ok(receipt) => receipt,
-                    Err(e) => Err(e)?,
+                    Err(e) => {
+                        Metrics::report_decryption_success();
+                        Err(e)?
+                    },
                 };
 
                 tracing::info!(

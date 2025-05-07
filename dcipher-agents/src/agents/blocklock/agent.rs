@@ -426,7 +426,6 @@ where
             requests.into_iter().for_each(|req| {
                 if req.inner.isFulfilled {
                     // If the request is fulfilled, remove it from the agent
-                    Metrics::report_decryption_success();
                     self.remove_requests(std::iter::once(&RequestId::from(req.id)));
                 } else {
                     // Otherwise, store it.
@@ -473,7 +472,6 @@ where
                     let batched_requests = match multicall.aggregate().await {
                         Ok(requests) => requests,
                         Err(e) => {
-                            Metrics::report_decryption_error(batch_size as u64);
                             tracing::error!(error = ?e, "Failed to execute multicall");
                             Err(e)?
                         }
