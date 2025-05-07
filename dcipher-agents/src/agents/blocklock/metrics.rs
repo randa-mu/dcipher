@@ -86,8 +86,8 @@ impl Metrics {
         METRICS.decryption_success.inc();
     }
 
-    pub fn report_decryption_error(count: u64) {
-        METRICS.errors_total.with_label_values(&["decryption_error"]).inc_by(count );
+    pub fn report_decryption_error() {
+        METRICS.errors_total.with_label_values(&["decryption_error"]).inc();
     }
 
     pub fn gather() -> Vec<MetricFamily> {
