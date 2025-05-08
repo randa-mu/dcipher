@@ -73,10 +73,7 @@ where
     type Error = StandaloneSignerError;
     type Signature = SignedDecryptionRequest<'static>;
 
-    fn async_sign(
-        &self,
-        req: DecryptionRequest,
-    ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
-        async move { self.process_request(&req) }
+    async fn async_sign(&self, req: DecryptionRequest) -> Result<Self::Signature, Self::Error> {
+        self.process_request(&req)
     }
 }

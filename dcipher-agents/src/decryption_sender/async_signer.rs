@@ -15,6 +15,8 @@ use std::sync::Arc;
 /// Maximum number of parallel signature requests allowed before dropping old requests.
 const MAX_PARALLEL_REQUESTS: usize = 64;
 
+type SharedMaybeSignatureData<CS, E> = Arc<tokio::sync::RwLock<Option<SignatureData<CS, E>>>>;
+
 pub struct DecryptionSenderAsyncSigner<CS, AsyncSigner, M>
 where
     CS: PairingIbeCipherSuite,
@@ -22,9 +24,7 @@ where
 {
     cs: CS,
     signer: AsyncSigner,
-    requests: tokio::sync::Mutex<
-        LruCache<Bytes, Arc<tokio::sync::RwLock<Option<SignatureData<CS, AsyncSigner::Error>>>>>,
-    >,
+    requests: tokio::sync::Mutex<LruCache<Bytes, SharedMaybeSignatureData<CS, AsyncSigner::Error>>>,
 }
 
 impl<CS, AsyncSigner, M> DecryptionSenderAsyncSigner<CS, AsyncSigner, M>
@@ -121,7 +121,7 @@ where
                 .cloned()
                 .expect("ready lock should only resolve when signature data is some"),
         }
-        .map_err(|e| DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner(e))
+        .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)
     }
 }
 
@@ -139,33 +139,28 @@ where
     type Error = DecryptionSenderAsyncSignerError<AsyncSigner::Error>;
     type Signature = SignedDecryptionRequest<'static>;
 
-    fn async_sign(
-        &self,
-        req: DecryptionRequest,
-    ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
-        async move {
-            // Await signature
-            let (sig_bytes, sig) = self.await_signature(req.condition.clone()).await?;
+    async fn async_sign(&self, req: DecryptionRequest) -> Result<Self::Signature, Self::Error> {
+        // Await signature
+        let (sig_bytes, sig) = self.await_signature(req.condition.clone()).await?;
 
-            // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
-            let request_id = req.id;
-            let ct: CS::Ciphertext = match req.try_into() {
-                Ok(ct) => ct,
-                Err(e) => {
-                    // If we fail to generate keys, it is likely due to an invalid ephemeral public key / ciphertext,
-                    // not much we can do here.
-                    tracing::error!(error = %e, %request_id, "Failed to generate decryption keys / signature... ignoring request");
-                    Err(DecryptionSenderAsyncSignerError::ParseCiphertext(e.into()))?
-                }
-            };
-            let preprocessed_key = self.cs.preprocess_decryption_key(sig, ct.ephemeral_pk());
+        // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
+        let request_id = req.id;
+        let ct: CS::Ciphertext = match req.try_into() {
+            Ok(ct) => ct,
+            Err(e) => {
+                // If we fail to generate keys, it is likely due to an invalid ephemeral public key / ciphertext,
+                // not much we can do here.
+                tracing::error!(error = %e, %request_id, "Failed to generate decryption keys / signature... ignoring request");
+                Err(DecryptionSenderAsyncSignerError::ParseCiphertext(e.into()))?
+            }
+        };
+        let preprocessed_key = self.cs.preprocess_decryption_key(sig, ct.ephemeral_pk());
 
-            Ok(SignedDecryptionRequest::new(
-                request_id,
-                Bytes::from(preprocessed_key.as_ref().to_vec()),
-                sig_bytes.clone(),
-            ))
-        }
+        Ok(SignedDecryptionRequest::new(
+            request_id,
+            Bytes::from(preprocessed_key.as_ref().to_vec()),
+            sig_bytes.clone(),
+        ))
     }
 }
 
@@ -202,18 +197,12 @@ pub(crate) mod tests {
     #[error("mock signer error")]
     struct MockSignerError;
 
+    type SignatureResult = Result<ark_bn254::G1Affine, MockSignerError>;
+
     #[derive(Clone)]
     struct MockAsyncSigner {
-        receivers: Arc<
-            tokio::sync::Mutex<
-                HashMap<Bytes, oneshot::Receiver<Result<ark_bn254::G1Affine, MockSignerError>>>,
-            >,
-        >,
-        senders: Arc<
-            std::sync::Mutex<
-                HashMap<Bytes, oneshot::Sender<Result<ark_bn254::G1Affine, MockSignerError>>>,
-            >,
-        >,
+        receivers: Arc<tokio::sync::Mutex<HashMap<Bytes, oneshot::Receiver<SignatureResult>>>>,
+        senders: Arc<std::sync::Mutex<HashMap<Bytes, oneshot::Sender<SignatureResult>>>>,
     }
 
     impl MockAsyncSigner {
@@ -254,19 +243,14 @@ pub(crate) mod tests {
         type Error = MockSignerError;
         type Signature = ark_bn254::G1Affine;
 
-        fn async_sign(
-            &self,
-            m: Bytes,
-        ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
-            async move {
-                let rx = self
-                    .receivers
-                    .lock()
-                    .await
-                    .remove(&m)
-                    .expect("no receiver found for condition");
-                rx.await.unwrap_or(Err(MockSignerError))
-            }
+        async fn async_sign(&self, m: Bytes) -> Result<Self::Signature, Self::Error> {
+            let rx = self
+                .receivers
+                .lock()
+                .await
+                .remove(&m)
+                .expect("no receiver found for condition");
+            rx.await.unwrap_or(Err(MockSignerError))
         }
     }
 

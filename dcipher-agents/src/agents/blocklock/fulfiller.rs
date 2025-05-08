@@ -269,9 +269,9 @@ where
     }
 
     /// Estimate amount of gas required to fulfil a decryption request.
-    async fn estimate_fulfillment_gas<'a>(
+    async fn estimate_fulfillment_gas(
         &self,
-        ready_request: &SignedDecryptionRequest<'a>,
+        ready_request: &SignedDecryptionRequest<'_>,
         blocklock_request: &BlocklockRequest,
         tx_gas_estimates: &Eip1559GasEstimates,
     ) -> Result<u64, BlocklockFulfillerError> {
@@ -365,7 +365,7 @@ where
         )?;
 
         // Ensure that the user can cover the upper bound of the cost
-        let available_funds = self.get_user_available_funds(&blocklock_request).await?;
+        let available_funds = self.get_user_available_funds(blocklock_request).await?;
         let profit = available_funds
             .checked_sub(request_cost_upper_bound)
             .ok_or_else(|| {
