@@ -22,6 +22,114 @@ use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::FmtSubscriber;
 
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let BlocklockConfig {
+        mut config,
+        nodes_config,
+    } = BlocklockConfig::parse()?;
+
+    // Set logging options
+    FmtSubscriber::builder()
+        .with_max_level(config.log_level)
+        .init();
+
+    // Create a wallet
+    let signer: PrivateKeySigner = config.chain.tx_private_key.parse()?;
+    let wallet = EthereumWallet::from(signer);
+
+    // Create provider and instantiate the decryption sender contract
+    let ro_provider =
+        create_provider_with_retry(config.chain.rpc_url.clone(), RetryStrategy::None).await?;
+    let provider = ProviderBuilder::default()
+        .with_recommended_fillers()
+        .wallet(wallet)
+        .connect_provider(ro_provider.clone());
+    let decryption_sender_contract_ro =
+        DecryptionSender::new(config.chain.decryption_sender_addr, ro_provider);
+    let decryption_sender_contract =
+        DecryptionSender::new(config.chain.decryption_sender_addr, provider.clone());
+    let blocklock_sender_contract =
+        BlocklockSender::new(config.chain.blocklock_sender_addr, provider.clone());
+
+    // If chain id is none, fetch it from the provider
+    if config.chain.chain_id.is_none() {
+        let chain_id = provider.get_chain_id().await?;
+        config.chain.chain_id.replace(chain_id);
+    }
+
+    // Create a fulfiller
+    let (ticker, ts_stopper, stopper, channel) = create_threshold_fulfiller(
+        &config,
+        &nodes_config.unwrap_or_default(),
+        decryption_sender_contract.clone(),
+        blocklock_sender_contract,
+    )?;
+
+    // Create the blocklock agent from a saved state
+    let saved_state = std::fs::read(&config.state_file).unwrap_or_default();
+    let saved_state: BlocklockAgentSavedState =
+        serde_json::from_slice(&saved_state).unwrap_or_default();
+    let mut agent = BlocklockAgent::from_state(
+        BLOCKLOCK_SCHEME_ID,
+        config.chain.sync_batch_size,
+        channel,
+        decryption_sender_contract_ro.clone(),
+        saved_state,
+    )
+        .await?;
+
+    // Setup some signals
+    let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+
+    // Execute the agent and the healthcheck
+    let res = tokio::select! {
+        _ = sigterm.recv() => {
+            println!("received SIGTERM, shutting down...");
+            Ok(())
+        },
+
+        _ = sigint.recv() => {
+            println!("received SIGINT, shutting down...");
+            ts_stopper.cancel();
+            Ok(())
+        },
+
+        _ = tokio::signal::ctrl_c() => {
+            println!("received ctrl+c, shutting down...");
+            Ok(())
+        },
+
+        err = run_agent(&mut agent, ticker, decryption_sender_contract_ro) => {
+            eprintln!("agent stopped unexpectedly...");
+            err // return Result
+        },
+
+        err = start_api(config.healthcheck_port) => {
+            eprintln!("healthcheck stopped unexpectedly...");
+            err // return Result
+        }
+    };
+
+    // Stop the various components
+    ts_stopper.cancel();
+    stopper.stop().await;
+
+    // On success, save the state of the agent
+    if res.is_ok() {
+        let saved_state = agent.save_state();
+        let saved_state = serde_json::to_string_pretty(&saved_state)?;
+        std::fs::write(&config.state_file, saved_state)?;
+        println!(
+            "Saved blocklock agent state to: {}",
+            config.state_file.display()
+        );
+    }
+
+    res
+}
+
 fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     args: &'lt_in BlocklockArgs,
     nodes_config: &'lt_in NodesConfiguration,
@@ -103,112 +211,4 @@ where
     let ticker = NotifyTicker::default();
     let (stopper, channel) = fulfiller.run(ticker.clone());
     Ok((ticker, ts_stopper, stopper, channel))
-}
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let BlocklockConfig {
-        mut config,
-        nodes_config,
-    } = BlocklockConfig::parse()?;
-
-    // Set logging options
-    FmtSubscriber::builder()
-        .with_max_level(config.log_level)
-        .init();
-
-    // Create a wallet
-    let signer: PrivateKeySigner = config.chain.tx_private_key.parse()?;
-    let wallet = EthereumWallet::from(signer);
-
-    // Create provider and instantiate the decryption sender contract
-    let ro_provider =
-        create_provider_with_retry(config.chain.rpc_url.clone(), RetryStrategy::None).await?;
-    let provider = ProviderBuilder::default()
-        .with_recommended_fillers()
-        .wallet(wallet)
-        .connect_provider(ro_provider.clone());
-    let decryption_sender_contract_ro =
-        DecryptionSender::new(config.chain.decryption_sender_addr, ro_provider);
-    let decryption_sender_contract =
-        DecryptionSender::new(config.chain.decryption_sender_addr, provider.clone());
-    let blocklock_sender_contract =
-        BlocklockSender::new(config.chain.blocklock_sender_addr, provider.clone());
-
-    // If chain id is none, fetch it from the provider
-    if config.chain.chain_id.is_none() {
-        let chain_id = provider.get_chain_id().await?;
-        config.chain.chain_id.replace(chain_id);
-    }
-
-    // Create a fulfiller
-    let (ticker, ts_stopper, stopper, channel) = create_threshold_fulfiller(
-        &config,
-        &nodes_config.unwrap_or_default(),
-        decryption_sender_contract.clone(),
-        blocklock_sender_contract,
-    )?;
-
-    // Create the blocklock agent from a saved state
-    let saved_state = std::fs::read(&config.state_file).unwrap_or_default();
-    let saved_state: BlocklockAgentSavedState =
-        serde_json::from_slice(&saved_state).unwrap_or_default();
-    let mut agent = BlocklockAgent::from_state(
-        BLOCKLOCK_SCHEME_ID,
-        config.chain.sync_batch_size,
-        channel,
-        decryption_sender_contract_ro.clone(),
-        saved_state,
-    )
-    .await?;
-
-    // Setup some signals
-    let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
-    let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
-
-    // Execute the agent and the healthcheck
-    let res = tokio::select! {
-        _ = sigterm.recv() => {
-            println!("received SIGTERM, shutting down...");
-            Ok(())
-        },
-
-        _ = sigint.recv() => {
-            println!("received SIGINT, shutting down...");
-            ts_stopper.cancel();
-            Ok(())
-        },
-
-        _ = tokio::signal::ctrl_c() => {
-            println!("received ctrl+c, shutting down...");
-            Ok(())
-        },
-
-        err = run_agent(&mut agent, ticker, decryption_sender_contract_ro) => {
-            eprintln!("agent stopped unexpectedly...");
-            err // return Result
-        },
-
-        err = start_api(config.healthcheck_port) => {
-            eprintln!("healthcheck stopped unexpectedly...");
-            err // return Result
-        }
-    };
-
-    // Stop the various components
-    ts_stopper.cancel();
-    stopper.stop().await;
-
-    // On success, save the state of the agent
-    if res.is_ok() {
-        let saved_state = agent.save_state();
-        let saved_state = serde_json::to_string_pretty(&saved_state)?;
-        std::fs::write(&config.state_file, saved_state)?;
-        println!(
-            "Saved blocklock agent state to: {}",
-            config.state_file.display()
-        );
-    }
-
-    res
 }

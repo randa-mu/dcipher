@@ -21,85 +21,6 @@ use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::FmtSubscriber;
 
-fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
-    args: &'lt_in RandomnessAgentArgs,
-    nodes_config: &'lt_in NodesConfiguration,
-    signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
-) -> anyhow::Result<(
-    NotifyTicker,
-    CancellationToken,
-    impl Stopper + 'lt_out,
-    impl RequestChannel<Request = SignatureRequest> + 'lt_out,
-)>
-where
-    P: Provider + WalletProvider + Clone + 'static,
-{
-    // Parse key
-    let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().into();
-
-    // Get per-nodes config
-    let (mut pks, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = nodes_config
-        .nodes
-        .iter()
-        .cloned()
-        .map(|c| (c.bls_pk, c.address, c.peer_id, c.node_id.get()))
-        .collect();
-
-    // Add own pk to the list if required
-    if pks.len() == usize::from(args.key_config.n.get() - 1) {
-        let pk = ark_bn254::G2Affine::generator() * sk;
-        pks.insert(
-            usize::from(args.key_config.node_id.get() - 1),
-            pk.into_affine(),
-        );
-    }
-
-    // Create a threshold signer
-    let dst = format!(
-        "dcipher-randomness-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_0x{:064x}_",
-        args.chain
-            .chain_id
-            .expect("chain id must have been set here")
-    )
-    .into_bytes();
-    let cs = BN254SignatureOnG1Signer::new(sk, dst);
-    let ts = ThresholdSigner::new(
-        cs,
-        args.key_config.n.get(),
-        args.key_config.t.get(),
-        args.key_config.node_id.get(),
-        pks,
-    );
-
-    let (ts_stopper, signer) = ts.run(
-        args.libp2p.libp2p_key.clone().into(),
-        args.libp2p.libp2p_listen_addr.clone(),
-        addresses,
-        peer_ids,
-        short_ids,
-    );
-
-    // Create a transaction fulfiller
-    let single_call_tx_fulfiller = SignatureFulfiller::new(
-        signature_sender_contract,
-        args.chain.min_confirmations,
-        Duration::from_secs(args.chain.confirmations_timeout_secs),
-        args.chain.gas_buffer_percent,
-    );
-
-    // Create a ticker-based fulfiller
-    let fulfiller = SignatureSenderFulfillerConfig::new_fulfiller(
-        signer,
-        single_call_tx_fulfiller,
-        args.chain.max_tx_per_tick,
-        args.chain.tx_retry_strategy,
-    );
-
-    let ticker = NotifyTicker::default();
-    let (stopper, channel) = fulfiller.run(ticker.clone());
-    Ok((ticker, ts_stopper, stopper, channel))
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let RandomnessAgentConfig {
@@ -187,4 +108,83 @@ async fn main() -> anyhow::Result<()> {
     stopper.stop().await;
 
     res
+}
+
+fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
+    args: &'lt_in RandomnessAgentArgs,
+    nodes_config: &'lt_in NodesConfiguration,
+    signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
+) -> anyhow::Result<(
+    NotifyTicker,
+    CancellationToken,
+    impl Stopper + 'lt_out,
+    impl RequestChannel<Request = SignatureRequest> + 'lt_out,
+)>
+where
+    P: Provider + WalletProvider + Clone + 'static,
+{
+    // Parse key
+    let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().into();
+
+    // Get per-nodes config
+    let (mut pks, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = nodes_config
+        .nodes
+        .iter()
+        .cloned()
+        .map(|c| (c.bls_pk, c.address, c.peer_id, c.node_id.get()))
+        .collect();
+
+    // Add own pk to the list if required
+    if pks.len() == usize::from(args.key_config.n.get() - 1) {
+        let pk = ark_bn254::G2Affine::generator() * sk;
+        pks.insert(
+            usize::from(args.key_config.node_id.get() - 1),
+            pk.into_affine(),
+        );
+    }
+
+    // Create a threshold signer
+    let dst = format!(
+        "dcipher-randomness-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_0x{:064x}_",
+        args.chain
+            .chain_id
+            .expect("chain id must have been set here")
+    )
+    .into_bytes();
+    let cs = BN254SignatureOnG1Signer::new(sk, dst);
+    let ts = ThresholdSigner::new(
+        cs,
+        args.key_config.n.get(),
+        args.key_config.t.get(),
+        args.key_config.node_id.get(),
+        pks,
+    );
+
+    let (ts_stopper, signer) = ts.run(
+        args.libp2p.libp2p_key.clone().into(),
+        args.libp2p.libp2p_listen_addr.clone(),
+        addresses,
+        peer_ids,
+        short_ids,
+    );
+
+    // Create a transaction fulfiller
+    let single_call_tx_fulfiller = SignatureFulfiller::new(
+        signature_sender_contract,
+        args.chain.min_confirmations,
+        Duration::from_secs(args.chain.confirmations_timeout_secs),
+        args.chain.gas_buffer_percent,
+    );
+
+    // Create a ticker-based fulfiller
+    let fulfiller = SignatureSenderFulfillerConfig::new_fulfiller(
+        signer,
+        single_call_tx_fulfiller,
+        args.chain.max_tx_per_tick,
+        args.chain.tx_retry_strategy,
+    );
+
+    let ticker = NotifyTicker::default();
+    let (stopper, channel) = fulfiller.run(ticker.clone());
+    Ok((ticker, ts_stopper, stopper, channel))
 }
