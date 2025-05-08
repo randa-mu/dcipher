@@ -75,7 +75,7 @@ pub trait TransactionFulfiller: Send + Sync + 'static {
 
     type Error: std::error::Error + Send + Sync + 'static;
 
-    fn fulfil_decryption_requests<'lt_self, 'lt_sr, I>(
+    fn fulfil_requests<'lt_self, 'lt_sr, I>(
         &'lt_self self,
         requests: I,
     ) -> BoxFuture<'lt_self, Vec<Result<(), Self::Error>>>

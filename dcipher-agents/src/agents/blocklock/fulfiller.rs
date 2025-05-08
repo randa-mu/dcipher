@@ -93,7 +93,7 @@ where
     type SignedRequest = SignedDecryptionRequest<'static>;
     type Error = BlocklockFulfillerError;
 
-    fn fulfil_decryption_requests<'lt_self, 'lt_sr, I>(
+    fn fulfil_requests<'lt_self, 'lt_sr, I>(
         &'lt_self self,
         requests: I,
     ) -> BoxFuture<'lt_self, Vec<Result<(), Self::Error>>>

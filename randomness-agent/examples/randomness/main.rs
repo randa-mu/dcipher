@@ -1,21 +1,20 @@
 mod arguments_parser;
 mod healthcheck;
 
-use crate::arguments_parser::{BlocklockArgs, BlocklockConfig, NodesConfiguration};
-use crate::healthcheck::start_api;
+use crate::arguments_parser::{NodesConfiguration, RandomnessAgentArgs, RandomnessAgentConfig};
+use crate::healthcheck::healthcheck;
 use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
-use blocklock_agent::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
-use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSavedState};
-use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
-use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
-use dcipher_agents::decryption_sender::contracts::DecryptionSender;
-use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
+use dcipher_agents::agents::randomness::RandomnessAgent;
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
-use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
+use dcipher_agents::signature_sender::contracts::SignatureSender;
+use dcipher_agents::signature_sender::fulfiller::SignatureFulfiller;
+use dcipher_agents::signature_sender::{SignatureRequest, SignatureSenderFulfillerConfig};
+use dcipher_agents::signer::BN254SignatureOnG1Signer;
 use dcipher_agents::signer::threshold_signer::ThresholdSigner;
+use randomness_agent::{NotifyTicker, RANDOMNESS_SCHEME_ID, run_agent};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -24,10 +23,10 @@ use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let BlocklockConfig {
+    let RandomnessAgentConfig {
         mut config,
         nodes_config,
-    } = BlocklockConfig::parse()?;
+    } = RandomnessAgentConfig::parse()?;
 
     // Set logging options
     FmtSubscriber::builder()
@@ -45,12 +44,10 @@ async fn main() -> anyhow::Result<()> {
         .with_recommended_fillers()
         .wallet(wallet)
         .connect_provider(ro_provider.clone());
-    let decryption_sender_contract_ro =
-        DecryptionSender::new(config.chain.decryption_sender_addr, ro_provider);
-    let decryption_sender_contract =
-        DecryptionSender::new(config.chain.decryption_sender_addr, provider.clone());
-    let blocklock_sender_contract =
-        BlocklockSender::new(config.chain.blocklock_sender_addr, provider.clone());
+    let signature_sender_contract_ro =
+        SignatureSender::new(config.chain.signature_sender_addr, ro_provider);
+    let signature_sender_contract =
+        SignatureSender::new(config.chain.signature_sender_addr, provider.clone());
 
     // If chain id is none, fetch it from the provider
     if config.chain.chain_id.is_none() {
@@ -62,22 +59,16 @@ async fn main() -> anyhow::Result<()> {
     let (ticker, ts_stopper, stopper, channel) = create_threshold_fulfiller(
         &config,
         &nodes_config.unwrap_or_default(),
-        decryption_sender_contract.clone(),
-        blocklock_sender_contract,
+        signature_sender_contract.clone(),
     )?;
 
-    // Create the blocklock agent from a saved state
-    let saved_state = std::fs::read(&config.state_file).unwrap_or_default();
-    let saved_state: BlocklockAgentSavedState =
-        serde_json::from_slice(&saved_state).unwrap_or_default();
-    let mut agent = BlocklockAgent::from_state(
-        BLOCKLOCK_SCHEME_ID,
+    // Create a new randomness agent
+    let mut agent = RandomnessAgent::new(
+        RANDOMNESS_SCHEME_ID,
         config.chain.sync_batch_size,
         channel,
-        decryption_sender_contract_ro.clone(),
-        saved_state,
-    )
-        .await?;
+        signature_sender_contract_ro.clone(),
+    );
 
     // Setup some signals
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
@@ -101,12 +92,12 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         },
 
-        err = run_agent(&mut agent, ticker, decryption_sender_contract_ro) => {
+        err = run_agent(&mut agent, ticker, signature_sender_contract_ro) => {
             eprintln!("agent stopped unexpectedly...");
             err // return Result
         },
 
-        err = start_api(config.healthcheck_port) => {
+        err = healthcheck(&config.healthcheck_listen_addr, config.healthcheck_port) => {
             eprintln!("healthcheck stopped unexpectedly...");
             err // return Result
         }
@@ -116,30 +107,18 @@ async fn main() -> anyhow::Result<()> {
     ts_stopper.cancel();
     stopper.stop().await;
 
-    // On success, save the state of the agent
-    if res.is_ok() {
-        let saved_state = agent.save_state();
-        let saved_state = serde_json::to_string_pretty(&saved_state)?;
-        std::fs::write(&config.state_file, saved_state)?;
-        println!(
-            "Saved blocklock agent state to: {}",
-            config.state_file.display()
-        );
-    }
-
     res
 }
 
 fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
-    args: &'lt_in BlocklockArgs,
+    args: &'lt_in RandomnessAgentArgs,
     nodes_config: &'lt_in NodesConfiguration,
-    decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<P>,
-    blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<P>,
+    signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
     CancellationToken,
     impl Stopper + 'lt_out,
-    impl RequestChannel<Request = DecryptionRequest> + 'lt_out,
+    impl RequestChannel<Request = SignatureRequest> + 'lt_out,
 )>
 where
     P: Provider + WalletProvider + Clone + 'static,
@@ -165,15 +144,16 @@ where
     }
 
     // Create a threshold signer
-    let cs = IbeIdentityOnBn254G1Suite::new_signer(
-        b"BLOCKLOCK",
+    let dst = format!(
+        "dcipher-randomness-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_0x{:064x}_",
         args.chain
             .chain_id
-            .expect("chain id must have been set here"),
-        sk,
-    );
+            .expect("chain id must have been set here")
+    )
+    .into_bytes();
+    let cs = BN254SignatureOnG1Signer::new(sk, dst);
     let ts = ThresholdSigner::new(
-        cs.clone(),
+        cs,
         args.key_config.n.get(),
         args.key_config.t.get(),
         args.key_config.node_id.get(),
@@ -189,19 +169,15 @@ where
     );
 
     // Create a transaction fulfiller
-    let single_call_tx_fulfiller = BlocklockFulfiller::new(
-        decryption_sender_contract,
-        blocklock_sender_contract,
+    let single_call_tx_fulfiller = SignatureFulfiller::new(
+        signature_sender_contract,
         args.chain.min_confirmations,
         Duration::from_secs(args.chain.confirmations_timeout_secs),
         args.chain.gas_buffer_percent,
-        args.chain.gas_price_buffer_percent,
-        args.chain.profit_threshold,
     );
 
     // Create a ticker-based fulfiller
-    let fulfiller = DecryptionSenderFulfillerConfig::new_fulfiller(
-        cs,
+    let fulfiller = SignatureSenderFulfillerConfig::new_fulfiller(
         signer,
         single_call_tx_fulfiller,
         args.chain.max_tx_per_tick,

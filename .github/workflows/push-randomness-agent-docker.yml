@@ -1,4 +1,4 @@
-name: build-and-push-docker-rust
+name: push-randomness-agent-docker
 on:
   push:
     branches:
@@ -35,10 +35,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs
+          images: ${{ env.DOCKER_REGISTRY }}/randomness-agent-rs
           labels: |
             maintainer=${{ env.IMAGE_MAINTAINER }}
-            org.opencontainers.image.title=blocklock-agent-rs
+            org.opencontainers.image.title=randomness-agent-rs
             org.opencontainers.image.description="a rust agent for uploading signatures to blockchains"
             org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}
           flavor: |
@@ -71,8 +71,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
-          file: ./blocklock-agent/Dockerfile
+          file: ./randomness-agent/Dockerfile
           cache-from: |
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:main-latest
-          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:${{ steps.meta.outputs.version }},mode=max
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/randomness-agent-rs-cache:${{ steps.meta.outputs.version }}
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/randomness-agent-rs-cache:main-latest
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/randomness-agent-rs-cache:${{ steps.meta.outputs.version }},mode=max
