@@ -22,7 +22,7 @@ use tokio_util::sync::CancellationToken;
 type SignatureGroup<BLS> = <BLS as BlsVerifier>::SignatureGroup;
 
 type SignatureOrChannel<BLS> =
-    Either<SignatureGroup<BLS>, tokio::sync::oneshot::Sender<SignatureGroup<BLS>>>;
+    Either<SignatureGroup<BLS>, tokio::sync::watch::Sender<Option<SignatureGroup<BLS>>>>;
 
 type SharedSignatureCache<BLS> = Arc<std::sync::Mutex<LruCache<Vec<u8>, SignatureOrChannel<BLS>>>>;
 
@@ -341,11 +341,7 @@ where
                 signatures_cache.put(message, Either::Left(sig))
             {
                 // If there previously was a channel stored at the entry, also send signature through it
-                if tx_channel.send(sig).is_err() {
-                    tracing::warn!(
-                        "Failed to notify of a new signature through oneshot channel: the future was dropped early"
-                    );
-                }
+                tx_channel.send_replace(Some(sig));
             }
         }
     }
@@ -353,11 +349,11 @@ where
 
 #[derive(thiserror::Error, Copy, Clone, Debug)]
 pub enum AsyncThresholdSignerError {
-    #[error("cannot wait on the same message to sign twice")]
-    MessageAlreadyRegistered,
-
     #[error("the message to sign has been dropped from cache")]
     DroppedFromCache,
+
+    #[error("the watch sender has been dropped")]
+    WatchSenderDropped,
 
     #[error("the channel used to request signatures has been closed")]
     CannotRequestNewSignatures,
@@ -381,15 +377,14 @@ where
         async move {
             // We have three possibilities here:
             //  1. The message is not yet present in the map
-            //      => we notify of a new message, insert a oneshot sender in the map, and
-            //         return a future awaiting the signature through the oneshot receiver.
+            //      => a. insert a watch sender in the map,
+            //         b. we notify of a new message,
+            //         c. return a future awaiting the signature through the watch receiver.
             //  2. The message is in the map
             //    2a. it contains a signature
             //         => return a future that resolves immediately with the signature
-            //    2b. it contains a oneshot sender
-            //         => return an error (cannot await on the same signature twice)
-            //            this could be fixed by using a broadcast channel / vec of oneshot
-            //            senders / wakeup notification + fetching signature
+            //    2b. it contains a watch sender
+            //         => do 1.b. and 1.c.
 
             let signature_or_receiver = {
                 let mut signatures_cache = self
@@ -397,14 +392,10 @@ where
                     .lock()
                     .expect("a thread panicked with the mutex");
 
-                // Use a OnceCell to only create a oneshot tx/rx pair if necessary
-                let mut lazy_rx = std::cell::OnceCell::new();
-
                 // This may drop the LRU entry from the map, which results in the
                 // future owning the corresponding receiver resolving in an error.
                 let signature_or_sender = signatures_cache.get_or_insert(m.clone(), || {
-                    let (tx, rx) = tokio::sync::oneshot::channel();
-                    lazy_rx.set(rx).expect("cannot have been initialized");
+                    let (tx, _) = tokio::sync::watch::channel(None);
                     Either::Right(tx)
                 });
 
@@ -414,18 +405,15 @@ where
                         Ok(Either::Left(signature.to_owned()))
                     }
 
-                    Either::Right(_) => {
-                        // if lazy_rx has been set, we inserted a new item to the map
-                        if let Some(rx) = lazy_rx.take() {
-                            // Notify of the new message to sign
-                            self.new_message_to_sign.send(m.to_vec()).map_err(|_| {
-                                AsyncThresholdSignerError::CannotRequestNewSignatures
-                            })?;
+                    Either::Right(tx) => {
+                        let rx = tx.subscribe();
 
-                            Ok(Either::Right(rx))
-                        } else {
-                            Err(AsyncThresholdSignerError::MessageAlreadyRegistered)
-                        }
+                        // Notify of the new message to sign
+                        self.new_message_to_sign
+                            .send(m.to_vec())
+                            .map_err(|_| AsyncThresholdSignerError::CannotRequestNewSignatures)?;
+
+                        Ok(Either::Right(rx))
                     }
                 }
             }?;
@@ -433,9 +421,26 @@ where
             // If the signature was cached, return immediately
             match signature_or_receiver {
                 Either::Left(signature) => Ok(signature),
-                Either::Right(rx) => rx
-                    .await
-                    .map_err(|_| AsyncThresholdSignerError::DroppedFromCache),
+                Either::Right(mut rx) => {
+                    // A signature may already be in the channel, borrow it and mark it as seen
+                    let signature = *rx.borrow_and_update();
+
+                    if let Some(sig) = signature {
+                        // If it contains a signature, simply return
+                        Ok(sig)
+                    } else {
+                        // Does not yet contain a signature, await for a change and return
+                        match rx.changed().await {
+                            Ok(()) => {
+                                let sig = rx
+                                    .borrow_and_update()
+                                    .expect("watch channel updated but sig is None");
+                                Ok(sig)
+                            }
+                            Err(_) => Err(AsyncThresholdSignerError::WatchSenderDropped)?,
+                        }
+                    }
+                }
             }
         }
     }

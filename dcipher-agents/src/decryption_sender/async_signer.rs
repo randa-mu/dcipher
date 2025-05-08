@@ -6,40 +6,16 @@ use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
 use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
-use itertools::Either;
-use lru::LruCache;
 use std::borrow::Cow;
-use std::num::NonZeroUsize;
-use std::sync::Arc;
 
-/// Maximum number of parallel signature requests allowed before dropping old requests.
-const MAX_PARALLEL_REQUESTS: usize = 64;
-
-type SharedMaybeSignatureData<CS, E> = Arc<tokio::sync::RwLock<Option<SignatureData<CS, E>>>>;
-
-pub struct DecryptionSenderAsyncSigner<CS, AsyncSigner, M>
-where
-    CS: PairingIbeCipherSuite,
-    AsyncSigner: AsynchronousSigner<M>,
-{
+pub struct DecryptionSenderAsyncSigner<CS, AsyncSigner> {
     cs: CS,
     signer: AsyncSigner,
-    requests: tokio::sync::Mutex<LruCache<Bytes, SharedMaybeSignatureData<CS, AsyncSigner::Error>>>,
 }
 
-impl<CS, AsyncSigner, M> DecryptionSenderAsyncSigner<CS, AsyncSigner, M>
-where
-    CS: PairingIbeCipherSuite,
-    AsyncSigner: AsynchronousSigner<M>,
-{
+impl<CS, AsyncSigner> DecryptionSenderAsyncSigner<CS, AsyncSigner> {
     pub fn new(cs: CS, signer: AsyncSigner) -> Self {
-        Self {
-            cs,
-            signer,
-            requests: tokio::sync::Mutex::new(LruCache::new(
-                const { NonZeroUsize::new(MAX_PARALLEL_REQUESTS).unwrap() }, // cache with 64 messages
-            )),
-        }
+        Self { cs, signer }
     }
 }
 
@@ -55,78 +31,8 @@ where
     UnderlyingAsyncSigner(#[source] AsyncSignerError),
 }
 
-type SignatureData<CS, E> = Result<
-    (
-        Cow<'static, Bytes>,
-        <CS as PairingIbeCipherSuite>::IdentityGroup,
-    ),
-    E,
->;
-
-impl<CS, AsyncSigner> DecryptionSenderAsyncSigner<CS, AsyncSigner, Bytes>
-where
-    CS: PairingIbeCipherSuite + Send + Sync,
-    CS::IdentityGroup: EvmSerialize,
-    AsyncSigner: AsynchronousSigner<Bytes, Signature = CS::IdentityGroup> + Send + Sync,
-    AsyncSigner::Error: Clone,
-{
-    pub async fn await_signature(
-        &self,
-        m: Bytes,
-    ) -> SignatureData<CS, DecryptionSenderAsyncSignerError<AsyncSigner::Error>> {
-        let write_or_read_lock = {
-            let mut new_request = false;
-            let mut requests_lock_guard = self.requests.lock().await;
-            let signature_data = requests_lock_guard
-                .get_or_insert(m.clone(), || {
-                    // If the FnOnce is called, we insert a new entry
-                    new_request = true;
-                    Arc::new(tokio::sync::RwLock::new(None))
-                })
-                .to_owned();
-
-            if new_request {
-                // New request => we have a newly created RwLock. This future will be
-                // responsible to request the signature, and write it back.
-                // We still hold a lock to self.requests here, so nobody can get a hold of
-                // the rw lock before us.
-                let signature_data_lock = signature_data.write_owned().await;
-                Either::Left(signature_data_lock)
-            } else {
-                // Otherwise, we create a future that will get resolved upon releasing the write lock
-                Either::Right(signature_data.read_owned()) // cannot wait here - still holding another lock
-            }
-        };
-
-        match write_or_read_lock {
-            Either::Left(mut write_lock) => {
-                // Wait for a signature from the async signer
-                let sig_data = match self.signer.async_sign(m.clone()).await {
-                    Ok(sig) => {
-                        let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
-                        Ok((sig_bytes, sig))
-                    }
-                    Err(e) => Err(e),
-                };
-
-                // Save the data, and drop write lock
-                //  => read lock will be acquired by all awaiting futures
-                *write_lock = Some(sig_data.clone());
-                sig_data
-            }
-            Either::Right(read_lock) => read_lock
-                // await the release of the write lock
-                .await
-                .as_ref()
-                .cloned()
-                .expect("ready lock should only resolve when signature data is some"),
-        }
-        .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)
-    }
-}
-
 impl<CS, AsyncSigner> AsynchronousSigner<DecryptionRequest>
-    for DecryptionSenderAsyncSigner<CS, AsyncSigner, Bytes>
+    for DecryptionSenderAsyncSigner<CS, AsyncSigner>
 where
     CS: PairingIbeCipherSuite + Send + Sync,
     CS::IdentityGroup: EvmSerialize,
@@ -139,28 +45,40 @@ where
     type Error = DecryptionSenderAsyncSignerError<AsyncSigner::Error>;
     type Signature = SignedDecryptionRequest<'static>;
 
-    async fn async_sign(&self, req: DecryptionRequest) -> Result<Self::Signature, Self::Error> {
-        // Await signature
-        let (sig_bytes, sig) = self.await_signature(req.condition.clone()).await?;
+    fn async_sign(
+        &self,
+        req: DecryptionRequest,
+    ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
+        async move {
+            // Await signature
+            // TODO: The new refactor makes the Cow used for sig_bytes useless.
+            let sig = self
+                .signer
+                .async_sign(req.condition.clone())
+                .await
+                .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
 
-        // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
-        let request_id = req.id;
-        let ct: CS::Ciphertext = match req.try_into() {
-            Ok(ct) => ct,
-            Err(e) => {
-                // If we fail to generate keys, it is likely due to an invalid ephemeral public key / ciphertext,
-                // not much we can do here.
-                tracing::error!(error = %e, %request_id, "Failed to generate decryption keys / signature... ignoring request");
-                Err(DecryptionSenderAsyncSignerError::ParseCiphertext(e.into()))?
-            }
-        };
-        let preprocessed_key = self.cs.preprocess_decryption_key(sig, ct.ephemeral_pk());
+            let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
 
-        Ok(SignedDecryptionRequest::new(
-            request_id,
-            Bytes::from(preprocessed_key.as_ref().to_vec()),
-            sig_bytes.clone(),
-        ))
+            // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
+            let request_id = req.id;
+            let ct: CS::Ciphertext = match req.try_into() {
+                Ok(ct) => ct,
+                Err(e) => {
+                    // If we fail to generate keys, it is likely due to an invalid ephemeral public key / ciphertext,
+                    // not much we can do here.
+                    tracing::error!(error = %e, %request_id, "Failed to generate decryption keys / signature... ignoring request");
+                    Err(DecryptionSenderAsyncSignerError::ParseCiphertext(e.into()))?
+                }
+            };
+            let preprocessed_key = self.cs.preprocess_decryption_key(sig, ct.ephemeral_pk());
+
+            Ok(SignedDecryptionRequest::new(
+                request_id,
+                Bytes::from(preprocessed_key.as_ref().to_vec()),
+                sig_bytes,
+            ))
+        }
     }
 }
 
@@ -176,11 +94,9 @@ pub(crate) mod tests {
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
-    use lru::LruCache;
     use std::collections::HashMap;
-    use std::num::NonZeroUsize;
     use std::sync::Arc;
-    use tokio::sync::oneshot;
+    use tokio::sync::watch;
 
     pub(crate) fn create_ciphertext(eph_pk: ark_bn254::G2Affine) -> Bytes {
         let (x, y) = eph_pk.xy().unwrap();
@@ -197,12 +113,20 @@ pub(crate) mod tests {
     #[error("mock signer error")]
     struct MockSignerError;
 
-    type SignatureResult = Result<ark_bn254::G1Affine, MockSignerError>;
+    type SignatureResult = Option<Result<ark_bn254::G1Affine, MockSignerError>>;
 
     #[derive(Clone)]
     struct MockAsyncSigner {
-        receivers: Arc<tokio::sync::Mutex<HashMap<Bytes, oneshot::Receiver<SignatureResult>>>>,
-        senders: Arc<std::sync::Mutex<HashMap<Bytes, oneshot::Sender<SignatureResult>>>>,
+        receivers: Arc<
+            tokio::sync::Mutex<
+                HashMap<Bytes, watch::Receiver<SignatureResult>>,
+            >,
+        >,
+        senders: Arc<
+            std::sync::Mutex<
+                HashMap<Bytes, watch::Sender<SignatureResult>>,
+            >,
+        >,
     }
 
     impl MockAsyncSigner {
@@ -210,7 +134,7 @@ pub(crate) mod tests {
             let (txs, rxs): (Vec<_>, Vec<_>) = conditions
                 .into_iter()
                 .map(|c| {
-                    let (tx, rx) = oneshot::channel();
+                    let (tx, rx) = watch::channel(None);
                     ((c.clone(), tx), (c, rx))
                 })
                 .collect();
@@ -235,7 +159,7 @@ pub(crate) mod tests {
                 .expect("task holding mutex panicked")
                 .remove(condition)
                 .expect("condition not found");
-            tx.send(result).expect("failed to set response");
+            tx.send_replace(Some(result));
         }
     }
 
@@ -243,20 +167,37 @@ pub(crate) mod tests {
         type Error = MockSignerError;
         type Signature = ark_bn254::G1Affine;
 
-        async fn async_sign(&self, m: Bytes) -> Result<Self::Signature, Self::Error> {
-            let rx = self
-                .receivers
-                .lock()
-                .await
-                .remove(&m)
-                .expect("no receiver found for condition");
-            rx.await.unwrap_or(Err(MockSignerError))
+        fn async_sign(
+            &self,
+            m: Bytes,
+        ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
+            async move {
+                let mut rx = self
+                    .receivers
+                    .lock()
+                    .await
+                    .get(&m)
+                    .expect("no receiver found for condition")
+                    .clone();
+                rx.changed().await.expect("failed to await has_changed");
+
+                rx.borrow_and_update().clone().unwrap()
+            }
+        }
+    }
+
+    fn new_decryption_request(condition: Bytes) -> DecryptionRequest {
+        let ct = create_ciphertext(ark_bn254::G2Affine::generator());
+        DecryptionRequest {
+            id: U256::ZERO,
+            ciphertext: ct,
+            condition,
         }
     }
 
     #[tokio::test]
     async fn test_different_conditions_concurrent_requests() {
-        let global_timeout = std::time::Duration::from_millis(200);
+        let global_timeout = std::time::Duration::from_millis(2000);
 
         // Create two different conditions
         let condition1 = Bytes::from(vec![1, 3, 5, 7]);
@@ -270,7 +211,6 @@ pub(crate) mod tests {
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs,
             signer: mock_signer.clone(),
-            requests: tokio::sync::Mutex::new(LruCache::new(NonZeroUsize::new(10).unwrap())),
         });
 
         // Spawn two background tasks that request sigs and send it back through a channel
@@ -280,7 +220,9 @@ pub(crate) mod tests {
             let condition = condition1.clone();
             let tx = tx.clone();
             async move {
-                let res = decryption_sender.await_signature(condition).await;
+                let res = decryption_sender
+                    .async_sign(new_decryption_request(condition))
+                    .await;
                 tx.send(res).await.expect("failed to send response");
             }
         });
@@ -288,7 +230,9 @@ pub(crate) mod tests {
             let decryption_sender = decryption_sender.clone();
             let condition = condition2.clone();
             async move {
-                let res = decryption_sender.await_signature(condition).await;
+                let res = decryption_sender
+                    .async_sign(new_decryption_request(condition))
+                    .await;
                 tx.send(res).await.expect("failed to send response");
             }
         });
@@ -303,7 +247,10 @@ pub(crate) mod tests {
         assert!(sig2_result.is_some(), "Second signature should be resolved");
         let sig2 = sig2_result.unwrap();
         assert!(sig2.is_ok(), "Second signature should succeed");
-        assert_eq!(sig2.unwrap().1, exp_sig2);
+        assert_eq!(
+            sig2.unwrap().signature.into_owned(),
+            EvmSerialize::ser_bytes(&exp_sig2)
+        );
 
         // Set the response for the first request
         mock_signer.set_response(&condition1, Ok(exp_sig1));
@@ -315,7 +262,10 @@ pub(crate) mod tests {
         assert!(sig1_result.is_some(), "First signature should be resolved");
         let sig1 = sig1_result.unwrap();
         assert!(sig1.is_ok(), "First signature should succeed");
-        assert_eq!(sig1.unwrap().1, exp_sig1);
+        assert_eq!(
+            sig1.unwrap().signature.into_owned(),
+            EvmSerialize::ser_bytes(&exp_sig1)
+        );
     }
 
     #[tokio::test]
@@ -332,7 +282,6 @@ pub(crate) mod tests {
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs,
             signer: mock_signer.clone(),
-            requests: tokio::sync::Mutex::new(LruCache::new(NonZeroUsize::new(10).unwrap())),
         });
 
         // Spawn two background tasks that request sigs and send it back through a channel
@@ -342,7 +291,9 @@ pub(crate) mod tests {
             let condition = condition.clone();
             let tx = tx.clone();
             async move {
-                let res = decryption_sender.await_signature(condition).await;
+                let res = decryption_sender
+                    .async_sign(new_decryption_request(condition))
+                    .await;
                 tx.send(res).await.expect("failed to send response");
             }
         });
@@ -350,7 +301,9 @@ pub(crate) mod tests {
             let decryption_sender = decryption_sender.clone();
             let condition = condition.clone();
             async move {
-                let res = decryption_sender.await_signature(condition).await;
+                let res = decryption_sender
+                    .async_sign(new_decryption_request(condition))
+                    .await;
                 tx.send(res).await.expect("failed to send response");
             }
         });
@@ -365,7 +318,10 @@ pub(crate) mod tests {
         assert!(sig_result.is_some(), "sig should be resolved");
         let sig = sig_result.unwrap();
         assert!(sig.is_ok(), "sig should be ok");
-        assert_eq!(sig.unwrap().1, exp_sig);
+        assert_eq!(
+            sig.unwrap().signature.into_owned(),
+            EvmSerialize::ser_bytes(&exp_sig)
+        );
 
         // Wait for a second signature to be sent through the rx channel
         let sig_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -374,7 +330,10 @@ pub(crate) mod tests {
         assert!(sig_result.is_some(), "sig should be resolved");
         let sig = sig_result.unwrap();
         assert!(sig.is_ok(), "sig should be ok");
-        assert_eq!(sig.unwrap().1, exp_sig);
+        assert_eq!(
+            sig.unwrap().signature.into_owned(),
+            EvmSerialize::ser_bytes(&exp_sig)
+        );
     }
 
     #[tokio::test]
@@ -390,7 +349,6 @@ pub(crate) mod tests {
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs,
             signer: mock_signer.clone(),
-            requests: tokio::sync::Mutex::new(LruCache::new(NonZeroUsize::new(10).unwrap())),
         });
 
         // Spawn two background tasks that request sigs and send it back through a channel
@@ -400,7 +358,9 @@ pub(crate) mod tests {
             let condition = condition.clone();
             let tx = tx.clone();
             async move {
-                let res = decryption_sender.await_signature(condition).await;
+                let res = decryption_sender
+                    .async_sign(new_decryption_request(condition))
+                    .await;
                 tx.send(res).await.expect("failed to send response");
             }
         });
@@ -408,7 +368,9 @@ pub(crate) mod tests {
             let decryption_sender = decryption_sender.clone();
             let condition = condition.clone();
             async move {
-                let res = decryption_sender.await_signature(condition).await;
+                let res = decryption_sender
+                    .async_sign(new_decryption_request(condition))
+                    .await;
                 tx.send(res).await.expect("failed to send response");
             }
         });
@@ -447,7 +409,6 @@ pub(crate) mod tests {
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs: cs.clone(),
             signer: mock_signer.clone(),
-            requests: tokio::sync::Mutex::new(LruCache::new(NonZeroUsize::new(10).unwrap())),
         });
 
         // Setup the request and response
