@@ -1,0 +1,72 @@
+name: rust-build-and-tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}-dcipher
+  cancel-in-progress: true
+
+jobs:
+  rust-build-and-tests:
+    name: Build and test rust crates
+    runs-on: ["randamu-self-hosted-default"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '>=22.3.0'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      # 1. Compile blocklock-solidity
+      - name: blocklock-solidity - Install dependencies
+        working-directory: ./blocklock-solidity
+        run: npm ci
+
+      - name: blocklock-solidity - Build Solidity contracts
+        working-directory: ./blocklock-solidity
+        run: npm run build:forge
+
+      # 2. Compile randomness-solidity
+      - name: randomness-solidity - Install dependencies
+        working-directory: ./randomness-solidity
+        run: npm ci
+
+      - name: randomness-solidity - Build Solidity contracts
+        working-directory: ./randomness-solidity
+        run: npm run build:forge
+
+      # 3. Build and test dcipher-agents
+      - name: dcipher-agents - Check formatting
+        working-directory: ./dcipher-agents
+        run: cargo fmt --check
+
+      - name: dcipher-agents - Check clippy
+        working-directory: ./dcipher-agents
+        run: cargo clippy --all-features --all-targets -- -Dwarnings
+
+      - name: dcipher-agents - Run all tests
+        working-directory: ./dcipher-agents
+        run: cargo test --all-features --all-targets
+
+      # 4. Build and test blocklock-agent
+      - name: blocklock-agent - Check formatting
+        working-directory: ./blocklock-agent
+        run: cargo fmt --check
+
+      - name: blocklock-agent - Check clippy
+        working-directory: ./blocklock-agent
+        run: cargo clippy --all-features --all-targets -- -Dwarnings
+
+      - name: blocklock-agent - Run all tests
+        working-directory: ./blocklock-agent
+        run: cargo test --all-features --all-targets
