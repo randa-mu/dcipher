@@ -1,4 +1,4 @@
-//! Solidity imports related to the decryption sender.
+//! Solidity imports related to the signature sender.
 
 alloy::sol!(
     #[derive(Debug)]

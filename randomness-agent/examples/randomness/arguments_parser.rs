@@ -70,7 +70,7 @@ pub struct ChainArgs {
     #[arg(long, env = "RANDOMNESS_MIN_CONFIRMATIONS", default_value = "1")]
     pub min_confirmations: u64,
 
-    /// Minimum number of confirmations to wait for before considering a transaction confirmed
+    /// Maximum time in seconds to wait for the confirmations to be reached before considering it failed
     #[arg(long, env = "RANDOMNESS_CONFIRMATIONS_TIMEOUT", default_value = "60")]
     pub confirmations_timeout_secs: u64,
 
