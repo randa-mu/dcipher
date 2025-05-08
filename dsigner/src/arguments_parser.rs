@@ -37,8 +37,7 @@ pub struct Args {
     /// The logging level for structured JSON logging
     /// Can be "info", "debug", "error", or "trace"
     #[arg(long, env = "DSIGNER_LOG_LEVEL", default_value = "info")]
-    #[serde(with = "serde_to_string_from_str")]
-    pub log_level: tracing::Level,
+    pub log_level: String,
 }
 
 #[derive(Parser, Serialize, Deserialize, Debug)]

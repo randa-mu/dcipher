@@ -16,7 +16,9 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::FmtSubscriber;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 // Request structure for the sign endpoint
 #[derive(Deserialize)]
@@ -152,9 +154,9 @@ async fn main() -> anyhow::Result<()> {
         nodes_config,
     } = DSignerConfig::parse()?;
 
-    // Set logging options
-    FmtSubscriber::builder()
-        .with_max_level(config.log_level)
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from(&config.log_level))
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     // Initialize and start a threshold signer
@@ -185,6 +187,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/sign", post(sign_handler))
         .route("/pk", get(pk_handler))
         .route("/healthcheck", get(healthcheck_handler))
+        .layer(TraceLayer::new_for_http())
         .with_state(app_state);
 
     // Run the server
