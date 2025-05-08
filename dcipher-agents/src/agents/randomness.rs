@@ -10,6 +10,7 @@ use alloy::primitives::U256;
 use alloy::primitives::ruint::FromUintError;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
 use std::ops::{Add, Sub};
+use tracing::Instrument;
 
 #[derive(thiserror::Error, Debug)]
 enum InternalRandomnessAgentError {
@@ -195,18 +196,18 @@ where
                     let (req_ids, multicall) =
                         Self::create_multicall_with_ids(batch.into_iter(), signature_sender);
 
-                    tracing::debug_span!("requests_multicall", batch_id = batch_id);
                     tracing::debug!(
                         "Sending aggregate call to rpc to recover {} missing requests",
                         batch_size
                     );
-                    let batched_requests = match multicall.aggregate().await {
-                        Ok(requests) => requests,
-                        Err(e) => {
+                    let batched_requests = multicall
+                        .aggregate()
+                        .instrument(tracing::debug_span!("requests_multicall", batch_id = batch_id))
+                        .await
+                        .map_err(|e| {
                             tracing::error!(error = ?e, "Failed to execute multicall");
-                            Err(e)?
-                        }
-                    };
+                            e
+                        })?;
 
                     // Filter only valid requests, i.e., that have a valid scheme id, and,
                     // optionally, that are unfulfilled.
