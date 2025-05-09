@@ -16,10 +16,7 @@ COPY ./blocklock-solidity/package-lock.json ./
 RUN npm install
 
 COPY ./blocklock-solidity ./
-# forge needs git folder smh
-COPY ./.git ../.git
-# compile contracts
-RUN npm run build:forge
+RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
 
 FROM sol_builder AS sol_randomness
 WORKDIR /app/randomness-solidity
@@ -28,10 +25,7 @@ COPY ./randomness-solidity/package-lock.json ./
 RUN npm install
 
 COPY ./randomness-solidity ./
-# forge needs git folder smh
-COPY ./.git ../.git
-# compile contracts
-RUN npm run build:forge
+RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
