@@ -25,8 +25,11 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
 
     let sync_success = IntCounter::new("sync_success_total", "Successful syncs")
         .expect("metrics failed to initialise");
-    let decryption_requests = IntCounter::new("decryption_requested_total", "Decryptions requested that don't yet have their conditions met")
-        .expect("metrics failed to initialise");
+    let decryption_requests = IntCounter::new(
+        "decryption_requested_total",
+        "Decryptions requested that don't yet have their conditions met",
+    )
+    .expect("metrics failed to initialise");
     let decryption_success = IntCounter::new("decryption_success_total", "Successful decryptions")
         .expect("metrics failed to initialise");
 
@@ -57,25 +60,37 @@ impl Metrics {
     pub fn report_missing_events(count: u64) {
         METRICS.missing_events.inc_by(count)
     }
-    
+
     pub fn report_sync_success() {
         METRICS.sync_success.inc()
     }
-    
+
     pub fn report_sync_error() {
-        METRICS.errors_total.with_label_values(&["sync_error"]).inc();
+        METRICS
+            .errors_total
+            .with_label_values(&["sync_error"])
+            .inc();
     }
 
     pub fn report_scheme_error() {
-        METRICS.errors_total.with_label_values(&["invalid_scheme"]).inc();
+        METRICS
+            .errors_total
+            .with_label_values(&["invalid_scheme"])
+            .inc();
     }
-    
+
     pub fn report_storage_error() {
-        METRICS.errors_total.with_label_values(&["storage_error"]).inc();
+        METRICS
+            .errors_total
+            .with_label_values(&["storage_error"])
+            .inc();
     }
 
     pub fn report_fetch_requests_error() {
-        METRICS.errors_total.with_label_values(&["fetch_requests_error"]).inc();
+        METRICS
+            .errors_total
+            .with_label_values(&["fetch_requests_error"])
+            .inc();
     }
 
     pub fn report_decryption_requested() {
@@ -87,7 +102,10 @@ impl Metrics {
     }
 
     pub fn report_decryption_error() {
-        METRICS.errors_total.with_label_values(&["decryption_error"]).inc();
+        METRICS
+            .errors_total
+            .with_label_values(&["decryption_error"])
+            .inc();
     }
 
     pub fn gather() -> Vec<MetricFamily> {
