@@ -43,14 +43,14 @@ jobs:
         working-directory: ./blocklock-solidity
         run: npm run build:forge
 
-#      # 2. Compile randomness-solidity
-#      - name: randomness-solidity - Install dependencies
-#        working-directory: ./randomness-solidity
-#        run: npm ci
-#
-#      - name: randomness-solidity - Build Solidity contracts
-#        working-directory: ./randomness-solidity
-#        run: npm run build:forge
+      # 2. Compile randomness-solidity
+      - name: randomness-solidity - Install dependencies
+        working-directory: ./randomness-solidity
+        run: npm ci
+
+      - name: randomness-solidity - Build Solidity contracts
+        working-directory: ./randomness-solidity
+        run: npm run build:forge
 
       # 3. Build and test dcipher-agents
       - name: dcipher-agents - Check formatting
@@ -76,4 +76,17 @@ jobs:
 
       - name: blocklock-agent - Run all tests
         working-directory: ./blocklock-agent
+        run: cargo test --all-features --all-targets
+
+      # 4. Build and test randomness-agent
+      - name: randomness-agent - Check formatting
+        working-directory: ./randomness-agent
+        run: cargo fmt --check
+
+      - name: randomness-agent - Check clippy
+        working-directory: ./randomness-agent
+        run: cargo clippy --all-features --all-targets -- -Dwarnings
+
+      - name: randomness-agent - Run all tests
+        working-directory: ./randomness-agent
         run: cargo test --all-features --all-targets
