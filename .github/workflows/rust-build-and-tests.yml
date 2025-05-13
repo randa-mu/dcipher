@@ -20,20 +20,6 @@ jobs:
           submodules: 'true'
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '>=22.3.0'
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
-
-      # Set up latest Rust toolchain
-      - name: Set up latest Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-
       # 1. Compile blocklock-solidity
       - name: blocklock-solidity - Install dependencies
         working-directory: ./blocklock-solidity
