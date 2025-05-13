@@ -3,11 +3,9 @@ description: 'Runs format check, clippy, and tests for a Rust crate'
 inputs:
   working-directory:
     required: true
-    type: string
     description: 'Directory containing the Rust crate'
   additional-flags:
     required: false
-    type: string
     default: ''
     description: 'Additional flags for cargo commands'
 
