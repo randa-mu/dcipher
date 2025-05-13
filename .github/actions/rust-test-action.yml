@@ -1,0 +1,30 @@
+name: 'Rust Test Action'
+description: 'Runs format check, clippy, and tests for a Rust crate'
+inputs:
+  working-directory:
+    required: true
+    type: string
+    description: 'Directory containing the Rust crate'
+  additional-flags:
+    required: false
+    type: string
+    default: ''
+    description: 'Additional flags for cargo commands'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check formatting
+      working-directory: ${{ inputs.working-directory }}
+      run: cargo fmt --check ${{ inputs.additional-flags }}
+      shell: bash
+
+    - name: Check clippy
+      working-directory: ${{ inputs.working-directory }}
+      run: cargo clippy --all-features --all-targets -- -Dwarnings ${{ inputs.additional-flags }}
+      shell: bash
+
+    - name: Run all tests
+      working-directory: ${{ inputs.working-directory }}
+      run: cargo test --all-features --all-targets ${{ inputs.additional-flags }}
+      shell: bash

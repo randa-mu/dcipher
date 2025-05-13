@@ -53,40 +53,19 @@ jobs:
         run: npm run build:forge
 
       # 3. Build and test dcipher-agents
-      - name: dcipher-agents - Check formatting
-        working-directory: ./dcipher-agents
-        run: cargo fmt --check
-
-      - name: dcipher-agents - Check clippy
-        working-directory: ./dcipher-agents
-        run: cargo clippy --all-features --all-targets -- -Dwarnings
-
-      - name: dcipher-agents - Run all tests
-        working-directory: ./dcipher-agents
-        run: cargo test --all-features --all-targets
+      - name: dcipher-agents
+        uses: ./.github/actions/rust-test-action
+        with:
+          working-directory: ./dcipher-agents
 
       # 4. Build and test blocklock-agent
-      - name: blocklock-agent - Check formatting
-        working-directory: ./blocklock-agent
-        run: cargo fmt --check
-
-      - name: blocklock-agent - Check clippy
-        working-directory: ./blocklock-agent
-        run: cargo clippy --all-features --all-targets -- -Dwarnings
-
-      - name: blocklock-agent - Run all tests
-        working-directory: ./blocklock-agent
-        run: cargo test --all-features --all-targets
+      - name: blocklock-agent
+        uses: ./.github/actions/rust-test-action
+        with:
+          working-directory: ./blocklock-agent
 
       # 4. Build and test randomness-agent
-      - name: randomness-agent - Check formatting
-        working-directory: ./randomness-agent
-        run: cargo fmt --check
-
-      - name: randomness-agent - Check clippy
-        working-directory: ./randomness-agent
-        run: cargo clippy --all-features --all-targets -- -Dwarnings
-
-      - name: randomness-agent - Run all tests
-        working-directory: ./randomness-agent
-        run: cargo test --all-features --all-targets
+      - name: randomness-agent
+        uses: ./.github/actions/rust-test-action
+        with:
+          working-directory: ./randomness-agent
