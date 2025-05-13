@@ -21,16 +21,14 @@ where
     type Error = AsyncSigner::Error;
     type Signature = SignedSignatureRequest;
 
-    fn async_sign(
+    async fn async_sign(
         &self,
         req: SignatureRequest,
-    ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
-        async move {
-            let sig = self.0.async_sign(req.message_to_sign).await?;
-            Ok(SignedSignatureRequest {
-                id: req.id,
-                signature: EvmSerialize::ser_bytes(&sig),
-            })
-        }
+    ) -> Result<Self::Signature, Self::Error> {
+        let sig = self.0.async_sign(req.message_to_sign).await?;
+        Ok(SignedSignatureRequest {
+            id: req.id,
+            signature: EvmSerialize::ser_bytes(&sig),
+        })
     }
 }
