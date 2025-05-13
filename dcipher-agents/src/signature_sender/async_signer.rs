@@ -21,10 +21,7 @@ where
     type Error = AsyncSigner::Error;
     type Signature = SignedSignatureRequest;
 
-    async fn async_sign(
-        &self,
-        req: SignatureRequest,
-    ) -> Result<Self::Signature, Self::Error> {
+    async fn async_sign(&self, req: SignatureRequest) -> Result<Self::Signature, Self::Error> {
         let sig = self.0.async_sign(req.message_to_sign).await?;
         Ok(SignedSignatureRequest {
             id: req.id,
