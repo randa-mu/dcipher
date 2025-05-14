@@ -12,6 +12,11 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Pull cargo nextest binaries
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
+
     - name: Check formatting
       working-directory: ${{ inputs.working-directory }}
       run: cargo fmt --check ${{ inputs.additional-flags }}
@@ -24,5 +29,5 @@ runs:
 
     - name: Run all tests
       working-directory: ${{ inputs.working-directory }}
-      run: cargo test --all-features --all-targets ${{ inputs.additional-flags }}
+      run: cargo nextest run
       shell: bash

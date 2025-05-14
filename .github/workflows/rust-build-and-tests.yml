@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}-dcipher
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   rust-build-and-tests:
     name: Build and test rust crates
@@ -50,7 +53,7 @@ jobs:
         with:
           working-directory: ./blocklock-agent
 
-      # 4. Build and test randomness-agent
+      # 5. Build and test randomness-agent
       - name: randomness-agent
         uses: ./.github/actions/rust-test-action
         with:
