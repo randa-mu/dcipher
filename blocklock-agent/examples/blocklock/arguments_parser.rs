@@ -8,6 +8,7 @@ use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
+use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -29,7 +30,7 @@ pub struct BlocklockArgs {
         env = "BLOCKLOCK_HEALTHCHECK_LISTEN_ADDR",
         default_value = "0.0.0.0"
     )]
-    pub healthcheck_listen_addr: String,
+    pub healthcheck_listen_addr: IpAddr,
 
     /// The port to host the health-check HTTP server
     #[arg(long, env = "BLOCKLOCK_HEALTHCHECK_PORT", default_value = "8080")]

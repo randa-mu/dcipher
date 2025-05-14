@@ -751,7 +751,7 @@ mod tests {
                 fulfillment_flat_fee_native_ppm,
                 wei_per_unit_gas,
                 bls_pairing_check_overhead,
-                native_premium_percentage
+                native_premium_percentage,
             )
             .send()
             .await

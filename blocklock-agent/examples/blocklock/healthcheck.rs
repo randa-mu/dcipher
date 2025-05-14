@@ -1,10 +1,11 @@
 use anyhow::anyhow;
 use dcipher_agents::agents::blocklock::metrics::Metrics;
 use prometheus::{Encoder, TextEncoder};
-use warp::http::StatusCode;
+use std::net::IpAddr;
 use warp::Filter;
+use warp::http::StatusCode;
 
-pub async fn start_api(port: u16) -> anyhow::Result<()> {
+pub async fn start_api(listen_addr: IpAddr, port: u16) -> anyhow::Result<()> {
     let health = warp::path!("health")
         .map(warp::reply)
         .map(|reply| warp::reply::with_status(reply, StatusCode::OK));
@@ -26,6 +27,6 @@ pub async fn start_api(port: u16) -> anyhow::Result<()> {
     });
 
     let routes = health.or(metrics);
-    warp::serve(routes).run(([0, 0, 0, 0], port)).await;
+    warp::serve(routes).run((listen_addr, port)).await;
     Err(anyhow!("HTTP API server stopped"))
 }

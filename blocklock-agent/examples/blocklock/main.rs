@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
         decryption_sender_contract_ro.clone(),
         saved_state,
     )
-        .await?;
+    .await?;
 
     // Setup some signals
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
@@ -106,7 +106,7 @@ async fn main() -> anyhow::Result<()> {
             err // return Result
         },
 
-        err = start_api(config.healthcheck_port) => {
+        err = start_api(config.healthcheck_listen_addr, config.healthcheck_port) => {
             eprintln!("healthcheck stopped unexpectedly...");
             err // return Result
         }
