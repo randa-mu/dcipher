@@ -4,6 +4,10 @@ inputs:
   working-directory:
     required: true
     description: 'Directory containing the Rust crate'
+  target-folder:
+    required: false
+    default: './target'
+    description: 'Target folder used for building'
   additional-flags:
     required: false
     default: ''
@@ -24,10 +28,10 @@ runs:
 
     - name: Check clippy
       working-directory: ${{ inputs.working-directory }}
-      run: cargo clippy --all-features --all-targets -- -Dwarnings ${{ inputs.additional-flags }}
+      run: cargo clippy --all-features --all-targets --target-dir ${{ inputs.target-folder }} -- -Dwarnings ${{ inputs.additional-flags }}
       shell: bash
 
     - name: Run all tests
       working-directory: ${{ inputs.working-directory }}
-      run: cargo nextest run
+      run: cargo nextest run --target-dir ${{ inputs.target-folder }}
       shell: bash

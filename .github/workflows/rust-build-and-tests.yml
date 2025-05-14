@@ -46,15 +46,18 @@ jobs:
         uses: ./.github/actions/rust-test-action
         with:
           working-directory: ./dcipher-agents
+          target-folder: '../target'
 
       # 4. Build and test blocklock-agent
       - name: blocklock-agent
         uses: ./.github/actions/rust-test-action
         with:
           working-directory: ./blocklock-agent
+          target-folder: '../target'
 
       # 5. Build and test randomness-agent
       - name: randomness-agent
         uses: ./.github/actions/rust-test-action
         with:
           working-directory: ./randomness-agent
+          target-folder: '../target'
