@@ -1,0 +1,63 @@
+name: rust-build-and-tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}-dcipher
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-build-and-tests:
+    name: Build and test rust crates
+    runs-on: ["randamu-self-hosted-default"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+          token: ${{ secrets.PAT_TOKEN }}
+
+      # 1. Compile blocklock-solidity
+      - name: blocklock-solidity - Install dependencies
+        working-directory: ./blocklock-solidity
+        run: npm ci
+
+      - name: blocklock-solidity - Build Solidity contracts
+        working-directory: ./blocklock-solidity
+        run: npm run build:forge
+
+      # 2. Compile randomness-solidity
+      - name: randomness-solidity - Install dependencies
+        working-directory: ./randomness-solidity
+        run: npm ci
+
+      - name: randomness-solidity - Build Solidity contracts
+        working-directory: ./randomness-solidity
+        run: npm run build:forge
+
+      # 3. Build and test dcipher-agents
+      - name: dcipher-agents
+        uses: ./.github/actions/rust-test-action
+        with:
+          working-directory: ./dcipher-agents
+          target-folder: '../target'
+
+      # 4. Build and test blocklock-agent
+      - name: blocklock-agent
+        uses: ./.github/actions/rust-test-action
+        with:
+          working-directory: ./blocklock-agent
+          target-folder: '../target'
+
+      # 5. Build and test randomness-agent
+      - name: randomness-agent
+        uses: ./.github/actions/rust-test-action
+        with:
+          working-directory: ./randomness-agent
+          target-folder: '../target'

@@ -46,7 +46,7 @@ impl<F, P> RandomnessAgent<F, P> {
     }
 }
 
-impl<'a, F, P> RandomnessAgent<F, P>
+impl<F, P> RandomnessAgent<F, P>
 where
     F: RequestChannel<Request = SignatureRequest>,
     P: Provider + Clone + 'static,

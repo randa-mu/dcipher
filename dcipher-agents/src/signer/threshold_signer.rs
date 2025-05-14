@@ -318,7 +318,7 @@ where
                 signatures_cache.put(message, Either::Left(sig))
             {
                 // If there previously was a channel stored at the entry, also send signature through it
-                if let Err(_) = tx_channel.send(sig) {
+                if tx_channel.send(sig).is_err() {
                     tracing::warn!(
                         "Failed to notify of a new signature through oneshot channel: the future was dropped early"
                     );

@@ -744,6 +744,7 @@ mod tests {
         let wei_per_unit_gas = 3_000_000;
         let bls_pairing_check_overhead = 800_000;
         let native_premium_percentage = 10;
+        let gas_for_call_exact_check = 5000;
         blocklock
             .setConfig(
                 max_gas_limit,
@@ -752,6 +753,7 @@ mod tests {
                 wei_per_unit_gas,
                 bls_pairing_check_overhead,
                 native_premium_percentage,
+                gas_for_call_exact_check,
             )
             .send()
             .await
@@ -843,7 +845,7 @@ mod tests {
             .into_stream();
 
         mockblocklock_receiver
-            .createTimelockRequestWithSubscription(500_000, condition.try_into().unwrap(), ct)
+            .createTimelockRequestWithSubscription(500_000, condition.into(), ct)
             .send()
             .await
             .unwrap()
