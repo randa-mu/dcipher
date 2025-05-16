@@ -262,11 +262,13 @@ impl FromStr for Libp2pKeyWrapper {
     }
 }
 
-impl ToString for Libp2pKeyWrapper {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Libp2pKeyWrapper {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use base64::prelude::*;
         let bytes = self.0.to_protobuf_encoding().expect("failed to encode key");
-        BASE64_STANDARD.encode(&bytes)
+        let encoded = BASE64_STANDARD.encode(&bytes);
+
+        f.write_str(&encoded)
     }
 }
 

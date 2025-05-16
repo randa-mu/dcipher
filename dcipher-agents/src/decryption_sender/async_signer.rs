@@ -45,40 +45,35 @@ where
     type Error = DecryptionSenderAsyncSignerError<AsyncSigner::Error>;
     type Signature = SignedDecryptionRequest<'static>;
 
-    fn async_sign(
-        &self,
-        req: DecryptionRequest,
-    ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
-        async move {
-            // Await signature
-            // TODO: The new refactor makes the Cow used for sig_bytes useless.
-            let sig = self
-                .signer
-                .async_sign(req.condition.clone())
-                .await
-                .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
+    async fn async_sign(&self, req: DecryptionRequest) -> Result<Self::Signature, Self::Error> {
+        // Await signature
+        // TODO: The new refactor makes the Cow used for sig_bytes useless.
+        let sig = self
+            .signer
+            .async_sign(req.condition.clone())
+            .await
+            .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
 
-            let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
+        let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
 
-            // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
-            let request_id = req.id;
-            let ct: CS::Ciphertext = match req.try_into() {
-                Ok(ct) => ct,
-                Err(e) => {
-                    // If we fail to generate keys, it is likely due to an invalid ephemeral public key / ciphertext,
-                    // not much we can do here.
-                    tracing::error!(error = %e, %request_id, "Failed to generate decryption keys / signature... ignoring request");
-                    Err(DecryptionSenderAsyncSignerError::ParseCiphertext(e.into()))?
-                }
-            };
-            let preprocessed_key = self.cs.preprocess_decryption_key(sig, ct.ephemeral_pk());
+        // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
+        let request_id = req.id;
+        let ct: CS::Ciphertext = match req.try_into() {
+            Ok(ct) => ct,
+            Err(e) => {
+                // If we fail to generate keys, it is likely due to an invalid ephemeral public key / ciphertext,
+                // not much we can do here.
+                tracing::error!(error = %e, %request_id, "Failed to generate decryption keys / signature... ignoring request");
+                Err(DecryptionSenderAsyncSignerError::ParseCiphertext(e.into()))?
+            }
+        };
+        let preprocessed_key = self.cs.preprocess_decryption_key(sig, ct.ephemeral_pk());
 
-            Ok(SignedDecryptionRequest::new(
-                request_id,
-                Bytes::from(preprocessed_key.as_ref().to_vec()),
-                sig_bytes,
-            ))
-        }
+        Ok(SignedDecryptionRequest::new(
+            request_id,
+            Bytes::from(preprocessed_key.as_ref().to_vec()),
+            sig_bytes,
+        ))
     }
 }
 
@@ -117,16 +112,8 @@ pub(crate) mod tests {
 
     #[derive(Clone)]
     struct MockAsyncSigner {
-        receivers: Arc<
-            tokio::sync::Mutex<
-                HashMap<Bytes, watch::Receiver<SignatureResult>>,
-            >,
-        >,
-        senders: Arc<
-            std::sync::Mutex<
-                HashMap<Bytes, watch::Sender<SignatureResult>>,
-            >,
-        >,
+        receivers: Arc<tokio::sync::Mutex<HashMap<Bytes, watch::Receiver<SignatureResult>>>>,
+        senders: Arc<std::sync::Mutex<HashMap<Bytes, watch::Sender<SignatureResult>>>>,
     }
 
     impl MockAsyncSigner {
@@ -167,22 +154,17 @@ pub(crate) mod tests {
         type Error = MockSignerError;
         type Signature = ark_bn254::G1Affine;
 
-        fn async_sign(
-            &self,
-            m: Bytes,
-        ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
-            async move {
-                let mut rx = self
-                    .receivers
-                    .lock()
-                    .await
-                    .get(&m)
-                    .expect("no receiver found for condition")
-                    .clone();
-                rx.changed().await.expect("failed to await has_changed");
+        async fn async_sign(&self, m: Bytes) -> Result<Self::Signature, Self::Error> {
+            let mut rx = self
+                .receivers
+                .lock()
+                .await
+                .get(&m)
+                .expect("no receiver found for condition")
+                .clone();
+            rx.changed().await.expect("failed to await has_changed");
 
-                rx.borrow_and_update().clone().unwrap()
-            }
+            rx.borrow_and_update().clone().unwrap()
         }
     }
 
