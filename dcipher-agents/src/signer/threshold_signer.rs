@@ -101,6 +101,27 @@ where
         }
     }
 
+    /// New threshold signer with a custom LRU cache size.
+    pub fn new_with_cache_size(
+        cs: BLS,
+        n: u16,
+        t: u16,
+        id: u16,
+        pks: Vec<BLS::PublicKeyGroup>,
+        lru_cache_size: NonZeroUsize,
+    ) -> Self {
+        Self {
+            signatures_cache: Arc::new(std::sync::Mutex::new(LruCache::new(lru_cache_size))),
+            partials_cache: Arc::new(std::sync::Mutex::new(LruCache::new(lru_cache_size))),
+            signer: cs,
+            n,
+            t,
+            id,
+            pks,
+            eager_signing: false,
+        }
+    }
+
     /// Enable eager signing by automatically submitting a partial signature upon receiving
     /// a valid partial from another node.
     pub fn with_eager_signing(mut self) -> Self {

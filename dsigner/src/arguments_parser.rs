@@ -5,7 +5,7 @@ use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
-use std::num::NonZeroU16;
+use std::num::{NonZeroU16, NonZeroUsize};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -38,6 +38,10 @@ pub struct Args {
     /// Can be "info", "debug", "error", or "trace"
     #[arg(long, env = "DSIGNER_LOG_LEVEL", default_value = "info")]
     pub log_level: String,
+
+    /// LRU cache size used for partial signatures and signatures
+    #[arg(long, env = "DSIGNER_LRU_CACHE_SIZE", default_value = "64")]
+    pub lru_cache_size: NonZeroUsize,
 }
 
 #[derive(Parser, Serialize, Deserialize, Debug)]

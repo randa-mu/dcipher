@@ -127,12 +127,13 @@ fn get_signer(
 
     // Create a threshold signer
     let cs = BN254SignatureOnG1Signer::new(sk, config.key_config.dst.clone().into_bytes());
-    let ts = ThresholdSigner::new(
+    let ts = ThresholdSigner::new_with_cache_size(
         cs.clone(),
         config.key_config.n.get(),
         config.key_config.t.get(),
         config.key_config.node_id.get(),
         pks,
+        config.lru_cache_size,
     )
     .with_eager_signing();
 
