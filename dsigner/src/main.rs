@@ -34,10 +34,7 @@ struct SignResponse {
 }
 
 #[derive(Clone, Serialize)]
-struct PublicKey {
-    x: [String; 2],
-    y: [String; 2],
-}
+struct PublicKey(String);
 
 // Application state
 struct AppState {
@@ -165,16 +162,14 @@ async fn main() -> anyhow::Result<()> {
 
     // Convert group pk to string
     let (x, y) = group_pk.xy().expect("pk cannot be at infinity");
-    let pk = PublicKey {
-        x: [
-            hex::encode(x.c0.into_bigint().to_bytes_be()),
-            hex::encode(x.c1.into_bigint().to_bytes_be()),
-        ],
-        y: [
-            hex::encode(y.c0.into_bigint().to_bytes_be()),
-            hex::encode(y.c1.into_bigint().to_bytes_be()),
-        ],
-    };
+    let pk_ser = [
+        x.c1.into_bigint().to_bytes_be(),
+        x.c0.into_bigint().to_bytes_be(),
+        y.c1.into_bigint().to_bytes_be(),
+        y.c0.into_bigint().to_bytes_be(),
+    ]
+    .concat();
+    let pk = PublicKey(hex::encode(pk_ser));
 
     // Initialize application state
     let app_state = Arc::new(AppState {
