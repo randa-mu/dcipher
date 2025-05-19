@@ -61,6 +61,7 @@ pub struct SignatureFulfiller<P> {
     required_confirmations: u64,
     timeout: Duration,
     gas_buffer_percent: u16,
+    simulate_tx: bool,
 }
 
 impl<P> SignatureFulfiller<P> {
@@ -76,7 +77,13 @@ impl<P> SignatureFulfiller<P> {
             required_confirmations,
             timeout,
             gas_buffer_percent,
+            simulate_tx: false, // by default, do not simulate the transactions
         }
+    }
+
+    /// Allows to simulate call while never submitting transactions.
+    pub fn set_simulate_tx(&mut self) {
+        self.simulate_tx = true;
     }
 }
 
@@ -258,35 +265,48 @@ where
         );
 
         // Send the transaction with a custom gas cost and gas price
-        let pending_tx = self
-            .signature_sender_instance
-            .fulfilSignatureRequest(ready_request.id, ready_request.signature.clone())
-            .max_fee_per_gas(max_fee_per_gas)
-            .max_priority_fee_per_gas(max_priority_fee_per_gas)
-            .gas(estimated_gas_with_buffer)
-            .send()
-            .await
-            .map_err(|e| {
-                tracing::error!(
-                    error = ?e,
-                    signature = %ready_request.signature,
-                    "Failed to send fulfillment transaction"
-                );
-                SignatureFulfillerError::Contract(
-                    e,
-                    "failed to call real DecryptionSender::fulfillDecryptionRequest",
-                )
-            })?;
+        let pending_tx_or_none = if self.simulate_tx {
+            // Do not send a transaction
+            tracing::info!("Simulation enabled, not sending transaction");
+            None
+        } else {
+            let pending_tx = self
+                .signature_sender_instance
+                .fulfilSignatureRequest(ready_request.id, ready_request.signature.clone())
+                .max_fee_per_gas(max_fee_per_gas)
+                .max_priority_fee_per_gas(max_priority_fee_per_gas)
+                .gas(estimated_gas_with_buffer)
+                .send()
+                .await
+                .map_err(|e| {
+                    tracing::error!(
+                        error = ?e,
+                        signature = %ready_request.signature,
+                        "Failed to send fulfillment transaction"
+                    );
+                    SignatureFulfillerError::Contract(
+                        e,
+                        "failed to call real DecryptionSender::fulfillDecryptionRequest",
+                    )
+                })?;
 
-        let tx_hash_future = pending_tx
-            .with_required_confirmations(self.required_confirmations)
-            .with_timeout(Some(self.timeout))
-            .get_receipt()
-            .map(move |r| {
-                let receipt = match r {
-                    Ok(receipt) => receipt,
-                    Err(e) => Err(e)?,
+            Some(pending_tx)
+        };
+
+        let tx_hash_future = {
+            let timeout = self.timeout;
+            let required_confirmations = self.required_confirmations;
+            async move {
+                let Some(pending_tx) = pending_tx_or_none else {
+                    // If we're simulating, resolve with a default TxHash
+                    return Ok(TxHash::default());
                 };
+
+                let receipt = pending_tx
+                    .with_required_confirmations(required_confirmations)
+                    .with_timeout(Some(timeout))
+                    .get_receipt()
+                    .await?;
 
                 tracing::info!(
                     request_id = %ready_request.id,
@@ -296,7 +316,8 @@ where
                     "Obtained receipt for transaction"
                 );
                 Ok(receipt.transaction_hash)
-            });
+            }
+        };
 
         Ok(tx_hash_future)
     }
