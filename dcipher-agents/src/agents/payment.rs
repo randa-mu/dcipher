@@ -1,5 +1,7 @@
 //! Module with payment-related traits and estimators for tx fulfillment parameters.
 
+pub(crate) mod estimator;
+
 use alloy::network::Network;
 use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
