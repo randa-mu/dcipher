@@ -66,6 +66,14 @@ pub struct ChainArgs {
     #[arg(long, env = "RANDOMNESS_TX_PRIVATE_KEY")]
     pub tx_private_key: String,
 
+    /// Flag used to disable the fulfillment
+    #[arg(
+        long,
+        env = "RANDOMNESS_TX_FULFILLMENT_DISABLED",
+        default_value = "false"
+    )]
+    pub tx_fulfillment_disabled: bool,
+
     /// Minimum number of confirmations to wait for before considering a transaction confirmed
     #[arg(long, env = "RANDOMNESS_MIN_CONFIRMATIONS", default_value = "1")]
     pub min_confirmations: u64,

@@ -169,17 +169,22 @@ where
     );
 
     // Create a transaction fulfiller
-    let single_call_tx_fulfiller = SignatureFulfiller::new(
+    let mut signature_tx_fulfiller = SignatureFulfiller::new(
         signature_sender_contract,
         args.chain.min_confirmations,
         Duration::from_secs(args.chain.confirmations_timeout_secs),
         args.chain.gas_buffer_percent,
     );
 
+    if args.chain.tx_fulfillment_disabled {
+        // Disable the transaction fufillment of the request if requested.
+        signature_tx_fulfiller.set_simulate_tx();
+    }
+
     // Create a ticker-based fulfiller
     let fulfiller = SignatureSenderFulfillerConfig::new_fulfiller(
         signer,
-        single_call_tx_fulfiller,
+        signature_tx_fulfiller,
         args.chain.max_tx_per_tick,
         args.chain.tx_retry_strategy,
     );
