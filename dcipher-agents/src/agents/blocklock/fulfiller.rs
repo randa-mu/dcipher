@@ -230,7 +230,7 @@ where
             "Calculated estimated gas cost for request"
         );
 
-        let pending_tx = if self.simulate_tx {
+        let pending_tx_or_none = if self.simulate_tx {
             // Do not send a transaction
             tracing::info!("Simulation enabled, not sending transaction");
             None
@@ -268,7 +268,7 @@ where
             let timeout = self.timeout;
             let required_confirmations = self.required_confirmations;
             async move {
-                let Some(pending_tx) = pending_tx else {
+                let Some(pending_tx) = pending_tx_or_none else {
                     // If we're simulating, resolve with a default TxHash
                     return Ok(TxHash::default());
                 };
