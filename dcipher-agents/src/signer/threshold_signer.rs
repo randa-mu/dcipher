@@ -222,14 +222,14 @@ where
                 };
 
                 // Save the signature, and aggregate it if we have enough signatures
-                self.store_and_process_partial(message.clone(), PartialSignature { id: self.id, sig });
+                self.store_and_process_partial(
+                    message.clone(),
+                    PartialSignature { id: self.id, sig },
+                );
 
                 // Send it to other nodes with libp2p if threshold greater than 1
                 if self.t > 1 {
-                    let partial = PartialSignatureWithMessage {
-                        sig,
-                        m: message,
-                    };
+                    let partial = PartialSignatureWithMessage { sig, m: message };
 
                     let m = serde_cbor::to_vec(&partial).expect("serialization should always work");
                     if tx_to_libp2p.send(m).is_err() {
