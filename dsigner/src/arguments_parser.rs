@@ -130,11 +130,11 @@ impl DSignerConfig {
             Err(anyhow!("t cannot be greater than n"))?
         }
 
-        if c.key_config.t.get() > 1 && c.key_config.nodes_config.is_none() {
-            Err(anyhow!("nodes configuration required when t > 1"))?
+        if c.key_config.n.get() > 1 && c.key_config.nodes_config.is_none() {
+            Err(anyhow!("nodes configuration required when n > 1"))?
         }
 
-        let nodes_configuration = if c.key_config.t.get() == 1 {
+        let nodes_configuration = if c.key_config.n.get() == 1 {
             None
         } else {
             Some(Self::parse_nodes_config(&c)?)
