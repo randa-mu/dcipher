@@ -237,7 +237,8 @@ where
                         .collect()
                 };
 
-                let span = tracing::debug_span!("threshold_signer_batch", batch_size = count).entered();
+                let span =
+                    tracing::debug_span!("threshold_signer_batch", batch_size = count).entered();
                 #[cfg(feature = "rayon")]
                 tracing::debug!(
                     messages_count = messages.len(),
