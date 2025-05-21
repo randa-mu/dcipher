@@ -4,15 +4,15 @@
 
 use crate::agents::payment::estimator::RequestFulfillmentEstimator;
 use crate::agents::payment::fulfiller::{GenericFulfiller, GenericFulfillerError};
+use crate::agents::randomness::contracts::RandomnessSender;
 use crate::fulfiller::TransactionFulfiller;
+use crate::signature_sender::SignedSignatureRequest;
+use crate::signature_sender::contracts::SignatureSender;
 use alloy::network::{Ethereum, Network};
 use alloy::providers::{Provider, WalletProvider};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use std::time::Duration;
-use crate::agents::randomness::contracts::RandomnessSender;
-use crate::signature_sender::contracts::SignatureSender;
-use crate::signature_sender::SignedSignatureRequest;
 
 pub type RandomnessFulfillerError = GenericFulfillerError;
 

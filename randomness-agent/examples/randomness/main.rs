@@ -8,9 +8,10 @@ use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
 use dcipher_agents::agents::randomness::RandomnessAgent;
+use dcipher_agents::agents::randomness::contracts::RandomnessSender;
+use dcipher_agents::agents::randomness::fulfiller::RandomnessFulfiller;
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::signature_sender::contracts::SignatureSender;
-use dcipher_agents::signature_sender::fulfiller::SignatureFulfiller;
 use dcipher_agents::signature_sender::{SignatureRequest, SignatureSenderFulfillerConfig};
 use dcipher_agents::signer::BN254SignatureOnG1Signer;
 use dcipher_agents::signer::threshold_signer::ThresholdSigner;
@@ -48,6 +49,8 @@ async fn main() -> anyhow::Result<()> {
         SignatureSender::new(config.chain.signature_sender_addr, ro_provider);
     let signature_sender_contract =
         SignatureSender::new(config.chain.signature_sender_addr, provider.clone());
+    let randomness_sender_contract =
+        RandomnessSender::new(config.chain.randomness_sender_addr, provider.clone());
 
     // If chain id is none, fetch it from the provider
     if config.chain.chain_id.is_none() {
@@ -60,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
         &config,
         &nodes_config.unwrap_or_default(),
         signature_sender_contract.clone(),
+        randomness_sender_contract,
     )?;
 
     // Create a new randomness agent
@@ -114,6 +118,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     args: &'lt_in RandomnessAgentArgs,
     nodes_config: &'lt_in NodesConfiguration,
     signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
+    randomness_sender_contract: RandomnessSender::RandomnessSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
     CancellationToken,
@@ -169,11 +174,14 @@ where
     );
 
     // Create a transaction fulfiller
-    let mut signature_tx_fulfiller = SignatureFulfiller::new(
+    let mut signature_tx_fulfiller = RandomnessFulfiller::new(
         signature_sender_contract,
+        randomness_sender_contract,
         args.chain.min_confirmations,
         Duration::from_secs(args.chain.confirmations_timeout_secs),
         args.chain.gas_buffer_percent,
+        args.chain.gas_price_buffer_percent,
+        args.chain.profit_threshold,
     );
 
     if args.chain.tx_fulfillment_disabled {
