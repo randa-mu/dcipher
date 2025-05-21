@@ -1,7 +1,8 @@
 //! Agent managing the state of the randomness smart contract and forwarding fulfilled request to a
 //! fulfiller's request channel.
 
-mod contracts;
+pub mod contracts;
+pub mod fulfiller;
 
 use crate::RequestId;
 use crate::fulfiller::RequestChannel;
