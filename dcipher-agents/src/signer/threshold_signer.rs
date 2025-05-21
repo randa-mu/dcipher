@@ -198,43 +198,161 @@ where
         tx_to_libp2p: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
         cancellation_token: CancellationToken,
     ) {
+        #[cfg(feature = "rayon")]
+        use rayon::prelude::*;
+
+        const MAX_BATCH_SIZE: usize = 256;
+
         let inner_fn = async move {
+            let mut messages = Vec::with_capacity(MAX_BATCH_SIZE);
+
             loop {
-                let Some(message) = rx_messages.recv().await else {
+                let count = rx_messages.recv_many(&mut messages, MAX_BATCH_SIZE).await;
+                if count == 0 {
                     tracing::warn!("Registry has dropped message sender, exiting recv loop");
                     break;
                 };
+                let _span = tracing::debug_span!("threshold_signer_batch", batch_size = count);
 
-                // If a partial was already issued, ignore the message
-                if self.partial_issued(&message) {
-                    tracing::debug!(msg = ?message, "Received message signing request, but message was already signed");
-                    continue;
-                }
+                // Remove messages with partial already issued
+                let messages: Vec<_> = {
+                    let mut partials_cache = self
+                        .partials_cache
+                        .lock()
+                        .expect("a thread panicked holding the mutex");
 
-                tracing::info!(msg = ?message, "Received new message to sign");
+                    messages
+                        .drain(..)
+                        .filter(|m| {
+                            let Some(partials_map) = partials_cache.get(m) else {
+                                return true; // not yet signed
+                            };
 
-                let sig = match self.signer.sign(&message) {
-                    Ok(sig) => sig,
-                    Err(e) => {
-                        tracing::error!(error = ?e, msg = ?message, "Failed to sign message.");
-                        continue;
-                    }
+                            if partials_map.contains_key(&self.id) {
+                                tracing::debug!(msg = ?m, "Received message signing request, but message was already signed");
+                                false
+                            } else {
+                                true
+                            }
+                        })
+                        .collect()
                 };
 
-                // Save the signature, and aggregate it if we have enough signatures
-                self.store_and_process_partial(
-                    message.clone(),
-                    PartialSignature { id: self.id, sig },
+                #[cfg(feature = "rayon")]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Signing messages in parallel"
                 );
+                #[cfg(not(feature = "rayon"))]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Signing messages sequentially"
+                );
+
+                // Create signatures in parallel if rayon is enabled, otherwise use a standard iter
+                #[cfg(feature = "rayon")]
+                let iter = messages.into_par_iter();
+                #[cfg(not(feature = "rayon"))]
+                let iter = messages.into_iter();
+                let (partials, messages): (Vec<_>, Vec<_>) = iter.filter_map(|message| {
+                    tracing::info!(msg = ?message, "Received new message to sign");
+
+                    match self.signer.sign(&message) {
+                        Ok(sig) => Some((sig, message)),
+                        Err(e) => {
+                            tracing::error!(error = ?e, msg = ?message, "Failed to sign message.");
+                            None
+                        }
+                    }
+                }).collect();
+
+                let to_aggregate: Vec<_> = {
+                    let mut partials_cache = self
+                        .partials_cache
+                        .lock()
+                        .expect("a thread panicked with the mutex");
+
+                    // We filter with a sequential iterator here due to side effects
+                    partials.iter().zip(messages.iter()).filter_map(|(partial_sig, m)| {
+                        tracing::info!(msg = ?m, party_id = self.id, "Storing partial signature on message");
+                        let partials = partials_cache.get_or_insert_mut(m.clone(), HashMap::default);
+                        partials.insert(
+                            self.id,
+                            PartialSignature {
+                                id: self.id,
+                                sig: *partial_sig,
+                            },
+                        );
+
+                        // Do we have exactly t partials?
+                        if partials.len() == usize::from(self.t) {
+                            // Aggregate the partials with Lagrange's interpolation
+                            let points = partials
+                                .values()
+                                .map(|partial| (u64::from(partial.id), partial.sig.into_group()))
+                                .collect::<Vec<_>>();
+                            Some(points)
+                        } else {
+                            None
+                        }
+                    }).collect()
+                };
+
+                #[cfg(feature = "rayon")]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Aggregating signatures in parallel"
+                );
+                #[cfg(not(feature = "rayon"))]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Aggregating signatures sequentially"
+                );
+
+                // Do the aggregation with a parallel iterator if rayon is enabled
+                #[cfg(feature = "rayon")]
+                let iter = to_aggregate.into_par_iter();
+                #[cfg(not(feature = "rayon"))]
+                let iter = to_aggregate.into_iter();
+                let signatures: Vec<_> = iter
+                    .map(|points| lagrange_points_interpolate_at(&points, 0).into_affine())
+                    .collect();
+
+                // We now have a bunch of signatures, store them
+                {
+                    let mut signatures_cache = self
+                        .signatures_cache
+                        .lock()
+                        .expect("a thread panicked with the mutex");
+
+                    // side effects, sequential iterator
+                    signatures
+                        .into_iter()
+                        .zip(messages.iter())
+                        .for_each(|(sig, message)| {
+                            if let Some(Either::Right(tx_channel)) =
+                                signatures_cache.put(message.to_owned(), Either::Left(sig))
+                            {
+                                // If there previously was a channel stored at the entry, also send signature through it
+                                tx_channel.send_replace(Some(sig));
+                            }
+                        });
+                }
 
                 // Send it to other nodes with libp2p if threshold greater than 1
                 if self.t > 1 {
-                    let partial = PartialSignatureWithMessage { sig, m: message };
+                    partials
+                        .into_iter()
+                        .zip(messages)
+                        .for_each(|(sig, message)| {
+                            let partial = PartialSignatureWithMessage { sig, m: message };
 
-                    let m = serde_cbor::to_vec(&partial).expect("serialization should always work");
-                    if tx_to_libp2p.send(m).is_err() {
-                        tracing::error!("Failed to send message to signer: channel closed");
-                    }
+                            let m = serde_cbor::to_vec(&partial)
+                                .expect("serialization should always work");
+                            if tx_to_libp2p.send(m).is_err() {
+                                tracing::error!("Failed to send message to signer: channel closed");
+                            }
+                        });
                 }
             }
         };

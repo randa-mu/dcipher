@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-dcipher-agents = { path = "../dcipher-agents" }
+dcipher-agents = { path = "../dcipher-agents", features = ["rayon"] }
 anyhow = "1.0"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
