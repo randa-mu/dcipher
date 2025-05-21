@@ -212,7 +212,6 @@ where
                     tracing::warn!("Registry has dropped message sender, exiting recv loop");
                     break;
                 };
-                let _span = tracing::debug_span!("threshold_signer_batch", batch_size = count);
 
                 // Remove messages with partial already issued
                 let messages: Vec<_> = {
@@ -238,6 +237,7 @@ where
                         .collect()
                 };
 
+                let span = tracing::debug_span!("threshold_signer_batch", batch_size = count).entered();
                 #[cfg(feature = "rayon")]
                 tracing::debug!(
                     messages_count = messages.len(),
@@ -248,6 +248,7 @@ where
                     messages_count = messages.len(),
                     "Signing messages sequentially"
                 );
+                let span = span.exit();
 
                 // Create signatures in parallel if rayon is enabled, otherwise use a standard iter
                 #[cfg(feature = "rayon")]
@@ -298,6 +299,7 @@ where
                     }).collect()
                 };
 
+                let span = span.entered();
                 #[cfg(feature = "rayon")]
                 tracing::debug!(
                     messages_count = messages.len(),
@@ -308,6 +310,7 @@ where
                     messages_count = messages.len(),
                     "Aggregating signatures sequentially"
                 );
+                let _span = span.exit();
 
                 // Do the aggregation with a parallel iterator if rayon is enabled
                 #[cfg(feature = "rayon")]
