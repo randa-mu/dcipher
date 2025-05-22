@@ -91,17 +91,7 @@ where
                 })
                 .collect();
 
-            let results = self.fulfiller.fulfil_calls(calls).await;
-            // TODO: Metrics
-            // results.iter().for_each(|res| {
-            //     if res.is_ok() {
-            //         Metrics::report_decryption_success()
-            //     } else {
-            //         Metrics::report_decryption_error()
-            //     }
-            // });
-
-            results
+            self.fulfiller.fulfil_calls(calls).await
         }
         .boxed()
     }
