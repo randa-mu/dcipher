@@ -6,6 +6,7 @@ pub mod fulfiller;
 pub mod metrics;
 
 use crate::RequestId;
+use crate::agents::blocklock::BlockNumber;
 use crate::agents::randomness::metrics::Metrics;
 use crate::fulfiller::RequestChannel;
 use crate::signature_sender::SignatureRequest;
@@ -29,6 +30,7 @@ enum InternalRandomnessAgentError {
 pub struct RandomnessAgent<F, P> {
     scheme_id: String,
     sync_batch_size: usize,
+    last_seen_block: BlockNumber,
     last_seen_request_id: RequestId,
     fulfiller_channel: F,
     signature_sender: SignatureSender::SignatureSenderInstance<P>,
@@ -44,6 +46,7 @@ impl<F, P> RandomnessAgent<F, P> {
         Self {
             scheme_id: scheme_id.to_owned(),
             sync_batch_size,
+            last_seen_block: 0.into(),
             last_seen_request_id: U256::from(0u64).into(),
             fulfiller_channel,
             signature_sender: ro_instance,
@@ -56,6 +59,28 @@ where
     F: RequestChannel<Request = SignatureRequest>,
     P: Provider + Clone + 'static,
 {
+    /// Handles a new block in the following way:
+    ///     1) If the block has been seen before (i.e. lower than last seen block), simply ignore it.
+    ///     2) else, if the block is not the next block in the sequence (i.e., we have missed some blocks),
+    ///         we synchronize the current state of the contract with the on-chain state.
+    ///     3) Otherwise, update last seen block
+    #[tracing::instrument(skip(self))]
+    pub async fn handle_new_block(&mut self, block_number: BlockNumber) {
+        tracing::info!("Randomness agent received NewBlock event: {block_number:?}");
+        Metrics::report_chain_height(block_number.into());
+
+        if self.last_seen_block >= block_number {
+            // Ignore the block if it has already been processed
+            tracing::debug!("Block has already been processed");
+        } else if self.last_seen_block.0 + 1 != block_number.0 {
+            // Missed some blocks, sync state and continue execution
+            self.handle_missed_events().await;
+        } else {
+            // Next block in the sequence
+            self.last_seen_block = block_number;
+        }
+    }
+
     /// Handles a new signature requested event in the following way:
     ///     1) If the request id has already been seen, ignore it.
     ///     2) If the request id is not the next in the sequence, synchronize current state with
@@ -128,6 +153,19 @@ where
     pub async fn sync_state(&mut self) -> Result<(), InternalRandomnessAgentError> {
         let last_seen_request_id = self.last_seen_request_id.0;
 
+        // Query the current block first to make sure that it's either the latest, or a previous block
+        //  at the end of the sync.
+        let last_block_number = match self.signature_sender.provider().get_block_number().await {
+            Ok(block_number) => {
+                Metrics::report_chain_height(block_number);
+                BlockNumber(block_number)
+            }
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to fetch the last block number, using last_seen_block(`{:?}`) instead", self.last_seen_block);
+                self.last_seen_block
+            }
+        };
+
         // Recover last_request_id
         let last_request_id = self
             .signature_sender
@@ -177,7 +215,8 @@ where
             self.fulfiller_channel.register_requests(requests);
         }
 
-        // Update the last seen block
+        // Update the last seen block & request id
+        self.last_seen_block = last_block_number;
         self.last_seen_request_id = last_request_id.into();
         Ok(())
     }
