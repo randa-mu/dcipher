@@ -1,9 +1,10 @@
 use prometheus::proto::MetricFamily;
-use prometheus::{IntCounter, IntCounterVec, Opts, Registry};
+use prometheus::{IntCounter, IntCounterVec, IntGauge, Opts, Registry};
 use std::sync::LazyLock;
 
 pub struct Metrics {
     registry: Registry,
+    chain_height: IntGauge,
     missing_events: IntCounter,
     errors_total: IntCounterVec,
     sync_success: IntCounter,
@@ -13,6 +14,9 @@ pub struct Metrics {
 
 static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
     let registry = Registry::new();
+
+    let chain_height = IntGauge::new("chain_height_reached", "Observed chain height")
+        .expect("metrics failed to initialise");
 
     let missing_events = IntCounter::new("missing_events_total", "Missing events seen")
         .expect("metrics failed to initialise");
@@ -48,6 +52,7 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
 
     Metrics {
         registry,
+        chain_height,
         missing_events,
         errors_total,
         sync_success,
@@ -57,6 +62,11 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
 });
 
 impl Metrics {
+    pub(super) fn report_chain_height(chain_height: u64) {
+        let chain_height: i64 = chain_height.try_into().unwrap_or_default();
+        METRICS.chain_height.set(chain_height)
+    }
+
     pub(super) fn report_missing_events(count: u64) {
         METRICS.missing_events.inc_by(count)
     }
