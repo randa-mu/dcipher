@@ -61,6 +61,7 @@ pub struct BlocklockFulfiller<P> {
     gas_price_buffer_percent: u16,
     gas_buffer_percent: u16,
     profit_percent_threshold: u8,
+    simulate_tx: bool,
 }
 
 impl<P> BlocklockFulfiller<P> {
@@ -82,7 +83,13 @@ impl<P> BlocklockFulfiller<P> {
             gas_buffer_percent,
             gas_price_buffer_percent,
             profit_percent_threshold,
+            simulate_tx: false, // by default, do not simulate the transactions
         }
+    }
+
+    /// Allows to simulate call while never submitting transactions.
+    pub fn set_simulate_tx(&mut self) {
+        self.simulate_tx = true;
     }
 }
 
@@ -223,37 +230,55 @@ where
             "Calculated estimated gas cost for request"
         );
 
-        // Send the transaction with a custom gas cost and gas price
-        let pending_tx = self
-            .decryption_sender_instance
-            .fulfillDecryptionRequest(
-                ready_request.id,
-                ready_request.decryption_key,
-                ready_request.signature.clone().into_owned(),
-            )
-            .max_fee_per_gas(tx_gas_estimates.max_fee_per_gas)
-            .max_priority_fee_per_gas(tx_gas_estimates.max_priority_fee_per_gas)
-            .gas(max_gas)
-            .send()
-            .await
-            .map_err(|e| {
-                tracing::error!(
-                    error = ?e,
-                    signature = %ready_request.signature,
-                    "Failed to send fulfillment transaction"
-                );
-                BlocklockFulfillerError::Contract(
-                    e,
-                    "failed to call real DecryptionSender::fulfillDecryptionRequest",
+        let pending_tx_or_none = if self.simulate_tx {
+            // Do not send a transaction
+            tracing::info!("Simulation enabled, not sending transaction");
+            None
+        } else {
+            // Send the transaction with a custom gas cost and gas price
+            let pending_tx = self
+                .decryption_sender_instance
+                .fulfillDecryptionRequest(
+                    ready_request.id,
+                    ready_request.decryption_key,
+                    ready_request.signature.clone().into_owned(),
                 )
-            })?;
+                .max_fee_per_gas(tx_gas_estimates.max_fee_per_gas)
+                .max_priority_fee_per_gas(tx_gas_estimates.max_priority_fee_per_gas)
+                .gas(max_gas)
+                .send()
+                .await
+                .map_err(|e| {
+                    tracing::error!(
+                        error = ?e,
+                        signature = %ready_request.signature,
+                        "Failed to send fulfillment transaction"
+                    );
+                    BlocklockFulfillerError::Contract(
+                        e,
+                        "failed to call real DecryptionSender::fulfillDecryptionRequest",
+                    )
+                })?;
 
-        let tx_hash_future = pending_tx
-            .with_required_confirmations(self.required_confirmations)
-            .with_timeout(Some(self.timeout))
-            .get_receipt()
-            .map(move |r| {
-                let receipt = r?;
+            tracing::info!(tx_hash = %pending_tx.tx_hash(), "Transaction sent");
+            Some(pending_tx)
+        };
+
+        let tx_hash_future = {
+            let timeout = self.timeout;
+            let required_confirmations = self.required_confirmations;
+            async move {
+                let Some(pending_tx) = pending_tx_or_none else {
+                    // If we're simulating, resolve with a default TxHash
+                    return Ok(TxHash::default());
+                };
+
+                let receipt = pending_tx
+                    .with_required_confirmations(required_confirmations)
+                    .with_timeout(Some(timeout))
+                    .get_receipt()
+                    .await?;
+
                 Metrics::report_decryption_success();
                 tracing::info!(
                     request_id = %ready_request.id,
@@ -263,7 +288,8 @@ where
                     "Obtained receipt for transaction"
                 );
                 Ok(receipt.transaction_hash)
-            });
+            }
+        };
 
         Ok(tx_hash_future)
     }

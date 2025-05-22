@@ -189,7 +189,7 @@ where
     );
 
     // Create a transaction fulfiller
-    let single_call_tx_fulfiller = BlocklockFulfiller::new(
+    let mut blocklock_tx_fulfiller = BlocklockFulfiller::new(
         decryption_sender_contract,
         blocklock_sender_contract,
         args.chain.min_confirmations,
@@ -199,11 +199,16 @@ where
         args.chain.profit_threshold,
     );
 
+    if args.chain.tx_fulfillment_disabled {
+        // Disable the transaction fufillment of the request if requested.
+        blocklock_tx_fulfiller.set_simulate_tx();
+    }
+
     // Create a ticker-based fulfiller
     let fulfiller = DecryptionSenderFulfillerConfig::new_fulfiller(
         cs,
         signer,
-        single_call_tx_fulfiller,
+        blocklock_tx_fulfiller,
         args.chain.max_tx_per_tick,
         args.chain.tx_retry_strategy,
     );
