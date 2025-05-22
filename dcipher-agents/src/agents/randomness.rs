@@ -3,8 +3,10 @@
 
 pub mod contracts;
 pub mod fulfiller;
+pub mod metrics;
 
 use crate::RequestId;
+use crate::agents::randomness::metrics::Metrics;
 use crate::fulfiller::RequestChannel;
 use crate::signature_sender::SignatureRequest;
 use crate::signature_sender::contracts::{SignatureSender, TypesLib};
@@ -103,6 +105,7 @@ where
         // Otherwise, forward the request to the fulfiller
         self.fulfiller_channel
             .register_requests(vec![SignatureRequest::from(signature_requested)]);
+        Metrics::report_randomness_requested();
     }
 
     /// Handle missed blocks / requests by synchronizing the current state with the on-chain state.
@@ -110,9 +113,11 @@ where
         // Missed some requests, try to sync state
         match self.sync_state().await {
             Ok(_) => {
+                Metrics::report_sync_success();
                 tracing::info!("State synchronized from on-chain contract");
             }
             Err(e) => {
+                Metrics::report_sync_error();
                 tracing::error!(error = ?e, "Failed to synchronize state from on-chain contract");
             }
         }
@@ -145,6 +150,7 @@ where
             )
         })?;
         tracing::info!("Sync detected {missing_requests} missing requests");
+        Metrics::report_missing_events(missing_requests);
 
         // Create an iterator of missing requests. Scan returns last_seen_request_id + 1, up to last_request_id
         let missing_requests = std::iter::repeat_n(U256::from(1), missing_requests as usize).scan(
@@ -161,6 +167,7 @@ where
             let requests = match batched_requests.await {
                 Ok(requests) => requests,
                 Err(e) => {
+                    Metrics::report_fetch_requests_error();
                     tracing::error!(error = %e, "Failed to get batched requests");
                     continue;
                 }
@@ -217,6 +224,7 @@ where
                     let requests = req_ids.into_iter().zip(batched_requests).filter_map(|(id, req)| {
                         // A request with a null scheme implies that the request does not exist => error
                         if req.schemeID.is_empty() {
+                            Metrics::report_scheme_error();
                             tracing::error!(request_id = %id, returned_request = ?req, "Failed to obtain request details");
                             None
                         } else if req.schemeID != scheme_id {
