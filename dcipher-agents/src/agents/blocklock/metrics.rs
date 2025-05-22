@@ -57,51 +57,51 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
 });
 
 impl Metrics {
-    pub fn report_missing_events(count: u64) {
+    pub(super) fn report_missing_events(count: u64) {
         METRICS.missing_events.inc_by(count)
     }
 
-    pub fn report_sync_success() {
+    pub(super) fn report_sync_success() {
         METRICS.sync_success.inc()
     }
 
-    pub fn report_sync_error() {
+    pub(super) fn report_sync_error() {
         METRICS
             .errors_total
             .with_label_values(&["sync_error"])
             .inc();
     }
 
-    pub fn report_scheme_error() {
+    pub(super) fn report_scheme_error() {
         METRICS
             .errors_total
             .with_label_values(&["invalid_scheme"])
             .inc();
     }
 
-    pub fn report_storage_error() {
+    pub(super) fn report_storage_error() {
         METRICS
             .errors_total
             .with_label_values(&["storage_error"])
             .inc();
     }
 
-    pub fn report_fetch_requests_error() {
+    pub(super) fn report_fetch_requests_error() {
         METRICS
             .errors_total
             .with_label_values(&["fetch_requests_error"])
             .inc();
     }
 
-    pub fn report_decryption_requested() {
+    pub(super) fn report_decryption_requested() {
         METRICS.decryption_requests.inc();
     }
 
-    pub fn report_decryption_success() {
+    pub(super) fn report_decryption_success() {
         METRICS.decryption_success.inc();
     }
 
-    pub fn report_decryption_error() {
+    pub(super) fn report_decryption_error() {
         METRICS
             .errors_total
             .with_label_values(&["decryption_error"])
