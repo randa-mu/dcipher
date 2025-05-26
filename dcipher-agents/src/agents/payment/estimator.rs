@@ -267,6 +267,7 @@ where
                 tracing::warn!(
                     available_funds,
                     request_cost_upper_bound,
+                    estimated_gas,
                     custom_gas_price = gas_price,
                     max_fee_per_gas = tx_gas_params.max_fee_per_gas,
                     max_priority_fee_per_gas = tx_gas_params.max_priority_fee_per_gas,
@@ -292,6 +293,7 @@ where
                 profit_percent_threshold = self.profit_percent_threshold,
                 available_funds,
                 request_cost_upper_bound,
+                estimated_gas,
                 flat_fee_wei,
                 custom_gas_price = gas_price,
                 max_fee_per_gas = tx_gas_params.max_fee_per_gas,
