@@ -94,7 +94,7 @@ where
             let pending_tx = match tx {
                 Ok(pending_tx) => pending_tx,
                 Err(e) => {
-                    tracing::error!(error = %e, request_id = %request_id, "Failed to interact with decryption sender contract");
+                    tracing::error!(error = %e, request_id = %request_id, "Failed to interact with fulfiller contract");
                     transaction_results.push(Err(e));
                     continue;
                 }
