@@ -264,6 +264,15 @@ where
         let profit = available_funds
             .checked_sub(request_cost_upper_bound)
             .ok_or_else(|| {
+                tracing::warn!(
+                    available_funds,
+                    request_cost_upper_bound,
+                    custom_gas_price = gas_price,
+                    max_fee_per_gas = tx_gas_params.max_fee_per_gas,
+                    max_priority_fee_per_gas = tx_gas_params.max_priority_fee_per_gas,
+                    "The amount paid by the user is lower than the estimated fulfillment cost"
+                );
+
                 PaymentEstimatorError::InsufficientFunds(InsufficientFundsError {
                     available_funds,
                     request_cost: request_cost_upper_bound,
