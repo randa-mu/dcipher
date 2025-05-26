@@ -103,6 +103,13 @@ impl Metrics {
             .inc();
     }
 
+    pub(super) fn report_insufficient_funds() {
+        METRICS
+            .errors_total
+            .with_label_values(&["fulfillment_failed_insufficient_funds"])
+            .inc();
+    }
+
     pub(super) fn report_decryption_requested() {
         METRICS.decryption_requests.inc();
     }

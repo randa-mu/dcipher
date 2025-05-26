@@ -94,11 +94,15 @@ where
                 .collect();
 
             let results = self.fulfiller.fulfil_calls(calls).await;
-            results.iter().for_each(|res| {
-                if res.is_ok() {
-                    Metrics::report_decryption_success()
-                } else {
-                    Metrics::report_decryption_error()
+            results.iter().for_each(|res| match &res {
+                Ok(_) => {
+                    Metrics::report_decryption_success();
+                }
+                Err(GenericFulfillerError::InsufficientFunds(_)) => {
+                    Metrics::report_insufficient_funds();
+                }
+                Err(_) => {
+                    Metrics::report_decryption_error();
                 }
             });
 
