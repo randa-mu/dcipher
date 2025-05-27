@@ -943,11 +943,11 @@ mod tests {
         blocklock.handle_decryption_requested(req.clone()).await;
         assert_eq!(blocklock.last_seen_request_id, U256::from(1).into());
 
-        req.requestID.add_assign(U256::from(1));
+        req.requestId.add_assign(U256::from(1));
         blocklock.handle_decryption_requested(req.clone()).await;
         assert_eq!(blocklock.last_seen_request_id, U256::from(2).into());
 
-        req.requestID.add_assign(U256::from(1));
+        req.requestId.add_assign(U256::from(1));
         blocklock.handle_decryption_requested(req.clone()).await;
         assert_eq!(blocklock.last_seen_request_id, U256::from(3).into());
     }
