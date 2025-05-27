@@ -202,7 +202,7 @@ where
     ///     2) If the request id is not the next in the sequence, synchronize current state with
     ///         on-chain contract.
     ///     3) If no requests were missed, store the new request.
-    #[tracing::instrument(skip_all, fields(request_id = %decryption_requested.requestID))]
+    #[tracing::instrument(skip_all, fields(request_id = %decryption_requested.requestId))]
     pub async fn handle_decryption_requested(
         &mut self,
         decryption_requested: DecryptionSender::DecryptionRequested,
@@ -211,7 +211,7 @@ where
             "Blocklock agent detected decryption requested event: {decryption_requested:?}"
         );
 
-        let request_id: RequestId = decryption_requested.requestID.into();
+        let request_id: RequestId = decryption_requested.requestId.into();
         if self.last_seen_request_id >= request_id {
             // Request has already been seen
             self.handle_seen_request(request_id, decryption_requested);
