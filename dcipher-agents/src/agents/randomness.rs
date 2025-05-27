@@ -175,7 +175,7 @@ where
             .map_err(|e| {
                 InternalRandomnessAgentError::Contract(
                     e,
-                    "failed to call DecryptionSender::lastRequestID()",
+                    "failed to call SignatureSender::lastRequestID()",
                 )
             })?;
         let missing_requests = last_request_id.sub(last_seen_request_id);

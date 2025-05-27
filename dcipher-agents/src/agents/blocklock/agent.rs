@@ -381,13 +381,13 @@ where
         // Recover last_request_id
         let last_request_id = self
             .decryption_sender
-            .lastRequestID()
+            .lastRequestId()
             .call()
             .await
             .map_err(|e| {
                 InternalBlocklockAgentError::Contract(
                     e,
-                    "failed to call DecryptionSender::lastRequestID()",
+                    "failed to call DecryptionSender::lastRequestId()",
                 )
             })?;
         let missing_requests = last_request_id.sub(last_seen_request_id);
