@@ -23,17 +23,48 @@ pub enum PaymentEstimatorError {
     #[error(transparent)]
     Other(#[from] OtherPaymentEstimatorError),
 
-    /// The user does not have sufficient funds to allow covering the request w/ a sufficient
-    /// profit margin.
+    /// Request cost-related errors
     #[error(transparent)]
-    InsufficientFunds(InsufficientFundsError),
+    Cost(#[from] PaymentEstimatorCostError),
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error("not enough funds available to cover request: {available_funds} < {request_cost}")]
-pub struct InsufficientFundsError {
+pub enum PaymentEstimatorCostError {
+    /// The user does not have sufficient funds to allow covering the request w/ a sufficient
+    /// profit margin.
+    #[error(transparent)]
+    SubscriptionInsufficientFunds(SubscriptionInsufficientFundsError),
+
+    /// Fulfilling the direct funding request would result in losses.
+    #[error(transparent)]
+    FulfillmentCostTooHigh(FulfillmentCostTooHighError),
+
+    /// Fulfilling the request would result in profits, but the margin of the flat fee is too low.
+    #[error(transparent)]
+    ProfitTooLow(ProfitTooLowError),
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error(
+    "not enough funds in subscription to cover request: funds({available_funds}) < cost({request_cost})"
+)]
+pub struct SubscriptionInsufficientFundsError {
     pub available_funds: u128,
     pub request_cost: u128,
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("the fulfillment cost is too high: cost({fulfillment_cost}) > paid({paid})")]
+pub struct FulfillmentCostTooHighError {
+    pub paid: u128,
+    pub fulfillment_cost: u128,
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("the margin on the flat fee is too low: profits({profits}), percent({percent_flat_fee})")]
+pub struct ProfitTooLowError {
+    pub percent_flat_fee: u8,
+    pub profits: u128,
 }
 
 /// Other errors, generally due to an issue while estimating the costs.
@@ -271,13 +302,24 @@ where
                     custom_gas_price = gas_price,
                     max_fee_per_gas = tx_gas_params.max_fee_per_gas,
                     max_priority_fee_per_gas = tx_gas_params.max_priority_fee_per_gas,
-                    "The amount paid by the user is lower than the estimated fulfillment cost"
+                    is_subscription = request.is_subscription(),
+                    "The amount paid/available by the user is lower than the estimated fulfillment cost"
                 );
 
-                PaymentEstimatorError::InsufficientFunds(InsufficientFundsError {
-                    available_funds,
-                    request_cost: request_cost_upper_bound,
-                })
+                // Use different errors for subscription and direct funding
+                if request.is_subscription() {
+                    PaymentEstimatorCostError::SubscriptionInsufficientFunds(
+                        SubscriptionInsufficientFundsError {
+                            available_funds,
+                            request_cost: request_cost_upper_bound,
+                        },
+                    )
+                } else {
+                    PaymentEstimatorCostError::FulfillmentCostTooHigh(FulfillmentCostTooHighError {
+                        paid: available_funds,
+                        fulfillment_cost: request_cost_upper_bound,
+                    })
+                }
             })?;
         let profit = profit.min(flat_fee_wei); // bound profit by at most flat_fee_wei
         let profit_percent =
@@ -286,8 +328,11 @@ where
                 .ok_or(OtherPaymentEstimatorError::IntegerOverflow(
                     "profit overflowed",
                 ))?
-                / flat_fee_wei; // (profit * 100) / flat_fee_wei
-        if profit_percent < self.profit_percent_threshold.into() {
+                / flat_fee_wei; // (min(profit, flat_fee_wei) * 100) / flat_fee_wei
+        let profit_percent: u8 = profit_percent
+            .try_into()
+            .expect("profit percent in [0, 100]");
+        if profit_percent < self.profit_percent_threshold {
             tracing::warn!(
                 profit_percent,
                 profit_percent_threshold = self.profit_percent_threshold,
@@ -300,12 +345,10 @@ where
                 max_priority_fee_per_gas = tx_gas_params.max_priority_fee_per_gas,
                 "The amount paid by the user is lower than the profit_percent_threshold"
             );
-            Err(PaymentEstimatorError::InsufficientFunds(
-                InsufficientFundsError {
-                    available_funds,
-                    request_cost: request_cost_upper_bound,
-                },
-            ))?
+            Err(PaymentEstimatorCostError::ProfitTooLow(ProfitTooLowError {
+                profits: profit,
+                percent_flat_fee: profit_percent,
+            }))?
         }
 
         // Log all the call parameters

@@ -4,7 +4,7 @@
 
 use crate::agents::blocklock::contracts::BlocklockSender;
 use crate::agents::blocklock::metrics::Metrics;
-use crate::agents::payment::estimator::RequestFulfillmentEstimator;
+use crate::agents::payment::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
 use crate::agents::payment::fulfiller::{GenericFulfiller, GenericFulfillerError};
 use crate::decryption_sender::SignedDecryptionRequest;
 use crate::decryption_sender::contracts::DecryptionSender;
@@ -98,8 +98,20 @@ where
                 Ok(_) => {
                     Metrics::report_decryption_success();
                 }
-                Err(GenericFulfillerError::InsufficientFunds(_)) => {
-                    Metrics::report_insufficient_funds();
+                Err(GenericFulfillerError::CostError(
+                    PaymentEstimatorCostError::SubscriptionInsufficientFunds(_),
+                )) => {
+                    Metrics::report_subscription_insufficient_funds();
+                }
+                Err(GenericFulfillerError::CostError(
+                    PaymentEstimatorCostError::FulfillmentCostTooHigh(_),
+                )) => {
+                    Metrics::report_fulfillment_cost_too_high();
+                }
+                Err(GenericFulfillerError::CostError(PaymentEstimatorCostError::ProfitTooLow(
+                    _,
+                ))) => {
+                    Metrics::report_fulfillment_profit_too_low();
                 }
                 Err(_) => {
                     Metrics::report_decryption_error();

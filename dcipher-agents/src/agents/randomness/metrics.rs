@@ -106,10 +106,24 @@ impl Metrics {
             .inc();
     }
 
-    pub(super) fn report_insufficient_funds() {
+    pub(super) fn report_subscription_insufficient_funds() {
         METRICS
             .errors_total
-            .with_label_values(&["fulfillment_failed_insufficient_funds"])
+            .with_label_values(&["fulfillment_failed_subscription_insufficient_funds"])
+            .inc();
+    }
+
+    pub(super) fn report_fulfillment_cost_too_high() {
+        METRICS
+            .errors_total
+            .with_label_values(&["fulfillment_failed_cost_too_high"])
+            .inc();
+    }
+
+    pub(super) fn report_fulfillment_profit_too_low() {
+        METRICS
+            .errors_total
+            .with_label_values(&["fulfillment_failed_profit_too_low"])
             .inc();
     }
 

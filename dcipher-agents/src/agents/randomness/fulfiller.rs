@@ -2,7 +2,7 @@
 //! [`RandomnessFulfiller`] attempts to fulfil randomness requests sequentially with a transaction
 //! per fulfillment.
 
-use crate::agents::payment::estimator::RequestFulfillmentEstimator;
+use crate::agents::payment::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
 use crate::agents::payment::fulfiller::{GenericFulfiller, GenericFulfillerError};
 use crate::agents::randomness::contracts::RandomnessSender;
 use crate::agents::randomness::metrics::Metrics;
@@ -97,8 +97,20 @@ where
                 Ok(_) => {
                     Metrics::report_randomness_fulfilled();
                 }
-                Err(GenericFulfillerError::InsufficientFunds(_)) => {
-                    Metrics::report_insufficient_funds();
+                Err(GenericFulfillerError::CostError(
+                    PaymentEstimatorCostError::SubscriptionInsufficientFunds(_),
+                )) => {
+                    Metrics::report_subscription_insufficient_funds();
+                }
+                Err(GenericFulfillerError::CostError(
+                    PaymentEstimatorCostError::FulfillmentCostTooHigh(_),
+                )) => {
+                    Metrics::report_fulfillment_cost_too_high();
+                }
+                Err(GenericFulfillerError::CostError(PaymentEstimatorCostError::ProfitTooLow(
+                    _,
+                ))) => {
+                    Metrics::report_fulfillment_profit_too_low();
                 }
                 Err(_) => {
                     Metrics::report_fulfillment_error();
