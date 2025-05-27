@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use dcipher_agents::agents::blocklock::metrics::Metrics;
+use dcipher_agents::agents::randomness::metrics::Metrics;
 use prometheus::{Encoder, TextEncoder};
 use std::net::IpAddr;
 use warp::Filter;
