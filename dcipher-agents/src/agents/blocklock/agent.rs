@@ -1160,7 +1160,7 @@ mod tests {
                 .await
                 .unwrap();
             DecryptionRequested {
-                requestID: U256::from(req_id),
+                requestId: U256::from(req_id),
                 schemeID: req.schemeID,
                 ciphertext: req.ciphertext,
                 condition: req.condition,
