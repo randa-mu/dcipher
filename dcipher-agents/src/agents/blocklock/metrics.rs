@@ -38,10 +38,16 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
         .expect("metrics failed to initialise");
 
     registry
+        .register(Box::new(chain_height.clone()))
+        .expect("metrics failed to initialise");
+    registry
         .register(Box::new(missing_events.clone()))
         .expect("metrics failed to initialise");
     registry
         .register(Box::new(errors_total.clone()))
+        .expect("metrics failed to initialise");
+    registry
+        .register(Box::new(sync_success.clone()))
         .expect("metrics failed to initialise");
     registry
         .register(Box::new(decryption_requests.clone()))
