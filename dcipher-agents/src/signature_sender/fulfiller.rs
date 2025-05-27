@@ -228,7 +228,7 @@ where
         // Estimate gas limit to fulfil the call
         let gas_estimation_call = self
             .signature_sender_instance
-            .fulfilSignatureRequest(ready_request.id, ready_request.signature.clone())
+            .fulfillSignatureRequest(ready_request.id, ready_request.signature.clone())
             .max_fee_per_gas(max_fee_per_gas)
             .max_priority_fee_per_gas(max_priority_fee_per_gas);
         let estimated_gas = gas_estimation_call
@@ -272,7 +272,7 @@ where
         } else {
             let pending_tx = self
                 .signature_sender_instance
-                .fulfilSignatureRequest(ready_request.id, ready_request.signature.clone())
+                .fulfillSignatureRequest(ready_request.id, ready_request.signature.clone())
                 .max_fee_per_gas(max_fee_per_gas)
                 .max_priority_fee_per_gas(max_priority_fee_per_gas)
                 .gas(estimated_gas_with_buffer)

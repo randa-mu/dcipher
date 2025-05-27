@@ -95,7 +95,7 @@ impl RequestDetails for DefaultRequestDetails {
 /// A default implementation of [`PaymentConfig`] for a solidity struct.
 macro_rules! impl_payment_config {
     ($ty:ty) => {
-        impl PaymentConfig for $ty {
+        impl $crate::agents::payment::PaymentConfig for $ty {
             fn max_gas_limit(&self) -> u32 {
                 self.maxGasLimit
             }
@@ -128,3 +128,65 @@ macro_rules! impl_payment_config {
 }
 
 pub(crate) use impl_payment_config;
+
+/// A default implementation of [`PaymentContract`] for a solidity contract.
+macro_rules! impl_payment_contract {
+    ($module:ident,$instance:ident) => {
+        impl<P, N> $crate::agents::payment::PaymentContract<P, N> for $module::$instance<P, N>
+        where
+            P: alloy::providers::Provider<N>,
+            N: alloy::network::Network,
+        {
+            type PaymentConfig = $module::getConfigReturn;
+            type RequestDetails = $crate::agents::payment::DefaultRequestDetails;
+
+            async fn get_config(&self) -> Result<Self::PaymentConfig, alloy::contract::Error> {
+                self.getConfig().call().await
+            }
+
+            async fn get_request_details(&self, id: alloy::primitives::U256) -> Result<Self::RequestDetails, alloy::contract::Error> {
+                let details = self.getRequest(id).call().await?;
+                let mut request_details = $crate::agents::payment::DefaultRequestDetails {
+                    id,
+                    callback: details.callback,
+                    callback_gas_limit: details.callbackGasLimit,
+                    direct_fee_paid: None,
+                    subscription_balance: None,
+                };
+
+                if details.subId.is_zero() {
+                    request_details.direct_fee_paid = Some(details.directFundingFeePaid);
+                } else {
+                    let sub = self
+                        .getSubscription(details.subId)
+                        .call()
+                        .await
+                        .map_err(|e| {
+                            tracing::error!(
+                                error = ?e,
+                                sub_id = %details.subId,
+                                "Failed to call {}::getSubscription",
+                                stringify!($module)
+                            );
+                            e
+                        })?;
+
+                    request_details.subscription_balance =
+                        Some(sub.nativeBalance.try_into().expect("u96 fits in u128"));
+                }
+
+                Ok(request_details)
+            }
+
+            fn provider(&self) -> &P {
+                self.provider()
+            }
+
+            fn address(&self) -> &alloy::primitives::Address {
+                self.address()
+            }
+        }
+    };
+}
+
+pub(crate) use impl_payment_contract;

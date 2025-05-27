@@ -98,9 +98,25 @@ pub struct ChainArgs {
     )]
     pub tx_retry_strategy: RetryStrategy,
 
-    /// Buffer to use to bump the gas estimates
+    /// Percent used to bump the current gas price when fulfilling transactions
+    #[arg(
+        long,
+        env = "RANDOMNESS_GAS_PRICE_BUFFER_PERCENT",
+        default_value = "20"
+    )]
+    pub gas_price_buffer_percent: u16,
+
+    /// Percent used to bump the gas estimation when fulfilling transactions
     #[arg(long, env = "RANDOMNESS_GAS_BUFFER_PERCENT", default_value = "20")]
     pub gas_buffer_percent: u16,
+
+    /// Minimum profit required to fulfil transactions
+    #[arg(
+        long,
+        env = "RANDOMNESS_PROFIT_THRESHOLD_PERCENT",
+        default_value = "20"
+    )]
+    pub profit_threshold: u8,
 
     /// Minimum number of confirmations to wait for before considering a transaction confirmed
     #[arg(long, env = "RANDOMNESS_SYNC_BATCH_SIZE", default_value = "20")]
@@ -109,6 +125,10 @@ pub struct ChainArgs {
     /// Address of the deployed SignatureSender contract
     #[arg(long, env = "RANDOMNESS_SIGNATURE_SENDER_CONTRACT_ADDRESS")]
     pub signature_sender_addr: alloy::primitives::Address,
+
+    /// Address of the deployed RandomnessSender contract
+    #[arg(long, env = "RANDOMNESS_SENDER_CONTRACT_ADDRESS")]
+    pub randomness_sender_addr: alloy::primitives::Address,
 }
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
