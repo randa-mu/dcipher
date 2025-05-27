@@ -5,16 +5,18 @@ edition = "2024"
 
 [dependencies]
 dcipher-agents = { path = "../dcipher-agents" }
-alloy = { version = "0.15", features = ["default", "provider-ws"] }
+alloy = { version = "1.0", features = ["default", "provider-ws"] }
 anyhow = "1.0"
 tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync"] }
 tracing = "0.1.41"
 futures = "0.3.30"
 futures-util = "0.3"
 serde = { version = "1.0.219", features = ["derive"] }
+warp = "0.3.7"
+prometheus = "0.14.0"
 
 [dev-dependencies]
-alloy = { version = "0.15", features = ["default", "provider-ws", "provider-anvil-node"] }
+alloy = { version = "1.0", features = ["default", "provider-ws", "provider-anvil-node"] }
 ark-bn254 = "0.4.0"
 ark-ec = "0.4.2"
 ark-ff = "0.4.2"
@@ -33,4 +35,3 @@ rand = "0.9.1"
 [patch.crates-io]
 # Use custom patch to fix arkworks' FieldHasher
 ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}
-alloy-eip2930 = { git = 'https://github.com/azixus/eips', branch = "fix/accessList-default"}

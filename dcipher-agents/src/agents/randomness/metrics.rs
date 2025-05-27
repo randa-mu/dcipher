@@ -8,8 +8,8 @@ pub struct Metrics {
     missing_events: IntCounter,
     errors_total: IntCounterVec,
     sync_success: IntCounter,
-    decryption_requests: IntCounter,
-    decryption_success: IntCounter,
+    randomness_requests: IntCounter,
+    randomness_fulfilled: IntCounter,
 }
 
 static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
@@ -29,13 +29,16 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
 
     let sync_success = IntCounter::new("sync_success_total", "Successful syncs")
         .expect("metrics failed to initialise");
-    let decryption_requests = IntCounter::new(
-        "decryption_requested_total",
-        "Decryptions requested that don't yet have their conditions met",
+    let randomness_requests = IntCounter::new(
+        "randomness_requested_total",
+        "Total number of randomness request received by the agent",
     )
     .expect("metrics failed to initialise");
-    let decryption_success = IntCounter::new("decryption_success_total", "Successful decryptions")
-        .expect("metrics failed to initialise");
+    let randomness_fulfilled = IntCounter::new(
+        "randomness_fulfilled_total",
+        "Number of randomness requests that were fulfilled",
+    )
+    .expect("metrics failed to initialise");
 
     registry
         .register(Box::new(missing_events.clone()))
@@ -44,10 +47,10 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
         .register(Box::new(errors_total.clone()))
         .expect("metrics failed to initialise");
     registry
-        .register(Box::new(decryption_requests.clone()))
+        .register(Box::new(randomness_requests.clone()))
         .expect("metrics failed to initialise");
     registry
-        .register(Box::new(decryption_success.clone()))
+        .register(Box::new(randomness_fulfilled.clone()))
         .expect("metrics failed to initialise");
 
     Metrics {
@@ -56,8 +59,8 @@ static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
         missing_events,
         errors_total,
         sync_success,
-        decryption_requests,
-        decryption_success,
+        randomness_requests,
+        randomness_fulfilled,
     }
 });
 
@@ -89,17 +92,17 @@ impl Metrics {
             .inc();
     }
 
-    pub(super) fn report_storage_error() {
-        METRICS
-            .errors_total
-            .with_label_values(&["storage_error"])
-            .inc();
-    }
-
     pub(super) fn report_fetch_requests_error() {
         METRICS
             .errors_total
             .with_label_values(&["fetch_requests_error"])
+            .inc();
+    }
+
+    pub(super) fn report_fulfillment_error() {
+        METRICS
+            .errors_total
+            .with_label_values(&["fulfillment_failed"])
             .inc();
     }
 
@@ -124,19 +127,12 @@ impl Metrics {
             .inc();
     }
 
-    pub(super) fn report_decryption_requested() {
-        METRICS.decryption_requests.inc();
+    pub(super) fn report_randomness_requested() {
+        METRICS.randomness_requests.inc();
     }
 
-    pub(super) fn report_decryption_success() {
-        METRICS.decryption_success.inc();
-    }
-
-    pub(super) fn report_decryption_error() {
-        METRICS
-            .errors_total
-            .with_label_values(&["decryption_error"])
-            .inc();
+    pub(super) fn report_randomness_fulfilled() {
+        METRICS.randomness_fulfilled.inc();
     }
 
     pub fn gather() -> Vec<MetricFamily> {

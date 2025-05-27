@@ -2,7 +2,7 @@ mod arguments_parser;
 mod healthcheck;
 
 use crate::arguments_parser::{NodesConfiguration, RandomnessAgentArgs, RandomnessAgentConfig};
-use crate::healthcheck::healthcheck;
+use crate::healthcheck::start_api;
 use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
@@ -101,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
             err // return Result
         },
 
-        err = healthcheck(&config.healthcheck_listen_addr, config.healthcheck_port) => {
+        err = start_api(config.healthcheck_listen_addr, config.healthcheck_port) => {
             eprintln!("healthcheck stopped unexpectedly...");
             err // return Result
         }

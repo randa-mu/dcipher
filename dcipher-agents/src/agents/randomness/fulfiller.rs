@@ -2,9 +2,10 @@
 //! [`RandomnessFulfiller`] attempts to fulfil randomness requests sequentially with a transaction
 //! per fulfillment.
 
-use crate::agents::payment::estimator::RequestFulfillmentEstimator;
+use crate::agents::payment::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
 use crate::agents::payment::fulfiller::{GenericFulfiller, GenericFulfillerError};
 use crate::agents::randomness::contracts::RandomnessSender;
+use crate::agents::randomness::metrics::Metrics;
 use crate::fulfiller::TransactionFulfiller;
 use crate::signature_sender::SignedSignatureRequest;
 use crate::signature_sender::contracts::SignatureSender;
@@ -91,7 +92,32 @@ where
                 })
                 .collect();
 
-            self.fulfiller.fulfil_calls(calls).await
+            let results = self.fulfiller.fulfil_calls(calls).await;
+            results.iter().for_each(|res| match &res {
+                Ok(_) => {
+                    Metrics::report_randomness_fulfilled();
+                }
+                Err(GenericFulfillerError::CostError(
+                    PaymentEstimatorCostError::SubscriptionInsufficientFunds(_),
+                )) => {
+                    Metrics::report_subscription_insufficient_funds();
+                }
+                Err(GenericFulfillerError::CostError(
+                    PaymentEstimatorCostError::FulfillmentCostTooHigh(_),
+                )) => {
+                    Metrics::report_fulfillment_cost_too_high();
+                }
+                Err(GenericFulfillerError::CostError(PaymentEstimatorCostError::ProfitTooLow(
+                    _,
+                ))) => {
+                    Metrics::report_fulfillment_profit_too_low();
+                }
+                Err(_) => {
+                    Metrics::report_fulfillment_error();
+                }
+            });
+
+            results
         }
         .boxed()
     }

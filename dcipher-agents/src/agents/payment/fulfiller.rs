@@ -2,7 +2,7 @@
 
 use crate::agents::payment::PaymentContract;
 use crate::agents::payment::estimator::{
-    InsufficientFundsError, OtherPaymentEstimatorError, PaymentEstimatorError,
+    OtherPaymentEstimatorError, PaymentEstimatorCostError, PaymentEstimatorError,
     RequestFulfillmentEstimator,
 };
 use alloy::contract::SolCallBuilder;
@@ -24,7 +24,7 @@ pub enum GenericFulfillerError {
     OtherPaymentEstimator(#[from] OtherPaymentEstimatorError),
 
     #[error(transparent)]
-    InsufficientFunds(#[from] InsufficientFundsError),
+    CostError(#[from] PaymentEstimatorCostError),
 }
 
 #[derive(Clone)]
@@ -206,9 +206,7 @@ impl From<PaymentEstimatorError> for GenericFulfillerError {
     fn from(value: PaymentEstimatorError) -> Self {
         match value {
             PaymentEstimatorError::Other(e) => GenericFulfillerError::OtherPaymentEstimator(e),
-            PaymentEstimatorError::InsufficientFunds(e) => {
-                GenericFulfillerError::InsufficientFunds(e)
-            }
+            PaymentEstimatorError::Cost(e) => GenericFulfillerError::CostError(e),
         }
     }
 }

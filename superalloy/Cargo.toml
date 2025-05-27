@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-alloy = { version = "0.15", features = ["default", "provider-ws"] }
+alloy = { version = "1.0", features = ["default", "provider-ws"] }
 thiserror = "1.0"
 tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "time"] }
 tracing = "0.1.41"

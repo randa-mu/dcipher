@@ -46,6 +46,7 @@ where
         match events_stream.next().await {
             Some(ChainEvent::NewBlock(new_block)) => {
                 tracing::info!(block_number = new_block, "ChainEvent::NewBlock");
+                agent.handle_new_block(new_block.into()).await;
 
                 // Tick the fulfiller every block
                 ticker.0.notify_one();

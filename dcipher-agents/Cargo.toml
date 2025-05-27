@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
-alloy = { version = "0.15", features = ["default", "provider-ws"] }
+alloy = { version = "1.0", features = ["default", "provider-ws"] }
 tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync"] }
 tokio-util = "0.7"
 thiserror = "1.0"
@@ -26,7 +26,7 @@ prometheus = "0.14.0"
 
 [dev-dependencies]
 hex = "0.4"
-alloy = { version = "0.15", features = ["default", "provider-ws", "provider-anvil-node"] }
+alloy = { version = "1.0", features = ["default", "provider-ws", "provider-anvil-node"] }
 
 # Use custom patch to fix arkworks' FieldHasher
 [patch.crates-io]
