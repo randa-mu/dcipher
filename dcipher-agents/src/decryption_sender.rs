@@ -116,7 +116,7 @@ impl TryFrom<DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
 impl From<DecryptionSender::DecryptionRequested> for DecryptionRequest {
     fn from(value: DecryptionSender::DecryptionRequested) -> Self {
         Self {
-            id: value.requestID,
+            id: value.requestId,
             condition: value.condition,
             ciphertext: value.ciphertext,
         }

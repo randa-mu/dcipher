@@ -202,7 +202,7 @@ where
     ///     2) If the request id is not the next in the sequence, synchronize current state with
     ///         on-chain contract.
     ///     3) If no requests were missed, store the new request.
-    #[tracing::instrument(skip_all, fields(request_id = %decryption_requested.requestID))]
+    #[tracing::instrument(skip_all, fields(request_id = %decryption_requested.requestId))]
     pub async fn handle_decryption_requested(
         &mut self,
         decryption_requested: DecryptionSender::DecryptionRequested,
@@ -211,7 +211,7 @@ where
             "Blocklock agent detected decryption requested event: {decryption_requested:?}"
         );
 
-        let request_id: RequestId = decryption_requested.requestID.into();
+        let request_id: RequestId = decryption_requested.requestId.into();
         if self.last_seen_request_id >= request_id {
             // Request has already been seen
             self.handle_seen_request(request_id, decryption_requested);
@@ -381,13 +381,13 @@ where
         // Recover last_request_id
         let last_request_id = self
             .decryption_sender
-            .lastRequestID()
+            .lastRequestId()
             .call()
             .await
             .map_err(|e| {
                 InternalBlocklockAgentError::Contract(
                     e,
-                    "failed to call DecryptionSender::lastRequestID()",
+                    "failed to call DecryptionSender::lastRequestId()",
                 )
             })?;
         let missing_requests = last_request_id.sub(last_seen_request_id);
@@ -930,7 +930,7 @@ mod tests {
         );
 
         let mut req = DecryptionRequested {
-            requestID: U256::from(1),
+            requestId: U256::from(1),
             schemeID: BLOCKLOCK_SCHEME_ID.to_owned(),
             condition: BlocklockCondition::BlockNumber(999.into()).into(),
             ciphertext: Bytes::from(b"ciphertext"),
@@ -943,11 +943,11 @@ mod tests {
         blocklock.handle_decryption_requested(req.clone()).await;
         assert_eq!(blocklock.last_seen_request_id, U256::from(1).into());
 
-        req.requestID.add_assign(U256::from(1));
+        req.requestId.add_assign(U256::from(1));
         blocklock.handle_decryption_requested(req.clone()).await;
         assert_eq!(blocklock.last_seen_request_id, U256::from(2).into());
 
-        req.requestID.add_assign(U256::from(1));
+        req.requestId.add_assign(U256::from(1));
         blocklock.handle_decryption_requested(req.clone()).await;
         assert_eq!(blocklock.last_seen_request_id, U256::from(3).into());
     }
@@ -966,7 +966,7 @@ mod tests {
 
         // Try to store a request with an invalid scheme id, it should not be stored
         let req = DecryptionRequested {
-            requestID: U256::from(1),
+            requestId: U256::from(1),
             schemeID: OTHER_SCHEME_ID.to_owned(),
             condition: BlocklockCondition::BlockNumber(999.into()).into(),
             ciphertext: Bytes::from(b"ciphertext"),
@@ -979,7 +979,7 @@ mod tests {
 
         // Try to store a request with a valid scheme id, it should be stored
         let req = DecryptionRequested {
-            requestID: U256::from(2),
+            requestId: U256::from(2),
             schemeID: BLOCKLOCK_SCHEME_ID.to_owned(),
             condition: BlocklockCondition::BlockNumber(999.into()).into(),
             ciphertext: Bytes::from(b"ciphertext"),
@@ -1005,7 +1005,7 @@ mod tests {
         );
 
         let req_1_block_2 = DecryptionRequested {
-            requestID: U256::from(1),
+            requestId: U256::from(1),
             schemeID: BLOCKLOCK_SCHEME_ID.to_owned(),
             condition: BlocklockCondition::BlockNumber(2.into()).into(),
             ciphertext: Bytes::from(b"ciphertext"),
@@ -1013,7 +1013,7 @@ mod tests {
             requestedAt: U256::from(0),
         };
         let req_2_block_5 = DecryptionRequested {
-            requestID: U256::from(2),
+            requestId: U256::from(2),
             schemeID: BLOCKLOCK_SCHEME_ID.to_owned(),
             condition: BlocklockCondition::BlockNumber(5.into()).into(),
             ciphertext: Bytes::from(b"ciphertext"),
@@ -1021,7 +1021,7 @@ mod tests {
             requestedAt: U256::from(0),
         };
         let req_3_block_5 = DecryptionRequested {
-            requestID: U256::from(3),
+            requestId: U256::from(3),
             schemeID: BLOCKLOCK_SCHEME_ID.to_owned(),
             condition: BlocklockCondition::BlockNumber(5.into()).into(),
             ciphertext: Bytes::from(b"ciphertext"),
@@ -1160,7 +1160,7 @@ mod tests {
                 .await
                 .unwrap();
             DecryptionRequested {
-                requestID: U256::from(req_id),
+                requestId: U256::from(req_id),
                 schemeID: req.schemeID,
                 ciphertext: req.ciphertext,
                 condition: req.condition,

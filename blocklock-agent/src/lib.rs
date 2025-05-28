@@ -54,7 +54,7 @@ where
                 ticker.0.notify_one();
             }
             Some(ChainEvent::DecryptionRequested(request)) => {
-                tracing::info!(request_id = %request.requestID, "ChainEvent::DecryptionRequested");
+                tracing::info!(request_id = %request.requestId, "ChainEvent::DecryptionRequested");
                 agent.handle_decryption_requested(request).await;
             }
             None => Err(anyhow!("events stream ended prematurely"))?,
