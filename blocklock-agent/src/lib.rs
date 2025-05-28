@@ -45,7 +45,7 @@ where
     loop {
         match events_stream.next().await {
             Some(ChainEvent::NewBlock(new_block)) => {
-                tracing::info!(block_number = new_block, "ChainEvent::NewBlock");
+                tracing::debug!(block_number = new_block, "ChainEvent::NewBlock");
 
                 // Update the blocklock state
                 agent.handle_new_block(new_block.into()).await;

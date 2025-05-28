@@ -25,7 +25,7 @@ libp2p = { version = "0.55", features = ["serde"] }
 pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
 serde_json = "1.0"
 superalloy = { path = "../superalloy" }
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tokio-util = "0.7"
 tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
 base64 = "0.22.1"
