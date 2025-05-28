@@ -20,7 +20,8 @@ use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::Layer;
+use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -30,8 +31,14 @@ async fn main() -> anyhow::Result<()> {
     } = BlocklockConfig::parse()?;
 
     // Set logging options
-    FmtSubscriber::builder()
-        .with_max_level(config.log_level)
+    let json_layer = if config.log_json {
+        tracing_subscriber::fmt::layer().json().boxed()
+    } else {
+        tracing_subscriber::fmt::layer().boxed()
+    };
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from(&config.log_level))
+        .with(json_layer)
         .init();
 
     // Create a wallet
