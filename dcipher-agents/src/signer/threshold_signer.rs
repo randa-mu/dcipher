@@ -174,16 +174,16 @@ where
 
                 // If a partial was already issued, ignore the message
                 if self.partial_issued(&message) {
-                    tracing::debug!(message = ?message, "Received message signing request, but message was already signed");
+                    tracing::debug!(msg = ?message, "Received message signing request, but message was already signed");
                     continue;
                 }
 
-                tracing::info!(message = ?message, "Received new message to sign");
+                tracing::info!(msg = ?message, "Received new message to sign");
 
                 let sig = match self.signer.sign(&message) {
                     Ok(sig) => sig,
                     Err(e) => {
-                        tracing::error!(error = ?e, message = ?message, "Failed to sign message.");
+                        tracing::error!(error = ?e, msg = ?message, "Failed to sign message.");
                         continue;
                     }
                 };
@@ -286,7 +286,7 @@ where
         message: Vec<u8>,
         partial: PartialSignature<SignatureGroup<BLS>>,
     ) {
-        tracing::info!(message = ?message, party_id = partial.id, "Storing partial signature on message");
+        tracing::info!(msg = ?message, party_id = partial.id, "Storing partial signature on message");
         let mut partials_cache = self
             .partials_cache
             .lock()
