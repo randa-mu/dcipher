@@ -44,11 +44,15 @@ pub struct RandomnessAgentArgs {
     #[command(flatten)]
     pub libp2p: Libp2pArgs,
 
-    /// The logging level for structured JSON logging
-    /// Can be "info", "debug", "error", or "trace"
+    /// The logging level parsed by [`EnvFilter`](tracing_subscriber::EnvFilter), see
+    /// <https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives>
+    /// for more details on the syntax.
     #[arg(long, env = "RANDOMNESS_LOG_LEVEL", default_value = "info")]
-    #[serde(with = "serde_to_string_from_str")]
-    pub log_level: tracing::Level,
+    pub log_level: String,
+
+    /// The logging to structured JSON logging
+    #[arg(long, env = "RANDOMNESS_LOG_JSON", default_value = "false")]
+    pub log_json: bool,
 }
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
