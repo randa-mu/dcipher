@@ -66,7 +66,7 @@ where
     ///     3) Otherwise, update last seen block
     #[tracing::instrument(skip(self))]
     pub async fn handle_new_block(&mut self, block_number: BlockNumber) {
-        tracing::info!("Randomness agent received NewBlock event: {block_number:?}");
+        tracing::debug!("Randomness agent received NewBlock event: {block_number:?}");
         Metrics::report_chain_height(block_number.into());
 
         if self.last_seen_block >= block_number {

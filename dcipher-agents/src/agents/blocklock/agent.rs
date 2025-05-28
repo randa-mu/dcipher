@@ -175,7 +175,7 @@ where
     ///         forward them to the fulfiller and remove them from the agent's storage.
     #[tracing::instrument(skip(self))]
     pub async fn handle_new_block(&'a mut self, mut block_number: BlockNumber) {
-        tracing::info!("Blocklock agent received NewBlock event: {block_number:?}");
+        tracing::debug!("Blocklock agent received NewBlock event: {block_number:?}");
         Metrics::report_chain_height(block_number.into());
 
         if self.last_seen_block >= block_number {
