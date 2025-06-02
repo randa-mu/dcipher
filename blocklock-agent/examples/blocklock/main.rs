@@ -110,12 +110,12 @@ async fn main() -> anyhow::Result<()> {
 
         err = run_agent(&mut agent, ticker, decryption_sender_contract_ro) => {
             eprintln!("agent stopped unexpectedly...");
-            err // return Result
+            err
         },
 
         err = start_api(config.healthcheck_listen_addr, config.healthcheck_port) => {
             eprintln!("healthcheck stopped unexpectedly...");
-            err // return Result
+            err
         }
     };
 

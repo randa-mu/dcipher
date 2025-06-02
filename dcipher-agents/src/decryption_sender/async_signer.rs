@@ -47,7 +47,6 @@ where
 
     async fn async_sign(&self, req: DecryptionRequest) -> Result<Self::Signature, Self::Error> {
         // Await signature
-        // TODO: The new refactor makes the Cow used for sig_bytes useless.
         let sig = self
             .signer
             .async_sign(req.condition.clone())
