@@ -1,4 +1,4 @@
-name: push-randomness-agent-docker
+name: push-blocklock-agent-docker
 on:
   push:
     branches:
