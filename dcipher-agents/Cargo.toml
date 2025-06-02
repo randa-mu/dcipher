@@ -3,6 +3,9 @@ name = "dcipher-agents"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+rayon = ["dep:rayon"]
+
 [dependencies]
 pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
 alloy = { version = "1.0", features = ["default", "provider-ws"] }
@@ -23,6 +26,7 @@ libp2p = { version = "0.55", features = ["tcp", "dns", "noise", "tokio", "ping",
 lru = "0.14"
 serde_cbor = "0.10"
 prometheus = "0.14.0"
+rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
 hex = "0.4"

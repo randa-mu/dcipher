@@ -34,7 +34,7 @@ where
     CS: PairingIbeCipherSuite,
     S: AsynchronousSigner<Bytes>,
     TF: TransactionFulfiller<SignedRequest = SignedDecryptionRequest<'static>>,
-    DecryptionSenderAsyncSigner<CS, S, Bytes>:
+    DecryptionSenderAsyncSigner<CS, S>:
         AsynchronousSigner<DecryptionRequest, Signature = SignedDecryptionRequest<'static>>,
 {
     /// Instantiate a [`DecryptionSenderFulfiller<RS, TF>`](DecryptionSenderFulfiller).
@@ -44,7 +44,7 @@ where
         transaction_fulfiller: TF,
         max_fulfillment_per_tick: usize,
         retry_strategy: RetryStrategy,
-    ) -> DecryptionSenderFulfiller<DecryptionSenderAsyncSigner<CS, S, Bytes>, TF> {
+    ) -> DecryptionSenderFulfiller<DecryptionSenderAsyncSigner<CS, S>, TF> {
         let signer = DecryptionSenderAsyncSigner::new(cs, signer);
         TickerFulfiller::new(
             signer,

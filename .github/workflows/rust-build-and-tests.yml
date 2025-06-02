@@ -61,3 +61,10 @@ jobs:
         with:
           working-directory: ./randomness-agent
           target-folder: '../target'
+
+      # 6. Build and test dsigner
+      - name: dsigner
+        uses: ./.github/actions/rust-test-action
+        with:
+          working-directory: ./dsigner
+          target-folder: '../target'

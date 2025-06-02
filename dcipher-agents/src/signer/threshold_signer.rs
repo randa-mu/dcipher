@@ -4,8 +4,9 @@
 mod aggregation;
 mod libp2p;
 
+pub use aggregation::lagrange_points_interpolate_at;
+
 use crate::ser::EvmSerialize;
-use crate::signer::threshold_signer::aggregation::lagrange_points_interpolate_at;
 use crate::signer::threshold_signer::libp2p::LibP2PNode;
 use crate::signer::{AsynchronousSigner, BlsSigner, BlsVerifier};
 use ark_ec::{AffineRepr, CurveGroup};
@@ -21,7 +22,7 @@ use tokio_util::sync::CancellationToken;
 type SignatureGroup<BLS> = <BLS as BlsVerifier>::SignatureGroup;
 
 type SignatureOrChannel<BLS> =
-    Either<SignatureGroup<BLS>, tokio::sync::oneshot::Sender<SignatureGroup<BLS>>>;
+    Either<SignatureGroup<BLS>, tokio::sync::watch::Sender<Option<SignatureGroup<BLS>>>>;
 
 type SharedSignatureCache<BLS> = Arc<std::sync::Mutex<LruCache<Vec<u8>, SignatureOrChannel<BLS>>>>;
 
@@ -72,6 +73,9 @@ where
     t: u16,
     id: u16,
     pks: Vec<BLS::PublicKeyGroup>,
+
+    // Enable the node to broadcast a partial signature upon receiving a valid partial.
+    eager_signing: bool,
 }
 
 impl<BLS> ThresholdSigner<BLS>
@@ -93,7 +97,38 @@ where
             t,
             id,
             pks,
+            // disable eager signing by default, i.e., automatically submitting a partial
+            // signature upon receiving a valid partial from another node.
+            eager_signing: false,
         }
+    }
+
+    /// New threshold signer with a custom LRU cache size.
+    pub fn new_with_cache_size(
+        cs: BLS,
+        n: u16,
+        t: u16,
+        id: u16,
+        pks: Vec<BLS::PublicKeyGroup>,
+        lru_cache_size: NonZeroUsize,
+    ) -> Self {
+        Self {
+            signatures_cache: Arc::new(std::sync::Mutex::new(LruCache::new(lru_cache_size))),
+            partials_cache: Arc::new(std::sync::Mutex::new(LruCache::new(lru_cache_size))),
+            signer: cs,
+            n,
+            t,
+            id,
+            pks,
+            eager_signing: false,
+        }
+    }
+
+    /// Enable eager signing by automatically submitting a partial signature upon receiving
+    /// a valid partial from another node.
+    pub fn with_eager_signing(mut self) -> Self {
+        self.eager_signing = true;
+        self
     }
 
     /// Runs the threshold signer in a background task and obtain a cancellation token and a registry.
@@ -121,7 +156,7 @@ where
         // Create a registry
         let registry = AsyncThresholdSigner {
             signatures_cache: arc_self.signatures_cache.clone(),
-            new_message_to_sign: tx_registry_to_signer,
+            new_message_to_sign: tx_registry_to_signer.clone(),
         };
 
         // Create a libp2p instance
@@ -150,11 +185,11 @@ where
         ));
 
         // Spawn task that handles messages from other nodes
-        tokio::task::spawn(
-            arc_self
-                .clone()
-                .recv_new_signatures(rx_signer_from_libp2p, cancellation_token.child_token()),
-        );
+        tokio::task::spawn(arc_self.clone().recv_new_signatures(
+            rx_signer_from_libp2p,
+            tx_registry_to_signer,
+            cancellation_token.child_token(),
+        ));
 
         (cancellation_token, registry)
     }
@@ -165,40 +200,165 @@ where
         tx_to_libp2p: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
         cancellation_token: CancellationToken,
     ) {
+        #[cfg(feature = "rayon")]
+        use rayon::prelude::*;
+
+        const MAX_BATCH_SIZE: usize = 256;
+
         let inner_fn = async move {
+            let mut messages = Vec::with_capacity(MAX_BATCH_SIZE);
+
             loop {
-                let Some(message) = rx_messages.recv().await else {
+                let count = rx_messages.recv_many(&mut messages, MAX_BATCH_SIZE).await;
+                if count == 0 {
                     tracing::warn!("Registry has dropped message sender, exiting recv loop");
                     break;
                 };
 
-                // If a partial was already issued, ignore the message
-                if self.partial_issued(&message) {
-                    tracing::debug!(msg = ?message, "Received message signing request, but message was already signed");
-                    continue;
+                // Remove messages with partial already issued
+                let messages: Vec<_> = {
+                    let mut partials_cache = self
+                        .partials_cache
+                        .lock()
+                        .expect("a thread panicked holding the mutex");
+
+                    messages
+                        .drain(..)
+                        .filter(|m| {
+                            let Some(partials_map) = partials_cache.get(m) else {
+                                return true; // not yet signed
+                            };
+
+                            if partials_map.contains_key(&self.id) {
+                                tracing::debug!(msg = ?m, "Received message signing request, but message was already signed");
+                                false
+                            } else {
+                                true
+                            }
+                        })
+                        .collect()
+                };
+
+                let span =
+                    tracing::debug_span!("threshold_signer_batch", batch_size = count).entered();
+                #[cfg(feature = "rayon")]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Signing messages in parallel"
+                );
+                #[cfg(not(feature = "rayon"))]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Signing messages sequentially"
+                );
+                let span = span.exit();
+
+                // Create signatures in parallel if rayon is enabled, otherwise use a standard iter
+                #[cfg(feature = "rayon")]
+                let iter = messages.into_par_iter();
+                #[cfg(not(feature = "rayon"))]
+                let iter = messages.into_iter();
+                let (partials, messages): (Vec<_>, Vec<_>) = iter.filter_map(|message| {
+                    tracing::info!(msg = ?message, "Received new message to sign");
+
+                    match self.signer.sign(&message) {
+                        Ok(sig) => Some((sig, message)),
+                        Err(e) => {
+                            tracing::error!(error = ?e, msg = ?message, "Failed to sign message.");
+                            None
+                        }
+                    }
+                }).collect();
+
+                let to_aggregate: Vec<_> = {
+                    let mut partials_cache = self
+                        .partials_cache
+                        .lock()
+                        .expect("a thread panicked with the mutex");
+
+                    // We filter with a sequential iterator here due to side effects
+                    partials.iter().zip(messages.iter()).filter_map(|(partial_sig, m)| {
+                        tracing::info!(msg = ?m, party_id = self.id, "Storing partial signature on message");
+                        let partials = partials_cache.get_or_insert_mut(m.clone(), HashMap::default);
+                        partials.insert(
+                            self.id,
+                            PartialSignature {
+                                id: self.id,
+                                sig: *partial_sig,
+                            },
+                        );
+
+                        // Do we have exactly t partials?
+                        if partials.len() == usize::from(self.t) {
+                            // Aggregate the partials with Lagrange's interpolation
+                            let points = partials
+                                .values()
+                                .map(|partial| (u64::from(partial.id), partial.sig.into_group()))
+                                .collect::<Vec<_>>();
+                            Some(points)
+                        } else {
+                            None
+                        }
+                    }).collect()
+                };
+
+                let span = span.entered();
+                #[cfg(feature = "rayon")]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Aggregating signatures in parallel"
+                );
+                #[cfg(not(feature = "rayon"))]
+                tracing::debug!(
+                    messages_count = messages.len(),
+                    "Aggregating signatures sequentially"
+                );
+                let _span = span.exit();
+
+                // Do the aggregation with a parallel iterator if rayon is enabled
+                #[cfg(feature = "rayon")]
+                let iter = to_aggregate.into_par_iter();
+                #[cfg(not(feature = "rayon"))]
+                let iter = to_aggregate.into_iter();
+                let signatures: Vec<_> = iter
+                    .map(|points| lagrange_points_interpolate_at(&points, 0).into_affine())
+                    .collect();
+
+                // We now have a bunch of signatures, store them
+                {
+                    let mut signatures_cache = self
+                        .signatures_cache
+                        .lock()
+                        .expect("a thread panicked with the mutex");
+
+                    // side effects, sequential iterator
+                    signatures
+                        .into_iter()
+                        .zip(messages.iter())
+                        .for_each(|(sig, message)| {
+                            if let Some(Either::Right(tx_channel)) =
+                                signatures_cache.put(message.to_owned(), Either::Left(sig))
+                            {
+                                // If there previously was a channel stored at the entry, also send signature through it
+                                tx_channel.send_replace(Some(sig));
+                            }
+                        });
                 }
 
-                tracing::info!(msg = ?message, "Received new message to sign");
+                // Send it to other nodes with libp2p if threshold greater than 1
+                if self.t > 1 {
+                    partials
+                        .into_iter()
+                        .zip(messages)
+                        .for_each(|(sig, message)| {
+                            let partial = PartialSignatureWithMessage { sig, m: message };
 
-                let sig = match self.signer.sign(&message) {
-                    Ok(sig) => sig,
-                    Err(e) => {
-                        tracing::error!(error = ?e, msg = ?message, "Failed to sign message.");
-                        continue;
-                    }
-                };
-                let partial = PartialSignatureWithMessage {
-                    sig,
-                    m: message.clone(),
-                };
-
-                // Save the signature, and aggregate it if we have enough signatures
-                self.store_and_process_partial(message, PartialSignature { id: self.id, sig });
-
-                // Send it to other nodes with libp2p
-                let m = serde_cbor::to_vec(&partial).expect("serialization should always work");
-                if tx_to_libp2p.send(m).is_err() {
-                    tracing::error!("Failed to send message to signer: channel closed");
+                            let m = serde_cbor::to_vec(&partial)
+                                .expect("serialization should always work");
+                            if tx_to_libp2p.send(m).is_err() {
+                                tracing::error!("Failed to send message to signer: channel closed");
+                            }
+                        });
                 }
             }
         };
@@ -215,6 +375,7 @@ where
     async fn recv_new_signatures(
         self: Arc<Self>,
         mut rx_from_libp2p: tokio::sync::mpsc::UnboundedReceiver<(u16, Vec<u8>)>,
+        new_message_to_sign: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
         cancellation_token: CancellationToken,
     ) {
         let inner_fn = async move {
@@ -249,12 +410,22 @@ where
 
                 // Valid signature, add it to our cache
                 self.store_and_process_partial(
-                    partial.m,
+                    partial.m.clone(),
                     PartialSignature {
                         id: party_id,
                         sig: partial.sig,
                     },
                 );
+
+                if self.eager_signing {
+                    // If eager signing is enabled and the message has not been signed already,
+                    // request to broadcast a partial signature on that message
+                    if !self.partial_issued(&partial.m) {
+                        new_message_to_sign
+                            .send(partial.m)
+                            .expect("failed to forward message to signer");
+                    }
+                }
             }
         };
 
@@ -318,11 +489,7 @@ where
                 signatures_cache.put(message, Either::Left(sig))
             {
                 // If there previously was a channel stored at the entry, also send signature through it
-                if tx_channel.send(sig).is_err() {
-                    tracing::warn!(
-                        "Failed to notify of a new signature through oneshot channel: the future was dropped early"
-                    );
-                }
+                tx_channel.send_replace(Some(sig));
             }
         }
     }
@@ -330,11 +497,11 @@ where
 
 #[derive(thiserror::Error, Copy, Clone, Debug)]
 pub enum AsyncThresholdSignerError {
-    #[error("cannot wait on the same message to sign twice")]
-    MessageAlreadyRegistered,
-
     #[error("the message to sign has been dropped from cache")]
     DroppedFromCache,
+
+    #[error("the watch sender has been dropped")]
+    WatchSenderDropped,
 
     #[error("the channel used to request signatures has been closed")]
     CannotRequestNewSignatures,
@@ -358,15 +525,14 @@ where
         async move {
             // We have three possibilities here:
             //  1. The message is not yet present in the map
-            //      => we notify of a new message, insert a oneshot sender in the map, and
-            //         return a future awaiting the signature through the oneshot receiver.
+            //      => a. insert a watch sender in the map,
+            //         b. we notify of a new message,
+            //         c. return a future awaiting the signature through the watch receiver.
             //  2. The message is in the map
             //    2a. it contains a signature
             //         => return a future that resolves immediately with the signature
-            //    2b. it contains a oneshot sender
-            //         => return an error (cannot await on the same signature twice)
-            //            this could be fixed by using a broadcast channel / vec of oneshot
-            //            senders / wakeup notification + fetching signature
+            //    2b. it contains a watch sender
+            //         => do 1.b. and 1.c.
 
             let signature_or_receiver = {
                 let mut signatures_cache = self
@@ -374,14 +540,10 @@ where
                     .lock()
                     .expect("a thread panicked with the mutex");
 
-                // Use a OnceCell to only create a oneshot tx/rx pair if necessary
-                let mut lazy_rx = std::cell::OnceCell::new();
-
                 // This may drop the LRU entry from the map, which results in the
                 // future owning the corresponding receiver resolving in an error.
                 let signature_or_sender = signatures_cache.get_or_insert(m.clone(), || {
-                    let (tx, rx) = tokio::sync::oneshot::channel();
-                    lazy_rx.set(rx).expect("cannot have been initialized");
+                    let (tx, _) = tokio::sync::watch::channel(None);
                     Either::Right(tx)
                 });
 
@@ -391,18 +553,15 @@ where
                         Ok(Either::Left(signature.to_owned()))
                     }
 
-                    Either::Right(_) => {
-                        // if lazy_rx has been set, we inserted a new item to the map
-                        if let Some(rx) = lazy_rx.take() {
-                            // Notify of the new message to sign
-                            self.new_message_to_sign.send(m.to_vec()).map_err(|_| {
-                                AsyncThresholdSignerError::CannotRequestNewSignatures
-                            })?;
+                    Either::Right(tx) => {
+                        let rx = tx.subscribe();
 
-                            Ok(Either::Right(rx))
-                        } else {
-                            Err(AsyncThresholdSignerError::MessageAlreadyRegistered)
-                        }
+                        // Notify of the new message to sign
+                        self.new_message_to_sign
+                            .send(m.to_vec())
+                            .map_err(|_| AsyncThresholdSignerError::CannotRequestNewSignatures)?;
+
+                        Ok(Either::Right(rx))
                     }
                 }
             }?;
@@ -410,9 +569,26 @@ where
             // If the signature was cached, return immediately
             match signature_or_receiver {
                 Either::Left(signature) => Ok(signature),
-                Either::Right(rx) => rx
-                    .await
-                    .map_err(|_| AsyncThresholdSignerError::DroppedFromCache),
+                Either::Right(mut rx) => {
+                    // A signature may already be in the channel, borrow it and mark it as seen
+                    let signature = *rx.borrow_and_update();
+
+                    if let Some(sig) = signature {
+                        // If it contains a signature, simply return
+                        Ok(sig)
+                    } else {
+                        // Does not yet contain a signature, await for a change and return
+                        match rx.changed().await {
+                            Ok(()) => {
+                                let sig = rx
+                                    .borrow_and_update()
+                                    .expect("watch channel updated but sig is None");
+                                Ok(sig)
+                            }
+                            Err(_) => Err(AsyncThresholdSignerError::WatchSenderDropped)?,
+                        }
+                    }
+                }
             }
         }
     }
