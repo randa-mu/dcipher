@@ -97,6 +97,8 @@ where
             t,
             id,
             pks,
+            // disable eager signing by default, i.e., automatically submitting a partial
+            // signature upon receiving a valid partial from another node.
             eager_signing: false,
         }
     }
