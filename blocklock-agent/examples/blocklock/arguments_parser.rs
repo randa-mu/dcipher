@@ -133,19 +133,11 @@ pub struct BlockchainArgs {
     pub sync_batch_size: usize,
 
     /// Address of the deployed BlocklockSender contract
-    #[arg(
-        long,
-        env = "BLOCKLOCK_SENDER_CONTRACT_ADDRESS",
-        default_value = "0xfF66908E1d7d23ff62791505b2eC120128918F44"
-    )]
+    #[arg(long, env = "BLOCKLOCK_SENDER_CONTRACT_ADDRESS")]
     pub blocklock_sender_addr: alloy::primitives::Address,
 
     /// Address of the deployed DecryptionSender contract
-    #[arg(
-        long,
-        env = "BLOCKLOCK_DECRYPTION_SENDER_CONTRACT_ADDRESS",
-        default_value = "0x9297Bb1d423ef7386C8b2e6B7BdE377977FBedd3"
-    )]
+    #[arg(long, env = "BLOCKLOCK_DECRYPTION_SENDER_CONTRACT_ADDRESS")]
     pub decryption_sender_addr: alloy::primitives::Address,
 }
 
