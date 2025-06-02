@@ -1,36 +1,54 @@
 [package]
 name = "blocklock-agent"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
-dcipher-agents = { path = "../dcipher-agents" }
-alloy = { version = "1.0", features = ["default", "provider-ws"] }
-anyhow = "1.0"
-tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync"] }
-tracing = "0.1.41"
-futures = "0.3.30"
-futures-util = "0.3"
-serde = { version = "1.0.219", features = ["derive"] }
-warp = "0.3.7"
-prometheus = "0.14.0"
+# blockchain
+alloy = { workspace = true, features = ["default", "provider-ws"] }
+dcipher-agents = { workspace = true }
+
+# async
+futures = { workspace = true }
+futures-util = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+
+# logs / metrics
+tracing = { workspace = true }
+prometheus = { workspace = true }
+
+# serde
+serde = { workspace = true, features = ["derive"] }
+
+# misc
+anyhow = { workspace = true }
 
 [dev-dependencies]
-alloy = { version = "1.0", features = ["default", "provider-ws", "provider-anvil-node"] }
-ark-bn254 = "0.4.0"
-ark-ec = "0.4.2"
-ark-ff = "0.4.2"
-clap = { version = "4.5", features = ["derive", "env"] }
-libp2p = { version = "0.55", features = ["serde"] }
-pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
-serde_json = "1.0"
-superalloy = { path = "../superalloy" }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tokio-util = "0.7"
-tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
-base64 = "0.22.1"
-figment = { version = "0.10.19", features = ["toml"] }
+# blockchain
+alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+superalloy = { workspace = true }
 
-[patch.crates-io]
-# Use custom patch to fix arkworks' FieldHasher
-ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}
+# crypto
+ark-bn254 = { workspace = true }
+ark-ec = { workspace = true }
+ark-ff = { workspace = true }
+pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
+
+# async
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
+tokio-util = { workspace = true }
+
+# logs / metrics
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+
+# network
+libp2p = { workspace = true, features = ["serde"] }
+
+# serde
+serde_json = { workspace = true }
+
+# misc
+clap = { workspace = true }
+base64 = { workspace = true }
+figment = { workspace = true, features = ["toml"] }
+warp = "0.3.7"

@@ -1,28 +1,36 @@
 [package]
 name = "dsigner"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
-dcipher-agents = { path = "../dcipher-agents", features = ["rayon"] }
-anyhow = "1.0"
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-serde = { version = "1.0.219", features = ["derive"] }
-ark-bn254 = "0.4.0"
-ark-ec = "0.4.2"
-ark-ff = "0.4.2"
-clap = { version = "4.5", features = ["derive", "env"] }
-libp2p = { version = "0.55", features = ["serde"] }
-pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
-tokio-util = "0.7"
-tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
-base64 = "0.22.1"
-figment = { version = "0.10.19", features = ["toml"] }
-axum = "0.8.3"
-hex = "0.4.3"
-tower-http = { version = "0.6.2", features = ["trace"] }
+dcipher-agents = { workspace = true, features = ["rayon"] }
 
-# Use custom patch to fix arkworks' FieldHasher
-[patch.crates-io]
-ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}
+# crypto
+ark-bn254 = { workspace = true }
+ark-ec = { workspace = true }
+ark-ff = { workspace = true }
+pairing_utils = { workspace = true }
+
+# async
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
+tokio-util = { workspace = true }
+
+# logs / metrics
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+# network
+axum = "0.8"
+libp2p = { workspace = true }
+tower-http = { version = "0.6", features = ["trace"] }
+
+# serde
+serde = { workspace = true }
+
+# misc
+anyhow = { workspace = true }
+base64 = { workspace = true }
+clap = { workspace = true }
+figment = { workspace = true, features = ["toml"] }
+hex = { workspace = true }

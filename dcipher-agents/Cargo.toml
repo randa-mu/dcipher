@@ -1,37 +1,47 @@
 [package]
 name = "dcipher-agents"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [features]
 rayon = ["dep:rayon"]
 
 [dependencies]
-pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
-alloy = { version = "1.0", features = ["default", "provider-ws"] }
-tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "sync"] }
-tokio-util = "0.7"
-thiserror = "1.0"
-tracing = "0.1.41"
-futures-util = "0.3"
-ark-ec = "0.4.2"
-ark-ff = "0.4.2"
-ark-bn254 = "0.4.0"
-sha3 = "0.10"
-ark-std = "0.4.0"
-digest = "0.10"
-itertools = "0.14"
-serde = { version = "1.0.219", features = ["derive"] }
-libp2p = { version = "0.55", features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"] }
-lru = "0.14"
+alloy = { workspace = true, features = ["default", "provider-ws"] }
+
+# crypto
+ark-bn254 = { workspace = true }
+ark-ec = { workspace = true }
+ark-ff = { workspace = true }
+ark-std = { workspace = true }
+pairing_utils = { workspace = true }
+
+# hashes
+digest = { workspace = true }
+sha3 = { workspace = true }
+
+# async
+futures-util = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+tokio-util = { workspace = true }
+
+# logs / metrics
+prometheus = { workspace = true }
+tracing = { workspace = true }
+
+# network
+libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"] }
+
+# serde
+serde = { workspace = true, features = ["derive"] }
 serde_cbor = "0.10"
-prometheus = "0.14.0"
+
+# misc
+itertools = { workspace = true }
+thiserror = { workspace = true }
+lru = "0.14"
 rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
-hex = "0.4"
-alloy = { version = "1.0", features = ["default", "provider-ws", "provider-anvil-node"] }
-
-# Use custom patch to fix arkworks' FieldHasher
-[patch.crates-io]
-ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}
+hex = { workspace = true }
+alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
