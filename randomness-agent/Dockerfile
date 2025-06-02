@@ -33,8 +33,6 @@ WORKDIR /app
 
 FROM chef AS planner
 COPY . .
-COPY --from=sol_blocklock /app/blocklock-solidity/out ./blocklock-solidity/out
-COPY --from=sol_randomness /app/randomness-solidity/out ./randomness-solidity/out
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -44,6 +42,8 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
+COPY --from=sol_blocklock /app/blocklock-solidity/out ./blocklock-solidity/out
+COPY --from=sol_randomness /app/randomness-solidity/out ./randomness-solidity/out
 COPY . .
 RUN cargo build --release -p randomness-agent --example randomness
 
