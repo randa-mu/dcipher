@@ -1,9 +1,9 @@
-name: docker-push-dsigner
+name: push-dsigner-docker
 on:
   push:
     branches:
       # all branches, docker image is only pushed on main
-      - "**"
+      - "*"
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
   pull_request:
@@ -67,7 +67,7 @@ jobs:
         name: Tag Docker image and push to Google Artifact Registry
         uses: docker/build-push-action@v6
         with:
-          push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/dsigner' }} # REMOVE BEFORE MERGE
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
