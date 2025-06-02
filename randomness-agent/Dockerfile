@@ -29,30 +29,27 @@ RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge 
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
-WORKDIR /app/randomness-agent
+WORKDIR /app
 
 FROM chef AS planner
-COPY . ../
+COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
-COPY --from=planner /app/randomness-agent/recipe.json recipe.json
+COPY --from=planner /app/recipe.json recipe.json
 
 # Build dependencies - this is the caching Docker layer!
-COPY ./marshmallow-crypto ../marshmallow-crypto
-COPY ./superalloy ../superalloy
-COPY ./dcipher-agents ../dcipher-agents
-COPY --from=sol_blocklock /app/blocklock-solidity/out ../blocklock-solidity/out
-COPY --from=sol_randomness /app/randomness-solidity/out ../randomness-solidity/out
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
-COPY ./randomness-agent ./
-RUN cargo build --release --example randomness
+COPY --from=sol_blocklock /app/blocklock-solidity/out ./blocklock-solidity/out
+COPY --from=sol_randomness /app/randomness-solidity/out ./randomness-solidity/out
+COPY . .
+RUN cargo build --release -p randomness-agent --example randomness
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libssl3 dnsutils
 WORKDIR /app
-COPY --from=builder /app/randomness-agent/target/release/examples/randomness /usr/local/bin
+COPY --from=builder /app/target/release/examples/randomness /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/randomness"]

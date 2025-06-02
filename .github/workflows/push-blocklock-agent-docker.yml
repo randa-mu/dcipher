@@ -1,4 +1,4 @@
-name: build-and-push-docker-rust
+name: push-blocklock-agent-docker
 on:
   push:
     branches:

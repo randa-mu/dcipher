@@ -1,0 +1,63 @@
+[workspace]
+resolver = "3"
+members = [
+    "blocklock-agent",
+    "dcipher-agents",
+    "dsigner",
+    "randomness-agent",
+    "superalloy"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+# workspace crates
+dcipher-agents = { path = "./dcipher-agents" }
+superalloy = { path = "./superalloy" }
+
+# blockchain
+alloy = { version = "1.0", default-features = false }
+
+# crypto
+ark-bn254 = "0.4.0"
+ark-ec = "0.4.2"
+ark-ff = "0.4.2"
+ark-std = "0.4.0"
+pairing_utils = { path = "./marshmallow-crypto/pairing_utils" }
+
+# hashes
+digest = "0.10"
+sha3 = "0.10"
+
+# async
+futures = "0.3"
+futures-util = "0.3"
+tokio = "1.44"
+tokio-util = "0.7"
+
+# logs / metrics
+prometheus = "0.14.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3" }
+
+# network
+libp2p = { version = "0.55", features = ["serde"] }
+
+# serde
+serde = { version = "1.0", features = ["derive"], default-features = false }
+serde_json = "1.0"
+
+# misc
+anyhow = "1.0"
+base64 = "0.22"
+clap = { version = "4.5", features = ["derive", "env"] }
+figment = { version = "0.10" }
+hex = "0.4"
+itertools = "0.14"
+thiserror = "2.0"
+
+[patch.crates-io]
+# Use custom patch to fix arkworks' FieldHasher
+ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}

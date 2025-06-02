@@ -135,7 +135,7 @@ mod tests {
     use super::*;
     use alloy::providers::Provider;
 
-    const FILECOIN_CALIBNET_URL: &str = "https://api.calibration.node.glif.io/rpc/v1";
+    const FURNACE_URL: &str = "https://api.furnace.dcipher.network/";
     const ETHEREUM_MAINNET_WS_URL: &str = "wss://mainnet.gateway.tenderly.co";
 
     #[tokio::test]
@@ -145,8 +145,8 @@ mod tests {
             backoff: Duration::from_millis(500),
         };
 
-        let filecoin_calibnet_url = FILECOIN_CALIBNET_URL.parse().unwrap();
-        let filecoin_calibnet_chainid = 314159;
+        let filecoin_calibnet_url = FURNACE_URL.parse().unwrap();
+        let filecoin_calibnet_chainid = 64630;
         let filecoin_calibnet_provider =
             create_provider_with_retry(filecoin_calibnet_url, retry_strategy)
                 .await
@@ -204,14 +204,13 @@ mod tests {
             backoff: Duration::from_millis(500),
         };
 
-        let filecoin_calibnet_url = FILECOIN_CALIBNET_URL.parse().unwrap();
-        let filecoin_calibnet_provider =
-            create_provider_with_retry(filecoin_calibnet_url, retry_strategy)
-                .await
-                .unwrap();
+        let furnace_url = FURNACE_URL.parse().unwrap();
+        let furnace_provider = create_provider_with_retry(furnace_url, retry_strategy)
+            .await
+            .unwrap();
 
         let mut block_number_stream =
-            watch_block_numbers(&filecoin_calibnet_provider, Some(Duration::from_secs(2)))
+            watch_block_numbers(&furnace_provider, Some(Duration::from_secs(2)))
                 .await
                 .unwrap();
         let curr_block = block_number_stream.next().await.unwrap().unwrap();

@@ -68,7 +68,7 @@ mod tests {
         let mut failure_fn_counter = AtomicUsize::new(0);
         let failure_fn = async || {
             failure_fn_counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "failure"))
+            Err(std::io::Error::other("failure"))
         };
         // On failures, it should only execute it retries + 1 times
         let res: Result<(), std::io::Error> = with_retry(failure_fn, strategy).await;
