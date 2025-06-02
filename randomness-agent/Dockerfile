@@ -44,7 +44,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
-COPY . ../
+COPY . .
 RUN cargo build --release -p randomness-agent --example randomness
 
 # We do not need the Rust toolchain to run the binary!
