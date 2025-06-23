@@ -1,0 +1,6 @@
+[package]
+name = "omnievent"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
