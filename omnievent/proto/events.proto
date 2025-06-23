@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package events;
+
+// Request message for registering a new event
+message RegisterNewEventRequest {
+  // Chain ID
+  uint64 chain_id = 1;
+
+  // Ethereum contract address (20 bytes) - what contract we're watching
+  bytes address = 2;
+
+  // Event name - what event we're watching for
+  string event_name = 3;
+
+  // Event parameters - the structure of the event
+  repeated EventField fields = 4;
+
+  // Block safety level - how we want to handle block finality
+  BlockSafety block_safety = 5;
+}
+
+// Represents one of the field of a solidity event
+message EventField {
+  // Solidity type as string (e.g., "address", "uint256", "bytes32", "uint256[]")
+  string sol_type = 1;
+
+  // Whether the field is indexed
+  bool indexed = 2;
+}
+
+// Block safety levels
+enum BlockSafety {
+  BLOCK_SAFETY_LATEST = 0;
+  BLOCK_SAFETY_FINALIZED = 1;
+  BLOCK_SAFETY_SAFE = 2;
+}
