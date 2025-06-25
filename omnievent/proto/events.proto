@@ -17,6 +17,9 @@ service OmniEventService {
 
   // Stream events as they occur
   rpc StreamEvents(StreamEventsRequest) returns (stream EventOccurrence);
+
+  // Get historical events (batch request)
+  rpc GetHistoricalEvents(GetHistoricalEventsRequest) returns (GetHistoricalEventsResponse);
 }
 
 // Request message for registering a new event
@@ -62,6 +65,23 @@ message ListRegisteredEventsResponse {
 message StreamEventsRequest {
   // List of events to listen to
   repeated bytes events_uuids = 1;
+}
+
+// Request for historical events
+message GetHistoricalEventsRequest {
+  // Uuid uniquely representing the event
+  repeated string event_uuids = 1;
+
+  // Block range (required for historical queries)
+  BlockRange block_range = 2;
+
+  // Add filters (chain id, address, custom tags, values, etc) in the future
+}
+
+// Response with historical events
+message GetHistoricalEventsResponse {
+  // List of event occurrences
+  repeated EventOccurrence events = 1;
 }
 
 // Represents a registered event
@@ -148,4 +168,14 @@ enum BlockSafety {
   BLOCK_SAFETY_LATEST = 0;
   BLOCK_SAFETY_FINALIZED = 1;
   BLOCK_SAFETY_SAFE = 2;
+}
+
+// Block range for queries
+message BlockRange {
+  // Start block (inclusive)
+  uint64 from_block = 1;
+
+  // Optional end block (exclusive)
+  // if not set, relies on the event's block safety or latest.
+  optional uint64 to_block = 2;
 }
