@@ -2,11 +2,15 @@ syntax = "proto3";
 
 package events;
 
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 service OmniEventService {
   // Register a new event
   rpc RegisterEvent(RegisterNewEventRequest) returns (RegisterNewEventResponse);
+
+  // Unregister an event
+  rpc UnregisterEvent(UnregisterEventRequest) returns (google.protobuf.Empty);
 }
 
 // Request message for registering a new event
@@ -31,6 +35,12 @@ message RegisterNewEventRequest {
 message RegisterNewEventResponse {
   // Uuid uniquely representing the event
   bytes uuid = 1;
+}
+
+// Request to unregister an event
+message UnregisterEventRequest {
+  // Event ID from registration
+  string event_id = 1;
 }
 
 // Represents a registered event
