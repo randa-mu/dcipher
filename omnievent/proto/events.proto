@@ -42,8 +42,8 @@ message RegisterNewEventResponse {
 
 // Request to unregister an event
 message UnregisterEventRequest {
-  // Event ID from registration
-  string event_id = 1;
+  // Uuid uniquely representing the event
+  bytes uuid = 1;
 }
 
 // Request to obtain a list of registered events
