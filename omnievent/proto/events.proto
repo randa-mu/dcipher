@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package events;
 
+import "google/protobuf/timestamp.proto";
+
 // Request message for registering a new event
 message RegisterNewEventRequest {
   // Chain ID
@@ -13,11 +15,61 @@ message RegisterNewEventRequest {
   // Event name - what event we're watching for
   string event_name = 3;
 
-  // Event parameters - the structure of the event
+  // Event fields - the structure of the event
   repeated EventField fields = 4;
 
   // Block safety level - how we want to handle block finality
   BlockSafety block_safety = 5;
+}
+
+// Represents a registered event
+message RegisteredEvent {
+  // Uuid uniquely representing the event
+  bytes uuid = 1;
+
+  // Chain ID
+  uint64 chain_id = 2;
+
+  // Contract address
+  bytes address = 3;
+
+  // Event name
+  string event_name = 4;
+
+  // Event fields
+  repeated EventField fields = 5;
+
+  // Block safety level
+  BlockSafety block_safety = 6;
+}
+
+message EventOccurence {
+  // Uuid uniquely representing the registered event
+  bytes registered_uuid = 1;
+
+  // Block information
+  BlockInfo block_info = 2;
+
+  // Raw log data (for advanced use cases)
+  optional bytes raw_log_data = 3;
+
+  // Event data (decoded parameters)
+  repeated EventData event_data = 4;
+}
+
+// Block information
+message BlockInfo {
+  // Block number
+  uint64 block_number = 1;
+
+  // Block hash
+  bytes block_hash = 2;
+
+  // Block timestamp
+  google.protobuf.Timestamp timestamp = 3;
+
+  // Block safety level at time of detection
+  BlockSafety safety_level = 4;
 }
 
 // Represents one of the field of a solidity event
@@ -27,6 +79,28 @@ message EventField {
 
   // Whether the field is indexed
   bool indexed = 2;
+}
+
+// Represents decoded event data
+message EventData {
+  // Parameter name (if available)
+  optional string name = 1;
+
+  // Solidity type
+  string sol_type = 2;
+
+  // Whether this parameter was indexed
+  bool indexed = 3;
+
+  // The actual value (encoded as appropriate type)
+  oneof value {
+    string string_value = 10;
+    string int_hex_value = 11;
+    bool bool_value = 12;
+    bytes bytes_value = 13;
+    // For other types
+    string abi_bytes = 14;
+  }
 }
 
 // Block safety levels
