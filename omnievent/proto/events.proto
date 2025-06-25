@@ -43,7 +43,7 @@ message RegisteredEvent {
   BlockSafety block_safety = 6;
 }
 
-message EventOccurence {
+message EventOccurrence {
   // Uuid uniquely representing the registered event
   bytes registered_uuid = 1;
 
