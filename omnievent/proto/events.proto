@@ -14,6 +14,9 @@ service OmniEventService {
 
   // List registered events
   rpc ListRegisteredEvents(ListRegisteredEventsRequest) returns (ListRegisteredEventsResponse);
+
+  // Stream events as they occur
+  rpc StreamEvents(StreamEventsRequest) returns (stream EventOccurrence);
 }
 
 // Request message for registering a new event
@@ -56,10 +59,15 @@ message ListRegisteredEventsResponse {
   repeated RegisteredEvent events = 1;
 }
 
+message StreamEventsRequest {
+  // List of events to listen to
+  repeated bytes events_uuids = 1;
+}
+
 // Represents a registered event
 message RegisteredEvent {
   // Uuid uniquely representing the event
-  bytes uuid = 1;
+  bytes event_uuid = 1;
 
   // Chain ID
   uint64 chain_id = 2;
@@ -117,14 +125,11 @@ message EventField {
 
 // Represents decoded event data
 message EventData {
-  // Parameter name (if available)
-  optional string name = 1;
-
-  // Solidity type
-  string sol_type = 2;
+  // Solidity type as string (e.g., "address", "uint256", "bytes32", "uint256[]")
+  string sol_type = 1;
 
   // Whether this parameter was indexed
-  bool indexed = 3;
+  bool indexed = 2;
 
   // The actual value (encoded as appropriate type)
   oneof value {
@@ -132,8 +137,9 @@ message EventData {
     string int_hex_value = 11;
     bool bool_value = 12;
     bytes bytes_value = 13;
+    bytes address_value = 14;
     // For other types
-    string abi_bytes = 14;
+    string abi_bytes = 19;
   }
 }
 
