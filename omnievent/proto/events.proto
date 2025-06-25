@@ -4,6 +4,11 @@ package events;
 
 import "google/protobuf/timestamp.proto";
 
+service OmniEventService {
+  // Register a new event
+  rpc RegisterEvent(RegisterNewEventRequest) returns (RegisterNewEventResponse);
+}
+
 // Request message for registering a new event
 message RegisterNewEventRequest {
   // Chain ID
@@ -20,6 +25,12 @@ message RegisterNewEventRequest {
 
   // Block safety level - how we want to handle block finality
   BlockSafety block_safety = 5;
+}
+
+// Response after registering a new event
+message RegisterNewEventResponse {
+  // Uuid uniquely representing the event
+  bytes uuid = 1;
 }
 
 // Represents a registered event
