@@ -11,6 +11,9 @@ service OmniEventService {
 
   // Unregister an event
   rpc UnregisterEvent(UnregisterEventRequest) returns (google.protobuf.Empty);
+
+  // List registered events
+  rpc ListRegisteredEvents(ListRegisteredEventsRequest) returns (ListRegisteredEventsResponse);
 }
 
 // Request message for registering a new event
@@ -41,6 +44,16 @@ message RegisterNewEventResponse {
 message UnregisterEventRequest {
   // Event ID from registration
   string event_id = 1;
+}
+
+// Request to obtain a list of registered events
+message ListRegisteredEventsRequest {
+  // Empty for now, add filters (chain id, address, custom tags, etc) in the future
+}
+
+// Request to obtain a list of registered events
+message ListRegisteredEventsResponse {
+  repeated RegisteredEvent events = 1;
 }
 
 // Represents a registered event
