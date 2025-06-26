@@ -129,9 +129,6 @@ message BlockInfo {
 
   // Block timestamp
   google.protobuf.Timestamp timestamp = 3;
-
-  // Block safety level at time of detection
-  BlockSafety safety_level = 4;
 }
 
 // Represents one of the field of a solidity event
