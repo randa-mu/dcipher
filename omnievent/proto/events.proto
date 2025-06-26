@@ -107,7 +107,7 @@ message RegisteredEvent {
 
 message EventOccurrence {
   // Uuid uniquely representing the registered event
-  bytes registered_uuid = 1;
+  bytes event_uuid = 1;
 
   // Block information
   BlockInfo block_info = 2;
