@@ -4,6 +4,7 @@ members = [
     "blocklock-agent",
     "dcipher-agents",
     "dsigner",
+    "onlyswaps-verifier",
     "randomness-agent",
     "superalloy"
 ]
