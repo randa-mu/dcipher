@@ -156,7 +156,7 @@ message EventData {
     bytes bytes_value = 13;
     bytes address_value = 14;
     // For other types
-    string abi_bytes = 19;
+    bytes abi_bytes = 19;
   }
 }
 
