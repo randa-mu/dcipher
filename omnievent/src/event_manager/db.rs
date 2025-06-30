@@ -1,4 +1,8 @@
+//! Database used to store events and their occurrences.
+
 use crate::types::{EventOccurrence, RegisteredEvent};
+
+pub(crate) mod in_memory;
 
 pub trait EventsDatabase {
     type Error: std::error::Error + Send + Sync + 'static;
