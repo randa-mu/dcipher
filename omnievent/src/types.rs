@@ -69,7 +69,7 @@ pub(crate) struct ParsedRegisterNewEventRequest {
 
 /// An event that has been registered with OmniEvent.
 #[derive(Clone, Debug)]
-pub(crate) struct RegisteredEvent {
+pub struct RegisteredEvent {
     pub(crate) id: EventStreamId,
     pub(crate) chain_id: u64,
     pub(crate) address: Address,
@@ -82,7 +82,7 @@ pub(crate) struct RegisteredEvent {
 
 /// The occurrence of an event.
 #[derive(Clone, Debug)]
-pub(crate) struct EventOccurrence {
+pub struct EventOccurrence {
     pub(crate) event_id: EventStreamId,
     pub(crate) block_info: BlockInfo,
     pub(crate) raw_log: LogData,
