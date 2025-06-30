@@ -23,6 +23,20 @@ pub trait MultiChainProvider<ChainId> {
     }
 }
 
+/// Blanket implementation of [`MultiChainProvider`] for Arc-ed multi chain providers.
+impl<ChainId, MP> MultiChainProvider<ChainId> for Arc<MP>
+where
+    MP: MultiChainProvider<ChainId>,
+{
+    fn is_supported<N: Network>(&self, chain_id: &ChainId) -> bool {
+        self.as_ref().is_supported::<N>(chain_id)
+    }
+
+    fn get_provider<N: Network>(&self, chain_id: &ChainId) -> Option<&DynProvider<N>> {
+        self.as_ref().get_provider::<N>(chain_id)
+    }
+}
+
 /// Provider for a single chain/network.
 pub struct SingleProvider<N> {
     provider: DynProvider<N>,
