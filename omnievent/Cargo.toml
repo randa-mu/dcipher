@@ -4,9 +4,30 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+alloy = { workspace = true, features = ["default", "provider-ws"] }
+superalloy.workspace = true
+
+# async
+futures.workspace = true
+futures-util.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+tokio-stream.workspace = true
+tokio-util.workspace = true
+
+# logs / metrics
+tracing.workspace = true
+prometheus.workspace = true
+
+# api / rpc
+tonic = { version = "0.13" }
+
 # serde
 prost.workspace = true
 prost-types.workspace = true
 
+# misc
+thiserror.workspace = true
+uuid = { version = "1.0", features = ["v4"] }
+
 [build-dependencies]
-prost-build.workspace = true
+tonic-build.workspace = true

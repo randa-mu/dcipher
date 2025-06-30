@@ -1,5 +1,5 @@
 fn main() -> std::io::Result<()> {
-    prost_build::Config::new()
+    tonic_build::configure()
         .bytes(["."])
         .compile_protos(&["proto/events.proto"], &["proto/"])?;
     Ok(())
