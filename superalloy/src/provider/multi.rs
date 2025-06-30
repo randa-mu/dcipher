@@ -74,7 +74,7 @@ impl<N: 'static> MultiChainProvider<()> for SingleProvider<N> {
 /// try to downcast the box into the requested concrete type when extracting the provider.
 #[derive(Clone, Default)]
 pub struct MultiProvider<ChainId> {
-    providers: HashMap<ChainId, Arc<dyn std::any::Any>>,
+    providers: HashMap<ChainId, Arc<dyn std::any::Any + Send + Sync>>,
 }
 
 impl<ChainId> MultiProvider<ChainId>
@@ -93,11 +93,13 @@ where
         &mut self,
         providers: impl IntoIterator<Item = (ChainId, DynProvider<N>)>,
     ) {
-        self.providers.extend(
-            providers.into_iter().map(|(chain_id, provider)| {
-                (chain_id, Arc::new(provider) as Arc<dyn std::any::Any>)
-            }),
-        );
+        self.providers
+            .extend(providers.into_iter().map(|(chain_id, provider)| {
+                (
+                    chain_id,
+                    Arc::new(provider) as Arc<dyn std::any::Any + Send + Sync>,
+                )
+            }));
     }
 }
 
