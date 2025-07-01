@@ -1,6 +1,7 @@
 use crate::proto_types::{self, BlockInfo, BlockSafety, RegisterNewEventRequest};
 use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
-use alloy::primitives::{Address, LogData};
+use alloy::eips::BlockNumberOrTag;
+use alloy::primitives::{Address, B256, LogData, keccak256};
 use std::borrow::Cow;
 use std::str::FromStr;
 
@@ -8,8 +9,12 @@ use std::str::FromStr;
 pub struct EventStreamId(uuid::Uuid);
 
 impl EventStreamId {
-    pub fn new() -> EventStreamId {
-        EventStreamId(uuid::Uuid::new_v4())
+    pub fn new(data: &[u8]) -> EventStreamId {
+        EventStreamId(uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, data))
+    }
+
+    pub(crate) fn nil() -> EventStreamId {
+        EventStreamId(uuid::Uuid::nil())
     }
 }
 
