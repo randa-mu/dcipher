@@ -193,12 +193,13 @@ where
 
 #[cfg(test)]
 #[allow(clippy::bool_assert_comparison)]
-mod tests {
+pub(crate) mod tests {
     use crate::event_manager::EventManager;
     use crate::event_manager::db::in_memory::InMemoryDatabase;
     use alloy::dyn_abi::DynSolValue;
     use alloy::network::Ethereum;
     use alloy::node_bindings::Anvil;
+    use alloy::providers::ext::AnvilApi;
     use alloy::providers::{Provider, ProviderBuilder, WsConnect};
     use futures_util::StreamExt;
     use std::sync::Arc;
@@ -262,7 +263,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn listener_emits_decoded_events() {
+    async fn single_chain_event_manager() {
         let event_string = "TestString".to_owned();
 
         let anvil = Anvil::new().spawn();
@@ -324,6 +325,111 @@ mod tests {
         assert_eq!(
             decoded_event.data[0].data,
             DynSolValue::String(event_string)
+        );
+        assert_eq!(decoded_event.data[0].indexed, false);
+
+        event_manager.stop().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn multi_chain_event_manager() {
+        let event_string_1337 = "TestString on 1337".to_owned();
+        let event_string_1338 = "TestString on 1338".to_owned();
+
+        let anvil_chain_1337 = Anvil::new().chain_id(1337).spawn();
+        let anvil_chain_1338 = Anvil::new().chain_id(1338).spawn();
+
+        let wallet_1337 = anvil_chain_1337
+            .wallet()
+            .expect("anvil should have a wallet");
+        let wallet_1338 = anvil_chain_1338
+            .wallet()
+            .expect("anvil should have a wallet");
+
+        let provider_1337 = ProviderBuilder::new()
+            .with_gas_estimation()
+            .wallet(wallet_1337)
+            .connect_ws(WsConnect::new(anvil_chain_1337.ws_endpoint()))
+            .await
+            .unwrap()
+            .erased();
+
+        let provider_1338 = ProviderBuilder::new()
+            .with_gas_estimation()
+            .wallet(wallet_1338)
+            .connect_ws(WsConnect::new(anvil_chain_1338.ws_endpoint()))
+            .await
+            .unwrap()
+            .erased();
+
+        let emitter_1337 = test_contracts::deploy_event_emitter(provider_1337.clone()).await;
+        let emitter_1338 = test_contracts::deploy_event_emitter(provider_1338.clone()).await;
+
+        // Create a multi provider
+        let mut multi_provider = MultiProvider::empty();
+        multi_provider.extend::<Ethereum>([(1337, provider_1337), (1338, provider_1338)]);
+
+        // Start event manager
+        let db = InMemoryDatabase::default();
+        let mut event_manager = EventManager::new(Arc::new(multi_provider), db);
+        event_manager.start();
+
+        // Register events
+        let req_1337 = test_contracts::get_string_register_req(&emitter_1337).await;
+        let req_1338 = test_contracts::get_string_register_req(&emitter_1338).await;
+        let event_id_1337 = event_manager
+            .register_ethereum_event(req_1337)
+            .await
+            .expect("failed to register ethereum event");
+        let event_id_1338 = event_manager
+            .register_ethereum_event(req_1338)
+            .await
+            .expect("failed to register ethereum event");
+
+        // Subscribe to event
+        let mut stream = event_manager
+            .get_ethereum_multi_event_stream([event_id_1337, event_id_1338])
+            .await
+            .expect("failed to subscribe to event");
+
+        // Generate new events
+        emitter_1337
+            .emitString(event_string_1337.clone())
+            .send()
+            .await
+            .unwrap()
+            .watch()
+            .await
+            .unwrap();
+        emitter_1338
+            .emitString(event_string_1337.clone())
+            .send()
+            .await
+            .unwrap()
+            .watch()
+            .await
+            .unwrap();
+
+        // Get event through stream
+        let decoded_event = tokio::time::timeout(Duration::from_millis(1000), stream.next())
+            .await
+            .expect("failed to get event within timeout")
+            .expect("stream closed")
+            .expect("stream returned error");
+
+        // Get the expected string based on the event id
+        let expected_string = if decoded_event.event_id == event_id_1337 {
+            event_string_1337
+        } else if decoded_event.event_id == event_id_1338 {
+            event_string_1338
+        } else {
+            panic!("got unexpected event id through stream");
+        };
+        assert_eq!(decoded_event.data.len(), 1);
+        assert_eq!(decoded_event.data[0].sol_type_str, "string");
+        assert_eq!(
+            decoded_event.data[0].data,
+            DynSolValue::String(expected_string)
         );
         assert_eq!(decoded_event.data[0].indexed, false);
 
