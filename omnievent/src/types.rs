@@ -51,6 +51,16 @@ pub(crate) struct ParsedEventField {
     pub(crate) indexed: bool,
 }
 
+impl ParsedEventField {
+    pub(crate) fn new(sol_type: DynSolType, indexed: bool) -> Self {
+        Self {
+            sol_type_str: sol_type.sol_type_name(),
+            sol_type,
+            indexed,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct EventFieldData {
     pub(crate) sol_type_str: Cow<'static, str>,
@@ -60,6 +70,8 @@ pub(crate) struct EventFieldData {
 
 #[derive(Clone, Debug)]
 pub(crate) struct ParsedRegisterNewEventRequest {
+    /// Deterministic UUID v5
+    pub(crate) id: EventStreamId,
     /// Chain ID
     pub(crate) chain_id: u64,
     /// Ethereum contract address (20 bytes) - what contract we're watching
@@ -79,10 +91,96 @@ pub struct RegisteredEvent {
     pub(crate) chain_id: u64,
     pub(crate) address: Address,
     pub(crate) event_name: String,
-    pub(crate) event_signature: String,
+    pub(crate) topic0: B256,
     pub(crate) fields: Vec<ParsedEventField>,
     pub(crate) sol_event: DynSolEvent,
     pub(crate) block_safety: BlockSafety,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum NewRegisteredEventError {
+    #[error("at most 3 indexed fields are supported")]
+    TooManyIndexedFields,
+}
+
+impl RegisteredEvent {
+    pub fn try_new(
+        id: EventStreamId,
+        chain_id: u64,
+        address: Address,
+        event_name: String,
+        fields: Vec<ParsedEventField>,
+        block_safety: BlockSafety,
+    ) -> Result<Self, NewRegisteredEventError> {
+        let indexed_fields: Vec<_> = fields
+            .iter()
+            .filter_map(|p| p.indexed.then_some(&p.sol_type))
+            .cloned()
+            .collect();
+        if indexed_fields.len() > 3 {
+            Err(NewRegisteredEventError::TooManyIndexedFields)?
+        }
+
+        let sol_type_name = if fields.len() != 1 {
+            // Sol type include all fields
+            DynSolType::Tuple(fields.iter().map(|p| &p.sol_type).cloned().collect())
+                .sol_type_name()
+                .into_owned()
+        } else {
+            // annoying to use tuple here because sol_type_name() uses a trailing ',' for 1-tuples.
+            format!("({})", fields[0].sol_type.sol_type_name())
+        };
+
+        let event_signature = format!("{}{}", event_name, sol_type_name);
+        print!("{event_signature}");
+        let topic0 = keccak256(event_signature.as_bytes());
+
+        // Body only includes non-indexed fields
+        let body_type = DynSolType::Tuple(
+            fields
+                .iter()
+                .filter_map(|p| if p.indexed { None } else { Some(&p.sol_type) })
+                .cloned()
+                .collect(),
+        );
+        let sol_event = DynSolEvent::new(Some(topic0), indexed_fields, body_type)
+            .expect("at most 3 indexed fields and sol_type is a tuple");
+
+        Ok(Self {
+            id,
+            chain_id,
+            address,
+            event_name,
+            topic0,
+            fields,
+            sol_event,
+            block_safety,
+        })
+    }
+
+    pub(crate) fn try_from_req(
+        req: ParsedRegisterNewEventRequest,
+    ) -> Result<Self, NewRegisteredEventError> {
+        let ParsedRegisterNewEventRequest {
+            id,
+            chain_id,
+            address,
+            event_name,
+            fields,
+            block_safety,
+        } = req;
+
+        Self::try_new(id, chain_id, address, event_name, fields, block_safety)
+    }
+}
+
+impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
+    fn from(event: &RegisteredEvent) -> Self {
+        alloy::rpc::types::Filter::new()
+            .address(event.address)
+            .event_signature(event.topic0)
+            .from_block(Into::<BlockNumberOrTag>::into(event.block_safety))
+    }
 }
 
 /// The occurrence of an event.
@@ -131,6 +229,9 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
     type Error = ParseRegisterNewEventRequestError;
 
     fn try_from(value: RegisterNewEventRequest) -> Result<Self, Self::Error> {
+        // Use the protobuf-encoded value to compute an uuid v5
+        let id = EventStreamId::new(&prost::Message::encode_to_vec(&value));
+
         // Convert the bytes into an address
         let address =
             Address::try_from(value.address.as_ref()).map_err(Self::Error::TryFromAddress)?;
@@ -157,6 +258,7 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
             .map_err(|e| Self::Error::BlockSafety(e, value.block_safety))?;
 
         Ok(Self {
+            id,
             address,
             block_safety,
             fields,
