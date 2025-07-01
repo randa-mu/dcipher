@@ -9,10 +9,7 @@ mod register;
 use crate::event_manager::db::EventsDatabase;
 use crate::event_manager::events_occurrence::HandleEventsOccurrenceTask;
 use crate::event_manager::listener::{EventListener, EventListenerHandle};
-use crate::types::{
-    EventFieldData, EventId, EventOccurrence, ParseRegisterNewEventRequestError,
-    ParsedRegisterNewEventRequest,
-};
+use crate::types::{EventFieldData, EventId, EventOccurrence, ParsedRegisterNewEventRequest};
 use alloy::rpc::types::Log;
 use futures_util::stream::SelectAll;
 use std::collections::HashMap;
@@ -63,8 +60,11 @@ pub(crate) enum EventManagerError {
     #[error("failed to create stream")]
     CreateStream(#[from] CreateStreamError),
 
-    #[error("cannot find a stream with given id")]
-    UnknownStream,
+    #[error("cannot find an event with given id")]
+    UnknownEvent,
+
+    #[error("database error")]
+    Database(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
 // export [`CreateStreamError`] since it's used in [`EventManagerError`]
@@ -145,8 +145,10 @@ where
         event_id: EventId,
     ) -> Result<BroadcastStream<EventOccurrence>, EventManagerError> {
         let stream = {
-            let db = self.events.read().await;
-            let entry = db.get(&event_id).ok_or(EventManagerError::UnknownStream)?;
+            let events = self.events.read().await;
+            let entry = events
+                .get(&event_id)
+                .ok_or(EventManagerError::UnknownEvent)?;
 
             if let Some(stream) = entry
                 .outgoing_stream
@@ -156,14 +158,14 @@ where
                 stream
             } else {
                 // No stream has been registered => we need a write lock instead
-                // We could reduce complexity by using a write lock directly, but this limits the number
-                // of write locks.
-                drop(db);
+                // We could reduce complexity by using a write lock directly, but this blocks other
+                // threads from reading.
+                drop(events);
 
-                let mut db = self.events.write().await;
-                let entry = db
+                let mut events = self.events.write().await;
+                let entry = events
                     .get_mut(&event_id)
-                    .ok_or(EventManagerError::UnknownStream)?;
+                    .ok_or(EventManagerError::UnknownEvent)?;
 
                 // A stream may have been inserted in between drop and write()
                 match &entry.outgoing_stream {
@@ -194,6 +196,16 @@ where
         )
         .await?;
         Ok(futures::stream::select_all(streams))
+    }
+
+    pub(crate) async fn get_historical_event_occurrences(
+        &self,
+        event_ids: impl IntoIterator<Item = EventId> + Send,
+    ) -> Result<Vec<EventOccurrence>, EventManagerError> {
+        self.events_db
+            .get_event_occurrences(event_ids)
+            .await
+            .map_err(|e| EventManagerError::Database(Box::new(e)))
     }
 }
 

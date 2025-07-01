@@ -59,7 +59,7 @@ where
                         Status::internal("chain not supported")
                     }
                     _ => {
-                        // Return a non-specific error to avoid leaking internal details
+                        // Return a generic error to avoid leaking internal details
                         Status::internal("failed to register event")
                     }
                 }
@@ -98,7 +98,7 @@ where
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| {
                 tracing::debug!(error = ?e, "Failed to convert bytes to uuid");
-                // Return a non-specific error to avoid leaking internal details
+                // Return a generic error to avoid leaking internal details
                 Status::invalid_argument("invalid uuid")
             })?;
 
@@ -108,7 +108,7 @@ where
             .await
             .map_err(|e| {
                 tracing::error!(error = ?e, "Failed to create event stream");
-                // Return a non-specific error to avoid leaking internal details
+                // Return a generic error to avoid leaking internal details
                 Status::internal("failed to create event stream")
             })?;
 
@@ -126,9 +126,33 @@ where
 
     async fn get_historical_events(
         &self,
-        _request: Request<GetHistoricalEventsRequest>,
+        request: Request<GetHistoricalEventsRequest>,
     ) -> Result<Response<GetHistoricalEventsResponse>, Status> {
-        Err(Status::unimplemented("Not yet implemented"))
+        let event_ids = request
+            .into_inner()
+            .event_uuids
+            .into_iter()
+            .map(EventId::try_from)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| {
+                tracing::debug!(error = ?e, "Failed to convert bytes to uuid");
+                Status::invalid_argument("invalid uuid")
+            })?;
+
+        let occurrences = self
+            .event_manager
+            .get_historical_event_occurrences(event_ids)
+            .await
+            .map_err(|e| {
+                tracing::error!(error = ?e, "Failed to obtain historical event occurrences");
+                // Return a generic error to avoid leaking internal details
+                Status::invalid_argument("failed to get historical events")
+            })?
+            .into_iter()
+            .map(Into::into)
+            .collect();
+
+        Ok(Response::new(GetHistoricalEventsResponse { occurrences }))
     }
 }
 
