@@ -45,7 +45,7 @@ impl TryFrom<prost::bytes::Bytes> for EventStreamId {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ParsedEventField {
+pub struct ParsedEventField {
     pub(crate) sol_type: DynSolType,
     pub(crate) sol_type_str: Cow<'static, str>,
     pub(crate) indexed: bool,

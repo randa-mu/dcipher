@@ -176,7 +176,7 @@ impl EventListener {
                     };
 
                     // This could benefit from being processed in a new thread
-                    let decoded_fields = match decode_log(&log, &event) {
+                    let decoded_fields = match decode_log(&log, event) {
                         Ok(decoded_fields) => decoded_fields,
                         Err(e) => {
                             tracing::error!(error = ?e, ?log, ?event, "Failed to decode log");
@@ -251,6 +251,7 @@ fn decode_log(
 }
 
 #[cfg(test)]
+#[allow(clippy::bool_assert_comparison)]
 mod tests {
     use super::*;
     use crate::event_manager::tests::test_contracts;
@@ -280,8 +281,8 @@ mod tests {
         let requester = Address::from_str("0x3DD01dDFbADCE59ce2D214ce8CF9618707E03782").unwrap();
         let requested_at = U256::from(1747570723u64);
 
-        let log = {
-            let inner_log = alloy::primitives::Log::new(
+        let log = Log {
+            inner: alloy::primitives::Log::new(
                 address,
                 vec![
                     B256::from_str(
@@ -294,11 +295,8 @@ mod tests {
                 ],
                 bytes!("0x000000000000000000000000000000000000000000000000000000006829d023"),
             )
-            .unwrap();
-
-            let mut log = Log::default();
-            log.inner = inner_log;
-            log
+            .unwrap(),
+            ..Default::default()
         };
 
         let event = RegisteredEvent::try_new(
