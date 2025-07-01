@@ -64,7 +64,7 @@ message ListRegisteredEventsResponse {
 
 message StreamEventsRequest {
   // List of events to listen to
-  repeated bytes events_uuids = 1;
+  repeated bytes event_uuids = 1;
 }
 
 // Request for historical events

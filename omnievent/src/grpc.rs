@@ -92,7 +92,7 @@ where
     ) -> Result<Response<Self::StreamEventsStream>, Status> {
         let events_uuids = request
             .into_inner()
-            .events_uuids
+            .event_uuids
             .into_iter()
             .map(EventId::try_from)
             .collect::<Result<Vec<_>, _>>()
