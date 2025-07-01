@@ -29,5 +29,8 @@ prost-types.workspace = true
 thiserror.workspace = true
 uuid = { version = "1.0", features = ["v5"] }
 
+[dev-dependencies]
+alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+
 [build-dependencies]
 tonic-build.workspace = true
