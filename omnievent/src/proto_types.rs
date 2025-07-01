@@ -1,4 +1,6 @@
 mod events {
+    #![allow(clippy::enum_variant_names)]
+
     include!(concat!(env!("OUT_DIR"), "/events.rs"));
 
     impl From<BlockSafety> for alloy::eips::BlockNumberOrTag {

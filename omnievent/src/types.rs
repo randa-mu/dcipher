@@ -13,10 +13,6 @@ impl EventId {
     pub fn new(data: &[u8]) -> EventId {
         EventId(uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, data))
     }
-
-    pub(crate) fn nil() -> EventId {
-        EventId(uuid::Uuid::nil())
-    }
 }
 
 impl Display for EventId {
@@ -94,14 +90,14 @@ pub(crate) struct ParsedRegisterNewEventRequest {
 /// An event that has been registered with OmniEvent.
 #[derive(Clone, Debug)]
 pub struct RegisteredEvent {
-    pub(crate) id: EventId,
-    pub(crate) chain_id: u64,
-    pub(crate) address: Address,
-    pub(crate) event_name: String,
-    pub(crate) topic0: B256,
-    pub(crate) fields: Vec<ParsedEventField>,
-    pub(crate) sol_event: DynSolEvent,
-    pub(crate) block_safety: BlockSafety,
+    pub id: EventId,
+    pub chain_id: u64,
+    pub address: Address,
+    pub event_name: String,
+    pub topic0: B256,
+    pub fields: Vec<ParsedEventField>,
+    pub sol_event: DynSolEvent,
+    pub block_safety: BlockSafety,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -252,11 +248,7 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
                     .parse()
                     .map_err(|e| Self::Error::SolType(e, p.sol_type.clone()))?;
 
-                Ok(ParsedEventField {
-                    sol_type_str: Cow::Owned(p.sol_type),
-                    sol_type,
-                    indexed: p.indexed,
-                })
+                Ok(ParsedEventField::new(sol_type, p.indexed))
             })
             .collect::<Result<_, _>>()?;
 

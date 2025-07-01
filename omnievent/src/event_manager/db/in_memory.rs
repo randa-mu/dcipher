@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct InMemoryDatabaseEntry {
+    #[allow(unused)]
     registered_event: RegisteredEvent,
     occurrences: Vec<EventOccurrence>,
 }
@@ -61,7 +62,7 @@ impl EventsDatabase for InMemoryDatabase {
             .into_iter()
             .map(|event_id| {
                 db.0.get(&event_id)
-                    .and_then(|e| Some(e.occurrences.clone()))
+                    .map(|entry| entry.occurrences.clone())
                     .ok_or(Self::Error::UnknownEvent)
             })
             .flatten_ok() // Ok if all event_ids are valid, Err otherwise

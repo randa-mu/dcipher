@@ -33,6 +33,8 @@ impl Default for EventListener {
         }
     }
 }
+
+#[allow(unused)]
 impl EventListener {
     /// Initialize a new event listener.
     pub fn new(event_channel_capacity: usize, registration_channel_capacity: usize) -> Self {
@@ -53,7 +55,9 @@ impl EventListener {
         self.registration_channel_capacity = capacity;
         self
     }
+}
 
+impl EventListener {
     /// Run the event listener in the background, obtaining an [`EventListenerHandle`] to manage it.
     pub fn run(self) -> EventListenerHandle {
         let cancel = CancellationToken::new();
@@ -300,7 +304,7 @@ mod tests {
         };
 
         let event = RegisteredEvent::try_new(
-            EventId::nil(),
+            EventId::new(b"RandomnessRequested -- test"),
             137,
             address,
             "RandomnessRequested".to_owned(),

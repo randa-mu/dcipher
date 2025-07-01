@@ -155,4 +155,3 @@ where
         Ok(Response::new(GetHistoricalEventsResponse { occurrences }))
     }
 }
-
