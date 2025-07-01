@@ -23,13 +23,19 @@ where
         req: ParsedRegisterNewEventRequest,
     ) -> Result<EventId, EventManagerError> {
         tracing::debug!("Registering new event");
+        // Do nothing if the event is already registered
+        let event_id = req.id;
+        if self.events.read().await.contains_key(&event_id) {
+            tracing::debug!("Event already registered");
+            return Ok(event_id);
+        }
+
         let Some(listener_handle) = self.listener_handle.as_ref() else {
             Err(EventManagerError::NotReady)?
         };
 
         let (event, stream) =
             create_stream_and_spec::<_, Ethereum>(req, &self.multi_provider).await?;
-        let event_id = event.id;
 
         let reg = InternalEventStreamRegistration::new(
             event.clone(),
