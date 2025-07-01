@@ -192,12 +192,23 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::bool_assert_comparison)]
 mod tests {
+    use crate::event_manager::EventManager;
+    use crate::event_manager::db::in_memory::InMemoryDatabase;
+    use alloy::dyn_abi::DynSolValue;
+    use alloy::network::Ethereum;
+    use alloy::node_bindings::Anvil;
+    use alloy::providers::{Provider, ProviderBuilder, WsConnect};
+    use futures_util::StreamExt;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use superalloy::provider::MultiProvider;
+
     pub(crate) mod test_contracts {
         use crate::event_manager::tests::test_contracts::EventEmitter::EventEmitterInstance;
-        use crate::proto_types::BlockSafety;
-        use crate::types::{EventStreamId, ParsedEventField, RegisteredEvent};
-        use alloy::dyn_abi::DynSolType;
+        use crate::proto_types::{BlockSafety, EventField, RegisterNewEventRequest};
+        use crate::types::{ParsedRegisterNewEventRequest, RegisteredEvent};
         use alloy::network::Network;
         use alloy::providers::Provider;
 
@@ -226,15 +237,96 @@ mod tests {
             P: Provider<N>,
             N: Network,
         {
-            RegisteredEvent::try_new(
-                EventStreamId::new(b"EventEmitterInstance::StringEmitted"),
-                instance.provider().get_chain_id().await.unwrap(),
-                *instance.address(),
-                "StringEmitted".to_owned(),
-                vec![ParsedEventField::new(DynSolType::String, false)],
-                BlockSafety::Latest,
-            )
+            RegisteredEvent::try_from_req(get_string_register_req(instance).await).unwrap()
+        }
+
+        pub(crate) async fn get_string_register_req<P, N>(
+            instance: &EventEmitterInstance<P, N>,
+        ) -> ParsedRegisterNewEventRequest
+        where
+            P: Provider<N>,
+            N: Network,
+        {
+            ParsedRegisterNewEventRequest::try_from(RegisterNewEventRequest {
+                address: instance.address().to_vec().into(),
+                event_name: "StringEmitted".to_owned(),
+                chain_id: instance.provider().get_chain_id().await.unwrap(),
+                fields: vec![EventField {
+                    sol_type: "string".to_owned(),
+                    indexed: false,
+                }],
+                block_safety: BlockSafety::Latest.into(),
+            })
             .unwrap()
         }
+    }
+
+    #[tokio::test]
+    async fn listener_emits_decoded_events() {
+        let event_string = "TestString".to_owned();
+
+        let anvil = Anvil::new().spawn();
+        let wallet = anvil.wallet().expect("anvil should have a wallet");
+        let ws = WsConnect::new(anvil.ws_endpoint());
+
+        let provider = ProviderBuilder::new()
+            .with_gas_estimation()
+            .wallet(wallet)
+            .connect_ws(ws)
+            .await
+            .unwrap()
+            .erased();
+
+        let emitter_instance = test_contracts::deploy_event_emitter(provider.clone()).await;
+
+        // Create a multi provider
+        let chain_id = provider.get_chain_id().await.unwrap();
+        let mut multi_provider = MultiProvider::empty();
+        multi_provider.extend::<Ethereum>([(chain_id, provider)]);
+
+        // Start event manager
+        let db = InMemoryDatabase::default();
+        let mut event_manager = EventManager::new(Arc::new(multi_provider), db);
+        event_manager.start();
+
+        // Register event
+        let req = test_contracts::get_string_register_req(&emitter_instance).await;
+        let event_id = event_manager
+            .register_ethereum_event(req)
+            .await
+            .expect("failed to register ethereum event");
+
+        // Subscribe to event
+        let mut stream = event_manager
+            .get_ethereum_event_stream(event_id)
+            .await
+            .expect("failed to subscribe to event");
+
+        // Generate a new event
+        emitter_instance
+            .emitString(event_string.clone())
+            .send()
+            .await
+            .unwrap()
+            .watch()
+            .await
+            .unwrap();
+
+        // Get event through stream
+        let decoded_event = tokio::time::timeout(Duration::from_millis(1000), stream.next())
+            .await
+            .expect("failed to get event within timeout")
+            .expect("stream closed")
+            .expect("stream returned error");
+        assert_eq!(decoded_event.event_id, event_id);
+        assert_eq!(decoded_event.data.len(), 1);
+        assert_eq!(decoded_event.data[0].sol_type_str, "string");
+        assert_eq!(
+            decoded_event.data[0].data,
+            DynSolValue::String(event_string)
+        );
+        assert_eq!(decoded_event.data[0].indexed, false);
+
+        event_manager.stop().await.unwrap();
     }
 }
