@@ -1,7 +1,7 @@
 //! Non-persistent in-memory database.
 
 use crate::event_manager::db::EventsDatabase;
-use crate::types::{EventOccurrence, EventStreamId, RegisteredEvent};
+use crate::types::{EventId, EventOccurrence, RegisteredEvent};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -11,7 +11,7 @@ pub struct InMemoryDatabaseEntry {
 }
 
 #[derive(Default)]
-struct InMemoryDatabaseInternal(HashMap<EventStreamId, InMemoryDatabaseEntry>);
+struct InMemoryDatabaseInternal(HashMap<EventId, InMemoryDatabaseEntry>);
 
 #[derive(Clone, Default)]
 pub(crate) struct InMemoryDatabase(Arc<tokio::sync::RwLock<InMemoryDatabaseInternal>>);

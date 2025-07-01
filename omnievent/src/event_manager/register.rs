@@ -4,7 +4,7 @@ use crate::event_manager::db::EventsDatabase;
 use crate::event_manager::listener::InternalEventStreamRegistration;
 use crate::event_manager::{EventManager, EventManagerError, RegisteredEventEntry};
 use crate::types::{
-    EventStreamId, NewRegisteredEventError, ParsedRegisterNewEventRequest, RegisteredEvent,
+    EventId, NewRegisteredEventError, ParsedRegisterNewEventRequest, RegisteredEvent,
 };
 use alloy::network::{Ethereum, Network};
 use alloy::providers::Provider;
@@ -21,7 +21,7 @@ where
     pub(super) async fn internal_register_ethereum_event(
         &self,
         req: ParsedRegisterNewEventRequest,
-    ) -> Result<EventStreamId, EventManagerError> {
+    ) -> Result<EventId, EventManagerError> {
         tracing::debug!("Registering new event");
         let Some(listener_handle) = self.listener_handle.as_ref() else {
             Err(EventManagerError::NotReady)?

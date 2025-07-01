@@ -7,43 +7,43 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub struct EventStreamId(uuid::Uuid);
+pub struct EventId(uuid::Uuid);
 
-impl EventStreamId {
-    pub fn new(data: &[u8]) -> EventStreamId {
-        EventStreamId(uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, data))
+impl EventId {
+    pub fn new(data: &[u8]) -> EventId {
+        EventId(uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, data))
     }
 
-    pub(crate) fn nil() -> EventStreamId {
-        EventStreamId(uuid::Uuid::nil())
+    pub(crate) fn nil() -> EventId {
+        EventId(uuid::Uuid::nil())
     }
 }
 
-impl Display for EventStreamId {
+impl Display for EventId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0.to_string())
     }
 }
 
-impl From<uuid::Uuid> for EventStreamId {
+impl From<uuid::Uuid> for EventId {
     fn from(value: uuid::Uuid) -> Self {
         Self(value)
     }
 }
 
-impl From<EventStreamId> for uuid::Uuid {
-    fn from(value: EventStreamId) -> Self {
+impl From<EventId> for uuid::Uuid {
+    fn from(value: EventId) -> Self {
         value.0
     }
 }
 
-impl From<EventStreamId> for prost::bytes::Bytes {
-    fn from(value: EventStreamId) -> Self {
+impl From<EventId> for prost::bytes::Bytes {
+    fn from(value: EventId) -> Self {
         value.0.as_bytes().to_vec().into()
     }
 }
 
-impl TryFrom<prost::bytes::Bytes> for EventStreamId {
+impl TryFrom<prost::bytes::Bytes> for EventId {
     type Error = uuid::Error;
 
     fn try_from(value: prost::bytes::Bytes) -> Result<Self, Self::Error> {
@@ -78,7 +78,7 @@ pub(crate) struct EventFieldData {
 #[derive(Clone, Debug)]
 pub(crate) struct ParsedRegisterNewEventRequest {
     /// Deterministic UUID v5
-    pub(crate) id: EventStreamId,
+    pub(crate) id: EventId,
     /// Chain ID
     pub(crate) chain_id: u64,
     /// Ethereum contract address (20 bytes) - what contract we're watching
@@ -94,7 +94,7 @@ pub(crate) struct ParsedRegisterNewEventRequest {
 /// An event that has been registered with OmniEvent.
 #[derive(Clone, Debug)]
 pub struct RegisteredEvent {
-    pub(crate) id: EventStreamId,
+    pub(crate) id: EventId,
     pub(crate) chain_id: u64,
     pub(crate) address: Address,
     pub(crate) event_name: String,
@@ -112,7 +112,7 @@ pub enum NewRegisteredEventError {
 
 impl RegisteredEvent {
     pub fn try_new(
-        id: EventStreamId,
+        id: EventId,
         chain_id: u64,
         address: Address,
         event_name: String,
@@ -192,7 +192,7 @@ impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
 /// The occurrence of an event.
 #[derive(Clone, Debug)]
 pub struct EventOccurrence {
-    pub(crate) event_id: EventStreamId,
+    pub(crate) event_id: EventId,
     pub(crate) block_info: BlockInfo,
     pub(crate) raw_log: LogData,
     pub(crate) data: Vec<EventFieldData>,
@@ -236,7 +236,7 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
 
     fn try_from(value: RegisterNewEventRequest) -> Result<Self, Self::Error> {
         // Use the protobuf-encoded value to compute an uuid v5
-        let id = EventStreamId::new(&prost::Message::encode_to_vec(&value));
+        let id = EventId::new(&prost::Message::encode_to_vec(&value));
 
         // Convert the bytes into an address
         let address =

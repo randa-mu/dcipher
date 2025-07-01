@@ -1,14 +1,12 @@
-use crate::event_manager::{CreateStreamError, EventManager, EventManagerError};
 use crate::event_manager::db::EventsDatabase;
+use crate::event_manager::{CreateStreamError, EventManager, EventManagerError};
 use crate::proto_types::omni_event_service_server::OmniEventService;
 use crate::proto_types::{
     EventOccurrence, GetHistoricalEventsRequest, GetHistoricalEventsResponse,
     ListRegisteredEventsRequest, ListRegisteredEventsResponse, RegisterNewEventRequest,
     RegisterNewEventResponse, StreamEventsRequest, UnregisterEventRequest,
 };
-use crate::types::{
-    EventStreamId, ParseRegisterNewEventRequestError, ParsedRegisterNewEventRequest,
-};
+use crate::types::{EventId, ParseRegisterNewEventRequestError, ParsedRegisterNewEventRequest};
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
 use std::sync::Arc;
@@ -96,7 +94,7 @@ where
             .into_inner()
             .events_uuids
             .into_iter()
-            .map(EventStreamId::try_from)
+            .map(EventId::try_from)
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| {
                 tracing::debug!(error = ?e, "Failed to convert bytes to uuid");

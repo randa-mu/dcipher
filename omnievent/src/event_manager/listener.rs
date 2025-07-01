@@ -1,7 +1,7 @@
 //! Manages event streams and sends back decoded event occurrences.
 
 use crate::event_manager::DecodedEvent;
-use crate::types::{EventFieldData, EventStreamId, RegisteredEvent};
+use crate::types::{EventFieldData, EventId, RegisteredEvent};
 use alloy::rpc::types::Log;
 use futures_util::StreamExt;
 use futures_util::stream::{BoxStream, SelectAll};
@@ -76,7 +76,7 @@ impl EventListener {
     }
 }
 
-pub(crate) type LogStreamWithId = BoxStream<'static, (EventStreamId, Log)>;
+pub(crate) type LogStreamWithId = BoxStream<'static, (EventId, Log)>;
 
 pub(crate) struct InternalEventStreamRegistration {
     event: RegisteredEvent,
@@ -300,7 +300,7 @@ mod tests {
         };
 
         let event = RegisteredEvent::try_new(
-            EventStreamId::nil(),
+            EventId::nil(),
             137,
             address,
             "RandomnessRequested".to_owned(),

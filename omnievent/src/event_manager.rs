@@ -10,7 +10,7 @@ use crate::event_manager::db::EventsDatabase;
 use crate::event_manager::events_occurrence::HandleEventsOccurrenceTask;
 use crate::event_manager::listener::{EventListener, EventListenerHandle};
 use crate::types::{
-    EventFieldData, EventOccurrence, EventStreamId, ParseRegisterNewEventRequestError,
+    EventFieldData, EventId, EventOccurrence, ParseRegisterNewEventRequestError,
     ParsedRegisterNewEventRequest,
 };
 use alloy::rpc::types::Log;
@@ -27,7 +27,7 @@ const BROADCAST_STREAM_CAPACITY: usize = 64;
 
 #[derive(Clone, Debug)]
 pub(crate) struct DecodedEvent {
-    event_id: EventStreamId,
+    event_id: EventId,
     data: Vec<EventFieldData>,
     log: Log,
 }
@@ -38,7 +38,7 @@ struct RegisteredEventEntry {
 }
 
 /// A hashmap of broadcast senders for outgoing streams.
-type RegisteredEventsMap = HashMap<EventStreamId, RegisteredEventEntry>;
+type RegisteredEventsMap = HashMap<EventId, RegisteredEventEntry>;
 type SharedRegisteredEventsMap = Arc<tokio::sync::RwLock<RegisteredEventsMap>>;
 
 /// Manage events, store and dispatch event occurrences.
@@ -130,7 +130,7 @@ where
     pub(crate) async fn register_ethereum_event(
         &self,
         req: ParsedRegisterNewEventRequest,
-    ) -> Result<EventStreamId, EventManagerError> {
+    ) -> Result<EventId, EventManagerError> {
         let event_id = req.id;
         let chain_id = req.chain_id;
         let address = req.address;
@@ -142,7 +142,7 @@ where
 
     pub(crate) async fn get_ethereum_event_stream(
         &self,
-        event_id: EventStreamId,
+        event_id: EventId,
     ) -> Result<BroadcastStream<EventOccurrence>, EventManagerError> {
         let stream = {
             let db = self.events.read().await;
@@ -184,7 +184,7 @@ where
 
     pub(crate) async fn get_ethereum_multi_event_stream(
         &self,
-        events_id: impl IntoIterator<Item = EventStreamId>,
+        events_id: impl IntoIterator<Item = EventId>,
     ) -> Result<SelectAll<BroadcastStream<EventOccurrence>>, EventManagerError> {
         // TODO: n locks, not great, improve
         let streams = futures::future::try_join_all(
