@@ -9,7 +9,6 @@ mod register;
 use crate::event_manager::db::EventsDatabase;
 use crate::event_manager::events_occurrence::HandleEventsOccurrenceTask;
 use crate::event_manager::listener::{EventListener, EventListenerHandle};
-use crate::event_manager::register::CreateStreamError;
 use crate::types::{
     EventFieldData, EventOccurrence, EventStreamId, ParseRegisterNewEventRequestError,
     ParsedRegisterNewEventRequest,
@@ -61,15 +60,15 @@ pub(crate) enum EventManagerError {
     #[error("not ready to register events")]
     NotReady,
 
-    #[error("failed to parse request")]
-    ParseRequest(#[from] ParseRegisterNewEventRequestError),
-
     #[error("failed to create stream")]
     CreateStream(#[from] CreateStreamError),
 
     #[error("cannot find a stream with given id")]
     UnknownStream,
 }
+
+// export [`CreateStreamError`] since it's used in [`EventManagerError`]
+pub(crate) use register::CreateStreamError;
 
 impl<MP, DB> EventManager<MP, DB>
 where
