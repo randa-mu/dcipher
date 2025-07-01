@@ -28,7 +28,7 @@ impl EventsDatabase for InMemoryDatabase {
     async fn store_event(&self, registered_event: RegisteredEvent) -> Result<(), Self::Error> {
         let mut db = self.0.write().await;
         db.0.insert(
-            registered_event.id.into(),
+            registered_event.id,
             InMemoryDatabaseEntry {
                 registered_event,
                 occurrences: Default::default(),
@@ -42,7 +42,7 @@ impl EventsDatabase for InMemoryDatabase {
         event_occurrence: EventOccurrence,
     ) -> Result<(), Self::Error> {
         let mut db = self.0.write().await;
-        let Some(entry) = db.0.get_mut(&event_occurrence.event_id.into()) else {
+        let Some(entry) = db.0.get_mut(&event_occurrence.event_id) else {
             Err(Self::Error::UnknownStream)?
         };
         entry.occurrences.push(event_occurrence);
