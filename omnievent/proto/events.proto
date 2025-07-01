@@ -70,7 +70,7 @@ message StreamEventsRequest {
 // Request for historical events
 message GetHistoricalEventsRequest {
   // Uuid uniquely representing the event
-  repeated string event_uuids = 1;
+  repeated bytes event_uuids = 1;
 
   // Block range (required for historical queries)
   BlockRange block_range = 2;
