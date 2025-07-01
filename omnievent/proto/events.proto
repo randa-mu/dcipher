@@ -81,7 +81,7 @@ message GetHistoricalEventsRequest {
 // Response with historical events
 message GetHistoricalEventsResponse {
   // List of event occurrences
-  repeated EventOccurrence events = 1;
+  repeated EventOccurrence occurrences = 1;
 }
 
 // Represents a registered event
