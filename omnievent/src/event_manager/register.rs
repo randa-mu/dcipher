@@ -22,6 +22,7 @@ where
         &self,
         req: ParsedRegisterNewEventRequest,
     ) -> Result<EventStreamId, EventManagerError> {
+        tracing::debug!("Registering new event");
         let Some(listener_handle) = self.listener_handle.as_ref() else {
             Err(EventManagerError::NotReady)?
         };
@@ -53,6 +54,7 @@ where
             );
         }
 
+        tracing::info!("New event stored and registered");
         Ok(event_id)
     }
 }

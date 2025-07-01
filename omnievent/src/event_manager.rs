@@ -22,6 +22,7 @@ use superalloy::provider::MultiChainProvider;
 use tokio::task::{JoinError, JoinHandle};
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_util::sync::CancellationToken;
+use tracing::Instrument;
 
 const BROADCAST_STREAM_CAPACITY: usize = 64;
 
@@ -131,7 +132,13 @@ where
         &self,
         req: ParsedRegisterNewEventRequest,
     ) -> Result<EventStreamId, EventManagerError> {
-        self.internal_register_ethereum_event(req).await
+        let event_id = req.id;
+        let chain_id = req.chain_id;
+        let address = req.address;
+        let event_name = req.event_name.clone();
+        self.internal_register_ethereum_event(req)
+            .instrument(tracing::info_span!("register_ethereum_event", %event_id, %chain_id, %address, %event_name))
+            .await
     }
 
     pub(crate) async fn get_ethereum_event_stream(
@@ -199,7 +206,6 @@ pub(crate) mod tests {
     use alloy::dyn_abi::DynSolValue;
     use alloy::network::Ethereum;
     use alloy::node_bindings::Anvil;
-    use alloy::providers::ext::AnvilApi;
     use alloy::providers::{Provider, ProviderBuilder, WsConnect};
     use futures_util::StreamExt;
     use std::sync::Arc;

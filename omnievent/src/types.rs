@@ -3,6 +3,7 @@ use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
 use alloy::eips::BlockNumberOrTag;
 use alloy::primitives::{Address, B256, LogData, keccak256};
 use std::borrow::Cow;
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
@@ -15,6 +16,12 @@ impl EventStreamId {
 
     pub(crate) fn nil() -> EventStreamId {
         EventStreamId(uuid::Uuid::nil())
+    }
+}
+
+impl Display for EventStreamId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0.to_string())
     }
 }
 
@@ -132,7 +139,6 @@ impl RegisteredEvent {
         };
 
         let event_signature = format!("{}{}", event_name, sol_type_name);
-        print!("{event_signature}");
         let topic0 = keccak256(event_signature.as_bytes());
 
         // Body only includes non-indexed fields
