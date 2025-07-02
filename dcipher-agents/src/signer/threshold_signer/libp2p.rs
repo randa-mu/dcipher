@@ -223,14 +223,40 @@ impl LibP2PNode {
                 peer_id,
                 topic,
             })) => {
-                tracing::debug!(%peer_id, ?topic, "Peer listening to topic");
+                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                    tracing::error!(
+                        incoming_peer_id = %peer_id,
+                        "Failed to convert peer_id to short_id"
+                    );
+                    None
+                });
+
+                tracing::info!(%peer_id, ?short_id, ?topic, "Peer subscribed to topic");
                 // Once we've received at least one topic subscription from a remote peer, we should
                 // be able to send messages.
                 *ready_send_messages = true;
             }
 
+            SwarmEvent::Behaviour(BehaviourEvent::Floodsub(FloodsubEvent::Unsubscribed {
+                peer_id,
+                topic,
+            })) => {
+                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                    tracing::error!(
+                        incoming_peer_id = %peer_id,
+                        "Failed to convert peer_id to short_id"
+                    );
+                    None
+                });
+
+                tracing::info!(%peer_id, ?short_id, ?topic, "Peer unsubscribed to topic");
+            }
+
             SwarmEvent::ConnectionEstablished {
-                peer_id, endpoint, ..
+                peer_id,
+                endpoint,
+                num_established,
+                ..
             } => {
                 let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
                     tracing::error!(
@@ -245,7 +271,34 @@ impl LibP2PNode {
                     incoming_peer_id = %peer_id,
                     incoming_short_id = ?short_id,
                     incoming_remote_addr = %endpoint.get_remote_address(),
+                    num_established,
                     "Libp2p node established connection with peer"
+                );
+            }
+
+            SwarmEvent::ConnectionClosed {
+                peer_id,
+                endpoint,
+                num_established,
+                cause,
+                ..
+            } => {
+                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                    tracing::error!(
+                        incoming_peer_id = %peer_id,
+                        incoming_remote_addr = %endpoint.get_remote_address(),
+                        "Libp2p node closed connection with an unknown peer"
+                    );
+                    None
+                });
+
+                tracing::info!(
+                    incoming_peer_id = %peer_id,
+                    incoming_short_id = ?short_id,
+                    incoming_remote_addr = %endpoint.get_remote_address(),
+                    remaining_connections = num_established,
+                    ?cause,
+                    "Libp2p node closed connection to peer"
                 );
             }
 
