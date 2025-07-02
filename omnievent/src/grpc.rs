@@ -20,9 +20,7 @@ pub struct OmniEventServiceImpl<MP, DB> {
 
 impl<MP, DB> OmniEventServiceImpl<MP, DB> {
     pub fn new(event_manager: Arc<EventManager<MP, DB>>) -> Self {
-        Self {
-            event_manager,
-        }
+        Self { event_manager }
     }
 }
 
