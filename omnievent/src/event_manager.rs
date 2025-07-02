@@ -8,7 +8,9 @@ mod register;
 
 use crate::event_manager::db::EventsDatabase;
 use crate::event_manager::events_occurrence::HandleEventsOccurrenceTask;
-use crate::event_manager::listener::{EventListener, EventListenerHandle};
+use crate::event_manager::listener::{
+    EventListener, EventListenerHandle, EventReceiverHandleError,
+};
 use crate::types::{EventFieldData, EventId, EventOccurrence, ParsedRegisterNewEventRequest};
 use alloy::rpc::types::Log;
 use futures_util::stream::SelectAll;
@@ -48,7 +50,7 @@ pub struct EventManager<MP, DB> {
     events_occurrence_handle: Option<JoinHandle<()>>,
 
     // Shared structs with background tasks
-    events: SharedRegisteredEventsMap,
+    active_events_map: SharedRegisteredEventsMap,
     cancel: CancellationToken,
 }
 
@@ -59,6 +61,9 @@ pub(crate) enum EventManagerError {
 
     #[error("failed to create stream")]
     CreateStream(#[from] CreateStreamError),
+
+    #[error("failed to register event stream")]
+    EventStreamRegistration(#[source] EventReceiverHandleError),
 
     #[error("cannot find an event with given id")]
     UnknownEvent,
@@ -81,7 +86,7 @@ where
             events_db,
             listener_handle: None,
             events_occurrence_handle: None,
-            events: SharedRegisteredEventsMap::default(),
+            active_events_map: SharedRegisteredEventsMap::default(),
             cancel: CancellationToken::new(),
         }
     }
@@ -99,7 +104,7 @@ where
         let events_occurrence_task = HandleEventsOccurrenceTask {
             events_db: self.events_db.clone(),
             incoming_events_stream: events_stream,
-            events: self.events.clone(),
+            active_events_map: self.active_events_map.clone(),
             cancel: self.cancel.child_token(),
         };
         let events_occurrence_handle = events_occurrence_task.run();
@@ -145,8 +150,8 @@ where
         event_id: EventId,
     ) -> Result<BroadcastStream<EventOccurrence>, EventManagerError> {
         let stream = {
-            let events = self.events.read().await;
-            let entry = events
+            let active_events_map = self.active_events_map.read().await;
+            let entry = active_events_map
                 .get(&event_id)
                 .ok_or(EventManagerError::UnknownEvent)?;
 
@@ -158,11 +163,11 @@ where
                 stream
             } else {
                 // No stream has been registered => we need a write lock instead
-                // We could reduce complexity by using a write lock directly, but this blocks other
+                // We could reduce code complexity by using a write lock directly, but this blocks other
                 // threads from reading.
-                drop(events);
+                drop(active_events_map);
 
-                let mut events = self.events.write().await;
+                let mut events = self.active_events_map.write().await;
                 let entry = events
                     .get_mut(&event_id)
                     .ok_or(EventManagerError::UnknownEvent)?;

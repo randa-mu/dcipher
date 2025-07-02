@@ -23,16 +23,18 @@ where
         req: ParsedRegisterNewEventRequest,
     ) -> Result<EventId, EventManagerError> {
         tracing::debug!("Registering new event");
-        // Do nothing if the event is already registered
-        let event_id = req.id;
-        if self.events.read().await.contains_key(&event_id) {
-            tracing::debug!("Event already registered");
-            return Ok(event_id);
-        }
 
+        // Make sure we're ready to register new events
         let Some(listener_handle) = self.listener_handle.as_ref() else {
             Err(EventManagerError::NotReady)?
         };
+
+        // Do nothing if the event is already registered
+        let event_id = req.id;
+        if self.active_events_map.read().await.contains_key(&event_id) {
+            tracing::debug!("Event already registered");
+            return Ok(event_id);
+        }
 
         let (event, stream) =
             create_stream_and_spec::<_, Ethereum>(req, &self.multi_provider).await?;
@@ -41,18 +43,25 @@ where
             event.clone(),
             stream.map(move |l| (event_id, l)).boxed(), // boxing :( but we need type erasure due to the closure
         );
-        if let Err(e) = listener_handle.register_event_stream(reg).await {
-            tracing::error!(event = ?event_id, error = ?e, "Failed to register event stream");
-        }
 
-        // With the stream registered, save it
+        // Save the event in the database
         if let Err(e) = self.events_db.store_event(event).await {
             tracing::error!(event = ?event_id, error = ?e, "Failed to store event in database");
+            Err(EventManagerError::Database(e.into()))?
+        }
+
+        // Register the stream with the bg task
+        if let Err(e) = listener_handle.register_event_stream(reg).await {
+            tracing::error!(event = ?event_id, error = ?e, "Failed to register event stream");
+            // TODO: Currently, this only happens if the bg task has dropped its receiver
+            //  => not recoverable. We may consider just letting it explode here.
+            Err(EventManagerError::EventStreamRegistration(e))?
         }
 
         {
-            let mut db = self.events.write().await;
-            db.insert(
+            // Store a new entry in the local active events map
+            let mut active_events_map = self.active_events_map.write().await;
+            active_events_map.insert(
                 event_id,
                 RegisteredEventEntry {
                     outgoing_stream: None,

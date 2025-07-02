@@ -213,6 +213,10 @@ pub enum EventLogDecodeError {
 }
 
 /// Try to decode a log with a given event specification and return the decoded fields.
+///
+/// # Panics
+/// Panics if the provided [`RegisteredEvent`] is inconsistent, e.g., the sol_event is inconsistent
+/// with the vector of fields.
 fn decode_log(
     log: &Log,
     event: &RegisteredEvent,

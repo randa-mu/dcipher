@@ -15,7 +15,7 @@ use tracing::instrument;
 pub(super) struct HandleEventsOccurrenceTask<ES, DB> {
     pub(super) incoming_events_stream: ES,
     pub(super) events_db: DB,
-    pub(super) events: SharedRegisteredEventsMap,
+    pub(super) active_events_map: SharedRegisteredEventsMap,
     pub(super) cancel: CancellationToken,
 }
 
@@ -55,7 +55,7 @@ where
 
             // Send the event through a stream, if required
             let stream = self
-                .events
+                .active_events_map
                 .read()
                 .await
                 .get(&event.event_id)
