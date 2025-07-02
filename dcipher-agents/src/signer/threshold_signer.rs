@@ -3,11 +3,13 @@
 
 mod aggregation;
 mod libp2p;
+pub mod metrics;
 
 pub use aggregation::lagrange_points_interpolate_at;
 
 use crate::ser::EvmSerialize;
 use crate::signer::threshold_signer::libp2p::LibP2PNode;
+use crate::signer::threshold_signer::metrics::Metrics;
 use crate::signer::{AsynchronousSigner, BlsSigner, BlsVerifier};
 use ark_ec::{AffineRepr, CurveGroup};
 use itertools::Either;
@@ -355,6 +357,7 @@ where
 
                             let m = serde_cbor::to_vec(&partial)
                                 .expect("serialization should always work");
+                            Metrics::report_partials_sent(1);
                             if tx_to_libp2p.send(m).is_err() {
                                 tracing::error!("Failed to send message to signer: channel closed");
                             }
@@ -398,6 +401,8 @@ where
                         }
                     };
 
+                Metrics::report_partials_received(1);
+
                 // Verify the validity of the partial signature against its pk
                 let Some(pk) = self.pks.get(usize::from(party_id) - 1) else {
                     tracing::error!(sender_id = party_id, "Invalid party_id / pks vector");
@@ -405,6 +410,7 @@ where
                 };
                 if !self.signer.verify(&partial.m, partial.sig, *pk) {
                     tracing::error!(sender_id = party_id, "Received invalid partial signature");
+                    Metrics::report_invalid_partials(1);
                     continue;
                 }
 
