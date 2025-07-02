@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use dcipher_agents::agents::blocklock::metrics::Metrics as BlocklockMetrics;
+use dcipher_agents::agents::randomness::metrics::Metrics as RandomnessMetrics;
 use dcipher_agents::signer::threshold_signer::metrics::Metrics as ThresholdSignerMetrics;
 use prometheus::{Encoder, TextEncoder};
 use std::net::IpAddr;
@@ -13,7 +13,7 @@ pub async fn start_api(listen_addr: IpAddr, port: u16) -> anyhow::Result<()> {
 
     let metrics = warp::path!("metrics").map(|| {
         let encoder = TextEncoder::new();
-        let metrics = [BlocklockMetrics::gather(), ThresholdSignerMetrics::gather()].concat();
+        let metrics = [RandomnessMetrics::gather(), ThresholdSignerMetrics::gather()].concat();
         let mut buffer = Vec::new();
 
         match encoder.encode(&metrics, &mut buffer) {
