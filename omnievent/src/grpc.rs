@@ -18,6 +18,12 @@ pub struct OmniEventServiceImpl<MP, DB> {
     event_manager: Arc<EventManager<MP, DB>>,
 }
 
+impl<MP, DB> OmniEventServiceImpl<MP, DB> {
+    pub fn new(event_manager: Arc<EventManager<MP, DB>>) -> Self {
+        Self { event_manager }
+    }
+}
+
 #[tonic::async_trait]
 impl<MP, DB> OmniEventService for OmniEventServiceImpl<MP, DB>
 where
