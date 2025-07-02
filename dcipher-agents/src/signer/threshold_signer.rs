@@ -3,6 +3,7 @@
 
 mod aggregation;
 mod libp2p;
+pub mod metrics;
 
 pub use aggregation::lagrange_points_interpolate_at;
 

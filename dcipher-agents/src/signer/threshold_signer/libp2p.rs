@@ -1,6 +1,7 @@
 //! Libp2p node that can be used to broadcast and receive arbitrary messages using floodsub and a
 //! peer whitelist.
 
+use crate::signer::threshold_signer::metrics::Metrics;
 use futures_util::StreamExt;
 use libp2p::allow_block_list::AllowedPeers;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
@@ -10,6 +11,7 @@ use libp2p::{
     Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, swarm::SwarmEvent, tcp, yamux,
 };
 use std::collections::HashMap;
+use std::num::NonZeroU32;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -267,6 +269,11 @@ impl LibP2PNode {
                     None
                 });
 
+                if num_established == const { NonZeroU32::new(1).unwrap() } {
+                    // First connection established, report new peer connected
+                    Metrics::report_peer_connected();
+                }
+
                 tracing::info!(
                     incoming_peer_id = %peer_id,
                     incoming_short_id = ?short_id,
@@ -291,6 +298,11 @@ impl LibP2PNode {
                     );
                     None
                 });
+
+                if num_established == 0 {
+                    // No more connections, report disconnect
+                    Metrics::report_peer_disconnected();
+                }
 
                 tracing::info!(
                     incoming_peer_id = %peer_id,
