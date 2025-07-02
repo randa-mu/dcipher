@@ -75,6 +75,8 @@ where
                             // It's not clear whether we should we delete the stream here. Doing so
                             // requires re-locking (+ checking that nobody subscribed in-between),
                             // or having a longer-lived write lock.
+                            // For now, assume that deletion is handled upon dropping the receiver.
+
                             // warn log to monitor that behaviour
                             tracing::warn!("Failed to send event through stream: no receiver");
                         }
