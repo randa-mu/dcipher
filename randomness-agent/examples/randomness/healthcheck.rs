@@ -13,7 +13,11 @@ pub async fn start_api(listen_addr: IpAddr, port: u16) -> anyhow::Result<()> {
 
     let metrics = warp::path!("metrics").map(|| {
         let encoder = TextEncoder::new();
-        let metrics = [RandomnessMetrics::gather(), ThresholdSignerMetrics::gather()].concat();
+        let metrics = [
+            RandomnessMetrics::gather(),
+            ThresholdSignerMetrics::gather(),
+        ]
+        .concat();
         let mut buffer = Vec::new();
 
         match encoder.encode(&metrics, &mut buffer) {
