@@ -1,3 +1,7 @@
+mod multi;
+
+pub use multi::*;
+
 use crate::retry::{RetryStrategy, with_retry};
 use alloy::consensus::BlockHeader;
 use alloy::providers::fillers::{

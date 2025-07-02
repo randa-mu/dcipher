@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package events;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service OmniEventService {
+  // Register a new event
+  rpc RegisterEvent(RegisterNewEventRequest) returns (RegisterNewEventResponse);
+
+  // Unregister an event
+  rpc UnregisterEvent(UnregisterEventRequest) returns (google.protobuf.Empty);
+
+  // List registered events
+  rpc ListRegisteredEvents(ListRegisteredEventsRequest) returns (ListRegisteredEventsResponse);
+
+  // Stream events as they occur
+  rpc StreamEvents(StreamEventsRequest) returns (stream EventOccurrence);
+
+  // Get historical events (batch request)
+  rpc GetHistoricalEvents(GetHistoricalEventsRequest) returns (GetHistoricalEventsResponse);
+}
+
+// Request message for registering a new event
+message RegisterNewEventRequest {
+  // Chain ID
+  uint64 chain_id = 1;
+
+  // Ethereum contract address (20 bytes) - what contract we're watching
+  bytes address = 2;
+
+  // Event name - what event we're watching for
+  string event_name = 3;
+
+  // Event fields - the structure of the event
+  repeated EventField fields = 4;
+
+  // Block safety level - how we want to handle block finality
+  BlockSafety block_safety = 5;
+}
+
+// Response after registering a new event
+message RegisterNewEventResponse {
+  // Uuid uniquely representing the event
+  bytes uuid = 1;
+}
+
+// Request to unregister an event
+message UnregisterEventRequest {
+  // Uuid uniquely representing the event
+  bytes uuid = 1;
+}
+
+// Request to obtain a list of registered events
+message ListRegisteredEventsRequest {
+  // Empty for now, add filters (chain id, address, custom tags, etc) in the future
+}
+
+// Request to obtain a list of registered events
+message ListRegisteredEventsResponse {
+  repeated RegisteredEvent events = 1;
+}
+
+message StreamEventsRequest {
+  // List of events to listen to
+  repeated bytes event_uuids = 1;
+}
+
+// Request for historical events
+message GetHistoricalEventsRequest {
+  // Uuid uniquely representing the event
+  repeated bytes event_uuids = 1;
+
+  // Block range (required for historical queries)
+  BlockRange block_range = 2;
+
+  // Add filters (chain id, address, custom tags, values, etc) in the future
+}
+
+// Response with historical events
+message GetHistoricalEventsResponse {
+  // List of event occurrences
+  repeated EventOccurrence occurrences = 1;
+}
+
+// Represents a registered event
+message RegisteredEvent {
+  // Uuid uniquely representing the event
+  bytes event_uuid = 1;
+
+  // Chain ID
+  uint64 chain_id = 2;
+
+  // Contract address
+  bytes address = 3;
+
+  // Event name
+  string event_name = 4;
+
+  // Event fields
+  repeated EventField fields = 5;
+
+  // Block safety level
+  BlockSafety block_safety = 6;
+}
+
+message EventOccurrence {
+  // Uuid uniquely representing the registered event
+  bytes event_uuid = 1;
+
+  // Block information
+  BlockInfo block_info = 2;
+
+  // Raw log data (for advanced use cases)
+  optional bytes raw_log_data = 3;
+
+  // Event data (decoded parameters)
+  repeated EventData event_data = 4;
+}
+
+// Block information
+message BlockInfo {
+  // Block number
+  uint64 block_number = 1;
+
+  // Block hash
+  bytes block_hash = 2;
+
+  // Block timestamp
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+// Represents one of the field of a solidity event
+message EventField {
+  // Solidity type as string (e.g., "address", "uint256", "bytes32", "uint256[]")
+  string sol_type = 1;
+
+  // Whether the field is indexed
+  bool indexed = 2;
+}
+
+// Represents decoded event data
+message EventData {
+  // Solidity type as string (e.g., "address", "uint256", "bytes32", "uint256[]")
+  string sol_type = 1;
+
+  // Whether this parameter was indexed
+  bool indexed = 2;
+
+  // The actual value (encoded as appropriate type)
+  oneof value {
+    string string_value = 10;
+    string int_hex_value = 11;
+    bool bool_value = 12;
+    bytes bytes_value = 13;
+    bytes address_value = 14;
+    // For other types
+    bytes abi_bytes = 19;
+  }
+}
+
+// Block safety levels
+enum BlockSafety {
+  BLOCK_SAFETY_LATEST = 0;
+  BLOCK_SAFETY_FINALIZED = 1;
+  BLOCK_SAFETY_SAFE = 2;
+}
+
+// Block range for queries
+message BlockRange {
+  // Start block (inclusive)
+  uint64 from_block = 1;
+
+  // Optional end block (exclusive)
+  // if not set, relies on the event's block safety or latest.
+  optional uint64 to_block = 2;
+}

@@ -4,6 +4,7 @@ members = [
     "blocklock-agent",
     "dcipher-agents",
     "dsigner",
+    "omnievent",
     "onlyswaps-verifier",
     "randomness-agent",
     "superalloy"
@@ -36,6 +37,7 @@ sha3 = "0.10"
 futures = "0.3"
 futures-util = "0.3"
 tokio = "1.44"
+tokio-stream = "0.1"
 tokio-util = "0.7"
 
 # logs / metrics
@@ -46,7 +48,14 @@ tracing-subscriber = { version = "0.3" }
 # network
 libp2p = { version = "0.55", features = ["serde"] }
 
+# api / rpc
+tonic = { version = "0.13" }
+tonic-build = { version = "0.13" }
+
 # serde
+prost = { version = "0.13" }
+prost-build = { version = "0.13" }
+prost-types = { version = "0.13" }
 serde = { version = "1.0", features = ["derive"], default-features = false }
 serde_json = "1.0"
 
