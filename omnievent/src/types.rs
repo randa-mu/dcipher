@@ -84,10 +84,10 @@ impl ParsedEventField {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct EventFieldData {
-    pub(crate) sol_type_str: Cow<'static, str>,
-    pub(crate) data: DynSolValue,
-    pub(crate) indexed: bool,
+pub struct EventFieldData {
+    pub sol_type_str: Cow<'static, str>,
+    pub data: DynSolValue,
+    pub indexed: bool,
 }
 
 #[derive(Clone, Debug)]
