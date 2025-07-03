@@ -7,6 +7,7 @@ use libp2p::allow_block_list::AllowedPeers;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::identity::Keypair;
 use libp2p::swarm::NetworkBehaviour;
+use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::{
     Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, swarm::SwarmEvent, tcp, yamux,
 };
@@ -73,29 +74,31 @@ impl LibP2PNode {
         // Create a new swarm
         let mut swarm = Self::configure_swarm(self.key.clone(), self.peer_ids.clone())?;
 
-        // Subscribe to the main topic
-        let topic = floodsub::Topic::new(LIBP2P_MAIN_TOPIC);
-        let _ = swarm.behaviour_mut().floodsub.subscribe(topic);
-
         // Listen on all interfaces
         swarm
             .listen_on(listen_addr)
             .map_err(|e| Libp2pNodeError::TransportError(e.into(), "failed to start listener"))?;
 
-        // Add each of the peers to floodsub's view
-        self.peer_ids.into_iter().for_each(|peer_id| {
-            swarm
-                .behaviour_mut()
-                .floodsub
-                .add_node_to_partial_view(peer_id);
-        });
+        // Register each of the peers
+        self.peer_ids
+            .into_iter()
+            .zip(self.peer_addrs)
+            .for_each(|(peer_id, peer_addr)| {
+                swarm.add_peer_address(peer_id, peer_addr.clone());
 
-        // Try to dial each of the expected peers
-        self.peer_addrs.iter().for_each(|peer_addr| {
-            if let Err(e) = swarm.dial(peer_addr.to_owned()) {
-                tracing::error!("Failed to dial peer at address {peer_addr}: {e:?}")
-            }
-        });
+                swarm
+                    .behaviour_mut()
+                    .floodsub
+                    .add_node_to_partial_view(peer_id);
+
+                let dial_opts = DialOpts::peer_id(peer_id)
+                    .addresses(vec![peer_addr.clone()])
+                    .condition(PeerCondition::Always)
+                    .build();
+                if let Err(e) = swarm.dial(dial_opts) {
+                    tracing::error!("Failed to dial peer at address {peer_addr}: {e:?}")
+                }
+            });
 
         // Create a floodsub topic and subscribe
         let topic = floodsub::Topic::new(LIBP2P_MAIN_TOPIC);
