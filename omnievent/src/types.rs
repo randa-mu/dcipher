@@ -223,10 +223,10 @@ impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
 /// The occurrence of an event.
 #[derive(Clone, Debug)]
 pub struct EventOccurrence {
-    pub(crate) event_id: EventId,
-    pub(crate) block_info: BlockInfo,
-    pub(crate) raw_log: LogData,
-    pub(crate) data: Vec<EventFieldData>,
+    pub event_id: EventId,
+    pub block_info: BlockInfo,
+    pub raw_log: LogData,
+    pub data: Vec<EventFieldData>,
 }
 
 impl From<EventOccurrence> for proto_types::EventOccurrence {
