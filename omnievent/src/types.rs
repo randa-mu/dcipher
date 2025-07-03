@@ -47,6 +47,13 @@ impl TryFrom<prost::bytes::Bytes> for EventId {
     }
 }
 
+impl From<&RegisterNewEventRequest> for EventId {
+    fn from(value: &RegisterNewEventRequest) -> Self {
+        // Use the protobuf-encoded value to compute a deterministic uuid v5
+        EventId::new(&prost::Message::encode_to_vec(value))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ParsedEventField {
     pub(crate) sol_type: DynSolType,
@@ -55,20 +62,32 @@ pub struct ParsedEventField {
 }
 
 impl ParsedEventField {
-    pub(crate) fn new(sol_type: DynSolType, indexed: bool) -> Self {
+    pub fn new(sol_type: DynSolType, indexed: bool) -> Self {
         Self {
             sol_type_str: sol_type.sol_type_name(),
             sol_type,
             indexed,
         }
     }
+
+    pub fn sol_type_name(&self) -> Cow<'static, str> {
+        self.sol_type_str.clone()
+    }
+
+    pub fn sol_type(&self) -> &DynSolType {
+        &self.sol_type
+    }
+
+    pub fn indexed(&self) -> bool {
+        self.indexed
+    }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct EventFieldData {
-    pub(crate) sol_type_str: Cow<'static, str>,
-    pub(crate) data: DynSolValue,
-    pub(crate) indexed: bool,
+pub struct EventFieldData {
+    pub sol_type_str: Cow<'static, str>,
+    pub data: DynSolValue,
+    pub indexed: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -93,11 +112,11 @@ pub struct RegisteredEvent {
     pub id: EventId,
     pub chain_id: u64,
     pub address: Address,
-    pub event_name: String,
-    pub topic0: B256,
-    pub fields: Vec<ParsedEventField>,
-    pub sol_event: DynSolEvent,
     pub block_safety: BlockSafety,
+    pub(crate) event_name: String,
+    pub(crate) topic0: B256,
+    pub(crate) fields: Vec<ParsedEventField>,
+    pub(crate) sol_event: DynSolEvent,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -174,6 +193,22 @@ impl RegisteredEvent {
 
         Self::try_new(id, chain_id, address, event_name, fields, block_safety)
     }
+
+    pub fn topic0(&self) -> B256 {
+        self.topic0
+    }
+
+    pub fn sol_event(&self) -> &DynSolEvent {
+        &self.sol_event
+    }
+
+    pub fn event_name(&self) -> &str {
+        &self.event_name
+    }
+
+    pub fn fields(&self) -> &Vec<ParsedEventField> {
+        &self.fields
+    }
 }
 
 impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
@@ -188,10 +223,10 @@ impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
 /// The occurrence of an event.
 #[derive(Clone, Debug)]
 pub struct EventOccurrence {
-    pub(crate) event_id: EventId,
-    pub(crate) block_info: BlockInfo,
-    pub(crate) raw_log: LogData,
-    pub(crate) data: Vec<EventFieldData>,
+    pub event_id: EventId,
+    pub block_info: BlockInfo,
+    pub raw_log: LogData,
+    pub data: Vec<EventFieldData>,
 }
 
 impl From<EventOccurrence> for proto_types::EventOccurrence {
@@ -231,8 +266,7 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
     type Error = ParseRegisterNewEventRequestError;
 
     fn try_from(value: RegisterNewEventRequest) -> Result<Self, Self::Error> {
-        // Use the protobuf-encoded value to compute an uuid v5
-        let id = EventId::new(&prost::Message::encode_to_vec(&value));
+        let id = EventId::from(&value);
 
         // Convert the bytes into an address
         let address =
