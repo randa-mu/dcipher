@@ -8,9 +8,9 @@ use crate::proto_types::{
 };
 use crate::types::{EventId, ParseRegisterNewEventRequestError, ParsedRegisterNewEventRequest};
 use futures_util::StreamExt;
-use futures_util::stream::BoxStream;
 use std::sync::Arc;
 use superalloy::provider::MultiChainProvider;
+use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tonic::{Request, Response, Status};
 
@@ -90,13 +90,13 @@ where
         Err(Status::unimplemented("Not yet implemented"))
     }
 
-    type StreamEventsStream = BoxStream<'static, Result<EventOccurrence, Status>>;
+    type StreamEventsStream = ReceiverStream<Result<EventOccurrence, Status>>;
 
     async fn stream_events(
         &self,
         request: Request<StreamEventsRequest>,
     ) -> Result<Response<Self::StreamEventsStream>, Status> {
-        let events_uuids = request
+        let event_uuids = request
             .into_inner()
             .event_uuids
             .into_iter()
@@ -110,7 +110,7 @@ where
 
         let stream = self
             .event_manager
-            .get_ethereum_multi_event_stream(events_uuids)
+            .get_ethereum_multi_event_stream(event_uuids.clone())
             .await
             .map_err(|e| {
                 tracing::error!(error = ?e, "Failed to create event stream");
@@ -118,16 +118,33 @@ where
                 Status::internal("failed to create event stream")
             })?;
 
-        Ok(Response::new(
-            stream
-                .map(|res| match res {
-                    Ok(event) => Ok(event.into()),
-                    Err(BroadcastStreamRecvError::Lagged(n_lost)) => {
-                        Err(Status::data_loss(format!("lost {n_lost} messages")))
+        // spawn a new task that forwards items from the stream, and handles disconnection
+        let (tx, rx) = tokio::sync::mpsc::channel(64);
+        tokio::spawn({
+            let mut stream = stream;
+            let event_manager = self.event_manager.clone();
+            async move {
+                while let Some(stream_res) = stream.next().await {
+                    let m = match stream_res {
+                        Ok(event) => Ok(event.into()),
+                        Err(BroadcastStreamRecvError::Lagged(n_lost)) => {
+                            Err(Status::data_loss(format!("lost {n_lost} messages")))
+                        }
+                    };
+
+                    if tx.send(m).await.is_err() {
+                        // Channel has been closed => client disconnected
+                        tracing::debug!("Client disconnected, unregistering stream");
+                        event_manager
+                            .unregister_ethereum_multi_event_stream(event_uuids, stream)
+                            .await;
+                        break;
                     }
-                })
-                .boxed(),
-        ))
+                }
+            }
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
     async fn get_historical_events(
