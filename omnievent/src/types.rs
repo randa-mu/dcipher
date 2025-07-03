@@ -62,12 +62,24 @@ pub struct ParsedEventField {
 }
 
 impl ParsedEventField {
-    pub(crate) fn new(sol_type: DynSolType, indexed: bool) -> Self {
+    pub fn new(sol_type: DynSolType, indexed: bool) -> Self {
         Self {
             sol_type_str: sol_type.sol_type_name(),
             sol_type,
             indexed,
         }
+    }
+
+    pub fn sol_type_name(&self) -> Cow<'static, str> {
+        self.sol_type_str.clone()
+    }
+
+    pub fn sol_type(&self) -> &DynSolType {
+        &self.sol_type
+    }
+
+    pub fn indexed(&self) -> bool {
+        self.indexed
     }
 }
 
