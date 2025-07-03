@@ -1,6 +1,7 @@
 //! Libp2p node that can be used to broadcast and receive arbitrary messages using floodsub and a
 //! peer whitelist.
 
+use crate::signer::threshold_signer::libp2p::BehaviourEvent::Ping;
 use crate::signer::threshold_signer::metrics::Metrics;
 use futures_util::StreamExt;
 use libp2p::allow_block_list::AllowedPeers;
@@ -9,7 +10,8 @@ use libp2p::identity::Keypair;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::{
-    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, swarm::SwarmEvent, tcp, yamux,
+    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, ping, swarm::SwarmEvent, tcp,
+    yamux,
 };
 use std::collections::HashMap;
 use std::num::NonZeroU32;
@@ -257,6 +259,46 @@ impl LibP2PNode {
                 tracing::info!(%peer_id, ?short_id, ?topic, "Peer unsubscribed to topic");
             }
 
+            // Successful ping
+            SwarmEvent::Behaviour(Ping(ping::Event {
+                peer: peer_id,
+                result: Ok(rtt),
+                ..
+            })) => {
+                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                    tracing::error!(
+                        incoming_peer_id = %peer_id,
+                        "Failed to convert peer_id to short_id"
+                    );
+                    None
+                });
+
+                let host = if let Some(short_id) = short_id {
+                    format!("{short_id:02}@{peer_id}")
+                } else {
+                    format!("??@{peer_id}")
+                };
+                Metrics::report_host_rtt(rtt.as_secs_f64(), host);
+                tracing::debug!(%peer_id, ?short_id, rtt_ms = rtt.as_millis(), "Successful ping");
+            }
+
+            // Failed ping
+            SwarmEvent::Behaviour(Ping(ping::Event {
+                peer: peer_id,
+                result: Err(e),
+                ..
+            })) => {
+                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                    tracing::error!(
+                        incoming_peer_id = %peer_id,
+                        "Failed to convert peer_id to short_id"
+                    );
+                    None
+                });
+
+                tracing::debug!(%peer_id, ?short_id, error = ?e, "Failed to ping");
+            }
+
             SwarmEvent::ConnectionEstablished {
                 peer_id,
                 endpoint,
@@ -334,6 +376,7 @@ impl LibP2PNode {
 struct Behaviour {
     floodsub: floodsub::Floodsub,
     allowed_peers: allow_block_list::Behaviour<AllowedPeers>,
+    ping: ping::Behaviour,
 }
 
 impl Behaviour {
@@ -351,6 +394,7 @@ impl Behaviour {
         Self {
             allowed_peers,
             floodsub: floodsub::Floodsub::new(local_peer_id),
+            ping: ping::Behaviour::default(),
         }
     }
 }
