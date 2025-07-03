@@ -47,6 +47,13 @@ impl TryFrom<prost::bytes::Bytes> for EventId {
     }
 }
 
+impl From<&RegisterNewEventRequest> for EventId {
+    fn from(value: &RegisterNewEventRequest) -> Self {
+        // Use the protobuf-encoded value to compute a deterministic uuid v5
+        EventId::new(&prost::Message::encode_to_vec(value))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ParsedEventField {
     pub(crate) sol_type: DynSolType,
@@ -231,8 +238,7 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
     type Error = ParseRegisterNewEventRequestError;
 
     fn try_from(value: RegisterNewEventRequest) -> Result<Self, Self::Error> {
-        // Use the protobuf-encoded value to compute an uuid v5
-        let id = EventId::new(&prost::Message::encode_to_vec(&value));
+        let id = EventId::from(&value);
 
         // Convert the bytes into an address
         let address =
