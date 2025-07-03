@@ -112,11 +112,11 @@ pub struct RegisteredEvent {
     pub id: EventId,
     pub chain_id: u64,
     pub address: Address,
-    pub event_name: String,
-    pub topic0: B256,
-    pub fields: Vec<ParsedEventField>,
-    pub sol_event: DynSolEvent,
     pub block_safety: BlockSafety,
+    pub(crate) event_name: String,
+    pub(crate) topic0: B256,
+    pub(crate) fields: Vec<ParsedEventField>,
+    pub(crate) sol_event: DynSolEvent,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -192,6 +192,22 @@ impl RegisteredEvent {
         } = req;
 
         Self::try_new(id, chain_id, address, event_name, fields, block_safety)
+    }
+
+    pub fn topic0(&self) -> B256 {
+        self.topic0
+    }
+
+    pub fn sol_event(&self) -> &DynSolEvent {
+        &self.sol_event
+    }
+
+    pub fn event_name(&self) -> &str {
+        &self.event_name
+    }
+
+    pub fn fields(&self) -> &Vec<ParsedEventField> {
+        &self.fields
     }
 }
 
