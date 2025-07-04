@@ -10,18 +10,27 @@ pub enum FilterError {
     Apply,
 }
 
-#[tracing::instrument(skip_all, fields(n_unfiltered = occurrences.len()))]
-pub fn filter_occurrences(
-    occurrences: impl IntoIterator<Item = EventOccurrence> + ExactSizeIterator,
+pub fn filter_occurrences<I>(
+    occurrences: I,
     filter: EventOccurrenceFilter,
-) -> Result<Vec<EventOccurrence>, FilterError> {
+) -> Result<Vec<EventOccurrence>, FilterError>
+where
+    I: IntoIterator<Item = EventOccurrence>,
+    I::IntoIter: ExactSizeIterator,
+{
     let EventOccurrenceFilter {
         block_filter,
         data_filters,
     } = filter;
 
+    let occurrences = occurrences.into_iter();
+
+    let _entered = tracing::info_span!("filter_occurrences", n_unfiltered = occurrences.len());
+
+    #[cfg(feature = "timings")]
+    let start = std::time::Instant::now();
+
     let occurrences = occurrences
-        .into_iter()
         .map(|occurrence| {
             // Apply block filters
             if let Some(block_filter) = &block_filter {
@@ -77,10 +86,20 @@ pub fn filter_occurrences(
         .flatten()
         .collect::<Vec<_>>();
 
+    #[cfg(not(feature = "timings"))]
     tracing::debug!(
         n_filtered = occurrences.len(),
         "Finished filtering occurrences"
     );
+    #[cfg(feature = "timings")]
+    {
+        let elapsed = start.elapsed();
+        tracing::debug!(
+            n_filtered = occurrences.len(),
+            duration_secs = elapsed.as_secs_f64(),
+            "Finished filtering occurrences"
+        );
+    }
 
     Ok(occurrences)
 }

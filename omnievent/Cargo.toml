@@ -3,6 +3,9 @@ name = "omnievent"
 version.workspace = true
 edition.workspace = true
 
+[features]
+timings = []
+
 [dependencies]
 alloy = { workspace = true, features = ["default", "provider-ws"] }
 superalloy.workspace = true
