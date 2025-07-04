@@ -151,8 +151,9 @@ where
         &self,
         request: Request<GetHistoricalEventsRequest>,
     ) -> Result<Response<GetHistoricalEventsResponse>, Status> {
-        let event_ids = request
-            .into_inner()
+        let req = request.into_inner();
+
+        let event_ids = req
             .event_uuids
             .into_iter()
             .map(EventId::try_from)
@@ -164,7 +165,7 @@ where
 
         let occurrences = self
             .event_manager
-            .get_historical_event_occurrences(event_ids)
+            .get_historical_event_occurrences(event_ids, req.filter)
             .await
             .map_err(|e| {
                 tracing::error!(error = ?e, "Failed to obtain historical event occurrences");
