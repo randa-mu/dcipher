@@ -1,4 +1,4 @@
-use crate::proto_types::{self, BlockInfo, BlockSafety, RegisterNewEventRequest};
+use crate::proto_types::{self, BlockSafety, RegisterNewEventRequest};
 use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
 use alloy::eips::BlockNumberOrTag;
 use alloy::primitives::{Address, B256, LogData, keccak256};
@@ -220,6 +220,29 @@ impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
     }
 }
 
+/// A rusty type storing protobuf's [`BlockInfo`](crate::proto_types::BlockInfo)
+#[derive(Clone, Debug)]
+pub struct BlockInfo {
+    pub number: u64,
+    pub hash: bytes::Bytes,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+impl From<BlockInfo> for proto_types::BlockInfo {
+    fn from(block: BlockInfo) -> Self {
+        Self {
+            block_number: block.number,
+            block_hash: block.hash,
+            timestamp: Some(prost_types::Timestamp {
+                nanos: chrono::Timelike::nanosecond(&block.timestamp)
+                    .try_into()
+                    .expect("safe, outputs at most 1_999_999 < 2**31"),
+                seconds: block.timestamp.timestamp(),
+            }),
+        }
+    }
+}
+
 /// The occurrence of an event.
 #[derive(Clone, Debug)]
 pub struct EventOccurrence {
@@ -245,7 +268,7 @@ impl From<EventOccurrence> for proto_types::EventOccurrence {
             event_uuid: event.event_id.into(),
             event_data: data,
             raw_log_data: Some(event.raw_log.data.into()),
-            block_info: Some(event.block_info),
+            block_info: Some(event.block_info.into()),
         }
     }
 }

@@ -35,13 +35,13 @@ where
             // Apply block filters
             if let Some(block_filter) = &block_filter {
                 if let Some(to_block) = block_filter.to_block {
-                    if occurrence.block_info.block_number >= to_block {
+                    if occurrence.block_info.number >= to_block {
                         return Ok(None);
                     }
                 }
 
                 if let Some(from_block) = block_filter.from_block {
-                    if occurrence.block_info.block_number < from_block {
+                    if occurrence.block_info.number < from_block {
                         return Ok(None);
                     }
                 }

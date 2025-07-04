@@ -29,6 +29,8 @@ prost.workspace = true
 prost-types.workspace = true
 
 # misc
+bytes.workspace = true
+chrono.workspace = true
 itertools.workspace = true
 thiserror.workspace = true
 uuid = { version = "1.0", features = ["v5"] }
