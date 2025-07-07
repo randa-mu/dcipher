@@ -7,12 +7,27 @@ use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+const EVENT_UUID_NAMESPACE: uuid::Uuid = uuid::Uuid::NAMESPACE_OID;
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub struct EventId(uuid::Uuid);
 
 impl EventId {
     pub fn new(data: &[u8]) -> EventId {
-        EventId(uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, data))
+        EventId(uuid::Uuid::new_v5(&EVENT_UUID_NAMESPACE, data))
+    }
+}
+
+impl From<&RegisterNewEventRequest> for uuid::Uuid {
+    fn from(value: &RegisterNewEventRequest) -> Self {
+        // Use the protobuf-encoded value to compute a deterministic uuid v5
+        uuid::Uuid::new_v5(&EVENT_UUID_NAMESPACE, &prost::Message::encode_to_vec(value))
+    }
+}
+
+impl From<&RegisterNewEventRequest> for EventId {
+    fn from(value: &RegisterNewEventRequest) -> Self {
+        Self(uuid::Uuid::from(value))
     }
 }
 
@@ -45,13 +60,6 @@ impl TryFrom<prost::bytes::Bytes> for EventId {
 
     fn try_from(value: prost::bytes::Bytes) -> Result<Self, Self::Error> {
         Ok(Self(uuid::Uuid::from_slice(&value)?))
-    }
-}
-
-impl From<&RegisterNewEventRequest> for EventId {
-    fn from(value: &RegisterNewEventRequest) -> Self {
-        // Use the protobuf-encoded value to compute a deterministic uuid v5
-        EventId::new(&prost::Message::encode_to_vec(value))
     }
 }
 
