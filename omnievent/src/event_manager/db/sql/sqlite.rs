@@ -4,6 +4,7 @@ use crate::event_manager::db::EventsDatabase;
 use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEvent};
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, QueryBuilder, Row, Sqlite, SqlitePool};
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(thiserror::Error, Debug)]
@@ -13,9 +14,6 @@ pub enum SqliteEventDatabaseError {
 
     #[error("number of rows affected by insert != 1")]
     AffectedRowsInsert,
-
-    #[error("failed to cast u64 block number to i64")]
-    BlockNumberToI64,
 
     #[error("failed to serialize type")]
     Serde(#[from] serde_json::Error),
@@ -126,8 +124,7 @@ impl EventsDatabase for SqliteEventDatabase {
         event_occurrence: EventOccurrence,
     ) -> Result<(), Self::Error> {
         let event_id = Uuid::from(event_occurrence.event_id);
-        let block_number_i64 = i64::try_from(event_occurrence.block_info.number)
-            .map_err(|_| Self::Error::BlockNumberToI64)?;
+        let block_number_padded = format!("{:020}", event_occurrence.block_info.number);
         let block_hash = event_occurrence.block_info.hash.to_vec();
         let raw_log_json = serde_json::to_string(&event_occurrence.raw_log)?;
         let fields_json = serde_json::to_string(&event_occurrence.data)?;
@@ -138,7 +135,7 @@ impl EventsDatabase for SqliteEventDatabase {
                 VALUES ($1, $2, $3, $4, $5, $6)
             "#,
             event_id,
-            block_number_i64,
+            block_number_padded,
             block_hash,
             event_occurrence.block_info.timestamp,
             raw_log_json,
@@ -198,19 +195,24 @@ impl From<(sqlx::Error, &'static str)> for SqliteEventDatabaseError {
 impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
     fn from_row(row: &'r sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
         let event_id: Uuid = row.try_get("event_id")?;
-        let block_number: u64 = row.try_get("block_number")?;
+        let block_number_str: String = row.try_get("block_number")?;
         let block_hash: Vec<u8> = row.try_get("block_hash")?;
         let block_timestamp: DateTime<Utc> = row.try_get("block_timestamp")?;
         let raw_log_json: String = row.try_get("raw_log_json")?;
         let fields_json: String = row.try_get("fields_json")?;
 
+        let block_number =
+            u64::from_str(&block_number_str).map_err(|e| sqlx::Error::ColumnDecode {
+                index: "block_number".to_owned(),
+                source: Box::new(e),
+            })?;
         let raw_log =
             serde_json::from_str(&raw_log_json).map_err(|e| sqlx::Error::ColumnDecode {
                 index: "raw_log_json".to_owned(),
                 source: Box::new(e),
             })?;
         let data = serde_json::from_str(&fields_json).map_err(|e| sqlx::Error::ColumnDecode {
-            index: "raw_log_json".to_owned(),
+            index: "fields_json".to_owned(),
             source: Box::new(e),
         })?;
 
