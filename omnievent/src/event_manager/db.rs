@@ -2,7 +2,10 @@
 
 use crate::types::{EventId, EventOccurrence, RegisteredEvent};
 
-pub(crate) mod in_memory;
+pub mod in_memory;
+
+#[cfg(feature = "sql")]
+pub mod sql;
 
 pub trait EventsDatabase {
     type Error: std::error::Error + Send + Sync + 'static;

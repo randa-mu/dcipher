@@ -3,8 +3,13 @@ name = "omnievent"
 version.workspace = true
 edition.workspace = true
 
+[features]
+sqlite = ["sql", "sqlx/sqlite", "sqlx/uuid", "sqlx/chrono"]
+sql = ["dep:sqlx"]
+timings = []
+
 [dependencies]
-alloy = { workspace = true, features = ["default", "provider-ws"] }
+alloy = { workspace = true, features = ["default", "provider-ws", "serde"] }
 superalloy.workspace = true
 
 # async
@@ -24,8 +29,15 @@ tonic = { version = "0.13" }
 # serde
 prost.workspace = true
 prost-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+# storage
+sqlx = { workspace = true, features = ["runtime-tokio"], optional = true }
 
 # misc
+bytes.workspace = true
+chrono.workspace = true
 itertools.workspace = true
 thiserror.workspace = true
 uuid = { version = "1.0", features = ["v5"] }

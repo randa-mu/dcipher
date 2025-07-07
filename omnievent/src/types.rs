@@ -1,17 +1,33 @@
-use crate::proto_types::{self, BlockInfo, BlockSafety, RegisterNewEventRequest};
+use crate::proto_types::{self, BlockSafety, RegisterNewEventRequest};
 use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
 use alloy::eips::BlockNumberOrTag;
 use alloy::primitives::{Address, B256, LogData, keccak256};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+
+const EVENT_UUID_NAMESPACE: uuid::Uuid = uuid::Uuid::NAMESPACE_OID;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub struct EventId(uuid::Uuid);
 
 impl EventId {
     pub fn new(data: &[u8]) -> EventId {
-        EventId(uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, data))
+        EventId(uuid::Uuid::new_v5(&EVENT_UUID_NAMESPACE, data))
+    }
+}
+
+impl From<&RegisterNewEventRequest> for uuid::Uuid {
+    fn from(value: &RegisterNewEventRequest) -> Self {
+        // Use the protobuf-encoded value to compute a deterministic uuid v5
+        uuid::Uuid::new_v5(&EVENT_UUID_NAMESPACE, &prost::Message::encode_to_vec(value))
+    }
+}
+
+impl From<&RegisterNewEventRequest> for EventId {
+    fn from(value: &RegisterNewEventRequest) -> Self {
+        Self(uuid::Uuid::from(value))
     }
 }
 
@@ -47,14 +63,8 @@ impl TryFrom<prost::bytes::Bytes> for EventId {
     }
 }
 
-impl From<&RegisterNewEventRequest> for EventId {
-    fn from(value: &RegisterNewEventRequest) -> Self {
-        // Use the protobuf-encoded value to compute a deterministic uuid v5
-        EventId::new(&prost::Message::encode_to_vec(value))
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(into = "ParsedEventFieldDef", try_from = "ParsedEventFieldDef")]
 pub struct ParsedEventField {
     pub(crate) sol_type: DynSolType,
     pub(crate) sol_type_str: Cow<'static, str>,
@@ -83,7 +93,8 @@ impl ParsedEventField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(into = "EventFieldDataDef", try_from = "EventFieldDataDef")]
 pub struct EventFieldData {
     pub sol_type_str: Cow<'static, str>,
     pub data: DynSolValue,
@@ -220,8 +231,31 @@ impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
     }
 }
 
+/// A rusty type storing protobuf's [`BlockInfo`](crate::proto_types::BlockInfo)
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BlockInfo {
+    pub number: u64,
+    pub hash: bytes::Bytes,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+impl From<BlockInfo> for proto_types::BlockInfo {
+    fn from(block: BlockInfo) -> Self {
+        Self {
+            block_number: block.number,
+            block_hash: block.hash,
+            timestamp: Some(prost_types::Timestamp {
+                nanos: chrono::Timelike::nanosecond(&block.timestamp)
+                    .try_into()
+                    .expect("safe, outputs at most 1_999_999 < 2**31"),
+                seconds: block.timestamp.timestamp(),
+            }),
+        }
+    }
+}
+
 /// The occurrence of an event.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EventOccurrence {
     pub event_id: EventId,
     pub block_info: BlockInfo,
@@ -245,7 +279,7 @@ impl From<EventOccurrence> for proto_types::EventOccurrence {
             event_uuid: event.event_id.into(),
             event_data: data,
             raw_log_data: Some(event.raw_log.data.into()),
-            block_info: Some(event.block_info),
+            block_info: Some(event.block_info.into()),
         }
     }
 }
@@ -296,6 +330,88 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
             fields,
             event_name: value.event_name,
             chain_id: value.chain_id,
+        })
+    }
+}
+
+/// Serde-compatible [`ParsedEventField`]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ParsedEventFieldDef {
+    pub sol_type_str: Cow<'static, str>,
+    pub indexed: bool,
+}
+
+impl From<ParsedEventField> for ParsedEventFieldDef {
+    fn from(value: ParsedEventField) -> Self {
+        Self {
+            sol_type_str: value.sol_type_str,
+            indexed: value.indexed,
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum ParsedEventFieldFromDefError {
+    #[error("failed to parse type into DynSolType")]
+    ParseDynSolType(#[source] <DynSolType as FromStr>::Err),
+}
+
+impl TryFrom<ParsedEventFieldDef> for ParsedEventField {
+    type Error = ParsedEventFieldFromDefError;
+
+    fn try_from(value: ParsedEventFieldDef) -> Result<Self, Self::Error> {
+        let sol_type =
+            DynSolType::from_str(&value.sol_type_str).map_err(Self::Error::ParseDynSolType)?;
+
+        Ok(Self {
+            sol_type_str: value.sol_type_str,
+            sol_type,
+            indexed: value.indexed,
+        })
+    }
+}
+
+/// Serde-compatible [`EventFieldData`]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EventFieldDataDef {
+    pub sol_type_str: Cow<'static, str>,
+    pub data: Vec<u8>,
+    pub indexed: bool,
+}
+
+impl From<EventFieldData> for EventFieldDataDef {
+    fn from(value: EventFieldData) -> Self {
+        Self {
+            sol_type_str: value.sol_type_str,
+            indexed: value.indexed,
+            data: value.data.abi_encode(),
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum EventFieldDataFromDefError {
+    #[error("failed to parse type into DynSolType")]
+    ParseDynSolType(#[source] <DynSolType as FromStr>::Err),
+
+    #[error("failed to abi decode bytes")]
+    AbiDecode(#[source] alloy::dyn_abi::Error),
+}
+
+impl TryFrom<EventFieldDataDef> for EventFieldData {
+    type Error = EventFieldDataFromDefError;
+
+    fn try_from(value: EventFieldDataDef) -> Result<Self, Self::Error> {
+        let dyn_sol_type =
+            DynSolType::from_str(&value.sol_type_str).map_err(Self::Error::ParseDynSolType)?;
+        let data = dyn_sol_type
+            .abi_decode(&value.data)
+            .map_err(Self::Error::AbiDecode)?;
+
+        Ok(Self {
+            sol_type_str: value.sol_type_str,
+            data,
+            indexed: value.indexed,
         })
     }
 }

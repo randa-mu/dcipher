@@ -3,6 +3,7 @@
 
 pub mod db;
 mod events_occurrence;
+mod filtering;
 pub(crate) mod listener;
 mod register;
 
@@ -11,6 +12,7 @@ use crate::event_manager::events_occurrence::HandleEventsOccurrenceTask;
 use crate::event_manager::listener::{
     EventListener, EventListenerHandle, EventReceiverHandleError,
 };
+use crate::proto_types::EventOccurrenceFilter;
 use crate::types::{EventFieldData, EventId, EventOccurrence, ParsedRegisterNewEventRequest};
 use alloy::rpc::types::Log;
 use futures_util::stream::SelectAll;
@@ -70,9 +72,14 @@ pub(crate) enum EventManagerError {
 
     #[error("database error")]
     Database(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("filter error")]
+    Filter(#[from] FilterError),
 }
 
-// export [`CreateStreamError`] since it's used in [`EventManagerError`]
+// export other event_manager's module errors
+use crate::event_manager::filtering::filter_occurrences;
+pub(crate) use filtering::FilterError;
 pub(crate) use register::CreateStreamError;
 
 impl<MP, DB> EventManager<MP, DB>
@@ -191,11 +198,11 @@ where
 
     pub(crate) async fn get_ethereum_multi_event_stream(
         &self,
-        events_id: impl IntoIterator<Item = EventId>,
+        event_ids: impl IntoIterator<Item = EventId>,
     ) -> Result<SelectAll<BroadcastStream<EventOccurrence>>, EventManagerError> {
         // TODO: n locks, not great, improve
         let streams = futures::future::try_join_all(
-            events_id
+            event_ids
                 .into_iter()
                 .map(|id| self.get_ethereum_event_stream(id)),
         )
@@ -203,14 +210,73 @@ where
         Ok(futures::stream::select_all(streams))
     }
 
+    pub(crate) async fn unregister_ethereum_multi_event_stream(
+        &self,
+        event_ids: impl IntoIterator<Item = EventId>,
+        stream: SelectAll<BroadcastStream<EventOccurrence>>, // take ownership to make sure that it's dropped properly
+    ) {
+        // Drop the stream (i.e., the receiver side of the broadcast channel)
+        drop(stream);
+
+        let mut active_events_map = self.active_events_map.write().await;
+        for event_id in event_ids {
+            let _span =
+                tracing::info_span!("unregister_ethereum_multi_event_stream", event_id = ?event_id)
+                    .entered();
+
+            let Some(entry) = active_events_map.get_mut(&event_id) else {
+                tracing::error!("Attempting to unregister a stream not in active_events_map");
+                continue;
+            };
+
+            let Some(outgoing_stream) = &entry.outgoing_stream else {
+                tracing::debug!("Attempting to unregister a stream that was already removed");
+                continue;
+            };
+
+            // If there are no more receivers, remove the outgoing stream
+            let rx_count = outgoing_stream.receiver_count();
+            if rx_count == 0 {
+                tracing::debug!("Removing broadcast channel");
+                entry.outgoing_stream = None;
+            } else {
+                tracing::debug!(
+                    rx_count,
+                    "Leaving broadcast channel open due to remaining receivers"
+                );
+            }
+        }
+    }
+
+    /// Get a vector of historical event occurrences, optionally with filtering enabled.
+    /// TODO: Currently, the function uses a very naive approach to filtering. It fetches every events
+    /// from the database, and then applies filters on top. This needs to be reworked once we have
+    /// more concrete usage, to know which filters are the most important so that they can be offloaded
+    /// to the database implementation.
     pub(crate) async fn get_historical_event_occurrences(
         &self,
         event_ids: impl IntoIterator<Item = EventId> + Send,
+        filter: Option<EventOccurrenceFilter>,
     ) -> Result<Vec<EventOccurrence>, EventManagerError> {
-        self.events_db
+        let mut occurrences = self
+            .events_db
             .get_event_occurrences(event_ids)
             .await
-            .map_err(|e| EventManagerError::Database(Box::new(e)))
+            .map_err(|e| EventManagerError::Database(Box::new(e)))?;
+
+        tracing::debug!(
+            n_occurrences = occurrences.len(),
+            "Obtained occurrences from database"
+        );
+
+        if let Some(filter) = filter {
+            occurrences = filter_occurrences(occurrences, filter).map_err(|e| {
+                tracing::info!(error = ?e, "Failed to apply filters to occurrences");
+                e
+            })?;
+        }
+
+        Ok(occurrences)
     }
 }
 

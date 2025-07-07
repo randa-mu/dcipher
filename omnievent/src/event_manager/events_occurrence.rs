@@ -2,11 +2,9 @@
 
 use crate::event_manager::db::EventsDatabase;
 use crate::event_manager::{DecodedEvent, SharedRegisteredEventsMap};
-use crate::proto_types::BlockInfo;
-use crate::types::EventOccurrence;
+use crate::types::{BlockInfo, EventOccurrence};
 use futures::Stream;
 use futures_util::StreamExt;
-use std::time::{Duration, UNIX_EPOCH};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::instrument;
@@ -107,20 +105,28 @@ fn event_occurrence_from_decoded_event(decoded_event: DecodedEvent) -> EventOccu
         .0
         .to_vec()
         .into();
-    let block_timestamp = decoded_event.log.block_timestamp.unwrap_or_else(|| {
-        tracing::error!("Log missing block timestamp");
-        Default::default()
-    });
-    let block_timestamp = UNIX_EPOCH + Duration::from_secs(block_timestamp);
+    let block_timestamp = decoded_event
+        .log
+        .block_timestamp
+        .and_then(|t| t.try_into().ok())
+        .unwrap_or_else(|| {
+            tracing::error!("Log missing block timestamp");
+            Default::default()
+        });
+    let block_timestamp =
+        chrono::DateTime::from_timestamp(block_timestamp, 0).unwrap_or_else(|| {
+            tracing::error!("Log had invalid block timestamp");
+            Default::default()
+        });
 
     EventOccurrence {
         event_id: decoded_event.event_id,
         raw_log: decoded_event.log.data().to_owned(),
         data: decoded_event.data,
         block_info: BlockInfo {
-            block_hash,
-            block_number,
-            timestamp: Some(block_timestamp.into()),
+            hash: block_hash,
+            number: block_number,
+            timestamp: block_timestamp,
         },
     }
 }

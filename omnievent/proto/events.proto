@@ -72,10 +72,8 @@ message GetHistoricalEventsRequest {
   // Uuid uniquely representing the event
   repeated bytes event_uuids = 1;
 
-  // Block range (required for historical queries)
-  BlockRange block_range = 2;
-
-  // Add filters (chain id, address, custom tags, values, etc) in the future
+  // Filter the event occurrences.
+  EventOccurrenceFilter filter = 2;
 }
 
 // Response with historical events
@@ -167,12 +165,61 @@ enum BlockSafety {
   BLOCK_SAFETY_SAFE = 2;
 }
 
-// Block range for queries
-message BlockRange {
-  // Start block (inclusive)
-  uint64 from_block = 1;
+// Filter for an event occurrence that requires all conditions to be met
+message EventOccurrenceFilter {
+  optional BlockFilter block_filter = 1;
 
-  // Optional end block (exclusive)
-  // if not set, relies on the event's block safety or latest.
+  repeated OccurrenceDataFilter data_filters = 2;
+}
+
+// A filter for blocks
+message BlockFilter {
+  // Start block (inclusive)
+  optional uint64 from_block = 1;
+
+  // End block (exclusive)
   optional uint64 to_block = 2;
+}
+
+// Filters the data from an event occurrence
+message OccurrenceDataFilter {
+  uint32 data_index = 1;
+
+  // A filter depending on the data type.
+  oneof filter {
+    StringDataFilter string = 10;
+    UintDataFilter uint = 11;
+    IntDataFilter int = 12;
+    BoolDataFilter bool = 13;
+    BytesDataFilter bytes = 14;
+    AddressDataFilter address = 15;
+    // For other types
+    BytesDataFilter abi_bytes = 19;
+  }
+}
+
+message StringDataFilter {
+  repeated string exact_values = 1;
+}
+
+message IntDataFilter {
+  // Hex-encoded 256 bits signed integers
+  repeated string exact_hex_values = 1;
+}
+
+message UintDataFilter {
+  // Hex-encoded 256 bits unsigned integers
+  repeated string exact_hex_values = 1;
+}
+
+message BoolDataFilter {
+  bool exact_value = 1;
+}
+
+message BytesDataFilter {
+  repeated bytes exact_values = 1;
+}
+
+message AddressDataFilter {
+  repeated bytes exact_values = 1;
 }
