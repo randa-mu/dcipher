@@ -1,3 +1,5 @@
+//! A sqlite-based [`EventsDatabase`]
+
 use crate::event_manager::db::EventsDatabase;
 use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEvent};
 use chrono::{DateTime, Utc};
@@ -19,12 +21,38 @@ pub enum SqliteEventDatabaseError {
     Serde(#[from] serde_json::Error),
 }
 
+/// A sqlite-based [`EventsDatabase`]
 #[derive(Clone, Debug)]
 pub struct SqliteEventDatabase {
     pool: SqlitePool,
 }
 
 impl SqliteEventDatabase {
+    /// Connect to an existing sqlite database.
+    ///
+    /// # Examples
+    ///
+    /// ## Connect to an in-memory database
+    /// ```
+    /// use omnievent::event_manager::db::sql::sqlite::SqliteEventDatabase;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let db = SqliteEventDatabase::connect("sqlite::memory:").await.expect("failed to connect");
+    ///     db.maybe_initialize_schema().expect("failed to init schema");
+    /// }
+    /// ```
+    ///
+    /// ## Connect to an existing database
+    /// ```
+    /// use omnievent::event_manager::db::sql::sqlite::SqliteEventDatabase;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let db = SqliteEventDatabase::connect("sqlite:://path/to/my/db").await.expect("failed to connect");
+    ///     db.maybe_initialize_schema().expect("failed to init schema");
+    /// }
+    ///
     pub async fn connect(url: &str) -> Result<Self, SqliteEventDatabaseError> {
         let pool = SqlitePool::connect(url)
             .await
@@ -33,6 +61,7 @@ impl SqliteEventDatabase {
         Ok(Self { pool })
     }
 
+    /// Executes the schema initialization script.
     pub async fn maybe_initialize_schema(&self) -> Result<(), SqliteEventDatabaseError> {
         let mut tx = self
             .pool
