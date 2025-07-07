@@ -2,6 +2,7 @@ use crate::proto_types::{self, BlockSafety, RegisterNewEventRequest};
 use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
 use alloy::eips::BlockNumberOrTag;
 use alloy::primitives::{Address, B256, LogData, keccak256};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -54,7 +55,8 @@ impl From<&RegisterNewEventRequest> for EventId {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(into = "ParsedEventFieldDef", try_from = "ParsedEventFieldDef")]
 pub struct ParsedEventField {
     pub(crate) sol_type: DynSolType,
     pub(crate) sol_type_str: Cow<'static, str>,
@@ -83,7 +85,8 @@ impl ParsedEventField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(into = "EventFieldDataDef", try_from = "EventFieldDataDef")]
 pub struct EventFieldData {
     pub sol_type_str: Cow<'static, str>,
     pub data: DynSolValue,
@@ -319,6 +322,88 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
             fields,
             event_name: value.event_name,
             chain_id: value.chain_id,
+        })
+    }
+}
+
+/// Serde-compatible [`ParsedEventField`]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ParsedEventFieldDef {
+    pub sol_type_str: Cow<'static, str>,
+    pub indexed: bool,
+}
+
+impl From<ParsedEventField> for ParsedEventFieldDef {
+    fn from(value: ParsedEventField) -> Self {
+        Self {
+            sol_type_str: value.sol_type_str,
+            indexed: value.indexed,
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum ParsedEventFieldFromDefError {
+    #[error("failed to parse type into DynSolType")]
+    ParseDynSolType(#[source] <DynSolType as FromStr>::Err),
+}
+
+impl TryFrom<ParsedEventFieldDef> for ParsedEventField {
+    type Error = ParsedEventFieldFromDefError;
+
+    fn try_from(value: ParsedEventFieldDef) -> Result<Self, Self::Error> {
+        let sol_type =
+            DynSolType::from_str(&value.sol_type_str).map_err(Self::Error::ParseDynSolType)?;
+
+        Ok(Self {
+            sol_type_str: value.sol_type_str,
+            sol_type,
+            indexed: value.indexed,
+        })
+    }
+}
+
+/// Serde-compatible [`EventFieldData`]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EventFieldDataDef {
+    pub sol_type_str: Cow<'static, str>,
+    pub data: Vec<u8>,
+    pub indexed: bool,
+}
+
+impl From<EventFieldData> for EventFieldDataDef {
+    fn from(value: EventFieldData) -> Self {
+        Self {
+            sol_type_str: value.sol_type_str,
+            indexed: value.indexed,
+            data: value.data.abi_encode(),
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum EventFieldDataFromDefError {
+    #[error("failed to parse type into DynSolType")]
+    ParseDynSolType(#[source] <DynSolType as FromStr>::Err),
+
+    #[error("failed to abi decode bytes")]
+    AbiDecode(#[source] alloy::dyn_abi::Error),
+}
+
+impl TryFrom<EventFieldDataDef> for EventFieldData {
+    type Error = EventFieldDataFromDefError;
+
+    fn try_from(value: EventFieldDataDef) -> Result<Self, Self::Error> {
+        let dyn_sol_type =
+            DynSolType::from_str(&value.sol_type_str).map_err(Self::Error::ParseDynSolType)?;
+        let data = dyn_sol_type
+            .abi_decode(&value.data)
+            .map_err(Self::Error::AbiDecode)?;
+
+        Ok(Self {
+            sol_type_str: value.sol_type_str,
+            data,
+            indexed: value.indexed,
         })
     }
 }
