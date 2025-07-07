@@ -47,7 +47,9 @@ where
                 }
             }
 
-            // Apply event data filters
+            // AND apply event data filters
+            // Returns Ok(Some(_)) if it passes all filters, Ok(None) otherwise. Err(_) on invalid
+            // filter.
             for data_filter in &data_filters {
                 let data_index = usize::try_from(data_filter.data_index)
                     .map_err(|_| FilterError::DataIndex("failed to convert index"))?;
@@ -58,13 +60,13 @@ where
                 };
 
                 let Some(filter) = &data_filter.filter else {
-                    // No filters => continue applying filters
+                    // Empty filter => continue to keep applying the next filters
                     continue;
                 };
 
                 match filter.apply(&data_field.data) {
                     Some(true) => {
-                        // Continue applying filters
+                        // Continue applying the next filters
                     }
 
                     Some(false) => {

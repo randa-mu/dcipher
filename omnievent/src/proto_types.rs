@@ -84,7 +84,7 @@ mod events {
             }
         }
 
-        // Returns Some(bool) if the filter can be applied, None otherwise
+        /// Returns Some(bool) if the filter can be applied, None otherwise
         pub fn apply(&self, value: &DynSolValue) -> Option<bool> {
             match (self, value) {
                 (Self::String(filter), DynSolValue::String(value)) => Some(filter.apply(value)),
@@ -114,6 +114,7 @@ mod events {
             {
                 self.exact_hex_values.contains(&int_hex)
             } else {
+                // panic as this would be a bug
                 panic!("Value::from(int) resulted in a non-IntHexValue");
             }
         }
@@ -126,6 +127,7 @@ mod events {
             {
                 self.exact_hex_values.contains(&int_hex)
             } else {
+                // panic as this would be a bug
                 panic!("Value::from(uint) resulted in a non-IntHexValue");
             }
         }
