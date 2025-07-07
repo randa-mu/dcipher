@@ -229,6 +229,160 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn sqlite_test() {}
+    use crate::event_manager::db::EventsDatabase;
+    use crate::event_manager::db::sql::sqlite::SqliteEventDatabase;
+    use crate::proto_types::BlockSafety;
+    use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEvent};
+    use alloy::primitives::{Address, LogData};
+
+    #[tokio::test]
+    async fn should_initialize_schema() {
+        let db = SqliteEventDatabase::connect("sqlite::memory:")
+            .await
+            .expect("failed to create database");
+        db.maybe_initialize_schema()
+            .await
+            .expect("failed to initialize schema");
+    }
+
+    #[tokio::test]
+    async fn should_insert_event() {
+        let db = SqliteEventDatabase::connect("sqlite::memory:")
+            .await
+            .expect("failed to create database");
+        db.maybe_initialize_schema()
+            .await
+            .expect("failed to initialize schema");
+
+        let res = db
+            .store_event(
+                RegisteredEvent::try_new(
+                    EventId::new(b"test_event"),
+                    0u64,
+                    Address::default(),
+                    "test_event".to_owned(),
+                    vec![],
+                    BlockSafety::Latest,
+                )
+                .unwrap(),
+            )
+            .await;
+
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn should_error_on_insert_occurrence_with_missing_event() {
+        let db = SqliteEventDatabase::connect("sqlite::memory:")
+            .await
+            .expect("failed to create database");
+        db.maybe_initialize_schema()
+            .await
+            .expect("failed to initialize schema");
+
+        let res = db
+            .store_event_occurrence(EventOccurrence {
+                event_id: EventId::new(b"invalid event id"),
+                data: vec![],
+                raw_log: LogData::empty(),
+                block_info: BlockInfo {
+                    number: 0,
+                    hash: vec![].into(),
+                    timestamp: chrono::DateTime::default(),
+                },
+            })
+            .await;
+
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn should_insert_occurrence() {
+        let db = SqliteEventDatabase::connect("sqlite::memory:")
+            .await
+            .expect("failed to create database");
+        db.maybe_initialize_schema()
+            .await
+            .expect("failed to initialize schema");
+
+        let event_id = EventId::new(b"test_event");
+        db.store_event(
+            RegisteredEvent::try_new(
+                event_id,
+                0u64,
+                Address::default(),
+                "test_event".to_owned(),
+                vec![],
+                BlockSafety::Latest,
+            )
+            .unwrap(),
+        )
+        .await
+        .expect("failed to store event");
+
+        let res = db
+            .store_event_occurrence(EventOccurrence {
+                event_id,
+                data: vec![],
+                raw_log: LogData::empty(),
+                block_info: BlockInfo {
+                    number: 0,
+                    hash: vec![].into(),
+                    timestamp: chrono::DateTime::default(),
+                },
+            })
+            .await;
+
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn should_insert_and_fetch_occurrence() {
+        let db = SqliteEventDatabase::connect("sqlite::memory:")
+            .await
+            .expect("failed to create database");
+        db.maybe_initialize_schema()
+            .await
+            .expect("failed to initialize schema");
+
+        let event_id = EventId::new(b"test_event");
+        db.store_event(
+            RegisteredEvent::try_new(
+                event_id,
+                0u64,
+                Address::default(),
+                "test_event".to_owned(),
+                vec![],
+                BlockSafety::Latest,
+            )
+            .unwrap(),
+        )
+        .await
+        .expect("failed to store event");
+
+        let occurrence = EventOccurrence {
+            event_id,
+            data: vec![],
+            raw_log: LogData::empty(),
+            block_info: BlockInfo {
+                number: 0,
+                hash: vec![].into(),
+                timestamp: chrono::DateTime::default(),
+            },
+        };
+
+        db.store_event_occurrence(occurrence.clone())
+            .await
+            .expect("failed to store occurrence");
+
+        let occurrence_2 = db
+            .get_event_occurrences(std::iter::once(event_id))
+            .await
+            .expect("failed to get occurrences")
+            .first()
+            .expect("empty vec")
+            .to_owned();
+
+        assert_eq!(occurrence_2, occurrence);
+    }
 }

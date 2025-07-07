@@ -85,7 +85,7 @@ impl ParsedEventField {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(into = "EventFieldDataDef", try_from = "EventFieldDataDef")]
 pub struct EventFieldData {
     pub sol_type_str: Cow<'static, str>,
@@ -224,7 +224,7 @@ impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
 }
 
 /// A rusty type storing protobuf's [`BlockInfo`](crate::proto_types::BlockInfo)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BlockInfo {
     pub number: u64,
     pub hash: bytes::Bytes,
@@ -247,7 +247,7 @@ impl From<BlockInfo> for proto_types::BlockInfo {
 }
 
 /// The occurrence of an event.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EventOccurrence {
     pub event_id: EventId,
     pub block_info: BlockInfo,
