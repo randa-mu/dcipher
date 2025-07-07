@@ -50,7 +50,7 @@ impl SqliteEventDatabase {
     ///     let db = SqliteEventDatabase::connect("sqlite:://path/to/my/db").await.expect("failed to connect");
     ///     db.maybe_initialize_schema().expect("failed to init schema");
     /// }
-    ///
+    /// ```
     pub async fn connect(url: &str) -> Result<Self, SqliteEventDatabaseError> {
         let pool = SqlitePool::connect(url)
             .await
