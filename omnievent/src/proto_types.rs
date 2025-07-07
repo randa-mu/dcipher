@@ -77,7 +77,7 @@ mod events {
                 Self::Address(_) => {
                     matches!(sol_type, DynSolType::Address)
                 }
-                Self::Abi(_) => {
+                Self::AbiBytes(_) => {
                     // We can always compare filter by abi bytes
                     true
                 }
@@ -95,7 +95,7 @@ mod events {
                 (Self::Bytes(filter), DynSolValue::Bytes(value)) => {
                     Some(filter.apply(value.to_owned()))
                 }
-                (Self::Abi(filter), value) => Some(filter.apply(value.abi_encode())),
+                (Self::AbiBytes(filter), value) => Some(filter.apply(value.abi_encode())),
                 _ => None, // Value cannot be filtered, return None
             }
         }

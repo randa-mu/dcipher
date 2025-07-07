@@ -194,7 +194,7 @@ message OccurrenceDataFilter {
     BytesDataFilter bytes = 14;
     AddressDataFilter address = 15;
     // For other types
-    BytesDataFilter abi = 19;
+    BytesDataFilter abi_bytes = 19;
   }
 }
 
