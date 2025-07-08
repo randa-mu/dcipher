@@ -14,6 +14,7 @@ use crate::event_manager::listener::{
 };
 use crate::proto_types::EventOccurrenceFilter;
 use crate::types::{EventFieldData, EventId, EventOccurrence, ParsedRegisterNewEventRequest};
+use alloy::primitives::Address;
 use alloy::rpc::types::Log;
 use futures_util::stream::SelectAll;
 use std::collections::HashMap;
@@ -29,6 +30,8 @@ const BROADCAST_STREAM_CAPACITY: usize = 64;
 #[derive(Clone, Debug)]
 pub(crate) struct DecodedEvent {
     event_id: EventId,
+    chain_id: u64,
+    address: Address,
     data: Vec<EventFieldData>,
     log: Log,
 }

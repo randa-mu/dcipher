@@ -2,6 +2,7 @@
 
 use crate::event_manager::db::EventsDatabase;
 use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEvent};
+use alloy::primitives::Address;
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, QueryBuilder, Row, Sqlite, SqlitePool};
 use std::str::FromStr;
@@ -169,7 +170,7 @@ impl EventsDatabase for SqliteEventDatabase {
         };
 
         let mut query_builder: QueryBuilder<Sqlite> =
-            QueryBuilder::new("SELECT * FROM event_occurrences WHERE event_id IN (");
+            QueryBuilder::new("SELECT * FROM event_occurrences_with_context WHERE event_id IN (");
         let mut separated = query_builder.separated(", ");
         for id in event_ids {
             separated.push_bind(Uuid::from(id));
@@ -195,12 +196,23 @@ impl From<(sqlx::Error, &'static str)> for SqliteEventDatabaseError {
 impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
     fn from_row(row: &'r sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
         let event_id: Uuid = row.try_get("event_id")?;
+        let address: Vec<u8> = row.try_get("address")?;
+        let chain_id_str: String = row.try_get("chain_id")?;
         let block_number_str: String = row.try_get("block_number")?;
         let block_hash: Vec<u8> = row.try_get("block_hash")?;
         let block_timestamp: DateTime<Utc> = row.try_get("block_timestamp")?;
         let raw_log_json: String = row.try_get("raw_log_json")?;
         let fields_json: String = row.try_get("fields_json")?;
 
+        let address =
+            Address::try_from(address.as_slice()).map_err(|e| sqlx::Error::ColumnDecode {
+                index: "address".to_owned(),
+                source: Box::new(e),
+            })?;
+        let chain_id = u64::from_str(&chain_id_str).map_err(|e| sqlx::Error::ColumnDecode {
+            index: "chain_id".to_owned(),
+            source: Box::new(e),
+        })?;
         let block_number =
             u64::from_str(&block_number_str).map_err(|e| sqlx::Error::ColumnDecode {
                 index: "block_number".to_owned(),
@@ -218,6 +230,8 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
 
         Ok(Self {
             event_id: event_id.into(),
+            address,
+            chain_id,
             block_info: BlockInfo {
                 number: block_number,
                 hash: block_hash.into(),
@@ -285,6 +299,8 @@ mod tests {
         let res = db
             .store_event_occurrence(EventOccurrence {
                 event_id: EventId::new(b"invalid event id"),
+                address: Default::default(),
+                chain_id: 0,
                 data: vec![],
                 raw_log: LogData::empty(),
                 block_info: BlockInfo {
@@ -325,6 +341,8 @@ mod tests {
         let res = db
             .store_event_occurrence(EventOccurrence {
                 event_id,
+                address: Default::default(),
+                chain_id: 0,
                 data: vec![],
                 raw_log: LogData::empty(),
                 block_info: BlockInfo {
@@ -364,6 +382,8 @@ mod tests {
 
         let occurrence = EventOccurrence {
             event_id,
+            address: Default::default(),
+            chain_id: 0,
             data: vec![],
             raw_log: LogData::empty(),
             block_info: BlockInfo {

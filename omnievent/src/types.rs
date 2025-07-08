@@ -258,6 +258,8 @@ impl From<BlockInfo> for proto_types::BlockInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct EventOccurrence {
     pub event_id: EventId,
+    pub chain_id: u64,
+    pub address: Address,
     pub block_info: BlockInfo,
     pub raw_log: LogData,
     pub data: Vec<EventFieldData>,
@@ -277,6 +279,8 @@ impl From<EventOccurrence> for proto_types::EventOccurrence {
 
         Self {
             event_uuid: event.event_id.into(),
+            address: event.address.to_vec().into(),
+            chain_id: event.chain_id,
             event_data: data,
             raw_log_data: Some(event.raw_log.data.into()),
             block_info: Some(event.block_info.into()),
