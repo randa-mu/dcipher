@@ -121,6 +121,8 @@ fn event_occurrence_from_decoded_event(decoded_event: DecodedEvent) -> EventOccu
 
     EventOccurrence {
         event_id: decoded_event.event_id,
+        chain_id: decoded_event.chain_id,
+        address: decoded_event.address,
         raw_log: decoded_event.log.data().to_owned(),
         data: decoded_event.data,
         block_info: BlockInfo {

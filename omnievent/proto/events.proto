@@ -115,6 +115,12 @@ message EventOccurrence {
 
   // Event data (decoded parameters)
   repeated EventData event_data = 4;
+
+  // Chain id
+  uint64 chain_id = 5;
+
+  // Address of the contract
+  bytes address = 6;
 }
 
 // Block information

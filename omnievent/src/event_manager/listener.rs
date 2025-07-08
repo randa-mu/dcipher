@@ -194,6 +194,8 @@ impl EventListener {
                     // Send decoded event through channel
                     if sender.send(DecodedEvent {
                         event_id,
+                        address: event.address,
+                        chain_id: event.chain_id,
                         data: decoded_fields,
                         log,
                     }).await.is_err() {
