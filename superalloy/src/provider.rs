@@ -139,7 +139,7 @@ mod tests {
     use super::*;
     use alloy::providers::Provider;
 
-    const FURNACE_URL: &str = "https://api.furnace.dcipher.network/";
+    const POLYGON_RPC_URL: &str = "https://1rpc.io/matic";
     const ETHEREUM_MAINNET_WS_URL: &str = "wss://mainnet.gateway.tenderly.co";
 
     #[tokio::test]
@@ -149,16 +149,12 @@ mod tests {
             backoff: Duration::from_millis(500),
         };
 
-        let filecoin_calibnet_url = FURNACE_URL.parse().unwrap();
-        let filecoin_calibnet_chainid = 64630;
-        let filecoin_calibnet_provider =
-            create_provider_with_retry(filecoin_calibnet_url, retry_strategy)
-                .await
-                .unwrap();
-        assert_eq!(
-            filecoin_calibnet_provider.get_chain_id().await.unwrap(),
-            filecoin_calibnet_chainid
-        );
+        let polygon_rpc = POLYGON_RPC_URL.parse().unwrap();
+        let polygon_chain_id = 137;
+        let polygon = create_provider_with_retry(polygon_rpc, retry_strategy)
+            .await
+            .unwrap();
+        assert_eq!(polygon.get_chain_id().await.unwrap(), polygon_chain_id);
 
         let ethereum_mainnet_url = ETHEREUM_MAINNET_WS_URL.parse().unwrap();
         let ethereum_mainnet_chainid = 1;
@@ -208,13 +204,13 @@ mod tests {
             backoff: Duration::from_millis(500),
         };
 
-        let furnace_url = FURNACE_URL.parse().unwrap();
-        let furnace_provider = create_provider_with_retry(furnace_url, retry_strategy)
+        let polygon_url = POLYGON_RPC_URL.parse().unwrap();
+        let polygon_provider = create_provider_with_retry(polygon_url, retry_strategy)
             .await
             .unwrap();
 
         let mut block_number_stream =
-            watch_block_numbers(&furnace_provider, Some(Duration::from_secs(2)))
+            watch_block_numbers(&polygon_provider, Some(Duration::from_secs(1)))
                 .await
                 .unwrap();
         let curr_block = block_number_stream.next().await.unwrap().unwrap();
