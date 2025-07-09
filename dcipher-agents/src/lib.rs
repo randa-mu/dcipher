@@ -4,7 +4,9 @@ pub mod fulfiller;
 pub mod ibe_helper;
 pub(crate) mod ser;
 pub mod signature_sender;
-pub mod signer;
+
+// Re-exports
+pub use dcipher_signer as signer;
 
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, serde::Serialize, serde::Deserialize, Debug,

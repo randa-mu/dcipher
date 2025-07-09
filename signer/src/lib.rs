@@ -1,6 +1,5 @@
 //! Various traits and implementations used to sign messages.
 
-use crate::ibe_helper::{PairingIbeCipherSuite, PairingIbeSigner};
 use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Zero;
@@ -90,36 +89,5 @@ impl BlsSigner for BN254SignatureOnG1Signer {
         let m = ark_bn254::Bn254::hash_to_g1_custom::<sha3::Keccak256>(m.as_ref(), &self.dst);
         let sig = m * self.sk;
         Ok(sig.into_affine())
-    }
-}
-
-/// Blanket implementation of a BLS verifier for all [`PairingIbeCipherSuite`].
-impl<CS> BlsVerifier for CS
-where
-    CS: PairingIbeCipherSuite,
-{
-    type SignatureGroup = CS::IdentityGroup;
-    type PublicKeyGroup = CS::PublicKeyGroup;
-
-    fn verify(
-        &self,
-        m: impl AsRef<[u8]>,
-        signature: Self::SignatureGroup,
-        public_key: Self::PublicKeyGroup,
-    ) -> bool {
-        self.verify_decryption_key(m.as_ref(), signature, public_key)
-    }
-}
-
-/// Blanket implementation of a BLS verifier for all [`PairingIbeSigner`].
-impl<CS> BlsSigner for CS
-where
-    CS: PairingIbeSigner,
-{
-    type Error = Infallible;
-
-    fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
-        let identity = self.h1(m.as_ref());
-        Ok(PairingIbeSigner::decryption_key(self, identity))
     }
 }

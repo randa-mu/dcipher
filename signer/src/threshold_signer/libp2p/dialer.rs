@@ -1,7 +1,7 @@
 //! A behaviour used to keep track of connected peers and periodically inform the swarm to
 //! dial disconnected peers.
 
-use crate::signer::threshold_signer::libp2p::PeerDetail;
+use crate::threshold_signer::libp2p::PeerDetail;
 use libp2p::core::Endpoint;
 use libp2p::core::transport::PortUse;
 use libp2p::swarm::behaviour::{ConnectionClosed, ConnectionEstablished, DialFailure};
