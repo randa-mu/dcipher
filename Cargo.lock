@@ -1916,9 +1916,34 @@ dependencies = [
  "ark-ec",
  "ark-ff 0.4.2",
  "ark-std 0.4.0",
+ "dcipher-signer",
  "digest 0.10.7",
  "futures-util",
  "hex",
+ "itertools 0.14.0",
+ "libp2p",
+ "lru 0.14.0",
+ "pairing_utils",
+ "prometheus",
+ "rayon",
+ "serde",
+ "serde_cbor",
+ "sha3",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "dcipher-signer"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.4.2",
+ "ark-std 0.4.0",
+ "futures-util",
  "itertools 0.14.0",
  "libp2p",
  "lru 0.14.0",

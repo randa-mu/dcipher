@@ -1,5 +1,5 @@
 [package]
-name = "dcipher-agents"
+name = "dcipher-signer"
 version.workspace = true
 edition.workspace = true
 
@@ -7,11 +7,6 @@ edition.workspace = true
 rayon = ["dep:rayon"]
 
 [dependencies]
-# workspace crates
-dcipher-signer.workspace = true
-
-alloy = { workspace = true, features = ["default", "provider-ws"] }
-
 # crypto
 ark-bn254 = { workspace = true }
 ark-ec = { workspace = true }
@@ -20,7 +15,6 @@ ark-std = { workspace = true }
 pairing_utils = { workspace = true }
 
 # hashes
-digest = { workspace = true }
 sha3 = { workspace = true }
 
 # async
@@ -44,7 +38,3 @@ itertools = { workspace = true }
 thiserror = { workspace = true }
 lru = "0.14"
 rayon = { version = "1.10", optional = true }
-
-[dev-dependencies]
-hex = { workspace = true }
-alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
