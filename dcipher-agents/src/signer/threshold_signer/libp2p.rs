@@ -4,6 +4,7 @@
 use crate::signer::threshold_signer::libp2p::BehaviourEvent::Ping;
 use crate::signer::threshold_signer::metrics::Metrics;
 use futures_util::StreamExt;
+use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::identity::Keypair;
@@ -37,11 +38,28 @@ pub enum Libp2pNodeError {
     Noise(#[from] noise::Error),
 }
 
+#[derive(Clone, Debug)]
+pub struct PeerDetail {
+    short_id: u16,
+    peer_id: PeerId,
+    multiaddrs: Vec<Multiaddr>,
+}
+
+impl PeerDetail {
+    pub fn new(peer_id: PeerId, short_id: u16, multiaddrs: Vec<Multiaddr>) -> Self {
+        Self {
+            short_id,
+            peer_id,
+            multiaddrs,
+        }
+    }
+}
+
+type PeerDetails = HashMap<PeerId, PeerDetail>;
+
 pub struct LibP2PNode {
     key: Keypair,
-    peer_addrs: Vec<Multiaddr>,
-    peer_ids: Vec<PeerId>,
-    peer_short_ids: Vec<u16>,
+    peers: PeerDetails,
 }
 
 impl LibP2PNode {
@@ -52,12 +70,13 @@ impl LibP2PNode {
         peer_ids: Vec<PeerId>,
         peer_short_ids: Vec<u16>,
     ) -> Self {
-        Self {
-            key,
-            peer_addrs,
-            peer_ids,
-            peer_short_ids,
-        }
+        let peers = HashMap::from_iter(izip!(peer_ids, peer_addrs, peer_short_ids).map(
+            |(peer_id, multiaddr, short_id)| {
+                (peer_id, PeerDetail::new(peer_id, short_id, vec![multiaddr]))
+            },
+        ));
+
+        Self { key, peers }
     }
 
     /// Runs a new libp2p node that listens on `listen_addr`, forwards messages from the swarm to `tx_received_messages`,
@@ -69,12 +88,8 @@ impl LibP2PNode {
         rx_messages_to_send: UnboundedReceiver<Vec<u8>>,
         cancellation_token: CancellationToken,
     ) -> Result<(), Libp2pNodeError> {
-        // Create the peer_id -> u16 mapping
-        let peer_id_to_short_id: HashMap<PeerId, u16> =
-            HashMap::from_iter(self.peer_ids.iter().cloned().zip(self.peer_short_ids));
-
         // Create a new swarm
-        let mut swarm = Self::configure_swarm(self.key.clone(), self.peer_ids.clone())?;
+        let mut swarm = Self::configure_swarm(self.key.clone(), self.peers.keys().cloned())?;
 
         // Listen on all interfaces
         swarm
@@ -82,25 +97,25 @@ impl LibP2PNode {
             .map_err(|e| Libp2pNodeError::TransportError(e.into(), "failed to start listener"))?;
 
         // Register each of the peers
-        self.peer_ids
-            .into_iter()
-            .zip(self.peer_addrs)
-            .for_each(|(peer_id, peer_addr)| {
-                swarm.add_peer_address(peer_id, peer_addr.clone());
+        self.peers.values().for_each(|p| {
+            p.multiaddrs
+                .iter()
+                .cloned()
+                .for_each(|multiaddr| swarm.add_peer_address(p.peer_id, multiaddr));
 
-                swarm
-                    .behaviour_mut()
-                    .floodsub
-                    .add_node_to_partial_view(peer_id);
+            swarm
+                .behaviour_mut()
+                .floodsub
+                .add_node_to_partial_view(p.peer_id);
 
-                let dial_opts = DialOpts::peer_id(peer_id)
-                    .addresses(vec![peer_addr.clone()])
-                    .condition(PeerCondition::Always)
-                    .build();
-                if let Err(e) = swarm.dial(dial_opts) {
-                    tracing::error!("Failed to dial peer at address {peer_addr}: {e:?}")
-                }
-            });
+            let dial_opts = DialOpts::peer_id(p.peer_id)
+                .addresses(p.multiaddrs.clone())
+                .condition(PeerCondition::Always)
+                .build();
+            if let Err(e) = swarm.dial(dial_opts) {
+                tracing::error!(error = ?e, peer_id = %p.peer_id, short_id = p.short_id, multiaddrs = ?p.multiaddrs, "Failed to dial peer at given multiaddresses")
+            }
+        });
 
         // Create a floodsub topic and subscribe
         let topic = floodsub::Topic::new(LIBP2P_MAIN_TOPIC);
@@ -109,7 +124,7 @@ impl LibP2PNode {
         // Process swarm events in a separate task
         tokio::spawn(Self::swarm_event_loop(
             swarm,
-            peer_id_to_short_id,
+            self.peers,
             tx_received_messages,
             rx_messages_to_send,
             cancellation_token,
@@ -144,7 +159,7 @@ impl LibP2PNode {
     /// Main event loop handling incoming events from swarm, and incoming messages from the `rx_messages_to_send` channel.
     async fn swarm_event_loop(
         mut swarm: Swarm<Behaviour>,
-        peer_id_to_short_id: HashMap<PeerId, u16>,
+        peers: PeerDetails,
         tx_received_messages: UnboundedSender<(u16, Vec<u8>)>,
         mut rx_messages_to_send: UnboundedReceiver<Vec<u8>>,
         cancellation_token: CancellationToken,
@@ -178,7 +193,7 @@ impl LibP2PNode {
                         }
                     }
 
-                    event = swarm.select_next_some() => Self::handle_swarm_event(event, &mut swarm, &peer_id_to_short_id, &tx_received_messages, &mut ready_send_messages),
+                    event = swarm.select_next_some() => Self::handle_swarm_event(event, &mut swarm, &peers, &tx_received_messages, &mut ready_send_messages),
                 }
             }
         };
@@ -197,7 +212,7 @@ impl LibP2PNode {
     fn handle_swarm_event(
         event: SwarmEvent<BehaviourEvent>,
         swarm: &mut Swarm<Behaviour>,
-        peer_id_to_short_id: &HashMap<PeerId, u16>,
+        peers: &PeerDetails,
         tx_received_messages: &UnboundedSender<(u16, Vec<u8>)>,
         ready_send_messages: &mut bool,
     ) {
@@ -209,7 +224,7 @@ impl LibP2PNode {
                     ..
                 },
             ))) => {
-                let Some(short_id) = peer_id_to_short_id.get(&sender_peer_id) else {
+                let Some(short_id) = peers.get(&sender_peer_id).map(|p| p.short_id) else {
                     tracing::error!(
                         incoming_peer_id = %sender_peer_id,
                         "Libp2p node received message from an unknown peer"
@@ -219,7 +234,7 @@ impl LibP2PNode {
 
                 tracing::debug!(incoming_peer_id = %sender_peer_id, incoming_short_id = short_id, "Libp2p node received message from peer");
                 if tx_received_messages
-                    .send((*short_id, data.to_vec()))
+                    .send((short_id, data.to_vec()))
                     .is_err()
                 {
                     tracing::error!(incoming_peer_id = %sender_peer_id, incoming_short_id = short_id, "Libp2p node failed to forward message through channel: channel closed");
@@ -230,7 +245,7 @@ impl LibP2PNode {
                 peer_id,
                 topic,
             })) => {
-                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
                     tracing::error!(
                         incoming_peer_id = %peer_id,
                         "Failed to convert peer_id to short_id"
@@ -248,7 +263,7 @@ impl LibP2PNode {
                 peer_id,
                 topic,
             })) => {
-                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
                     tracing::error!(
                         incoming_peer_id = %peer_id,
                         "Failed to convert peer_id to short_id"
@@ -265,7 +280,7 @@ impl LibP2PNode {
                 result: Ok(rtt),
                 ..
             })) => {
-                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
                     tracing::error!(
                         incoming_peer_id = %peer_id,
                         "Failed to convert peer_id to short_id"
@@ -288,7 +303,7 @@ impl LibP2PNode {
                 result: Err(e),
                 ..
             })) => {
-                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
                     tracing::error!(
                         incoming_peer_id = %peer_id,
                         "Failed to convert peer_id to short_id"
@@ -299,13 +314,31 @@ impl LibP2PNode {
                 tracing::debug!(%peer_id, ?short_id, error = ?e, "Failed to ping");
             }
 
+            SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                let short_id = peer_id.and_then(|peer_id| {
+                    peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
+                        tracing::error!(
+                            %peer_id,
+                            "Failed to convert peer_id to short_id"
+                        );
+                        None
+                    })
+                });
+
+                if let Some(peer_id) = peer_id {
+                    tracing::warn!(%peer_id, ?short_id, ?error, "Outgoing connection to peer failed");
+                } else {
+                    tracing::warn!(?error, "Outgoing connection to unknown peer failed");
+                }
+            }
+
             SwarmEvent::ConnectionEstablished {
                 peer_id,
                 endpoint,
                 num_established,
                 ..
             } => {
-                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
                     tracing::error!(
                         incoming_peer_id = %peer_id,
                         incoming_remote_addr = %endpoint.get_remote_address(),
@@ -335,7 +368,7 @@ impl LibP2PNode {
                 cause,
                 ..
             } => {
-                let short_id = peer_id_to_short_id.get(&peer_id).or_else(|| {
+                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
                     tracing::error!(
                         incoming_peer_id = %peer_id,
                         incoming_remote_addr = %endpoint.get_remote_address(),
