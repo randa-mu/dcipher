@@ -3,9 +3,9 @@
 
 mod dialer;
 
-use crate::signer::threshold_signer::libp2p::BehaviourEvent::Ping;
-use crate::signer::threshold_signer::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
-use crate::signer::threshold_signer::metrics::Metrics;
+use crate::threshold_signer::libp2p::BehaviourEvent::Ping;
+use crate::threshold_signer::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
+use crate::threshold_signer::metrics::Metrics;
 use futures_util::StreamExt;
 use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;

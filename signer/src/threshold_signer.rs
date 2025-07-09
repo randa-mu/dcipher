@@ -7,10 +7,9 @@ pub mod metrics;
 
 pub use aggregation::lagrange_points_interpolate_at;
 
-use crate::ser::EvmSerialize;
-use crate::signer::threshold_signer::libp2p::LibP2PNode;
-use crate::signer::threshold_signer::metrics::Metrics;
-use crate::signer::{AsynchronousSigner, BlsSigner, BlsVerifier};
+use crate::threshold_signer::libp2p::LibP2PNode;
+use crate::threshold_signer::metrics::Metrics;
+use crate::{AsynchronousSigner, BlsSigner, BlsVerifier};
 use ark_ec::{AffineRepr, CurveGroup};
 use itertools::Either;
 use lru::LruCache;
@@ -83,7 +82,7 @@ where
 impl<BLS> ThresholdSigner<BLS>
 where
     BLS: BlsSigner + Clone + Send + Sync + 'static,
-    SignatureGroup<BLS>: EvmSerialize + PointSerializeCompressed + PointDeserializeCompressed,
+    SignatureGroup<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
 {
     /// Create a new threshold signer by specifying the various threshold scheme parameters.
     pub fn new(cs: BLS, n: u16, t: u16, id: u16, pks: Vec<BLS::PublicKeyGroup>) -> Self {
@@ -517,7 +516,6 @@ impl<BLS, M> AsynchronousSigner<M> for AsyncThresholdSigner<BLS>
 where
     BLS: BlsSigner + Send + Sync,
     M: AsRef<[u8]>,
-    SignatureGroup<BLS>: EvmSerialize,
     for<'a> &'a SignatureGroup<BLS>: ToOwned,
 {
     type Error = AsyncThresholdSignerError;
@@ -603,7 +601,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ibe_helper::IbeIdentityOnBn254G1Suite;
+    use crate::BN254SignatureOnG1Signer;
     use ark_bn254::Fr;
     use ark_ff::MontFp;
     use std::time::Duration;
@@ -628,9 +626,12 @@ mod tests {
             .map(|pki| pki.into_affine())
             .collect::<Vec<_>>();
 
-        let cs1 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk1);
-        let cs2 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk2);
-        let cs3 = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 31337, sk3);
+        let cs1 =
+            BN254SignatureOnG1Signer::new(sk1, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
+        let cs2 =
+            BN254SignatureOnG1Signer::new(sk2, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
+        let cs3 =
+            BN254SignatureOnG1Signer::new(sk3, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
 
         let libp2p_sk1 = ::libp2p::identity::Keypair::generate_ed25519();
         let libp2p_sk2 = ::libp2p::identity::Keypair::generate_ed25519();
