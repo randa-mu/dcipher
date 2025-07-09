@@ -4,6 +4,7 @@
 mod dialer;
 
 use crate::signer::threshold_signer::libp2p::BehaviourEvent::Ping;
+use crate::signer::threshold_signer::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
 use crate::signer::threshold_signer::metrics::Metrics;
 use futures_util::StreamExt;
 use itertools::izip;
@@ -24,6 +25,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 const LIBP2P_MAIN_TOPIC: &str = "main";
+const DEFAULT_REDIAL_INTERVAL: Duration = Duration::from_secs(2 * 60); // 2mins
 
 #[derive(Error, Debug)]
 pub enum Libp2pNodeError {
@@ -62,6 +64,7 @@ type PeerDetails = HashMap<PeerId, PeerDetail>;
 pub struct LibP2PNode {
     key: Keypair,
     peers: PeerDetails,
+    redial_interval: Duration,
 }
 
 impl LibP2PNode {
@@ -78,7 +81,18 @@ impl LibP2PNode {
             },
         ));
 
-        Self { key, peers }
+        Self {
+            key,
+            peers,
+            redial_interval: DEFAULT_REDIAL_INTERVAL,
+        }
+    }
+
+    /// Set a custom redial interval
+    #[allow(unused)] // todo: remove once libp2p module is pub
+    pub fn redial_interval(&mut self, redial_interval: Duration) -> &mut Self {
+        self.redial_interval = redial_interval;
+        self
     }
 
     /// Runs a new libp2p node that listens on `listen_addr`, forwards messages from the swarm to `tx_received_messages`,
@@ -91,7 +105,11 @@ impl LibP2PNode {
         cancellation_token: CancellationToken,
     ) -> Result<(), Libp2pNodeError> {
         // Create a new swarm
-        let mut swarm = Self::configure_swarm(self.key.clone(), self.peers.keys().cloned())?;
+        let mut swarm = Self::configure_swarm(
+            self.key.clone(),
+            self.peers.values().cloned(),
+            self.redial_interval,
+        )?;
 
         // Listen on all interfaces
         swarm
@@ -138,7 +156,8 @@ impl LibP2PNode {
     /// Configure a libp2p swarm by setting up the keypair, various layers and the behaviour
     fn configure_swarm(
         keypair: Keypair,
-        peers: impl IntoIterator<Item = PeerId>,
+        peers: impl IntoIterator<Item = PeerDetail>,
+        redial_interval: Duration,
     ) -> Result<Swarm<Behaviour>, Libp2pNodeError> {
         let peer_id = keypair.public().to_peer_id();
         Ok(libp2p::SwarmBuilder::with_existing_identity(keypair)
@@ -150,7 +169,7 @@ impl LibP2PNode {
             )?
             .with_dns()
             .expect("failed to create swarm with dns")
-            .with_behaviour(|_| Behaviour::new(peer_id, peers))
+            .with_behaviour(|_| Behaviour::new(peer_id, peers, redial_interval))
             .unwrap() // infallible
             .with_swarm_config(|cfg| {
                 cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)) // stay connected to the peer even if idle
@@ -274,6 +293,18 @@ impl LibP2PNode {
                 });
 
                 tracing::info!(%peer_id, ?short_id, ?topic, "Peer unsubscribed to topic");
+            }
+
+            SwarmEvent::Behaviour(BehaviourEvent::PeriodicDial(PeriodicDialEvent::MultiDial(
+                multi_dial_opts,
+            ))) => {
+                tracing::debug!(n_dials = multi_dial_opts.len(), "Obtained peers to dial");
+
+                multi_dial_opts.into_iter().for_each(|dial_opts| {
+                    if let Err(e) = swarm.dial(dial_opts) {
+                        tracing::error!(error = ?e, "Failed to dial peer");
+                    }
+                });
             }
 
             // Successful ping
@@ -412,16 +443,23 @@ struct Behaviour {
     floodsub: floodsub::Floodsub,
     allowed_peers: allow_block_list::Behaviour<AllowedPeers>,
     ping: ping::Behaviour,
+    periodic_dial: PeriodicDialBehaviour,
 }
 
 impl Behaviour {
     /// Create a new behaviour
-    fn new(local_peer_id: PeerId, peers: impl IntoIterator<Item = PeerId>) -> Self {
+    fn new(
+        local_peer_id: PeerId,
+        peers: impl IntoIterator<Item = PeerDetail>,
+        redial_interval: Duration,
+    ) -> Self {
+        let peers = peers.into_iter().collect::<Vec<_>>();
+
         // Build a list of allowed peers
         let allowed_peers = {
             let mut allowed_peers = allow_block_list::Behaviour::default();
-            peers.into_iter().for_each(|p| {
-                allowed_peers.allow_peer(p);
+            peers.iter().for_each(|p| {
+                allowed_peers.allow_peer(p.peer_id);
             });
             allowed_peers
         };
@@ -430,6 +468,7 @@ impl Behaviour {
             allowed_peers,
             floodsub: floodsub::Floodsub::new(local_peer_id),
             ping: ping::Behaviour::default(),
+            periodic_dial: PeriodicDialBehaviour::new(redial_interval, peers),
         }
     }
 }
