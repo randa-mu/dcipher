@@ -1,0 +1,39 @@
+[package]
+name = "gen-keys"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+
+# blockchain
+alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+superalloy = { workspace = true }
+
+# crypto
+ark-poly = "0.4.2"
+ark-std.workspace = true
+ark-bn254 = { workspace = true }
+ark-ec = { workspace = true }
+ark-ff = { workspace = true }
+pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
+
+# async
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
+tokio-util = { workspace = true }
+
+# logs / metrics
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+
+# network
+libp2p = { workspace = true, features = ["serde"] }
+
+# serde
+serde_json = { workspace = true }
+
+# misc
+clap = { workspace = true }
+base64 = { workspace = true }
+figment = { workspace = true, features = ["toml"] }
+hex.workspace = true
+warp = "0.3.7"

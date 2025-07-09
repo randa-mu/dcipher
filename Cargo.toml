@@ -8,6 +8,7 @@ members = [
     "crates/utils",
     "dcipher-agents",
     "dsigner",
+    "gen-keys",
     "omnievent",
     "onlyswaps-verifier",
     "randomness-agent",
