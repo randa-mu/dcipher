@@ -4,20 +4,22 @@
 
 ### To run it with minimum effort
 ```bash
-make run_dsigner
+make git run_dsigner
 ``
 or
 ```bash
-make run_onlyswaps-verifier ARGS="--port=8080"
+make git run_onlyswaps-verifier ARGS="--port=8080"
 ```
 
-
+## To just build without running
 Init submodules, fetch npm deps, and build forge contracts with:
-
 ```bash
 make all
 ```
+You'll get binaries produced in ./target/debug/
 
+
+## Less automagic process
 If you prefer a granular process, you can run:
 ```bash
 make clean                      # Remove node_modules
