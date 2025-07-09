@@ -5,7 +5,7 @@
 ### To run it with minimum effort
 ```bash
 make git run_dsigner
-``
+```
 or
 ```bash
 make git run_onlyswaps-verifier ARGS="--port=8080"
