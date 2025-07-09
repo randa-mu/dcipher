@@ -1,9 +1,9 @@
 [submodule "blocklock-solidity"]
 	path = blocklock-solidity
-	url = https://github.com/randa-mu/blocklock-solidity.git
+	url = ../blocklock-solidity.git
 [submodule "marshmallow-crypto"]
 	path = marshmallow-crypto
-	url = https://github.com/randa-mu/marshmallow-crypto
+	url = ../marshmallow-crypto.git
 [submodule "randomness-solidity"]
 	path = randomness-solidity
-	url = https://github.com/randa-mu/randomness-solidity
+	url = ../randomness-solidity.git
