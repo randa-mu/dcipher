@@ -1,15 +1,49 @@
 # dcipher
 
-Currently, there is no automatic dependency management. To compile `blocklock-agent`, you first have to pull the submodules with
+## Building
+
+### To run it with minimum effort
 ```bash
-git submodule update --init --recursive
+make git run_dsigner
+``
+or
+```bash
+make git run_onlyswaps-verifier ARGS="--port=8080"
 ```
 
-Then, go to `blocklock-solidity` to compile the contracts with
+## To just build without running
+Init submodules, fetch npm deps, and build forge contracts with:
+```bash
+make all
 ```
-cd blocklock-solidity
-npm install
-npm run build:forge
+You'll get binaries produced in ./target/debug/
+
+
+## Less automagic process
+If you prefer a granular process, you can run:
+```bash
+make clean                      # Remove node_modules
+make git
+make install_solidity_node_dep
+# Either:
+make build_forge_all_parallel   # Parallel build
+# OR
+make build_forge_all            # Linear build
+make build_cargo
 ```
 
-This should be enough to compile the `blocklock-agent` successfully.
+### Cleaning
+Remove all node_modules and forge outputs with:
+```bash
+make clean
+```
+
+just node_modules:
+```bash
+make clean_node_modules
+```
+
+just forge outputs:
+```bash
+make clean_forge
+```
