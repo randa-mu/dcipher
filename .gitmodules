@@ -9,4 +9,4 @@
 	url = ../randomness-solidity.git
 [submodule "dcipher-proto"]
 	path = dcipher-proto
-	url = https://github.com/randa-mu/dcipher-proto
+	url = ../dcipher-proto.git
