@@ -210,7 +210,7 @@ mod tests {
             .unwrap();
 
         let mut block_number_stream =
-            watch_block_numbers(&polygon_provider, Some(Duration::from_secs(1)))
+            watch_block_numbers(&polygon_provider, Some(Duration::from_millis(200)))
                 .await
                 .unwrap();
         let curr_block = block_number_stream.next().await.unwrap().unwrap();
