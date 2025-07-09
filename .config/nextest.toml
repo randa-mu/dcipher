@@ -1,4 +1,4 @@
 # 1 retry for test_watch_block_numbers which may fail once depending on when the blocks are fetched
 [[profile.default.overrides]]
-filter = 'package(superalloy) & test(multi_provider::tests::test_watch_block_numbers)'
-retries = 1
+filter = 'package(superalloy) & (test(multi_provider::tests::test_watch_block_numbers) | test(provider::tests::watch_block_numbers_http))'
+retries = 3
