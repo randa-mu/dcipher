@@ -139,8 +139,13 @@ mod tests {
     use super::*;
     use alloy::providers::Provider;
 
-    const POLYGON_RPC_URL: &str = "https://1rpc.io/matic";
-    const ETHEREUM_MAINNET_WS_URL: &str = "wss://mainnet.gateway.tenderly.co";
+    static POLYGON_RPC_URL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        std::env::var("POLYGON_RPC_URL").unwrap_or_else(|_| "https://1rpc.io/matic".to_owned())
+    });
+    static ETHEREUM_MAINNET_WS_URL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        std::env::var("ETHEREUM_MAINNET_URL")
+            .unwrap_or_else(|_| "wss://mainnet.gateway.tenderly.co".to_owned())
+    });
 
     #[tokio::test]
     async fn create_provider() {
