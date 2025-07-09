@@ -1,6 +1,8 @@
 //! Libp2p node that can be used to broadcast and receive arbitrary messages using floodsub and a
 //! peer whitelist.
 
+mod dialer;
+
 use crate::signer::threshold_signer::libp2p::BehaviourEvent::Ping;
 use crate::signer::threshold_signer::metrics::Metrics;
 use futures_util::StreamExt;
