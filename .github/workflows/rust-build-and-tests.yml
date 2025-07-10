@@ -27,33 +27,33 @@ jobs:
         uses: actions/cache@v4
         with:
           path: blocklock-solidity/node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('blocklock-solidity/package-lock.json') }}
+          key: ${{ runner.os }}-npm-blocklock-solidity-${{ hashFiles('blocklock-solidity/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-npm-blocklock-solidity-
 
       - name: Cache npm randomness-solidity
         uses: actions/cache@v4
         with:
           path: randomness-solidity/node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('randomness-solidity/package-lock.json') }}
+          key: ${{ runner.os }}-npm-randomness-solidity-${{ hashFiles('randomness-solidity/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-npm-randomness-solidity-
 
       - name: Cache Solidity blocklock-solidity
         uses: actions/cache@v4
         with:
           path: blocklock-solidity/out
-          key: ${{ runner.os }}-solidity-${{ hashFiles('blocklock-solidity/src/**/*.sol', 'blocklock-solidity/lib/**/*.sol') }}
+          key: ${{ runner.os }}-sol-blocklock-solidity-${{ hashFiles('blocklock-solidity/src/**/*.sol', 'blocklock-solidity/lib/**/*.sol') }}
           restore-keys: |
-            ${{ runner.os }}-solidity-
+            ${{ runner.os }}-sol-blocklock-solidity-
 
       - name: Cache Solidity randomness-solidity
         uses: actions/cache@v4
         with:
           path: randomness-solidity/out
-          key: ${{ runner.os }}-solidity-${{ hashFiles('randomness-solidity/src/**/*.sol', 'randomness-solidity/lib/**/*.sol') }}
+          key: ${{ runner.os }}-sol-randomness-solidity-${{ hashFiles('randomness-solidity/src/**/*.sol', 'randomness-solidity/lib/**/*.sol') }}
           restore-keys: |
-            ${{ runner.os }}-solidity-
+            ${{ runner.os }}-sol-randomness-solidity-
 
       # 1. Compile blocklock-solidity
       - name: blocklock-solidity - Install dependencies
