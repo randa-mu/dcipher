@@ -76,6 +76,8 @@ jobs:
       # 3. Build and test workspace packages
       - name: Lint & Test Rust Workspace
         uses: ./.github/actions/rust-test-action
+        env:
+          POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
         with:
           working-directory: .
           extra-cache-key: 'dcipher'
