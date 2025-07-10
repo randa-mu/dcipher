@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-dcipher-agents = { workspace = true, features = ["rayon"] }
+dcipher-agents = { workspace = true, features = ["signer", "rayon"] }
 
 # crypto
 ark-bn254 = { workspace = true }
