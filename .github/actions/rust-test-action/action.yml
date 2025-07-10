@@ -21,28 +21,10 @@ runs:
       with:
         tool: nextest,cargo-hack
 
-    - name: Cache Cargo registry 🔧
-      uses: actions/cache@v3
+    - name: Cache Cargo
+      uses: Swatinem/rust-cache@v2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-registry-
-
-    - name: Cache Cargo index 🔧
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-index-
-
-    - name: Cache Cargo build 🔧
-      uses: actions/cache@v3
-      with:
-        path: ${{ inputs.target-folder }}
-        key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
+        prefix-key: ${{ runner.os }}-cargo
 
     - name: Check formatting
       working-directory: ${{ inputs.working-directory }}
