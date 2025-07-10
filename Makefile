@@ -34,6 +34,9 @@ clean_solidity_out:
 		(cd $$dir && find . -name 'out' -type d -prune -exec rm -rf '{}' +) \
 	done;
 
+clean_node_modules:
+	@find . -name node_modules -maxdepth 2 -exec rm -rf {} \;
+
 clean: clean_node_modules clean_solidity_out clean_dcipher
-deps: install_solidity_node_deps build_forge_all_concurrent
-all: git install_solidity_node_deps build_forge_all_concurrent build_cargo
+deps: install_solidity_node_deps build_forge_all
+all: git install_solidity_node_deps build_forge_all build_cargo
