@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [features]
+libp2p = ["dep:libp2p"]
 rayon = ["dep:rayon"]
 
 [dependencies]
@@ -27,7 +28,7 @@ prometheus = { workspace = true }
 tracing = { workspace = true }
 
 # network
-libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"] }
+libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"], optional = true }
 
 # serde
 serde = { workspace = true, features = ["derive"] }

@@ -18,15 +18,6 @@ RUN npm install
 COPY ./blocklock-solidity ./
 RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
 
-FROM sol_builder AS sol_randomness
-WORKDIR /app/randomness-solidity
-COPY ./randomness-solidity/package.json ./
-COPY ./randomness-solidity/package-lock.json ./
-RUN npm install
-
-COPY ./randomness-solidity ./
-RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
-
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
@@ -43,7 +34,6 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY --from=sol_blocklock /app/blocklock-solidity/out ./blocklock-solidity/out
-COPY --from=sol_randomness /app/randomness-solidity/out ./randomness-solidity/out
 COPY . .
 RUN cargo build --release -p blocklock-agent --example blocklock
 

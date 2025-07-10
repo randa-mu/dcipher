@@ -6,7 +6,7 @@ pub mod fulfiller;
 pub mod metrics;
 
 use crate::RequestId;
-use crate::agents::blocklock::BlockNumber;
+use crate::agents::BlockNumber;
 use crate::agents::randomness::metrics::Metrics;
 use crate::fulfiller::RequestChannel;
 use crate::signature_sender::SignatureRequest;

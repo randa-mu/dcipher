@@ -10,8 +10,7 @@ use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::RetryStrategy;
 use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::{Identifier, TransactionFulfiller};
-use crate::ibe_helper::{IbeIdentityOnBn254G1Ciphertext, PairingIbeCipherSuite};
-use crate::ser::{EvmDeserialize, IbeIdentityOnBn254G1CiphertextError};
+use crate::ibe_helper::PairingIbeCipherSuite;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
 use serde::{Deserialize, Serialize};
@@ -94,22 +93,6 @@ impl Identifier for SignedDecryptionRequest<'_> {
 
     fn id(&self) -> &Self::Id {
         &self.id
-    }
-}
-
-impl TryFrom<&DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
-    type Error = IbeIdentityOnBn254G1CiphertextError;
-
-    fn try_from(value: &DecryptionRequest) -> Result<Self, Self::Error> {
-        EvmDeserialize::deser(&value.ciphertext)
-    }
-}
-
-impl TryFrom<DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
-    type Error = IbeIdentityOnBn254G1CiphertextError;
-
-    fn try_from(value: DecryptionRequest) -> Result<Self, Self::Error> {
-        EvmDeserialize::deser(&value.ciphertext)
     }
 }
 

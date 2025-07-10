@@ -53,7 +53,7 @@ pub struct OneshotStopper {
 }
 
 impl<R, SR, S, TF> TickerFulfiller<R, SR, S, TF> {
-    pub(crate) fn new(
+    pub fn new(
         signer: S,
         transaction_fulfiller: TF,
         max_fulfilment_per_tick: usize,
@@ -360,6 +360,8 @@ impl Stopper for OneshotStopper {
 }
 
 #[cfg(test)]
+// tests rely on decryption_sender and blocklock
+#[cfg(all(feature = "decryption_sender", feature = "blocklock"))]
 mod tests {
     use super::*;
     use crate::decryption_sender::single_party_signer::StandaloneSigner;
