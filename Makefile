@@ -39,4 +39,4 @@ clean_node_modules:
 
 clean: clean_node_modules clean_solidity_out clean_dcipher
 deps: install_solidity_node_deps build_forge_all
-all: git install_solidity_node_deps build_forge_all build_cargo
+all: git deps build_cargo
