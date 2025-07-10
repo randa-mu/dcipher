@@ -1,7 +1,7 @@
 //! Module containing various traits to define the behaviour of fulfillers.
 
 mod failure;
-pub(crate) mod ticker;
+pub mod ticker;
 
 pub use failure::RetryStrategy;
 

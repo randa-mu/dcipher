@@ -4,13 +4,28 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-rayon = ["dep:rayon"]
+# agents
+agents = ["evm"]
+blocklock = ["agents", "decryption_sender", "payment"]
+randomness = ["agents", "signature_sender", "payment"]
+payment = []
+
+# schemes
+decryption_sender = ["fulfiller", "ibe", "evm"]
+signature_sender = ["fulfiller", "evm"]
+ibe = []
+
+# misc
+evm = ["dep:alloy"]
+fulfiller = ["signer"]
+signer = ["dep:dcipher-signer", "dcipher-signer/libp2p"]
+rayon = ["dcipher-signer/rayon"]
 
 [dependencies]
 # workspace crates
-dcipher-signer.workspace = true
+dcipher-signer = { workspace = true, optional = true }
 
-alloy = { workspace = true, features = ["default", "provider-ws"] }
+alloy = { workspace = true, features = ["default", "provider-ws"], optional = true}
 
 # crypto
 ark-bn254 = { workspace = true }
@@ -32,18 +47,11 @@ tokio-util = { workspace = true }
 prometheus = { workspace = true }
 tracing = { workspace = true }
 
-# network
-libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"] }
-
 # serde
 serde = { workspace = true, features = ["derive"] }
-serde_cbor = "0.10"
 
 # misc
-itertools = { workspace = true }
 thiserror = { workspace = true }
-lru = "0.14"
-rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
 hex = { workspace = true }

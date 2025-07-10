@@ -1,8 +1,11 @@
 //! Module for the blocklock agent.
 
+use crate::agents::BlockNumber;
+use crate::decryption_sender::DecryptionRequest;
+use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
+use crate::ser::{EvmDeserialize, IbeIdentityOnBn254G1CiphertextError};
 use alloy::primitives::U256;
 use alloy::sol_types::SolValue;
-use serde::{Deserialize, Serialize};
 
 pub mod agent;
 mod condition_resolver;
@@ -15,9 +18,6 @@ pub mod metrics;
 pub enum BlocklockCondition {
     BlockNumber(BlockNumber),
 }
-
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
-pub struct BlockNumber(pub u64);
 
 #[derive(thiserror::Error, Debug)]
 pub enum BlocklockConditionDecodeError {
@@ -82,20 +82,18 @@ impl From<BlocklockCondition> for alloy::primitives::Bytes {
     }
 }
 
-impl From<u64> for BlockNumber {
-    fn from(number: u64) -> Self {
-        BlockNumber(number)
+impl TryFrom<&DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
+    type Error = IbeIdentityOnBn254G1CiphertextError;
+
+    fn try_from(value: &DecryptionRequest) -> Result<Self, Self::Error> {
+        EvmDeserialize::deser(&value.ciphertext)
     }
 }
 
-impl From<BlockNumber> for u64 {
-    fn from(number: BlockNumber) -> Self {
-        number.0
-    }
-}
+impl TryFrom<DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
+    type Error = IbeIdentityOnBn254G1CiphertextError;
 
-impl AsRef<u64> for BlockNumber {
-    fn as_ref(&self) -> &u64 {
-        &self.0
+    fn try_from(value: DecryptionRequest) -> Result<Self, Self::Error> {
+        EvmDeserialize::deser(&value.ciphertext)
     }
 }

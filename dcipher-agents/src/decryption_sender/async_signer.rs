@@ -77,6 +77,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "blocklock")] // need blocklock types for ibe
 pub(crate) mod tests {
     use super::*;
     use crate::decryption_sender::DecryptionRequest;

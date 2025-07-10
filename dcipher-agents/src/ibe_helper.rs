@@ -63,7 +63,7 @@ pub trait IbeCiphertext {
     fn ephemeral_pk(&self) -> Self::EphemeralPublicKey;
 }
 
-pub(crate) use bn254::IbeIdentityOnBn254G1Ciphertext;
+pub use bn254::IbeIdentityOnBn254G1Ciphertext;
 pub use bn254::IbeIdentityOnBn254G1Suite;
 
 mod bn254 {
@@ -73,10 +73,8 @@ mod bn254 {
     use ark_ec::pairing::PairingOutput;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::Zero;
-    use dcipher_signer::{BlsSigner, BlsVerifier};
     use digest::core_api::BlockSizeUser;
     use pairing_utils::hash_to_curve::CustomPairingHashToCurve;
-    use std::convert::Infallible;
     use std::ops::Neg;
 
     /// Cipher suite for IBE w/ identity on bn254 G1.
@@ -152,34 +150,6 @@ mod bn254 {
                 h2_dst: Self::h2_dst(dst_prefix, &suffix),
                 sk,
             }
-        }
-    }
-
-    /// Implementation of a BLS verifier [`IbeIdentityOnBn254G1Suite`].
-    impl<S> BlsVerifier for IbeIdentityOnBn254G1Suite<S> {
-        type SignatureGroup = <Self as PairingIbeCipherSuite>::IdentityGroup;
-        type PublicKeyGroup = <Self as PairingIbeCipherSuite>::PublicKeyGroup;
-
-        fn verify(
-            &self,
-            m: impl AsRef<[u8]>,
-            signature: Self::SignatureGroup,
-            public_key: Self::PublicKeyGroup,
-        ) -> bool {
-            self.verify_decryption_key(m.as_ref(), signature, public_key)
-        }
-    }
-
-    /// Implementation of a BLS signer [`IbeIdentityOnBn254G1Suite`].
-    impl<S> BlsSigner for IbeIdentityOnBn254G1Suite<S>
-    where
-        Self: BlsVerifier + PairingIbeSigner<IdentityGroup = <Self as BlsVerifier>::SignatureGroup>,
-    {
-        type Error = Infallible;
-
-        fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
-            let identity = self.h1(m.as_ref());
-            Ok(self.decryption_key(identity))
         }
     }
 
@@ -268,6 +238,44 @@ mod bn254 {
 
         fn ephemeral_pk(&self) -> Self::EphemeralPublicKey {
             self.eph_pk
+        }
+    }
+
+    #[cfg(feature = "signer")]
+    mod signer {
+        use crate::ibe_helper::{
+            IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner,
+        };
+        use dcipher_signer::{BlsSigner, BlsVerifier};
+        use std::convert::Infallible;
+
+        /// Implementation of a BLS verifier [`IbeIdentityOnBn254G1Suite`].
+        impl<S> BlsVerifier for IbeIdentityOnBn254G1Suite<S> {
+            type SignatureGroup = <Self as PairingIbeCipherSuite>::IdentityGroup;
+            type PublicKeyGroup = <Self as PairingIbeCipherSuite>::PublicKeyGroup;
+
+            fn verify(
+                &self,
+                m: impl AsRef<[u8]>,
+                signature: Self::SignatureGroup,
+                public_key: Self::PublicKeyGroup,
+            ) -> bool {
+                self.verify_decryption_key(m.as_ref(), signature, public_key)
+            }
+        }
+
+        /// Implementation of a BLS signer [`IbeIdentityOnBn254G1Suite`].
+        impl<S> BlsSigner for IbeIdentityOnBn254G1Suite<S>
+        where
+            Self: BlsVerifier
+                + PairingIbeSigner<IdentityGroup = <Self as BlsVerifier>::SignatureGroup>,
+        {
+            type Error = Infallible;
+
+            fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
+                let identity = self.h1(m.as_ref());
+                Ok(self.decryption_key(identity))
+            }
         }
     }
 }
