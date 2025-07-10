@@ -1,7 +1,7 @@
 //! A sqlite-based [`EventsDatabase`]
 
 use crate::event_manager::db::EventsDatabase;
-use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEvent};
+use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEventSpec};
 use alloy::primitives::Address;
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, QueryBuilder, Row, Sqlite, SqlitePool};
@@ -84,7 +84,7 @@ impl SqliteEventDatabase {
 impl EventsDatabase for SqliteEventDatabase {
     type Error = SqliteEventDatabaseError;
 
-    async fn store_event(&self, event: RegisteredEvent) -> Result<(), Self::Error> {
+    async fn store_event(&self, event: RegisteredEventSpec) -> Result<(), Self::Error> {
         let event_id = Uuid::from(event.id);
         let event_chain_id = event.chain_id.to_string();
         let event_address = event.address.to_vec();
@@ -248,7 +248,7 @@ mod tests {
     use crate::event_manager::db::EventsDatabase;
     use crate::event_manager::db::sql::sqlite::SqliteEventDatabase;
     use crate::proto_types::BlockSafety;
-    use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEvent};
+    use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEventSpec};
     use alloy::primitives::{Address, LogData};
 
     #[tokio::test]
@@ -272,7 +272,7 @@ mod tests {
 
         let res = db
             .store_event(
-                RegisteredEvent::try_new(
+                RegisteredEventSpec::try_new(
                     EventId::new(b"test_event"),
                     0u64,
                     Address::default(),
@@ -325,7 +325,7 @@ mod tests {
 
         let event_id = EventId::new(b"test_event");
         db.store_event(
-            RegisteredEvent::try_new(
+            RegisteredEventSpec::try_new(
                 event_id,
                 0u64,
                 Address::default(),
@@ -367,7 +367,7 @@ mod tests {
 
         let event_id = EventId::new(b"test_event");
         db.store_event(
-            RegisteredEvent::try_new(
+            RegisteredEventSpec::try_new(
                 event_id,
                 0u64,
                 Address::default(),

@@ -9,7 +9,8 @@ use std::str::FromStr;
 
 const EVENT_UUID_NAMESPACE: uuid::Uuid = uuid::Uuid::NAMESPACE_OID;
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Eq, PartialEq, Hash, Debug)]
+#[serde(into = "bytes::Bytes", try_from = "bytes::Bytes")]
 pub struct EventId(uuid::Uuid);
 
 impl EventId {
@@ -18,16 +19,29 @@ impl EventId {
     }
 }
 
-impl From<&RegisterNewEventRequest> for uuid::Uuid {
-    fn from(value: &RegisterNewEventRequest) -> Self {
-        // Use the protobuf-encoded value to compute a deterministic uuid v5
-        uuid::Uuid::new_v5(&EVENT_UUID_NAMESPACE, &prost::Message::encode_to_vec(value))
+#[derive(thiserror::Error, Debug)]
+pub enum UuidFromRegisterNewEventRequest {
+    #[error("failed to serialize to cbor")]
+    Cbor(#[from] serde_cbor::Error),
+}
+
+impl TryFrom<&ParsedRegisterNewEventRequest> for uuid::Uuid {
+    type Error = UuidFromRegisterNewEventRequest;
+
+    fn try_from(value: &ParsedRegisterNewEventRequest) -> Result<Self, Self::Error> {
+        // encode to cbor
+        let cbor_encoded = serde_cbor::to_vec(value)?;
+
+        // Use the cbor-encoding to compute a deterministic uuid v5
+        Ok(uuid::Uuid::new_v5(&EVENT_UUID_NAMESPACE, &cbor_encoded))
     }
 }
 
-impl From<&RegisterNewEventRequest> for EventId {
-    fn from(value: &RegisterNewEventRequest) -> Self {
-        Self(uuid::Uuid::from(value))
+impl TryFrom<&ParsedRegisterNewEventRequest> for EventId {
+    type Error = UuidFromRegisterNewEventRequest;
+
+    fn try_from(value: &ParsedRegisterNewEventRequest) -> Result<Self, Self::Error> {
+        Ok(Self(uuid::Uuid::try_from(value)?))
     }
 }
 
@@ -101,10 +115,8 @@ pub struct EventFieldData {
     pub indexed: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct ParsedRegisterNewEventRequest {
-    /// Deterministic UUID v5
-    pub(crate) id: EventId,
     /// Chain ID
     pub(crate) chain_id: u64,
     /// Ethereum contract address (20 bytes) - what contract we're watching
@@ -119,7 +131,7 @@ pub(crate) struct ParsedRegisterNewEventRequest {
 
 /// An event that has been registered with OmniEvent.
 #[derive(Clone, Debug)]
-pub struct RegisteredEvent {
+pub struct RegisteredEventSpec {
     pub id: EventId,
     pub chain_id: u64,
     pub address: Address,
@@ -131,12 +143,15 @@ pub struct RegisteredEvent {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum NewRegisteredEventError {
+pub enum NewRegisteredEventSpecError {
+    #[error("failed to compute uuid")]
+    IntoEventId(#[from] UuidFromRegisterNewEventRequest),
+
     #[error("at most 3 indexed fields are supported")]
     TooManyIndexedFields,
 }
 
-impl RegisteredEvent {
+impl RegisteredEventSpec {
     pub fn try_new(
         id: EventId,
         chain_id: u64,
@@ -144,14 +159,14 @@ impl RegisteredEvent {
         event_name: String,
         fields: Vec<ParsedEventField>,
         block_safety: BlockSafety,
-    ) -> Result<Self, NewRegisteredEventError> {
+    ) -> Result<Self, NewRegisteredEventSpecError> {
         let indexed_fields: Vec<_> = fields
             .iter()
             .filter_map(|p| p.indexed.then_some(&p.sol_type))
             .cloned()
             .collect();
         if indexed_fields.len() > 3 {
-            Err(NewRegisteredEventError::TooManyIndexedFields)?
+            Err(NewRegisteredEventSpecError::TooManyIndexedFields)?
         }
 
         let sol_type_name = if fields.len() != 1 {
@@ -190,21 +205,6 @@ impl RegisteredEvent {
         })
     }
 
-    pub(crate) fn try_from_req(
-        req: ParsedRegisterNewEventRequest,
-    ) -> Result<Self, NewRegisteredEventError> {
-        let ParsedRegisterNewEventRequest {
-            id,
-            chain_id,
-            address,
-            event_name,
-            fields,
-            block_safety,
-        } = req;
-
-        Self::try_new(id, chain_id, address, event_name, fields, block_safety)
-    }
-
     pub fn topic0(&self) -> B256 {
         self.topic0
     }
@@ -222,8 +222,26 @@ impl RegisteredEvent {
     }
 }
 
-impl From<&RegisteredEvent> for alloy::rpc::types::Filter {
-    fn from(event: &RegisteredEvent) -> Self {
+impl TryFrom<ParsedRegisterNewEventRequest> for RegisteredEventSpec {
+    type Error = NewRegisteredEventSpecError;
+
+    fn try_from(req: ParsedRegisterNewEventRequest) -> Result<Self, Self::Error> {
+        let id = EventId::try_from(&req)?;
+
+        let ParsedRegisterNewEventRequest {
+            chain_id,
+            address,
+            event_name,
+            fields,
+            block_safety,
+        } = req;
+
+        Self::try_new(id, chain_id, address, event_name, fields, block_safety)
+    }
+}
+
+impl From<&RegisteredEventSpec> for alloy::rpc::types::Filter {
+    fn from(event: &RegisteredEventSpec) -> Self {
         alloy::rpc::types::Filter::new()
             .address(event.address)
             .event_signature(event.topic0)
@@ -288,7 +306,7 @@ impl From<EventOccurrence> for proto_types::EventOccurrence {
     }
 }
 
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Debug)]
 pub(crate) enum ParseRegisterNewEventRequestError {
     #[error("failed to parse address")]
     TryFromAddress(#[source] <Address as TryFrom<&'static [u8]>>::Error),
@@ -304,8 +322,6 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
     type Error = ParseRegisterNewEventRequestError;
 
     fn try_from(value: RegisterNewEventRequest) -> Result<Self, Self::Error> {
-        let id = EventId::from(&value);
-
         // Convert the bytes into an address
         let address =
             Address::try_from(value.address.as_ref()).map_err(Self::Error::TryFromAddress)?;
@@ -328,7 +344,6 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
             .map_err(|e| Self::Error::BlockSafety(e, value.block_safety))?;
 
         Ok(Self {
-            id,
             address,
             block_safety,
             fields,
@@ -341,6 +356,7 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
 /// Serde-compatible [`ParsedEventField`]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ParsedEventFieldDef {
+    #[serde(rename = "sol_type")]
     pub sol_type_str: Cow<'static, str>,
     pub indexed: bool,
 }
@@ -417,5 +433,48 @@ impl TryFrom<EventFieldDataDef> for EventFieldData {
             data,
             indexed: value.indexed,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::proto_types::BlockSafety;
+    use crate::types::{EventId, ParsedEventField, ParsedRegisterNewEventRequest};
+    use alloy::dyn_abi::DynSolType;
+    use std::str::FromStr;
+
+    #[test]
+    fn event_id_from_register_new_event_request() {
+        let req = ParsedRegisterNewEventRequest {
+            chain_id: 1337,
+            address: "0x20EEF038C83B7a0f357D4aBC64b8f639427D7Af6"
+                .parse()
+                .unwrap(),
+            event_name: "Subscribed".to_owned(),
+            fields: vec![
+                ParsedEventField::new(DynSolType::Address, true),
+                ParsedEventField::new(DynSolType::Uint(256), true),
+            ],
+            block_safety: BlockSafety::Latest,
+        };
+        // cbor diagnostic notation:
+        // {
+        //     "chain_id": 1337_1,
+        //     "address": h'20eef038c83b7a0f357d4abc64b8f639427d7af6',
+        //     "event_name": "Subscribed",
+        //     "fields": [
+        //         {"sol_type": "address", "indexed": true},
+        //         {"sol_type": "uint256", "indexed": true},
+        //     ],
+        //     "block_safety": "BLOCK_SAFETY_LATEST",
+        // }
+        let cbor = hex::decode("a568636861696e5f696419053967616464726573735420eef038c83b7a0f357d4abc64b8f639427d7af66a6576656e745f6e616d656a53756273637269626564666669656c647382a268736f6c5f74797065676164647265737367696e6465786564f5a268736f6c5f747970656775696e7432353667696e6465786564f56c626c6f636b5f73616665747973424c4f434b5f5341464554595f4c4154455354").unwrap();
+        let expected_event_id =
+            EventId::from(uuid::Uuid::from_str("d451b061-fc2e-5391-ae0b-5b1699a55304").unwrap());
+        let cbor_event_id = EventId::new(&cbor);
+
+        let event_id = EventId::try_from(&req).expect("failed to convert req to uuid");
+        assert_eq!(event_id, expected_event_id);
+        assert_eq!(event_id, cbor_event_id);
     }
 }

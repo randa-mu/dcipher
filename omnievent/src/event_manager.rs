@@ -13,7 +13,10 @@ use crate::event_manager::listener::{
     EventListener, EventListenerHandle, EventReceiverHandleError,
 };
 use crate::proto_types::EventOccurrenceFilter;
-use crate::types::{EventFieldData, EventId, EventOccurrence, ParsedRegisterNewEventRequest};
+use crate::types::{
+    EventFieldData, EventId, EventOccurrence, NewRegisteredEventSpecError,
+    ParsedRegisterNewEventRequest, RegisteredEventSpec,
+};
 use alloy::primitives::Address;
 use alloy::rpc::types::Log;
 use futures_util::stream::SelectAll;
@@ -78,6 +81,9 @@ pub(crate) enum EventManagerError {
 
     #[error("filter error")]
     Filter(#[from] FilterError),
+
+    #[error("failed to convert event registration into spec")]
+    EventRegistrationIntoSpec(#[from] NewRegisteredEventSpecError),
 }
 
 // export other event_manager's module errors
@@ -146,11 +152,12 @@ where
         &self,
         req: ParsedRegisterNewEventRequest,
     ) -> Result<EventId, EventManagerError> {
-        let event_id = req.id;
-        let chain_id = req.chain_id;
-        let address = req.address;
-        let event_name = req.event_name.clone();
-        self.internal_register_ethereum_event(req)
+        let event_spec = RegisteredEventSpec::try_from(req)?;
+        let event_id = event_spec.id;
+        let chain_id = event_spec.chain_id;
+        let address = event_spec.address;
+        let event_name = event_spec.event_name.clone();
+        self.internal_register_ethereum_event(event_spec)
             .instrument(tracing::info_span!("register_ethereum_event", %event_id, %chain_id, %address, %event_name))
             .await
     }
@@ -300,7 +307,7 @@ pub(crate) mod tests {
     pub(crate) mod test_contracts {
         use crate::event_manager::tests::test_contracts::EventEmitter::EventEmitterInstance;
         use crate::proto_types::{BlockSafety, EventField, RegisterNewEventRequest};
-        use crate::types::{ParsedRegisterNewEventRequest, RegisteredEvent};
+        use crate::types::{ParsedRegisterNewEventRequest, RegisteredEventSpec};
         use alloy::network::Network;
         use alloy::providers::Provider;
 
@@ -330,12 +337,12 @@ pub(crate) mod tests {
 
         pub(crate) async fn get_string_registered_event<P, N>(
             instance: &EventEmitterInstance<P, N>,
-        ) -> RegisteredEvent
+        ) -> RegisteredEventSpec
         where
             P: Provider<N>,
             N: Network,
         {
-            RegisteredEvent::try_from_req(get_string_register_req(instance).await).unwrap()
+            RegisteredEventSpec::try_from(get_string_register_req(instance).await).unwrap()
         }
 
         pub(crate) async fn get_string_register_req<P, N>(

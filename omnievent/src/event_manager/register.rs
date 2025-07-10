@@ -3,9 +3,7 @@
 use crate::event_manager::db::EventsDatabase;
 use crate::event_manager::listener::InternalEventStreamRegistration;
 use crate::event_manager::{EventManager, EventManagerError, RegisteredEventEntry};
-use crate::types::{
-    EventId, NewRegisteredEventError, ParsedRegisterNewEventRequest, RegisteredEvent,
-};
+use crate::types::{EventId, NewRegisteredEventSpecError, RegisteredEventSpec};
 use alloy::network::{Ethereum, Network};
 use alloy::providers::Provider;
 use alloy::pubsub::SubscriptionStream;
@@ -20,7 +18,7 @@ where
 {
     pub(super) async fn internal_register_ethereum_event(
         &self,
-        req: ParsedRegisterNewEventRequest,
+        event_spec: RegisteredEventSpec,
     ) -> Result<EventId, EventManagerError> {
         tracing::debug!("Registering new event");
 
@@ -30,22 +28,21 @@ where
         };
 
         // Do nothing if the event is already registered
-        let event_id = req.id;
+        let event_id = event_spec.id;
         if self.active_events_map.read().await.contains_key(&event_id) {
             tracing::debug!("Event already registered");
             return Ok(event_id);
         }
 
-        let (event, stream) =
-            create_stream_and_spec::<_, Ethereum>(req, &self.multi_provider).await?;
+        let stream = create_stream::<_, Ethereum>(&event_spec, &self.multi_provider).await?;
 
         let reg = InternalEventStreamRegistration::new(
-            event.clone(),
+            event_spec.clone(),
             stream.map(move |l| (event_id, l)).boxed(), // boxing :( but we need type erasure due to the closure
         );
 
         // Save the event in the database
-        if let Err(e) = self.events_db.store_event(event).await {
+        if let Err(e) = self.events_db.store_event(event_spec).await {
             tracing::error!(event = ?event_id, error = ?e, "Failed to store event in database");
             Err(EventManagerError::Database(e.into()))?
         }
@@ -77,7 +74,7 @@ where
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum CreateStreamError {
     #[error("failed to create event")]
-    FailedToCreateEvent(#[from] NewRegisteredEventError),
+    FailedToCreateEvent(#[from] NewRegisteredEventSpecError),
 
     #[error("unsupported chain")]
     UnsupportedChain,
@@ -88,25 +85,23 @@ pub(crate) enum CreateStreamError {
     ),
 }
 
-pub(crate) async fn create_stream_and_spec<MP, N>(
-    req: ParsedRegisterNewEventRequest,
+pub(crate) async fn create_stream<MP, N>(
+    spec: &RegisteredEventSpec,
     multi_provider: &MP,
-) -> Result<(RegisteredEvent, SubscriptionStream<Log>), CreateStreamError>
+) -> Result<SubscriptionStream<Log>, CreateStreamError>
 where
     MP: MultiChainProvider<u64>,
     N: Network,
 {
-    let registered_event = RegisteredEvent::try_from_req(req)?;
-
     // Obtain a provider for the specified chainid and network
-    let Some(provider) = multi_provider.get_provider::<N>(&registered_event.chain_id) else {
+    let Some(provider) = multi_provider.get_provider::<N>(&spec.chain_id) else {
         Err(CreateStreamError::UnsupportedChain)?
     };
 
     // Create a new subscription for the specified event
     let stream = provider
-        .subscribe_logs(&Filter::from(&registered_event))
+        .subscribe_logs(&Filter::from(spec))
         .await?
         .into_stream();
-    Ok((registered_event, stream))
+    Ok(stream)
 }
