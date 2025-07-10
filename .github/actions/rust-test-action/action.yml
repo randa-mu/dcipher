@@ -8,6 +8,10 @@ inputs:
     required: false
     default: './target'
     description: 'Target folder used for building'
+  extra-cache-key:
+    required: false
+    default: 'rust'
+    description: 'Additional key used for caching'
   additional-flags:
     required: false
     default: ''
@@ -21,28 +25,11 @@ runs:
       with:
         tool: nextest,cargo-hack
 
-    - name: Cache Cargo registry 🔧
-      uses: actions/cache@v3
+    - name: Cache Cargo
+      uses: Swatinem/rust-cache@v2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-registry-
-
-    - name: Cache Cargo index 🔧
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-index-
-
-    - name: Cache Cargo build 🔧
-      uses: actions/cache@v3
-      with:
-        path: ${{ inputs.target-folder }}
-        key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
+        prefix-key: ${{ runner.os }}-cargo
+        key: ${{ inputs.extra-cache-key }}
 
     - name: Check formatting
       working-directory: ${{ inputs.working-directory }}
@@ -50,11 +37,6 @@ runs:
       shell: bash
 
     - name: Check clippy
-      working-directory: ${{ inputs.working-directory }}
-      run: cargo clippy --all-features --all-targets --target-dir ${{ inputs.target-folder }} -- -Dwarnings ${{ inputs.additional-flags }}
-      shell: bash
-
-    - name: Check clippy (each features)
       working-directory: ${{ inputs.working-directory }}
       run: cargo hack clippy --each-feature --all-targets --target-dir ${{ inputs.target-folder }} -- -Dwarnings ${{ inputs.additional-flags }}
       shell: bash
