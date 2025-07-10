@@ -8,6 +8,10 @@ inputs:
     required: false
     default: './target'
     description: 'Target folder used for building'
+  extra-cache-key:
+    required: false
+    default: 'rust'
+    description: 'Additional key used for caching'
   additional-flags:
     required: false
     default: ''
@@ -25,6 +29,7 @@ runs:
       uses: Swatinem/rust-cache@v2
       with:
         prefix-key: ${{ runner.os }}-cargo
+        key: ${{ inputs.extra-cache-key }}
 
     - name: Check formatting
       working-directory: ${{ inputs.working-directory }}
