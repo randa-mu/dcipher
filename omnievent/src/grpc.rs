@@ -3,8 +3,8 @@ use crate::event_manager::{CreateStreamError, EventManager, EventManagerError};
 use crate::proto_types::omni_event_service_server::OmniEventService;
 use crate::proto_types::{
     EventOccurrence, GetHistoricalEventsRequest, GetHistoricalEventsResponse,
-    ListRegisteredEventsRequest, ListRegisteredEventsResponse, RegisterNewEventRequest,
-    RegisterNewEventResponse, StreamEventsRequest, UnregisterEventRequest,
+    GetLatestOccurrenceRequest, ListRegisteredEventsRequest, ListRegisteredEventsResponse,
+    RegisterNewEventRequest, RegisterNewEventResponse, StreamEventsRequest, UnregisterEventRequest,
 };
 use crate::types::{EventId, ParseRegisterNewEventRequestError, ParsedRegisterNewEventRequest};
 use futures_util::StreamExt;
@@ -177,5 +177,49 @@ where
             .collect();
 
         Ok(Response::new(GetHistoricalEventsResponse { occurrences }))
+    }
+
+    async fn get_latest_occurrence(
+        &self,
+        request: Request<GetLatestOccurrenceRequest>,
+    ) -> Result<Response<EventOccurrence>, Status> {
+        let req = request.into_inner();
+
+        let event_ids = req
+            .event_uuids
+            .into_iter()
+            .map(EventId::try_from)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| {
+                tracing::debug!(error = ?e, "Failed to convert bytes to uuid");
+                Status::invalid_argument("invalid uuid")
+            })?;
+
+        let occurrence = self
+            .event_manager
+            .get_historical_event_occurrences(event_ids, req.filter)
+            .await
+            .map_err(|e| {
+                tracing::error!(error = ?e, "Failed to obtain historical event occurrences");
+                match e {
+                    EventManagerError::NotReady => {
+                        Status::internal("not ready to register new events")
+                    }
+                    EventManagerError::CreateStream(CreateStreamError::UnsupportedChain) => {
+                        Status::internal("chain not supported")
+                    }
+                    EventManagerError::Filter(_) => Status::internal("invalid filter"),
+                    _ => Status::invalid_argument("failed to get historical events"),
+                }
+            })?
+            .into_iter()
+            .max_by_key(|occ| occ.block_info.timestamp)
+            .map(Into::into);
+
+        if let Some(occurrence) = occurrence {
+            Ok(Response::new(occurrence))
+        } else {
+            Err(Status::not_found("no occurrence found"))
+        }
     }
 }
