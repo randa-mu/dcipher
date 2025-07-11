@@ -96,7 +96,7 @@ Due to a compile-time verification of SQL queries, you will need to specify a da
 ### Execute omnievent
 A test server can be started by running:
 ```bash
-> cargo run -p omnievent --example test-server --features=sqlite -- -p 8080 --database sqlite::memory:.
+> cargo run -p omnievent --example test-server --features=sqlite -- -p 8080 --database sqlite::memory:
 2025-07-11T14:19:39.744279Z  INFO test_server: anvil 1337: http://localhost:1337
 2025-07-11T14:19:39.744344Z  INFO test_server: anvil 1338: http://localhost:1338
 2025-07-11T14:19:39.744351Z  INFO test_server: funded wallet: 0x836fd4eecd5fc23eb480581cf91f638b5dacfa6ffa3a931b1f0421a5d58cfa5a
