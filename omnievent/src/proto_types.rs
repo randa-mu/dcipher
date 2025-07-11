@@ -16,6 +16,25 @@ mod events {
         }
     }
 
+    impl serde::Serialize for BlockSafety {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_str(self.as_str_name())
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for BlockSafety {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?;
+            Self::from_str_name(&s).ok_or(serde::de::Error::unknown_variant(&s, &[]))
+        }
+    }
+
     impl From<alloy::dyn_abi::DynSolValue> for event_data::Value {
         fn from(value: alloy::dyn_abi::DynSolValue) -> Self {
             match value {

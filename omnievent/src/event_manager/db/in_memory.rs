@@ -1,14 +1,14 @@
 //! Non-persistent in-memory database.
 
 use crate::event_manager::db::EventsDatabase;
-use crate::types::{EventId, EventOccurrence, RegisteredEvent};
+use crate::types::{EventId, EventOccurrence, RegisteredEventSpec};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct InMemoryDatabaseEntry {
     #[allow(unused)]
-    registered_event: RegisteredEvent,
+    registered_event: RegisteredEventSpec,
     occurrences: Vec<EventOccurrence>,
 }
 
@@ -27,7 +27,7 @@ pub(crate) enum InMemoryDatabaseError {
 impl EventsDatabase for InMemoryDatabase {
     type Error = InMemoryDatabaseError;
 
-    async fn store_event(&self, registered_event: RegisteredEvent) -> Result<(), Self::Error> {
+    async fn store_event(&self, registered_event: RegisteredEventSpec) -> Result<(), Self::Error> {
         let mut db = self.0.write().await;
         db.0.insert(
             registered_event.id,

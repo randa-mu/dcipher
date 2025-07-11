@@ -1,6 +1,6 @@
 //! Database used to store events and their occurrences.
 
-use crate::types::{EventId, EventOccurrence, RegisteredEvent};
+use crate::types::{EventId, EventOccurrence, RegisteredEventSpec};
 
 pub mod in_memory;
 
@@ -13,7 +13,7 @@ pub trait EventsDatabase {
     /// Store an event in the database.
     fn store_event(
         &self,
-        event: RegisteredEvent,
+        event: RegisteredEventSpec,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Store an event occurrence in the database.

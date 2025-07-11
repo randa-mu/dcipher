@@ -1,7 +1,7 @@
 //! Manages event streams and sends back decoded event occurrences.
 
 use crate::event_manager::DecodedEvent;
-use crate::types::{EventFieldData, EventId, RegisteredEvent};
+use crate::types::{EventFieldData, EventId, RegisteredEventSpec};
 use alloy::rpc::types::Log;
 use futures_util::StreamExt;
 use futures_util::stream::{BoxStream, SelectAll};
@@ -83,13 +83,13 @@ impl EventListener {
 pub(crate) type LogStreamWithId = BoxStream<'static, (EventId, Log)>;
 
 pub(crate) struct InternalEventStreamRegistration {
-    event: RegisteredEvent,
+    event: RegisteredEventSpec,
     stream: LogStreamWithId,
 }
 
 impl InternalEventStreamRegistration {
     /// Register a new event stream.
-    pub fn new(event: RegisteredEvent, stream: LogStreamWithId) -> Self {
+    pub fn new(event: RegisteredEventSpec, stream: LogStreamWithId) -> Self {
         Self { event, stream }
     }
 }
@@ -217,11 +217,11 @@ pub enum EventLogDecodeError {
 /// Try to decode a log with a given event specification and return the decoded fields.
 ///
 /// # Panics
-/// Panics if the provided [`RegisteredEvent`] is inconsistent, e.g., the sol_event is inconsistent
+/// Panics if the provided [`RegisteredEventSpec`] is inconsistent, e.g., the sol_event is inconsistent
 /// with the vector of fields.
 fn decode_log(
     log: &Log,
-    event: &RegisteredEvent,
+    event: &RegisteredEventSpec,
 ) -> Result<Vec<EventFieldData>, EventLogDecodeError> {
     let decoded = event.sol_event.decode_log_data(log.data()).map_err(|e| {
         tracing::error!(error = ?e, ?log, ?event, "Failed to decode log with given spec");
@@ -309,7 +309,7 @@ mod tests {
             ..Default::default()
         };
 
-        let event = RegisteredEvent::try_new(
+        let event = RegisteredEventSpec::try_new(
             EventId::new(b"RandomnessRequested -- test"),
             137,
             address,

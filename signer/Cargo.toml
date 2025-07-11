@@ -32,7 +32,7 @@ libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping",
 
 # serde
 serde = { workspace = true, features = ["derive"] }
-serde_cbor = "0.10"
+serde_cbor.workspace = true
 
 # misc
 itertools = { workspace = true }
