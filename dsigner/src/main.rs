@@ -11,6 +11,7 @@ use dcipher_agents::signer::threshold_signer::{
     AsyncThresholdSigner, ThresholdSigner, lagrange_points_interpolate_at,
 };
 use dcipher_agents::signer::{AsynchronousSigner, BN254SignatureOnG1Signer};
+use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use pairing_utils::serialize::point::PointSerializeCompressed;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -82,11 +83,12 @@ async fn sign_handler(
 fn get_signer(
     config: &Args,
     nodes_config: &NodesConfiguration,
-) -> (
+) -> anyhow::Result<(
+    Libp2pNode,
     CancellationToken,
     AsyncThresholdSigner<BN254SignatureOnG1Signer>,
     ark_bn254::G2Affine,
-) {
+)> {
     // Parse key
     let sk: ark_bn254::Fr = config.key_config.bls_key.to_owned().into();
 
@@ -134,15 +136,22 @@ fn get_signer(
     )
     .with_eager_signing();
 
-    let (cancel, async_signer) = ts.run(
+    // Create a libp2p transport and start it
+    let mut libp2p_node = Libp2pNodeConfig::new(
         config.libp2p.libp2p_key.clone().into(),
-        config.libp2p.libp2p_listen_addr.clone(),
         addresses,
         peer_ids,
         short_ids,
+    )
+    .run(config.libp2p.libp2p_listen_addr.clone())?;
+
+    let (ts_stopper, async_signer) = ts.run(
+        libp2p_node
+            .get_transport()
+            .expect("newly created node should have a transport"),
     );
 
-    (cancel, async_signer, pk)
+    Ok((libp2p_node, ts_stopper, async_signer, pk))
 }
 
 #[tokio::main]
@@ -158,7 +167,8 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Initialize and start a threshold signer
-    let (cancel, async_signer, group_pk) = get_signer(&config, &nodes_config.unwrap_or_default());
+    let (libp2p_node, ts_cancel, async_signer, group_pk) =
+        get_signer(&config, &nodes_config.unwrap_or_default())?;
 
     // Convert group pk to string
     let (x, y) = group_pk.xy().expect("pk cannot be at infinity");
@@ -216,6 +226,9 @@ async fn main() -> anyhow::Result<()> {
         },
     };
 
-    cancel.cancel();
+    if let Err(e) = libp2p_node.stop().await {
+        tracing::error!(error = ?e, "Failed to stop libp2p node");
+    }
+    ts_cancel.cancel();
     Ok(res?)
 }

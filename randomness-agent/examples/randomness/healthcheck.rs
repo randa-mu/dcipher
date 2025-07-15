@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use dcipher_agents::agents::randomness::metrics::Metrics as RandomnessMetrics;
 use dcipher_agents::signer::threshold_signer::metrics::Metrics as ThresholdSignerMetrics;
+use dcipher_network::transports::libp2p::metrics::Metrics as Libp2pMetrics;
 use prometheus::{Encoder, TextEncoder};
 use std::net::IpAddr;
 use warp::Filter;
@@ -16,6 +17,7 @@ pub async fn start_api(listen_addr: IpAddr, port: u16) -> anyhow::Result<()> {
         let metrics = [
             RandomnessMetrics::gather(),
             ThresholdSignerMetrics::gather(),
+            Libp2pMetrics::gather(),
         ]
         .concat();
         let mut buffer = Vec::new();

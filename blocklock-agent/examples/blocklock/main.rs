@@ -16,6 +16,7 @@ use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfi
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
 use dcipher_agents::signer::threshold_signer::ThresholdSigner;
+use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -66,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Create a fulfiller
-    let (ticker, ts_stopper, stopper, channel) = create_threshold_fulfiller(
+    let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
         &config,
         &nodes_config.unwrap_or_default(),
         decryption_sender_contract.clone(),
@@ -99,7 +100,6 @@ async fn main() -> anyhow::Result<()> {
 
         _ = sigint.recv() => {
             println!("received SIGINT, shutting down...");
-            ts_stopper.cancel();
             Ok(())
         },
 
@@ -120,6 +120,9 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Stop the various components
+    if let Err(e) = libp2p_node.stop().await {
+        tracing::error!(error = ?e, "Failed to stop libp2p node");
+    }
     ts_stopper.cancel();
     stopper.stop().await;
 
@@ -144,6 +147,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
+    Libp2pNode,
     CancellationToken,
     impl Stopper + 'lt_out,
     impl RequestChannel<Request = DecryptionRequest> + 'lt_out,
@@ -187,12 +191,18 @@ where
         pks,
     );
 
-    let (ts_stopper, signer) = ts.run(
+    // Create a libp2p transport and start it
+    let mut node = Libp2pNodeConfig::new(
         args.libp2p.libp2p_key.clone().into(),
-        args.libp2p.libp2p_listen_addr.clone(),
         addresses,
         peer_ids,
         short_ids,
+    )
+    .run(args.libp2p.libp2p_listen_addr.clone())?;
+
+    let (ts_stopper, signer) = ts.run(
+        node.get_transport()
+            .expect("newly created node should have a transport"),
     );
 
     // Create a transaction fulfiller
@@ -222,5 +232,5 @@ where
 
     let ticker = NotifyTicker::default();
     let (stopper, channel) = fulfiller.run(ticker.clone());
-    Ok((ticker, ts_stopper, stopper, channel))
+    Ok((ticker, node, ts_stopper, stopper, channel))
 }

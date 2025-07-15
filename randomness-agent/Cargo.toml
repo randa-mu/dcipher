@@ -42,6 +42,7 @@ tokio-util = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 
 # network
+dcipher-network = { workspace = true, features = ["libp2p", "metrics"] }
 libp2p = { workspace = true, features = ["serde"] }
 
 # serde

@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 dcipher-agents = { workspace = true, features = ["signer", "rayon"] }
+dcipher-network = { workspace = true, features = ["libp2p", "metrics"] }
 
 # crypto
 ark-bn254 = { workspace = true }
