@@ -1,5 +1,6 @@
 use crate::{PartyIdentifier, Recipient};
 
+pub mod in_memory;
 #[cfg(feature = "libp2p")]
 pub mod libp2p;
 
