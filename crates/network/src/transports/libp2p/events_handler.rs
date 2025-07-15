@@ -38,15 +38,17 @@ impl EventsHandler {
         }
     }
 
-    pub(super) async fn run(mut self) {
+    pub(super) async fn run(mut self) -> Result<(), Libp2pNodeError> {
         let cancel = self.cancellation_token.clone();
         tokio::select! {
             res = self.swarm_event_loop() => {
                 tracing::error!(result = ?res, "Swarm event loop stopped unexpectedly.");
+                res
             },
 
             _ = cancel.cancelled() => {
                 tracing::info!("Exiting swarm event loop, cause: cancellation token");
+                Ok(())
             }
         }
     }
