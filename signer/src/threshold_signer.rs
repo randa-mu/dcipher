@@ -9,6 +9,8 @@ pub use aggregation::lagrange_points_interpolate_at;
 use crate::threshold_signer::metrics::Metrics;
 use crate::{AsynchronousSigner, BlsSigner, BlsVerifier};
 use ark_ec::{AffineRepr, CurveGroup};
+use dcipher_network::{ReceivedMessage, Transport, TransportSender};
+use futures_util::{Stream, StreamExt};
 use itertools::Either;
 use lru::LruCache;
 use pairing_utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
@@ -68,6 +70,7 @@ where
     signer: BLS,
 
     // Threshold parameters
+    #[allow(unused)]
     n: u16,
     t: u16,
     id: u16,
@@ -131,26 +134,13 @@ where
     }
 
     /// Runs the threshold signer in a background task and obtain a cancellation token and a registry.
-    pub fn run(
-        self,
-        libp2p_keypair: ::libp2p::identity::Keypair,
-        libp2p_listenaddr: ::libp2p::Multiaddr,
-        libp2p_peer_addresses: Vec<::libp2p::Multiaddr>,
-        libp2p_peer_ids: Vec<::libp2p::PeerId>,
-        short_peer_ids: Vec<u16>,
-    ) -> (CancellationToken, AsyncThresholdSigner<BLS>) {
-        if libp2p_peer_addresses.len() != usize::from(self.n - 1)
-            || libp2p_peer_ids.len() != usize::from(self.n - 1)
-            || short_peer_ids.len() != usize::from(self.n - 1)
-        {
-            panic!("run requires all inputs array to be of length n - 1");
-        }
-
+    pub fn run<T>(self, mut transport: T) -> (CancellationToken, AsyncThresholdSigner<BLS>)
+    where
+        T: Transport<Identity = u16>,
+    {
         let arc_self = Arc::new(self);
         let cancellation_token = CancellationToken::new();
         let (tx_registry_to_signer, rx_signer_to_registry) = tokio::sync::mpsc::unbounded_channel();
-        let (tx_signer_to_libp2p, rx_libp2p_from_signer) = tokio::sync::mpsc::unbounded_channel();
-        let (tx_libp2p_to_signer, rx_signer_from_libp2p) = tokio::sync::mpsc::unbounded_channel();
 
         // Create a registry
         let registry = AsyncThresholdSigner {
@@ -158,34 +148,23 @@ where
             new_message_to_sign: tx_registry_to_signer.clone(),
         };
 
-        // Create a libp2p instance
-        let libp2p = LibP2PNode::new(
-            libp2p_keypair,
-            libp2p_peer_addresses,
-            libp2p_peer_ids,
-            short_peer_ids,
-        );
-
-        // Run the libp2p instance in a new task
-        libp2p
-            .run(
-                libp2p_listenaddr,
-                tx_libp2p_to_signer,
-                rx_libp2p_from_signer,
-                cancellation_token.child_token(),
-            )
-            .expect("failed to run libp2p node");
+        let partials_stream = transport
+            .receiver_stream()
+            .expect("transport should provide at least one receiver stream");
+        let tx_signer_to_network = transport
+            .sender()
+            .expect("transport should provide at least one partial sender");
 
         // Spawn task that handles signing requests from registry
         tokio::task::spawn(arc_self.clone().recv_new_messages(
             rx_signer_to_registry,
-            tx_signer_to_libp2p,
+            tx_signer_to_network,
             cancellation_token.child_token(),
         ));
 
         // Spawn task that handles messages from other nodes
         tokio::task::spawn(arc_self.clone().recv_new_signatures(
-            rx_signer_from_libp2p,
+            partials_stream,
             tx_registry_to_signer,
             cancellation_token.child_token(),
         ));
@@ -193,12 +172,14 @@ where
         (cancellation_token, registry)
     }
 
-    async fn recv_new_messages(
+    async fn recv_new_messages<T>(
         self: Arc<Self>,
         mut rx_messages: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>,
-        tx_to_libp2p: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
+        tx_to_network: T,
         cancellation_token: CancellationToken,
-    ) {
+    ) where
+        T: TransportSender<Identity = u16>,
+    {
         #[cfg(feature = "rayon")]
         use rayon::prelude::*;
 
@@ -346,19 +327,19 @@ where
 
                 // Send it to other nodes with libp2p if threshold greater than 1
                 if self.t > 1 {
-                    partials
-                        .into_iter()
-                        .zip(messages)
-                        .for_each(|(sig, message)| {
+                    futures_util::future::join_all(partials.into_iter().zip(messages).map(
+                        async |(sig, message)| {
                             let partial = PartialSignatureWithMessage { sig, m: message };
 
                             let m = serde_cbor::to_vec(&partial)
                                 .expect("serialization should always work");
                             Metrics::report_partials_sent(1);
-                            if tx_to_libp2p.send(m).is_err() {
-                                tracing::error!("Failed to send message to signer: channel closed");
+                            if let Err(e) = tx_to_network.broadcast(m).await {
+                                tracing::error!(error = ?e, "Failed to send message to signer");
                             }
-                        });
+                        },
+                    ))
+                    .await;
                 }
             }
         };
@@ -374,13 +355,18 @@ where
 
     async fn recv_new_signatures(
         self: Arc<Self>,
-        mut rx_from_libp2p: tokio::sync::mpsc::UnboundedReceiver<(u16, Vec<u8>)>,
+        mut partials_stream: impl Stream<Item = ReceivedMessage<u16>> + Unpin + Send,
         new_message_to_sign: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
         cancellation_token: CancellationToken,
     ) {
         let inner_fn = async move {
             loop {
-                let Some((party_id, partial)) = rx_from_libp2p.recv().await else {
+                let Some(ReceivedMessage {
+                    sender: party_id,
+                    content: partial,
+                    ..
+                }) = partials_stream.next().await
+                else {
                     tracing::warn!("Libp2p node has dropped sender, exiting recv loop");
                     break;
                 };
@@ -602,10 +588,11 @@ mod tests {
     use crate::BN254SignatureOnG1Signer;
     use ark_bn254::Fr;
     use ark_ff::MontFp;
+    use dcipher_network::transports::in_memory::MemoryNetwork;
     use std::time::Duration;
 
     #[tokio::test]
-    async fn libp2p_async_threshold_signer() {
+    async fn async_threshold_signer() {
         let n = 3;
         let t = 2;
         let g2 = ark_bn254::G2Affine::generator();
@@ -631,49 +618,16 @@ mod tests {
         let cs3 =
             BN254SignatureOnG1Signer::new(sk3, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
 
-        let libp2p_sk1 = ::libp2p::identity::Keypair::generate_ed25519();
-        let libp2p_sk2 = ::libp2p::identity::Keypair::generate_ed25519();
-        let libp2p_sk3 = ::libp2p::identity::Keypair::generate_ed25519();
-
-        let ts1 = ThresholdSigner::new(cs1, n, t, 1, pks.clone());
-        let ts2 = ThresholdSigner::new(cs2, n, t, 2, pks.clone());
-        let ts3 = ThresholdSigner::new(cs3, n, t, 3, pks.clone());
-
-        let addr_1: ::libp2p::Multiaddr = "/ip4/127.0.0.1/tcp/32140".parse().unwrap();
-        let addr_2: ::libp2p::Multiaddr = "/ip4/127.0.0.1/tcp/32141".parse().unwrap();
-        let addr_3: ::libp2p::Multiaddr = "/ip4/127.0.0.1/tcp/32142".parse().unwrap();
+        // Get transports
+        let mut transports = MemoryNetwork::get_transports(1..=3);
 
         // Start three threshold signers
-        let (_, ch1) = ts1.run(
-            libp2p_sk1.clone(),
-            addr_1.clone(),
-            vec![addr_2.clone(), addr_3.clone()],
-            vec![
-                libp2p_sk2.public().to_peer_id(),
-                libp2p_sk3.public().to_peer_id(),
-            ],
-            vec![2, 3],
-        );
-        let (_, ch2) = ts2.run(
-            libp2p_sk2.clone(),
-            addr_2.clone(),
-            vec![addr_1.clone(), addr_3.clone()],
-            vec![
-                libp2p_sk1.public().to_peer_id(),
-                libp2p_sk3.public().to_peer_id(),
-            ],
-            vec![1, 3],
-        );
-        let (_, ch3) = ts3.run(
-            libp2p_sk3.clone(),
-            addr_3,
-            vec![addr_1, addr_2],
-            vec![
-                libp2p_sk1.public().to_peer_id(),
-                libp2p_sk2.public().to_peer_id(),
-            ],
-            vec![1, 2],
-        );
+        let (_, ch1) =
+            ThresholdSigner::new(cs1, n, t, 1, pks.clone()).run(transports.pop_front().unwrap());
+        let (_, ch2) =
+            ThresholdSigner::new(cs2, n, t, 2, pks.clone()).run(transports.pop_front().unwrap());
+        let (_, ch3) =
+            ThresholdSigner::new(cs3, n, t, 3, pks.clone()).run(transports.pop_front().unwrap());
 
         let message = b"my test message";
         let fut_sig1 = ch1.async_sign(message.to_vec());

@@ -7,9 +7,6 @@ use pairing_utils::hash_to_curve::CustomPairingHashToCurve;
 use std::convert::Infallible;
 use std::ops::Neg;
 
-// TODO: Currently, the module relies on libp2p/tokio instead of using generic message streams.
-//  Hence, we need to gate it to the libp2p feature currently.
-#[cfg(feature = "libp2p")]
 pub mod threshold_signer;
 
 /// An asynchronous signer is used to generate a signature asynchronously.

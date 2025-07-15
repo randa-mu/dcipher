@@ -18,7 +18,7 @@ ibe = []
 # misc
 evm = ["dep:alloy"]
 fulfiller = ["signer"]
-signer = ["dep:dcipher-signer", "dcipher-signer/libp2p"]
+signer = ["dep:dcipher-signer"]
 rayon = ["dcipher-signer/rayon"]
 
 [dependencies]
