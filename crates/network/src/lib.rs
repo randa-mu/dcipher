@@ -88,6 +88,18 @@ pub trait TransportSender {
         msg: Vec<u8>,
         to: Recipient<Self::Identity>,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+
+    fn broadcast(&self, msg: Vec<u8>) -> impl Future<Output = Result<(), Self::Error>> + Send {
+        self.send(msg, Recipient::All)
+    }
+
+    fn send_single(
+        &self,
+        msg: Vec<u8>,
+        to: Self::Identity,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
+        self.send(msg, Recipient::Single(to))
+    }
 }
 
 #[cfg(test)]

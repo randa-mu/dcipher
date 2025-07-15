@@ -121,6 +121,10 @@ impl Libp2pNode {
         peer_ids: Vec<PeerId>,
         peer_short_ids: Vec<u16>,
     ) -> Self {
+        if peer_addrs.len() != peer_ids.len() || peer_addrs.len() != peer_short_ids.len() {
+            panic!("run requires all inputs array to be of equal length");
+        }
+
         let peers = FromIterator::from_iter(izip!(peer_ids, peer_addrs, peer_short_ids).map(
             |(peer_id, multiaddr, short_id)| PeerDetail::new(peer_id, short_id, vec![multiaddr]),
         ));
