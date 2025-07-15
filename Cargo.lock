@@ -1931,6 +1931,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "dcipher-network"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "itertools 0.14.0",
+ "libp2p",
+ "prometheus",
+ "serde",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "dcipher-signer"
 version = "0.1.0"
 dependencies = [

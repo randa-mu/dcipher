@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "blocklock-agent",
+    "crates/network",
     "dcipher-agents",
     "dsigner",
     "omnievent",
@@ -18,8 +19,9 @@ edition = "2024"
 [workspace.dependencies]
 # workspace crates
 dcipher-agents = { path = "./dcipher-agents" }
-superalloy = { path = "./superalloy" }
 dcipher-signer = { path = "./signer" }
+dcipher-network = { path = "./crates/network" }
+superalloy = { path = "./superalloy" }
 
 # blockchain
 alloy = { version = "1.0", default-features = false }

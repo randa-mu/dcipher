@@ -2,10 +2,14 @@
 //! peer whitelist.
 
 mod dialer;
+pub mod metrics;
+mod transport;
 
-use crate::threshold_signer::libp2p::BehaviourEvent::Ping;
-use crate::threshold_signer::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
-use crate::threshold_signer::metrics::Metrics;
+use crate::libp2p::BehaviourEvent::Ping;
+use crate::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
+use crate::libp2p::metrics::Metrics;
+use crate::libp2p::transport::Libp2pTransport;
+use crate::{ReceivedMessage, Recipient, SendMessage};
 use futures_util::StreamExt;
 use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;
@@ -21,7 +25,7 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_util::sync::CancellationToken;
 
 const LIBP2P_MAIN_TOPIC: &str = "main";
@@ -61,13 +65,13 @@ impl PeerDetail {
 
 type PeerDetails = HashMap<PeerId, PeerDetail>;
 
-pub struct LibP2PNode {
+pub struct Libp2pNode {
     key: Keypair,
     peers: PeerDetails,
     redial_interval: Duration,
 }
 
-impl LibP2PNode {
+impl Libp2pNode {
     /// Create a new libp2p node.
     pub fn new(
         key: Keypair,
@@ -89,7 +93,6 @@ impl LibP2PNode {
     }
 
     /// Set a custom redial interval
-    #[allow(unused)] // todo: remove once libp2p module is pub
     pub fn redial_interval(&mut self, redial_interval: Duration) -> &mut Self {
         self.redial_interval = redial_interval;
         self
@@ -100,10 +103,8 @@ impl LibP2PNode {
     pub fn run(
         self,
         listen_addr: Multiaddr,
-        tx_received_messages: UnboundedSender<(u16, Vec<u8>)>,
-        rx_messages_to_send: UnboundedReceiver<Vec<u8>>,
         cancellation_token: CancellationToken,
-    ) -> Result<(), Libp2pNodeError> {
+    ) -> Result<Libp2pTransport, Libp2pNodeError> {
         // Create a new swarm
         let mut swarm = Self::configure_swarm(
             self.key.clone(),
@@ -141,16 +142,20 @@ impl LibP2PNode {
         let topic = floodsub::Topic::new(LIBP2P_MAIN_TOPIC);
         let _ = swarm.behaviour_mut().floodsub.subscribe(topic);
 
+        // Create channels for sending and receiving
+        let (tx_received_message, rx_received_message) = unbounded_channel();
+        let (tx_msg_to_send, rx_msg_to_send) = unbounded_channel();
+
         // Process swarm events in a separate task
         tokio::spawn(Self::swarm_event_loop(
             swarm,
             self.peers,
-            tx_received_messages,
-            rx_messages_to_send,
+            tx_received_message,
+            rx_msg_to_send,
             cancellation_token,
         ));
 
-        Ok(())
+        Ok(Libp2pTransport::new(rx_received_message, tx_msg_to_send))
     }
 
     /// Configure a libp2p swarm by setting up the keypair, various layers and the behaviour
@@ -181,8 +186,8 @@ impl LibP2PNode {
     async fn swarm_event_loop(
         mut swarm: Swarm<Behaviour>,
         peers: PeerDetails,
-        tx_received_messages: UnboundedSender<(u16, Vec<u8>)>,
-        mut rx_messages_to_send: UnboundedReceiver<Vec<u8>>,
+        tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
+        mut rx_messages_to_send: UnboundedReceiver<SendMessage<u16>>,
         cancellation_token: CancellationToken,
     ) {
         let inner_fn = async move {
@@ -200,16 +205,30 @@ impl LibP2PNode {
                         }
                     } => {
                         match m {
+                            // No more messages
                             None => {
                                 tracing::info!("Exiting swarm event loop, cause: message sender dropped, cannot recv");
                                 return Err::<(), _>(Libp2pNodeError::SenderDropped)
                             }
-                            Some(m) => {
+
+                            // Broadcast message to send
+                            Some(SendMessage {
+                                msg,
+                                to: Recipient::All
+                            }) => {
                                 tracing::info!("Swarm broadcasting message to all connected peers");
                                 swarm
                                     .behaviour_mut()
                                     .floodsub
-                                    .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), m);
+                                    .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), msg);
+                            }
+
+                            // Point-to-Point message to send
+                            Some(SendMessage {
+                                msg: _msg,
+                                to: Recipient::Single(_recipient_short_id)
+                            }) => {
+                                unimplemented!("point-to-point not yet implemented");
                             }
                         }
                     }
@@ -234,7 +253,7 @@ impl LibP2PNode {
         event: SwarmEvent<BehaviourEvent>,
         swarm: &mut Swarm<Behaviour>,
         peers: &PeerDetails,
-        tx_received_messages: &UnboundedSender<(u16, Vec<u8>)>,
+        tx_received_messages: &UnboundedSender<ReceivedMessage<u16>>,
         ready_send_messages: &mut bool,
     ) {
         match event {
@@ -255,7 +274,7 @@ impl LibP2PNode {
 
                 tracing::debug!(incoming_peer_id = %sender_peer_id, incoming_short_id = short_id, "Libp2p node received message from peer");
                 if tx_received_messages
-                    .send((short_id, data.to_vec()))
+                    .send(ReceivedMessage::new_broadcast(short_id, data.to_vec()))
                     .is_err()
                 {
                     tracing::error!(incoming_peer_id = %sender_peer_id, incoming_short_id = short_id, "Libp2p node failed to forward message through channel: channel closed");
@@ -327,7 +346,7 @@ impl LibP2PNode {
                     format!("??@{peer_id}")
                 };
                 Metrics::report_host_rtt(rtt.as_secs_f64(), host);
-                tracing::debug!(%peer_id, ?short_id, rtt_ms = rtt.as_millis(), "Successful ping");
+                tracing::debug!(%peer_id, ?short_id, rtt_secs = rtt.as_secs_f64(), "Successful ping");
             }
 
             // Failed ping

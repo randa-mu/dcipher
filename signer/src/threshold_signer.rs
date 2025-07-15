@@ -2,12 +2,10 @@
 //! participants.
 
 mod aggregation;
-mod libp2p;
 pub mod metrics;
 
 pub use aggregation::lagrange_points_interpolate_at;
 
-use crate::threshold_signer::libp2p::LibP2PNode;
 use crate::threshold_signer::metrics::Metrics;
 use crate::{AsynchronousSigner, BlsSigner, BlsVerifier};
 use ark_ec::{AffineRepr, CurveGroup};
