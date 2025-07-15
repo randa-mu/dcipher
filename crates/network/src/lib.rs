@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
+#[cfg(feature = "transports")]
 pub mod transports;
 
 pub trait PartyIdentifier: std::fmt::Display + Clone + Debug + Eq + PartialEq {}
@@ -41,12 +42,6 @@ where
             recipient,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-struct SendMessage<I: PartyIdentifier> {
-    to: Recipient<I>,
-    msg: Vec<u8>,
 }
 
 /// A transport trait that can be used to obtain senders and incoming message streams.

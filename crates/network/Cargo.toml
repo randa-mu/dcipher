@@ -4,7 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-libp2p = ["dep:libp2p"]
+libp2p = ["transports", "dep:libp2p"]
+transports = []
 metrics = ["dep:prometheus"]
 
 [dependencies]

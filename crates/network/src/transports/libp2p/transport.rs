@@ -1,6 +1,7 @@
 //! Implementation of the transport traits for libp2p.
 
-use crate::{ReceivedMessage, Recipient, SendMessage, Transport, TransportSender};
+use crate::transports::SendMessage;
+use crate::{ReceivedMessage, Recipient, Transport, TransportSender};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -10,7 +11,7 @@ pub struct Libp2pTransport {
 }
 
 impl Libp2pTransport {
-    pub(crate) fn new(
+    pub(super) fn new(
         receive_incoming: UnboundedReceiver<ReceivedMessage<u16>>,
         send_outgoing: UnboundedSender<SendMessage<u16>>,
     ) -> Self {

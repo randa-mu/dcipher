@@ -5,11 +5,12 @@ mod dialer;
 pub mod metrics;
 mod transport;
 
+use crate::transports::SendMessage;
 use crate::transports::libp2p::BehaviourEvent::Ping;
 use crate::transports::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
 use crate::transports::libp2p::metrics::Metrics;
 use crate::transports::libp2p::transport::Libp2pTransport;
-use crate::{ReceivedMessage, Recipient, SendMessage};
+use crate::{ReceivedMessage, Recipient};
 use futures_util::StreamExt;
 use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;
