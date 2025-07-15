@@ -147,8 +147,7 @@ impl Libp2pNode {
     pub fn run(
         self,
         listen_addr: Multiaddr,
-        cancellation_token: CancellationToken,
-    ) -> Result<Libp2pTransport<u16>, Libp2pNodeError> {
+    ) -> Result<(CancellationToken, Libp2pTransport<u16>), Libp2pNodeError> {
         // Create a new swarm
         let mut swarm = Self::configure_swarm(
             self.key.clone(),
@@ -191,18 +190,22 @@ impl Libp2pNode {
         let (tx_msg_to_send, rx_msg_to_send) = unbounded_channel();
 
         // Process swarm events in a separate task
+        let cancellation_token = CancellationToken::new();
         tokio::spawn(
             EventsHandler::new(
                 swarm,
                 self.peers,
                 tx_received_message,
                 rx_msg_to_send,
-                cancellation_token,
+                cancellation_token.clone(),
             )
             .run(),
         );
 
-        Ok(Libp2pTransport::new(rx_received_message, tx_msg_to_send))
+        Ok((
+            cancellation_token,
+            Libp2pTransport::new(rx_received_message, tx_msg_to_send),
+        ))
     }
 
     /// Configure a libp2p swarm by setting up the keypair, various layers and the behaviour
