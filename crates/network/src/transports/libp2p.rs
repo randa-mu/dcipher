@@ -144,7 +144,7 @@ impl Libp2pNode {
         self,
         listen_addr: Multiaddr,
         cancellation_token: CancellationToken,
-    ) -> Result<Libp2pTransport, Libp2pNodeError> {
+    ) -> Result<Libp2pTransport<u16>, Libp2pNodeError> {
         // Create a new swarm
         let mut swarm = Self::configure_swarm(
             self.key.clone(),

@@ -1,20 +1,20 @@
 //! Implementation of the transport traits for libp2p.
 
-use crate::transports::SendMessage;
-use crate::{ReceivedMessage, Recipient, Transport, TransportSender};
+use crate::transports::{SendMessage, TransportAction};
+use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// An implementation of [`Transport`] with libp2p communications.
-pub struct Libp2pTransport {
-    receive_incoming: Option<UnboundedReceiver<ReceivedMessage<u16>>>, // multi-producer, single-consumer
-    send_outgoing: Libp2pSender,
+pub struct Libp2pTransport<I: PartyIdentifier> {
+    receive_incoming: Option<UnboundedReceiver<ReceivedMessage<I>>>, // multi-producer, single-consumer
+    send_outgoing: Libp2pSender<I>,
 }
 
-impl Libp2pTransport {
+impl<I: PartyIdentifier> Libp2pTransport<I> {
     pub(super) fn new(
-        receive_incoming: UnboundedReceiver<ReceivedMessage<u16>>,
-        send_outgoing: UnboundedSender<SendMessage<u16>>,
+        receive_incoming: UnboundedReceiver<ReceivedMessage<I>>,
+        send_outgoing: UnboundedSender<TransportAction<I>>,
     ) -> Self {
         Self {
             receive_incoming: Some(receive_incoming),
@@ -24,12 +24,15 @@ impl Libp2pTransport {
 }
 
 #[derive(Clone)]
-pub struct Libp2pSender(UnboundedSender<SendMessage<u16>>);
+pub struct Libp2pSender<I: PartyIdentifier>(UnboundedSender<TransportAction<I>>);
 
-impl Transport for Libp2pTransport {
-    type Identity = u16;
+impl<I> Transport for Libp2pTransport<I>
+where
+    I: PartyIdentifier + Send + Sync + 'static,
+{
+    type Identity = I;
     type ReceiveMessageStream = UnboundedReceiverStream<ReceivedMessage<Self::Identity>>;
-    type Sender = Libp2pSender;
+    type Sender = Libp2pSender<I>;
 
     fn sender(&mut self) -> Option<Self::Sender> {
         Some(self.send_outgoing.clone())
@@ -48,13 +51,17 @@ pub enum Libp2pSenderError {
     ChannelClosed,
 }
 
-impl TransportSender for Libp2pSender {
-    type Identity = u16;
+impl<I> TransportSender for Libp2pSender<I>
+where
+    I: PartyIdentifier + Send + Sync + 'static,
+{
+    type Identity = I;
     type Error = Libp2pSenderError;
 
     async fn send(&self, msg: Vec<u8>, to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
+        let action = TransportAction::SendMessage(SendMessage { msg, to });
         self.0
-            .send(SendMessage { msg, to })
+            .send(action)
             .map_err(|_| Libp2pSenderError::ChannelClosed)
     }
 }

@@ -1,16 +1,15 @@
-use crate::transports::SendMessage;
 use crate::transports::libp2p::dialer::PeriodicDialEvent;
 use crate::transports::libp2p::metrics::Metrics;
 use crate::transports::libp2p::{
     Behaviour, BehaviourEvent, LIBP2P_MAIN_TOPIC, Libp2pNodeError, PeerDetails,
 };
+use crate::transports::{SendMessage, TransportAction};
 use crate::{ReceivedMessage, Recipient};
 use futures_util::StreamExt;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::request_response::{Event as RequestResponseEvent, Message as RequestResponseMessage};
 use libp2p::{Swarm, floodsub, ping, swarm::SwarmEvent};
 use std::num::NonZeroU32;
-use std::time::Duration;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
@@ -18,7 +17,7 @@ pub(super) struct EventsHandler {
     swarm: Swarm<Behaviour>,
     peers: PeerDetails,
     tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
-    rx_messages_to_send: UnboundedReceiver<SendMessage<u16>>,
+    rx_messages_to_send: UnboundedReceiver<TransportAction<u16>>,
     cancellation_token: CancellationToken,
 }
 
@@ -27,7 +26,7 @@ impl EventsHandler {
         swarm: Swarm<Behaviour>,
         peers: PeerDetails,
         tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
-        rx_messages_to_send: UnboundedReceiver<SendMessage<u16>>,
+        rx_messages_to_send: UnboundedReceiver<TransportAction<u16>>,
         cancellation_token: CancellationToken,
     ) -> Self {
         Self {
@@ -67,7 +66,7 @@ impl EventsHandler {
                             return Err(Libp2pNodeError::SenderDropped)
                         }
 
-                        Some(msg) => self.send_message_to_swarm(msg),
+                        Some(TransportAction::SendMessage(msg)) => self.send_message_to_swarm(msg),
                     }
                 }
 
