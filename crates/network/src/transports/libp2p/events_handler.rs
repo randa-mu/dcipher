@@ -311,6 +311,26 @@ impl EventsHandler {
                 }
             }
 
+            RequestResponseEvent::OutboundFailure {
+                peer: sender_peer_id,
+                request_id,
+                error,
+                ..
+            } => {
+                let sender_short_id = self.peers.get(&sender_peer_id);
+                tracing::error!(%sender_peer_id, ?sender_short_id, point_to_point_request_id = ?request_id, ?error, "Point to point outbound failure");
+            }
+
+            RequestResponseEvent::InboundFailure {
+                peer: sender_peer_id,
+                request_id,
+                error,
+                ..
+            } => {
+                let sender_short_id = self.peers.get(&sender_peer_id);
+                tracing::error!(%sender_peer_id, ?sender_short_id, point_to_point_request_id = ?request_id, ?error, "Point to point inbound failure");
+            }
+
             _ => {}
         }
     }
