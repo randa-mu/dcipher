@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-#[cfg(feature = "libp2p")]
-pub mod libp2p;
+pub mod transports;
 
 pub trait PartyIdentifier: std::fmt::Display + Clone + Debug + Eq + PartialEq {}
 

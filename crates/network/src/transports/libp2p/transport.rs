@@ -1,3 +1,5 @@
+//! Implementation of the transport traits for libp2p.
+
 use crate::{ReceivedMessage, Recipient, SendMessage, Transport, TransportSender};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
