@@ -59,52 +59,56 @@ impl EventsHandler {
         let mut ready_send_messages = false;
         loop {
             tokio::select! {
-                m = async {
-                    if ready_send_messages {
-                        // Ready, listen for incoming messages
-                        self.rx_messages_to_send.recv().await
-                    } else {
-                        // Not ready, sleep for infinity until next swarm event triggers the
-                        // other branch of the tokio::select!
-                        loop { tokio::time::sleep(Duration::from_secs(600)).await; }
-                    }
-                } => {
-                    match m {
+                msg = self.rx_messages_to_send.recv(), if ready_send_messages => {
+                    match msg {
                         // No more messages
                         None => {
                             tracing::info!("Exiting swarm event loop, cause: message sender dropped, cannot recv");
                             return Err(Libp2pNodeError::SenderDropped)
                         }
 
-                        // Broadcast message to send
-                        Some(SendMessage {
-                            msg,
-                            to: Recipient::All
-                        }) => {
-                            tracing::info!("Swarm broadcasting message to all connected peers");
-                            self.swarm
-                                .behaviour_mut()
-                                .floodsub
-                                .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), msg);
-                        }
-
-                        // Point-to-Point message to send
-                        Some(SendMessage {
-                            msg,
-                            to: Recipient::Single(recipient_short_id)
-                        }) => {
-                            let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
-                                tracing::error!(recipient_short_id, "Cannot send message to peer with unknown peer id");
-                                continue;
-                            };
-
-                            let request_id = self.swarm.behaviour_mut().point_to_point.send_request(peer_id, msg);
-                            tracing::info!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
-                        }
+                        Some(msg) => self.send_message_to_swarm(msg),
                     }
                 }
 
                 event = self.swarm.select_next_some() => self.handle_swarm_event(event, &mut ready_send_messages),
+            }
+        }
+    }
+
+    fn send_message_to_swarm(&mut self, msg: SendMessage<u16>) {
+        match msg {
+            // Broadcast message to send
+            SendMessage {
+                msg,
+                to: Recipient::All,
+            } => {
+                tracing::info!("Swarm broadcasting message to all connected peers");
+                self.swarm
+                    .behaviour_mut()
+                    .floodsub
+                    .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), msg);
+            }
+
+            // Point-to-Point message to send
+            SendMessage {
+                msg,
+                to: Recipient::Single(recipient_short_id),
+            } => {
+                let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
+                    tracing::error!(
+                        recipient_short_id,
+                        "Cannot send message to peer with unknown peer id"
+                    );
+                    return;
+                };
+
+                let request_id = self
+                    .swarm
+                    .behaviour_mut()
+                    .point_to_point
+                    .send_request(peer_id, msg);
+                tracing::info!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
             }
         }
     }
