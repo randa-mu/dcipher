@@ -10,6 +10,8 @@ metrics = ["dep:prometheus"]
 
 [dependencies]
 # async
+async-trait.workspace = true
+futures.workspace = true
 futures-util.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
 tokio-stream.workspace = true
@@ -20,7 +22,7 @@ prometheus = { workspace = true, optional = true }
 tracing.workspace = true
 
 # network
-libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"], optional = true }
+libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "request-response"], optional = true }
 
 # serde
 serde = { workspace = true, features = ["derive"] }

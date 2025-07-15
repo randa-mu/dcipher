@@ -5,6 +5,7 @@ use crate::{ReceivedMessage, Recipient, Transport, TransportSender};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+/// An implementation of [`Transport`] with libp2p communications.
 pub struct Libp2pTransport {
     receive_incoming: Option<UnboundedReceiver<ReceivedMessage<u16>>>, // multi-producer, single-consumer
     send_outgoing: Libp2pSender,

@@ -3,12 +3,16 @@
 
 mod dialer;
 pub mod metrics;
+mod point_to_point;
 mod transport;
 
 use crate::transports::SendMessage;
 use crate::transports::libp2p::BehaviourEvent::Ping;
 use crate::transports::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
 use crate::transports::libp2p::metrics::Metrics;
+use crate::transports::libp2p::point_to_point::{
+    DcipherPoint2PointMessageCodec, POINT_TO_POINT_PROTOCOL,
+};
 use crate::transports::libp2p::transport::Libp2pTransport;
 use crate::{ReceivedMessage, Recipient};
 use futures_util::StreamExt;
@@ -16,11 +20,12 @@ use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::identity::Keypair;
+use libp2p::request_response::{Event as RequestResponseEvent, Message as RequestResponseMessage};
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::{
-    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, ping, swarm::SwarmEvent, tcp,
-    yamux,
+    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, ping, request_response,
+    swarm::SwarmEvent, tcp, yamux,
 };
 use std::collections::HashMap;
 use std::num::NonZeroU32;
@@ -64,7 +69,50 @@ impl PeerDetail {
     }
 }
 
-type PeerDetails = HashMap<PeerId, PeerDetail>;
+struct PeerDetails {
+    from_peer_id: HashMap<PeerId, PeerDetail>,
+    short_id_to_peer_id: HashMap<u16, PeerId>,
+}
+
+impl FromIterator<PeerDetail> for PeerDetails {
+    fn from_iter<I>(values: I) -> Self
+    where
+        I: IntoIterator<Item = PeerDetail>,
+    {
+        let from_peer_id = HashMap::from_iter(values.into_iter().map(|d| (d.peer_id, d)));
+        let short_id_to_peer_id =
+            HashMap::from_iter(from_peer_id.values().map(|d| (d.short_id, d.peer_id)));
+
+        Self {
+            from_peer_id,
+            short_id_to_peer_id,
+        }
+    }
+}
+
+impl PeerDetails {
+    fn values(&self) -> impl Iterator<Item = &PeerDetail> {
+        self.from_peer_id.values()
+    }
+
+    fn get(&self, peer_id: &PeerId) -> Option<&PeerDetail> {
+        self.from_peer_id.get(peer_id)
+    }
+
+    fn get_short_id(&self, peer_id: &PeerId) -> Option<u16> {
+        self.get(&peer_id).map(|p| p.short_id).or_else(|| {
+            tracing::error!(
+                sender_peer_id = %peer_id,
+                "Failed to convert peer_id to short_id"
+            );
+            None
+        })
+    }
+
+    fn get_peer_id(&self, short_id: &u16) -> Option<&PeerId> {
+        self.short_id_to_peer_id.get(short_id)
+    }
+}
 
 pub struct Libp2pNode {
     key: Keypair,
@@ -80,10 +128,8 @@ impl Libp2pNode {
         peer_ids: Vec<PeerId>,
         peer_short_ids: Vec<u16>,
     ) -> Self {
-        let peers = HashMap::from_iter(izip!(peer_ids, peer_addrs, peer_short_ids).map(
-            |(peer_id, multiaddr, short_id)| {
-                (peer_id, PeerDetail::new(peer_id, short_id, vec![multiaddr]))
-            },
+        let peers = FromIterator::from_iter(izip!(peer_ids, peer_addrs, peer_short_ids).map(
+            |(peer_id, multiaddr, short_id)| PeerDetail::new(peer_id, short_id, vec![multiaddr]),
         ));
 
         Self {
@@ -226,10 +272,16 @@ impl Libp2pNode {
 
                             // Point-to-Point message to send
                             Some(SendMessage {
-                                msg: _msg,
-                                to: Recipient::Single(_recipient_short_id)
+                                msg,
+                                to: Recipient::Single(recipient_short_id)
                             }) => {
-                                unimplemented!("point-to-point not yet implemented");
+                                let Some(peer_id) = peers.get_peer_id(&recipient_short_id) else {
+                                    tracing::error!(recipient_short_id, "Cannot send message to peer with unknown peer id");
+                                    continue;
+                                };
+
+                                let request_id = swarm.behaviour_mut().point_to_point.send_request(peer_id, msg);
+                                tracing::info!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
                             }
                         }
                     }
@@ -265,20 +317,62 @@ impl Libp2pNode {
                     ..
                 },
             ))) => {
-                let Some(short_id) = peers.get(&sender_peer_id).map(|p| p.short_id) else {
+                let Some(short_id) = peers.get_short_id(&sender_peer_id) else {
                     tracing::error!(
-                        incoming_peer_id = %sender_peer_id,
+                        sender_peer_id = %sender_peer_id,
                         "Libp2p node received message from an unknown peer"
                     );
                     return;
                 };
 
-                tracing::debug!(incoming_peer_id = %sender_peer_id, incoming_short_id = short_id, "Libp2p node received message from peer");
+                tracing::debug!(sender_peer_id = %sender_peer_id, sender_short_id = short_id, "Libp2p node received message from peer");
                 if tx_received_messages
                     .send(ReceivedMessage::new_broadcast(short_id, data.to_vec()))
                     .is_err()
                 {
-                    tracing::error!(incoming_peer_id = %sender_peer_id, incoming_short_id = short_id, "Libp2p node failed to forward message through channel: channel closed");
+                    tracing::error!(sender_peer_id = %sender_peer_id, sender_short_id = short_id, "Libp2p node failed to forward message through channel: channel closed");
+                }
+            }
+
+            SwarmEvent::Behaviour(BehaviourEvent::PointToPoint(
+                RequestResponseEvent::Message {
+                    peer: sender_peer_id,
+                    message:
+                        RequestResponseMessage::Request {
+                            request: msg,
+                            request_id,
+                            channel,
+                        },
+                    ..
+                },
+            )) => {
+                let Some(sender_short_id) = peers.get_short_id(&sender_peer_id) else {
+                    tracing::error!(
+                        %sender_peer_id,
+                        "Received point to point message from an unknown peer"
+                    );
+                    return;
+                };
+
+                tracing::debug!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Received point to point message from peer");
+                // Send an ack to the sender
+                if swarm
+                    .behaviour_mut()
+                    .point_to_point
+                    .send_response(channel, ())
+                    .is_ok()
+                {
+                    tracing::error!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Sent point to point response to peer");
+                } else {
+                    tracing::error!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Failed to send point to point response");
+                }
+
+                // Forward the message through channel
+                if tx_received_messages
+                    .send(ReceivedMessage::new_direct(sender_short_id, msg))
+                    .is_err()
+                {
+                    tracing::error!(%sender_peer_id, sender_short_id, "Libp2p node failed to forward message through channel: channel closed");
                 }
             }
 
@@ -286,13 +380,7 @@ impl Libp2pNode {
                 peer_id,
                 topic,
             })) => {
-                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
-                    tracing::error!(
-                        incoming_peer_id = %peer_id,
-                        "Failed to convert peer_id to short_id"
-                    );
-                    None
-                });
+                let short_id = peers.get_short_id(&peer_id);
 
                 tracing::info!(%peer_id, ?short_id, ?topic, "Peer subscribed to topic");
                 // Once we've received at least one topic subscription from a remote peer, we should
@@ -304,13 +392,7 @@ impl Libp2pNode {
                 peer_id,
                 topic,
             })) => {
-                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
-                    tracing::error!(
-                        incoming_peer_id = %peer_id,
-                        "Failed to convert peer_id to short_id"
-                    );
-                    None
-                });
+                let short_id = peers.get_short_id(&peer_id);
 
                 tracing::info!(%peer_id, ?short_id, ?topic, "Peer unsubscribed to topic");
             }
@@ -333,13 +415,7 @@ impl Libp2pNode {
                 result: Ok(rtt),
                 ..
             })) => {
-                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
-                    tracing::error!(
-                        incoming_peer_id = %peer_id,
-                        "Failed to convert peer_id to short_id"
-                    );
-                    None
-                });
+                let short_id = peers.get_short_id(&peer_id);
 
                 let host = if let Some(short_id) = short_id {
                     format!("{short_id:02}@{peer_id}")
@@ -356,27 +432,13 @@ impl Libp2pNode {
                 result: Err(e),
                 ..
             })) => {
-                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
-                    tracing::error!(
-                        incoming_peer_id = %peer_id,
-                        "Failed to convert peer_id to short_id"
-                    );
-                    None
-                });
+                let short_id = peers.get_short_id(&peer_id);
 
                 tracing::debug!(%peer_id, ?short_id, error = ?e, "Failed to ping");
             }
 
             SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                let short_id = peer_id.and_then(|peer_id| {
-                    peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
-                        tracing::error!(
-                            %peer_id,
-                            "Failed to convert peer_id to short_id"
-                        );
-                        None
-                    })
-                });
+                let short_id = peer_id.and_then(|peer_id| peers.get_short_id(&peer_id));
 
                 if let Some(peer_id) = peer_id {
                     tracing::warn!(%peer_id, ?short_id, ?error, "Outgoing connection to peer failed");
@@ -391,10 +453,10 @@ impl Libp2pNode {
                 num_established,
                 ..
             } => {
-                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
+                let short_id = peers.get_short_id(&peer_id).or_else(|| {
                     tracing::error!(
-                        incoming_peer_id = %peer_id,
-                        incoming_remote_addr = %endpoint.get_remote_address(),
+                        sender_peer_id = %peer_id,
+                        sender_remote_addr = %endpoint.get_remote_address(),
                         "Libp2p node established connection with an unknown peer"
                     );
                     None
@@ -406,9 +468,9 @@ impl Libp2pNode {
                 }
 
                 tracing::info!(
-                    incoming_peer_id = %peer_id,
-                    incoming_short_id = ?short_id,
-                    incoming_remote_addr = %endpoint.get_remote_address(),
+                    sender_peer_id = %peer_id,
+                    sender_short_id = ?short_id,
+                    sender_remote_addr = %endpoint.get_remote_address(),
                     num_established,
                     "Libp2p node established connection with peer"
                 );
@@ -421,10 +483,10 @@ impl Libp2pNode {
                 cause,
                 ..
             } => {
-                let short_id = peers.get(&peer_id).map(|p| p.short_id).or_else(|| {
+                let short_id = peers.get_short_id(&peer_id).or_else(|| {
                     tracing::error!(
-                        incoming_peer_id = %peer_id,
-                        incoming_remote_addr = %endpoint.get_remote_address(),
+                        sender_peer_id = %peer_id,
+                        sender_remote_addr = %endpoint.get_remote_address(),
                         "Libp2p node closed connection with an unknown peer"
                     );
                     None
@@ -436,9 +498,9 @@ impl Libp2pNode {
                 }
 
                 tracing::info!(
-                    incoming_peer_id = %peer_id,
-                    incoming_short_id = ?short_id,
-                    incoming_remote_addr = %endpoint.get_remote_address(),
+                    sender_peer_id = %peer_id,
+                    sender_short_id = ?short_id,
+                    sender_remote_addr = %endpoint.get_remote_address(),
                     remaining_connections = num_established,
                     ?cause,
                     "Libp2p node closed connection to peer"
@@ -460,8 +522,9 @@ impl Libp2pNode {
 /// Libp2p Behaviour with floodsub and a peer whitelist.
 #[derive(NetworkBehaviour)]
 struct Behaviour {
-    floodsub: floodsub::Floodsub,
     allowed_peers: allow_block_list::Behaviour<AllowedPeers>,
+    floodsub: floodsub::Floodsub,
+    point_to_point: request_response::Behaviour<DcipherPoint2PointMessageCodec>,
     ping: ping::Behaviour,
     periodic_dial: PeriodicDialBehaviour,
 }
@@ -484,9 +547,18 @@ impl Behaviour {
             allowed_peers
         };
 
+        let point_to_point = request_response::Behaviour::new(
+            [(
+                POINT_TO_POINT_PROTOCOL,
+                request_response::ProtocolSupport::Full,
+            )],
+            request_response::Config::default(),
+        );
+
         Self {
             allowed_peers,
             floodsub: floodsub::Floodsub::new(local_peer_id),
+            point_to_point,
             ping: ping::Behaviour::default(),
             periodic_dial: PeriodicDialBehaviour::new(redial_interval, peers),
         }

@@ -15,11 +15,27 @@ pub enum Recipient<I: PartyIdentifier> {
     Single(I),
 }
 
+/// Type of message, broadcast or direct (i.e., a point to point message).
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum MessageType {
+    Broadcast,
+    Direct,
+}
+
+impl<I: PartyIdentifier> From<Recipient<I>> for MessageType {
+    fn from(value: Recipient<I>) -> Self {
+        match value {
+            Recipient::All => MessageType::Broadcast,
+            Recipient::Single(_) => MessageType::Direct,
+        }
+    }
+}
+
 /// Message received from a sender.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReceivedMessage<I: PartyIdentifier, M = Vec<u8>> {
     pub sender: I,
-    pub recipient: Recipient<I>,
+    pub message_type: MessageType,
     pub content: M,
 }
 
@@ -31,15 +47,15 @@ where
         Self {
             content,
             sender,
-            recipient: Recipient::All,
+            message_type: MessageType::Broadcast,
         }
     }
 
-    pub fn new(sender: I, content: M, recipient: Recipient<I>) -> Self {
+    pub fn new_direct(sender: I, content: M) -> Self {
         Self {
             content,
             sender,
-            recipient,
+            message_type: MessageType::Direct,
         }
     }
 }
