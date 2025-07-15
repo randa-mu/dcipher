@@ -5,12 +5,12 @@ pub mod in_memory;
 pub mod libp2p;
 
 #[derive(Clone, Debug)]
-enum TransportAction<I: PartyIdentifier> {
+pub enum TransportAction<I: PartyIdentifier> {
     SendMessage(SendMessage<I>),
 }
 
 #[derive(Clone, Debug)]
-struct SendMessage<I: PartyIdentifier> {
-    to: Recipient<I>,
-    msg: Vec<u8>,
+pub struct SendMessage<I: PartyIdentifier> {
+    pub to: Recipient<I>,
+    pub msg: Vec<u8>,
 }
