@@ -2,36 +2,29 @@
 //! peer whitelist.
 
 mod dialer;
+mod events_handler;
 pub mod metrics;
 mod point_to_point;
 mod transport;
 
-use crate::transports::SendMessage;
-use crate::transports::libp2p::BehaviourEvent::Ping;
-use crate::transports::libp2p::dialer::{PeriodicDialBehaviour, PeriodicDialEvent};
-use crate::transports::libp2p::metrics::Metrics;
+use crate::transports::libp2p::dialer::PeriodicDialBehaviour;
+use crate::transports::libp2p::events_handler::EventsHandler;
 use crate::transports::libp2p::point_to_point::{
     DcipherPoint2PointMessageCodec, POINT_TO_POINT_PROTOCOL,
 };
 use crate::transports::libp2p::transport::Libp2pTransport;
-use crate::{ReceivedMessage, Recipient};
-use futures_util::StreamExt;
 use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;
-use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::identity::Keypair;
-use libp2p::request_response::{Event as RequestResponseEvent, Message as RequestResponseMessage};
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::{
-    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, ping, request_response,
-    swarm::SwarmEvent, tcp, yamux,
+    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, ping, request_response, tcp, yamux,
 };
 use std::collections::HashMap;
-use std::num::NonZeroU32;
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::unbounded_channel;
 use tokio_util::sync::CancellationToken;
 
 const LIBP2P_MAIN_TOPIC: &str = "main";
@@ -100,7 +93,7 @@ impl PeerDetails {
     }
 
     fn get_short_id(&self, peer_id: &PeerId) -> Option<u16> {
-        self.get(&peer_id).map(|p| p.short_id).or_else(|| {
+        self.get(peer_id).map(|p| p.short_id).or_else(|| {
             tracing::error!(
                 sender_peer_id = %peer_id,
                 "Failed to convert peer_id to short_id"
@@ -194,13 +187,16 @@ impl Libp2pNode {
         let (tx_msg_to_send, rx_msg_to_send) = unbounded_channel();
 
         // Process swarm events in a separate task
-        tokio::spawn(Self::swarm_event_loop(
-            swarm,
-            self.peers,
-            tx_received_message,
-            rx_msg_to_send,
-            cancellation_token,
-        ));
+        tokio::spawn(
+            EventsHandler::new(
+                swarm,
+                self.peers,
+                tx_received_message,
+                rx_msg_to_send,
+                cancellation_token,
+            )
+            .run(),
+        );
 
         Ok(Libp2pTransport::new(rx_received_message, tx_msg_to_send))
     }
@@ -227,295 +223,6 @@ impl Libp2pNode {
                 cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)) // stay connected to the peer even if idle
             })
             .build())
-    }
-
-    /// Main event loop handling incoming events from swarm, and incoming messages from the `rx_messages_to_send` channel.
-    async fn swarm_event_loop(
-        mut swarm: Swarm<Behaviour>,
-        peers: PeerDetails,
-        tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
-        mut rx_messages_to_send: UnboundedReceiver<SendMessage<u16>>,
-        cancellation_token: CancellationToken,
-    ) {
-        let inner_fn = async move {
-            let mut ready_send_messages = false;
-            loop {
-                tokio::select! {
-                    m = async {
-                        if ready_send_messages {
-                            // Ready, listen for incoming messages
-                            rx_messages_to_send.recv().await
-                        } else {
-                            // Not ready, sleep for infinity until next swarm event triggers the
-                            // other branch of the tokio::select!
-                            loop { tokio::time::sleep(Duration::from_secs(600)).await; }
-                        }
-                    } => {
-                        match m {
-                            // No more messages
-                            None => {
-                                tracing::info!("Exiting swarm event loop, cause: message sender dropped, cannot recv");
-                                return Err::<(), _>(Libp2pNodeError::SenderDropped)
-                            }
-
-                            // Broadcast message to send
-                            Some(SendMessage {
-                                msg,
-                                to: Recipient::All
-                            }) => {
-                                tracing::info!("Swarm broadcasting message to all connected peers");
-                                swarm
-                                    .behaviour_mut()
-                                    .floodsub
-                                    .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), msg);
-                            }
-
-                            // Point-to-Point message to send
-                            Some(SendMessage {
-                                msg,
-                                to: Recipient::Single(recipient_short_id)
-                            }) => {
-                                let Some(peer_id) = peers.get_peer_id(&recipient_short_id) else {
-                                    tracing::error!(recipient_short_id, "Cannot send message to peer with unknown peer id");
-                                    continue;
-                                };
-
-                                let request_id = swarm.behaviour_mut().point_to_point.send_request(peer_id, msg);
-                                tracing::info!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
-                            }
-                        }
-                    }
-
-                    event = swarm.select_next_some() => Self::handle_swarm_event(event, &mut swarm, &peers, &tx_received_messages, &mut ready_send_messages),
-                }
-            }
-        };
-
-        tokio::select! {
-            res = inner_fn => {
-                tracing::error!(result = ?res, "Swarm event loop stopped unexpectedly.");
-            },
-
-            _ = cancellation_token.cancelled() => {
-                tracing::info!("Exiting swarm event loop, cause: cancellation token");
-            }
-        }
-    }
-
-    fn handle_swarm_event(
-        event: SwarmEvent<BehaviourEvent>,
-        swarm: &mut Swarm<Behaviour>,
-        peers: &PeerDetails,
-        tx_received_messages: &UnboundedSender<ReceivedMessage<u16>>,
-        ready_send_messages: &mut bool,
-    ) {
-        match event {
-            SwarmEvent::Behaviour(BehaviourEvent::Floodsub(FloodsubEvent::Message(
-                FloodsubMessage {
-                    source: sender_peer_id,
-                    data,
-                    ..
-                },
-            ))) => {
-                let Some(short_id) = peers.get_short_id(&sender_peer_id) else {
-                    tracing::error!(
-                        sender_peer_id = %sender_peer_id,
-                        "Libp2p node received message from an unknown peer"
-                    );
-                    return;
-                };
-
-                tracing::debug!(sender_peer_id = %sender_peer_id, sender_short_id = short_id, "Libp2p node received message from peer");
-                if tx_received_messages
-                    .send(ReceivedMessage::new_broadcast(short_id, data.to_vec()))
-                    .is_err()
-                {
-                    tracing::error!(sender_peer_id = %sender_peer_id, sender_short_id = short_id, "Libp2p node failed to forward message through channel: channel closed");
-                }
-            }
-
-            SwarmEvent::Behaviour(BehaviourEvent::PointToPoint(
-                RequestResponseEvent::Message {
-                    peer: sender_peer_id,
-                    message:
-                        RequestResponseMessage::Request {
-                            request: msg,
-                            request_id,
-                            channel,
-                        },
-                    ..
-                },
-            )) => {
-                let Some(sender_short_id) = peers.get_short_id(&sender_peer_id) else {
-                    tracing::error!(
-                        %sender_peer_id,
-                        "Received point to point message from an unknown peer"
-                    );
-                    return;
-                };
-
-                tracing::debug!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Received point to point message from peer");
-                // Send an ack to the sender
-                if swarm
-                    .behaviour_mut()
-                    .point_to_point
-                    .send_response(channel, ())
-                    .is_ok()
-                {
-                    tracing::error!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Sent point to point response to peer");
-                } else {
-                    tracing::error!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Failed to send point to point response");
-                }
-
-                // Forward the message through channel
-                if tx_received_messages
-                    .send(ReceivedMessage::new_direct(sender_short_id, msg))
-                    .is_err()
-                {
-                    tracing::error!(%sender_peer_id, sender_short_id, "Libp2p node failed to forward message through channel: channel closed");
-                }
-            }
-
-            SwarmEvent::Behaviour(BehaviourEvent::Floodsub(FloodsubEvent::Subscribed {
-                peer_id,
-                topic,
-            })) => {
-                let short_id = peers.get_short_id(&peer_id);
-
-                tracing::info!(%peer_id, ?short_id, ?topic, "Peer subscribed to topic");
-                // Once we've received at least one topic subscription from a remote peer, we should
-                // be able to send messages.
-                *ready_send_messages = true;
-            }
-
-            SwarmEvent::Behaviour(BehaviourEvent::Floodsub(FloodsubEvent::Unsubscribed {
-                peer_id,
-                topic,
-            })) => {
-                let short_id = peers.get_short_id(&peer_id);
-
-                tracing::info!(%peer_id, ?short_id, ?topic, "Peer unsubscribed to topic");
-            }
-
-            SwarmEvent::Behaviour(BehaviourEvent::PeriodicDial(PeriodicDialEvent::MultiDial(
-                multi_dial_opts,
-            ))) => {
-                tracing::debug!(n_dials = multi_dial_opts.len(), "Obtained peers to dial");
-
-                multi_dial_opts.into_iter().for_each(|dial_opts| {
-                    if let Err(e) = swarm.dial(dial_opts) {
-                        tracing::error!(error = ?e, "Failed to dial peer");
-                    }
-                });
-            }
-
-            // Successful ping
-            SwarmEvent::Behaviour(Ping(ping::Event {
-                peer: peer_id,
-                result: Ok(rtt),
-                ..
-            })) => {
-                let short_id = peers.get_short_id(&peer_id);
-
-                let host = if let Some(short_id) = short_id {
-                    format!("{short_id:02}@{peer_id}")
-                } else {
-                    format!("??@{peer_id}")
-                };
-                Metrics::report_host_rtt(rtt.as_secs_f64(), host);
-                tracing::debug!(%peer_id, ?short_id, rtt_secs = rtt.as_secs_f64(), "Successful ping");
-            }
-
-            // Failed ping
-            SwarmEvent::Behaviour(Ping(ping::Event {
-                peer: peer_id,
-                result: Err(e),
-                ..
-            })) => {
-                let short_id = peers.get_short_id(&peer_id);
-
-                tracing::debug!(%peer_id, ?short_id, error = ?e, "Failed to ping");
-            }
-
-            SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                let short_id = peer_id.and_then(|peer_id| peers.get_short_id(&peer_id));
-
-                if let Some(peer_id) = peer_id {
-                    tracing::warn!(%peer_id, ?short_id, ?error, "Outgoing connection to peer failed");
-                } else {
-                    tracing::warn!(?error, "Outgoing connection to unknown peer failed");
-                }
-            }
-
-            SwarmEvent::ConnectionEstablished {
-                peer_id,
-                endpoint,
-                num_established,
-                ..
-            } => {
-                let short_id = peers.get_short_id(&peer_id).or_else(|| {
-                    tracing::error!(
-                        sender_peer_id = %peer_id,
-                        sender_remote_addr = %endpoint.get_remote_address(),
-                        "Libp2p node established connection with an unknown peer"
-                    );
-                    None
-                });
-
-                if num_established == const { NonZeroU32::new(1).unwrap() } {
-                    // First connection established, report new peer connected
-                    Metrics::report_peer_connected();
-                }
-
-                tracing::info!(
-                    sender_peer_id = %peer_id,
-                    sender_short_id = ?short_id,
-                    sender_remote_addr = %endpoint.get_remote_address(),
-                    num_established,
-                    "Libp2p node established connection with peer"
-                );
-            }
-
-            SwarmEvent::ConnectionClosed {
-                peer_id,
-                endpoint,
-                num_established,
-                cause,
-                ..
-            } => {
-                let short_id = peers.get_short_id(&peer_id).or_else(|| {
-                    tracing::error!(
-                        sender_peer_id = %peer_id,
-                        sender_remote_addr = %endpoint.get_remote_address(),
-                        "Libp2p node closed connection with an unknown peer"
-                    );
-                    None
-                });
-
-                if num_established == 0 {
-                    // No more connections, report disconnect
-                    Metrics::report_peer_disconnected();
-                }
-
-                tracing::info!(
-                    sender_peer_id = %peer_id,
-                    sender_short_id = ?short_id,
-                    sender_remote_addr = %endpoint.get_remote_address(),
-                    remaining_connections = num_established,
-                    ?cause,
-                    "Libp2p node closed connection to peer"
-                );
-            }
-
-            SwarmEvent::NewListenAddr { address, .. } => {
-                tracing::info!(
-                    "Local node is listening on {}",
-                    address.with_p2p(swarm.local_peer_id().to_owned()).unwrap()
-                );
-            }
-
-            _ => {}
-        }
     }
 }
 
