@@ -109,7 +109,7 @@ impl EventsHandler {
                     .behaviour_mut()
                     .point_to_point
                     .send_request(peer_id, msg);
-                tracing::info!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
+                tracing::debug!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
             }
         }
     }
@@ -301,7 +301,7 @@ impl EventsHandler {
                     .send_response(channel, ())
                     .is_ok()
                 {
-                    tracing::error!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Sent point to point response to peer");
+                    tracing::debug!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Sent point to point response to peer");
                 } else {
                     tracing::error!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Failed to send point to point response");
                 }
@@ -322,7 +322,7 @@ impl EventsHandler {
                 error,
                 ..
             } => {
-                let sender_short_id = self.peers.get(&sender_peer_id);
+                let sender_short_id = self.peers.get_short_id(&sender_peer_id);
                 tracing::error!(%sender_peer_id, ?sender_short_id, point_to_point_request_id = ?request_id, ?error, "Point to point outbound failure");
             }
 
@@ -332,7 +332,7 @@ impl EventsHandler {
                 error,
                 ..
             } => {
-                let sender_short_id = self.peers.get(&sender_peer_id);
+                let sender_short_id = self.peers.get_short_id(&sender_peer_id);
                 tracing::error!(%sender_peer_id, ?sender_short_id, point_to_point_request_id = ?request_id, ?error, "Point to point inbound failure");
             }
 
