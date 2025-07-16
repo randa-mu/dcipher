@@ -66,12 +66,15 @@ impl Transport for BusMemoryTransport<Vec<u8>> {
     fn receiver_stream(&mut self) -> Option<Self::ReceiveMessageStream> {
         Some(
             BroadcastStream::new(self.rx_channel.take()?)
-                .map(|res| {
-                    let msg = res.unwrap();
-                    match msg.recipient {
-                        Recipient::All => ReceivedMessage::new_broadcast(msg.sender, msg.m),
-                        Recipient::Single(_) => ReceivedMessage::new_direct(msg.sender, msg.m),
-                    }
+                .filter_map(|res| async move {
+                    let Ok(msg) = res else {
+                        return None;
+                    };
+                    Some(ReceivedMessage::new(
+                        msg.sender,
+                        msg.m,
+                        msg.recipient.into(),
+                    ))
                 })
                 .boxed(),
         )

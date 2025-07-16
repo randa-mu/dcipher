@@ -12,6 +12,7 @@ impl<T> PartyIdentifier for T where T: std::fmt::Display + Clone + Debug + Eq + 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Recipient<I: PartyIdentifier> {
     All,
+    AllIncludingSelf,
     Single(I),
 }
 
@@ -25,7 +26,7 @@ pub enum MessageType {
 impl<I: PartyIdentifier> From<Recipient<I>> for MessageType {
     fn from(value: Recipient<I>) -> Self {
         match value {
-            Recipient::All => MessageType::Broadcast,
+            Recipient::All | Recipient::AllIncludingSelf => MessageType::Broadcast,
             Recipient::Single(_) => MessageType::Direct,
         }
     }
@@ -43,6 +44,14 @@ impl<I, M> ReceivedMessage<I, M>
 where
     I: PartyIdentifier,
 {
+    pub fn new(sender: I, content: M, message_type: MessageType) -> Self {
+        Self {
+            sender,
+            content,
+            message_type,
+        }
+    }
+
     pub fn new_broadcast(sender: I, content: M) -> Self {
         Self {
             content,
@@ -91,6 +100,13 @@ pub trait TransportSender {
 
     fn broadcast(&self, msg: Vec<u8>) -> impl Future<Output = Result<(), Self::Error>> + Send {
         self.send(msg, Recipient::All)
+    }
+
+    fn broadcast_echo_self(
+        &self,
+        msg: Vec<u8>,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
+        self.send(msg, Recipient::AllIncludingSelf)
     }
 
     fn send_single(

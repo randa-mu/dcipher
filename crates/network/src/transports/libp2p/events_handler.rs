@@ -1,10 +1,10 @@
+use crate::ReceivedMessage;
 use crate::transports::libp2p::dialer::PeriodicDialEvent;
 use crate::transports::libp2p::metrics::Metrics;
 use crate::transports::libp2p::{
     Behaviour, BehaviourEvent, LIBP2P_MAIN_TOPIC, Libp2pNodeError, PeerDetails,
 };
-use crate::transports::{SendMessage, TransportAction};
-use crate::{ReceivedMessage, Recipient};
+use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
 use futures_util::StreamExt;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::request_response::{Event as RequestResponseEvent, Message as RequestResponseMessage};
@@ -71,7 +71,8 @@ impl EventsHandler {
                             return Err(Libp2pNodeError::SenderDropped)
                         }
 
-                        Some(TransportAction::SendMessage(msg)) => self.send_message_to_swarm(msg),
+                        Some(TransportAction::SendDirectMessage(msg)) => self.send_direct_message_to_swarm(msg),
+                        Some(TransportAction::SendBroadcastMessage(msg)) => self.send_broadcast_message_to_swarm(msg),
                     }
                 }
 
@@ -80,39 +81,43 @@ impl EventsHandler {
         }
     }
 
-    fn send_message_to_swarm(&mut self, msg: SendMessage<u16>) {
-        match msg {
-            // Broadcast message to send
-            SendMessage {
-                msg,
-                to: Recipient::All,
-            } => {
-                tracing::info!("Swarm broadcasting message to all connected peers");
-                self.swarm
-                    .behaviour_mut()
-                    .floodsub
-                    .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), msg);
-            }
+    fn send_direct_message_to_swarm(&mut self, msg: SendDirectMessage<u16>) {
+        let SendDirectMessage {
+            to: recipient_short_id,
+            msg,
+        } = msg;
 
-            // Point-to-Point message to send
-            SendMessage {
-                msg,
-                to: Recipient::Single(recipient_short_id),
-            } => {
-                let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
-                    tracing::error!(
-                        recipient_short_id,
-                        "Cannot send message to peer with unknown peer id"
-                    );
-                    return;
-                };
+        let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
+            tracing::error!(
+                recipient_short_id,
+                "Cannot send message to peer with unknown peer id"
+            );
+            return;
+        };
 
-                let request_id = self
-                    .swarm
-                    .behaviour_mut()
-                    .point_to_point
-                    .send_request(peer_id, msg);
-                tracing::debug!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
+        let request_id = self
+            .swarm
+            .behaviour_mut()
+            .point_to_point
+            .send_request(peer_id, msg);
+        tracing::debug!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
+    }
+
+    fn send_broadcast_message_to_swarm(&mut self, msg: SendBroadcastMessage) {
+        tracing::info!("Swarm broadcasting message to all connected peers");
+        self.swarm
+            .behaviour_mut()
+            .floodsub
+            .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), msg.msg.clone());
+
+        if msg.broadcast_self {
+            tracing::debug!("Sending broadcast to self");
+            if self
+                .tx_received_messages
+                .send(ReceivedMessage::new_broadcast(self.short_id, msg.msg))
+                .is_err()
+            {
+                tracing::error!("Libp2p node failed echo broadcast to self: channel closed");
             }
         }
     }
