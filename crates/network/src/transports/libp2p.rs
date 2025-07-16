@@ -303,3 +303,150 @@ impl Behaviour {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{MessageType, Transport, TransportSender};
+    use futures_util::StreamExt;
+    use std::num::NonZeroU16;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    async fn start_nodes(n: NonZeroU16, start_port: u16) -> Vec<Libp2pNode> {
+        let n = n.get();
+
+        let short_ids = (1..=n).collect::<Vec<_>>();
+        let libp2p_sks = short_ids
+            .iter()
+            .map(|_| Keypair::generate_ed25519())
+            .collect::<Vec<_>>();
+        let libp2p_peer_ids = libp2p_sks
+            .iter()
+            .map(|sk| sk.public().to_peer_id())
+            .collect::<Vec<_>>();
+
+        let libp2p_addrs = short_ids
+            .iter()
+            .map(|i| {
+                format!("/ip4/127.0.0.1/tcp/{}", start_port + i)
+                    .parse()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        short_ids
+            .iter()
+            .zip(libp2p_addrs.clone())
+            .map(|(i, listen_addr)| {
+                Libp2pNodeConfig::new(
+                    libp2p_sks[usize::from(*i) - 1].clone(),
+                    libp2p_addrs.clone(),
+                    libp2p_peer_ids.clone(),
+                    short_ids.clone(),
+                )
+                .run(listen_addr)
+                .expect("failed to start node")
+            })
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn send_receive_direct_messages() {
+        // Try to set logging options
+        let _ = tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::from("debug"))
+            .with(tracing_subscriber::fmt::layer())
+            .try_init();
+
+        let global_timeout = Duration::from_millis(2000);
+
+        let [mut node_1, mut node_2]: [Libp2pNode; 2] =
+            start_nodes(const { NonZeroU16::new(2).unwrap() }, 32200)
+                .await
+                .try_into()
+                .unwrap_or_else(|_| panic!("failed to create node"));
+
+        let mut transport_1 = node_1.get_transport().unwrap();
+        let mut transport_2 = node_2.get_transport().unwrap();
+
+        let mut rx_1 = transport_1.receiver_stream().unwrap();
+        let mut rx_2 = transport_2.receiver_stream().unwrap();
+
+        let tx_1 = transport_1.sender().unwrap();
+        let tx_2 = transport_2.sender().unwrap();
+
+        // Send one message from node 1 to node 2
+        let m = b"sent to node 2";
+        tx_1.send_single(m.to_vec(), 2)
+            .await
+            .expect("send to node 2 failed");
+        let m2 = tokio::time::timeout(global_timeout, rx_2.next())
+            .await
+            .expect("failed to obtain signature: timed out")
+            .expect("rx_2 stream closed");
+        assert_eq!(m2.sender, 1);
+        assert_eq!(m2.message_type, MessageType::Direct);
+        assert_eq!(m2.content, m.to_vec());
+
+        // Send one message from node 2 to node 1
+        let m = b"sent to node 1";
+        tx_2.send_single(m.to_vec(), 1)
+            .await
+            .expect("send to node 1 failed");
+        let m2 = tokio::time::timeout(global_timeout, rx_1.next())
+            .await
+            .expect("failed to obtain signature: timed out")
+            .expect("rx_1 stream closed");
+        assert_eq!(m2.sender, 2);
+        assert_eq!(m2.message_type, MessageType::Direct);
+        assert_eq!(m2.content, m.to_vec());
+    }
+
+    #[tokio::test]
+    async fn send_receive_broadcast_messages() {
+        // Try to set logging options
+        let _ = tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::from("debug"))
+            .with(tracing_subscriber::fmt::layer())
+            .try_init();
+
+        let global_timeout = Duration::from_millis(2000);
+
+        let [mut node_1, mut node_2, mut node_3]: [Libp2pNode; 3] =
+            start_nodes(const { NonZeroU16::new(3).unwrap() }, 32300)
+                .await
+                .try_into()
+                .unwrap_or_else(|_| panic!("failed to create node"));
+
+        let mut transport_1 = node_1.get_transport().unwrap();
+        let mut transport_2 = node_2.get_transport().unwrap();
+        let mut transport_3 = node_3.get_transport().unwrap();
+
+        let mut rx_2 = transport_2.receiver_stream().unwrap();
+        let mut rx_3 = transport_3.receiver_stream().unwrap();
+
+        let tx_1 = transport_1.sender().unwrap();
+
+        // Broadcast one message from node 1
+        let m = b"broadcast from node 1";
+        tx_1.broadcast(m.to_vec())
+            .await
+            .expect("send to node 2 failed");
+        let m2 = tokio::time::timeout(global_timeout, rx_2.next())
+            .await
+            .expect("failed to obtain signature: timed out")
+            .expect("rx_2 stream closed");
+        assert_eq!(m2.sender, 1);
+        assert_eq!(m2.message_type, MessageType::Broadcast);
+        assert_eq!(m2.content, m.to_vec());
+
+        let m3 = tokio::time::timeout(global_timeout, rx_3.next())
+            .await
+            .expect("failed to obtain signature: timed out")
+            .expect("rx_2 stream closed");
+        assert_eq!(m3.sender, 1);
+        assert_eq!(m3.message_type, MessageType::Broadcast);
+        assert_eq!(m3.content, m.to_vec());
+    }
+}

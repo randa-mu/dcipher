@@ -31,3 +31,6 @@ serde = { workspace = true, features = ["derive"] }
 # misc
 itertools.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
