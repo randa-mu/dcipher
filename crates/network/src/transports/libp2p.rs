@@ -35,6 +35,7 @@ const DEFAULT_REDIAL_INTERVAL: Duration = Duration::from_secs(2 * 60); // 2mins
 /// [`Self::run`](Libp2pNodeConfig::run).
 pub struct Libp2pNodeConfig {
     key: Keypair,
+    short_id: u16,
     peers: PeerDetails,
     redial_interval: Duration,
 }
@@ -71,6 +72,7 @@ impl Libp2pNodeConfig {
     /// Create a new libp2p node.
     pub fn new(
         key: Keypair,
+        short_id: u16,
         peer_addrs: Vec<Multiaddr>,
         peer_ids: Vec<PeerId>,
         peer_short_ids: Vec<u16>,
@@ -85,6 +87,7 @@ impl Libp2pNodeConfig {
 
         Self {
             key,
+            short_id,
             peers,
             redial_interval: DEFAULT_REDIAL_INTERVAL,
         }
@@ -144,6 +147,7 @@ impl Libp2pNodeConfig {
         let cancellation_token = CancellationToken::new();
         let events_handler_handle = tokio::spawn(
             EventsHandler::new(
+                self.short_id,
                 swarm,
                 self.peers,
                 tx_received_message,
@@ -341,6 +345,7 @@ mod tests {
             .map(|(i, listen_addr)| {
                 Libp2pNodeConfig::new(
                     libp2p_sks[usize::from(*i) - 1].clone(),
+                    *i,
                     libp2p_addrs.clone(),
                     libp2p_peer_ids.clone(),
                     short_ids.clone(),

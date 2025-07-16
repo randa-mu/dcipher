@@ -179,6 +179,7 @@ where
     // Create a libp2p transport and start it
     let mut libp2p_node = Libp2pNodeConfig::new(
         args.libp2p.libp2p_key.clone().into(),
+        args.key_config.node_id.get(),
         addresses,
         peer_ids,
         short_ids,

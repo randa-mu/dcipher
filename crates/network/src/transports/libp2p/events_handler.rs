@@ -14,6 +14,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 pub(super) struct EventsHandler {
+    short_id: u16,
     swarm: Swarm<Behaviour>,
     peers: PeerDetails,
     tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
@@ -23,6 +24,7 @@ pub(super) struct EventsHandler {
 
 impl EventsHandler {
     pub(super) fn new(
+        short_id: u16,
         swarm: Swarm<Behaviour>,
         peers: PeerDetails,
         tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
@@ -30,6 +32,7 @@ impl EventsHandler {
         cancellation_token: CancellationToken,
     ) -> Self {
         Self {
+            short_id,
             swarm,
             peers,
             tx_received_messages,
