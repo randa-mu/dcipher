@@ -311,7 +311,7 @@ impl Behaviour {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MessageType, Transport, TransportSender};
+    use crate::{MessageType, ReceivedMessage, Transport, TransportSender};
     use futures_util::StreamExt;
     use std::num::NonZeroU16;
     use tracing_subscriber::layer::SubscriberExt;
@@ -378,8 +378,8 @@ mod tests {
         let mut rx_1 = transport_1.receiver_stream().unwrap();
         let mut rx_2 = transport_2.receiver_stream().unwrap();
 
-        let tx_1 = transport_1.sender().unwrap();
-        let tx_2 = transport_2.sender().unwrap();
+        let tx_1 = Transport::sender(&mut transport_1).unwrap();
+        let tx_2 = Transport::sender(&mut transport_2).unwrap();
 
         // Send one message from node 1 to node 2
         let m = b"sent to node 2";
@@ -389,7 +389,8 @@ mod tests {
         let m2 = tokio::time::timeout(global_timeout, rx_2.next())
             .await
             .expect("failed to obtain signature: timed out")
-            .expect("rx_2 stream closed");
+            .expect("rx_2 stream closed")
+            .expect("stream return err");
         assert_eq!(m2.sender, 1);
         assert_eq!(m2.message_type, MessageType::Direct);
         assert_eq!(m2.content, m.to_vec());
@@ -402,7 +403,8 @@ mod tests {
         let m2 = tokio::time::timeout(global_timeout, rx_1.next())
             .await
             .expect("failed to obtain signature: timed out")
-            .expect("rx_1 stream closed");
+            .expect("rx_1 stream closed")
+            .expect("stream return err");
         assert_eq!(m2.sender, 2);
         assert_eq!(m2.message_type, MessageType::Direct);
         assert_eq!(m2.content, m.to_vec());
@@ -438,10 +440,11 @@ mod tests {
         tx_1.broadcast(m.to_vec())
             .await
             .expect("send to node 2 failed");
-        let m2 = tokio::time::timeout(global_timeout, rx_2.next())
+        let m2: ReceivedMessage<_, Vec<u8>> = tokio::time::timeout(global_timeout, rx_2.next())
             .await
             .expect("failed to obtain signature: timed out")
-            .expect("rx_2 stream closed");
+            .expect("rx_2 stream closed")
+            .expect("stream return err");
         assert_eq!(m2.sender, 1);
         assert_eq!(m2.message_type, MessageType::Broadcast);
         assert_eq!(m2.content, m.to_vec());
@@ -449,7 +452,8 @@ mod tests {
         let m3 = tokio::time::timeout(global_timeout, rx_3.next())
             .await
             .expect("failed to obtain signature: timed out")
-            .expect("rx_2 stream closed");
+            .expect("rx_2 stream closed")
+            .expect("stream return err");
         assert_eq!(m3.sender, 1);
         assert_eq!(m3.message_type, MessageType::Broadcast);
         assert_eq!(m3.content, m.to_vec());

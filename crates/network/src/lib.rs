@@ -71,9 +71,10 @@ where
 
 /// A transport trait that can be used to obtain senders and incoming message streams.
 pub trait Transport {
+    type Error: std::error::Error + Send + Sync + 'static;
     type Identity: PartyIdentifier + Send + Sync + 'static;
 
-    type ReceiveMessageStream: futures_util::Stream<Item = ReceivedMessage<Self::Identity>>
+    type ReceiveMessageStream: futures_util::Stream<Item = Result<ReceivedMessage<Self::Identity>, Self::Error>>
         + Send
         + Unpin
         + 'static;

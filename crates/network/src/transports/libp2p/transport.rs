@@ -2,6 +2,8 @@
 
 use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
 use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
+use futures_util::StreamExt;
+use futures_util::stream::BoxStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -30,8 +32,10 @@ impl<I> Transport for Libp2pTransport<I>
 where
     I: PartyIdentifier + Send + Sync + 'static,
 {
+    type Error = Libp2pTransportError;
     type Identity = I;
-    type ReceiveMessageStream = UnboundedReceiverStream<ReceivedMessage<Self::Identity>>;
+    type ReceiveMessageStream =
+        BoxStream<'static, Result<ReceivedMessage<Self::Identity>, Self::Error>>;
     type Sender = Libp2pSender<I>;
 
     fn sender(&mut self) -> Option<Self::Sender> {
@@ -39,14 +43,13 @@ where
     }
 
     fn receiver_stream(&mut self) -> Option<Self::ReceiveMessageStream> {
-        self.receive_incoming
-            .take()
-            .map(UnboundedReceiverStream::new)
+        let receiver = self.receive_incoming.take()?;
+        Some(UnboundedReceiverStream::new(receiver).map(Ok).boxed())
     }
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum Libp2pSenderError {
+pub enum Libp2pTransportError {
     #[error("channel closed, cannot send new messages")]
     ChannelClosed,
 }
@@ -56,7 +59,7 @@ where
     I: PartyIdentifier + Send + Sync + 'static,
 {
     type Identity = I;
-    type Error = Libp2pSenderError;
+    type Error = Libp2pTransportError;
 
     async fn send(&self, msg: Vec<u8>, to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
         let action = match to {
@@ -67,6 +70,6 @@ where
 
         self.0
             .send(action)
-            .map_err(|_| Libp2pSenderError::ChannelClosed)
+            .map_err(|_| Libp2pTransportError::ChannelClosed)
     }
 }

@@ -6,6 +6,7 @@ use futures_util::stream::BoxStream;
 use std::collections::VecDeque;
 use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 
 #[derive(thiserror::Error, Debug)]
 #[error("memory transport error")]
@@ -52,8 +53,10 @@ impl MemoryNetwork {
 }
 
 impl Transport for BusMemoryTransport<Vec<u8>> {
+    type Error = BroadcastStreamRecvError;
     type Identity = u16;
-    type ReceiveMessageStream = BoxStream<'static, ReceivedMessage<u16, Vec<u8>>>;
+    type ReceiveMessageStream =
+        BoxStream<'static, Result<ReceivedMessage<u16, Vec<u8>>, Self::Error>>;
     type Sender = BusMemorySender<Vec<u8>>;
 
     fn sender(&mut self) -> Option<Self::Sender> {
@@ -66,15 +69,8 @@ impl Transport for BusMemoryTransport<Vec<u8>> {
     fn receiver_stream(&mut self) -> Option<Self::ReceiveMessageStream> {
         Some(
             BroadcastStream::new(self.rx_channel.take()?)
-                .filter_map(|res| async move {
-                    let Ok(msg) = res else {
-                        return None;
-                    };
-                    Some(ReceivedMessage::new(
-                        msg.sender,
-                        msg.m,
-                        msg.recipient.into(),
-                    ))
+                .map(|res| {
+                    res.map(|msg| ReceivedMessage::new(msg.sender, msg.m, msg.recipient.into()))
                 })
                 .boxed(),
         )

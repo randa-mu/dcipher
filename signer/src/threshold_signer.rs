@@ -353,22 +353,30 @@ where
         }
     }
 
-    async fn recv_new_signatures(
+    async fn recv_new_signatures<E>(
         self: Arc<Self>,
-        mut partials_stream: impl Stream<Item = ReceivedMessage<u16>> + Unpin + Send,
+        mut partials_stream: impl Stream<Item = Result<ReceivedMessage<u16>, E>> + Unpin + Send,
         new_message_to_sign: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
         cancellation_token: CancellationToken,
-    ) {
+    ) where
+        E: std::error::Error + Send + Sync + 'static,
+    {
         let inner_fn = async move {
             loop {
-                let Some(ReceivedMessage {
+                let ReceivedMessage {
                     sender: party_id,
                     content: partial,
                     ..
-                }) = partials_stream.next().await
-                else {
-                    tracing::warn!("Libp2p node has dropped sender, exiting recv loop");
-                    break;
+                } = match partials_stream.next().await {
+                    Some(Ok(m)) => m,
+                    Some(Err(e)) => {
+                        tracing::error!(error = ?e, "Failed to receive message");
+                        continue; // receive next message
+                    }
+                    None => {
+                        tracing::warn!("Libp2p node has dropped sender, exiting recv loop");
+                        break; // stop the loop
+                    }
                 };
 
                 let partial: PartialSignatureWithMessage<SignatureGroup<BLS>> =
