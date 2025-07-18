@@ -24,22 +24,34 @@ struct BusMemoryMessage<M> {
     m: M,
 }
 
-struct BusMemoryTransport<M> {
+pub struct BusMemoryTransport<M = Vec<u8>> {
     id: u16,
     tx_channel: broadcast::Sender<BusMemoryMessage<M>>,
     rx_channel: Option<broadcast::Receiver<BusMemoryMessage<M>>>, // need mutex for interior mutability + Sync
 }
 
-struct BusMemorySender<M> {
+impl<M> Clone for BusMemoryTransport<M>
+where
+    M: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id,
+            tx_channel: self.tx_channel.clone(),
+            rx_channel: self.rx_channel.as_ref().map(|rx| rx.resubscribe()),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct BusMemorySender<M> {
     id: u16,
     tx_channel: broadcast::Sender<BusMemoryMessage<M>>,
 }
 
 impl MemoryNetwork {
     /// Get n individual transports
-    pub fn get_transports(
-        ids: impl IntoIterator<Item = u16>,
-    ) -> VecDeque<impl Transport<Identity = u16>> {
+    pub fn get_transports(ids: impl IntoIterator<Item = u16>) -> VecDeque<BusMemoryTransport> {
         let (tx, _) = broadcast::channel(4096);
 
         ids.into_iter()
@@ -67,10 +79,21 @@ impl Transport for BusMemoryTransport<Vec<u8>> {
     }
 
     fn receiver_stream(&mut self) -> Option<Self::ReceiveMessageStream> {
+        let id = self.id;
         Some(
             BroadcastStream::new(self.rx_channel.take()?)
-                .map(|res| {
-                    res.map(|msg| ReceivedMessage::new(msg.sender, msg.m, msg.recipient.into()))
+                .filter_map(move |res| async move {
+                    let msg = match res {
+                        Ok(msg) => msg,
+                        Err(e) => return Some(Err(e)),
+                    };
+
+                    let received = ReceivedMessage::new(msg.sender, msg.m, msg.recipient.into());
+                    match msg.recipient {
+                        Recipient::AllIncludingSelf => Some(Ok(received)), // always yield to stream
+                        Recipient::All => (msg.sender != id).then_some(Ok(received)), // ignore if broadcast sent by self
+                        Recipient::Single(i) => (i == id).then_some(Ok(received)), // only if sent directly
+                    }
                 })
                 .boxed(),
         )
