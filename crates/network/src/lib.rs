@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
+pub mod topic;
 #[cfg(feature = "transports")]
 pub mod transports;
 

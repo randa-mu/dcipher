@@ -5,7 +5,7 @@ edition.workspace = true
 
 [features]
 libp2p = ["transports", "dep:libp2p"]
-in_memory = ["transports", "tokio-stream/sync"]
+in_memory = ["transports"]
 transports = []
 metrics = ["dep:prometheus"]
 
@@ -15,7 +15,7 @@ async-trait.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
-tokio-stream.workspace = true
+tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util.workspace = true
 
 # logs / metrics
@@ -27,6 +27,7 @@ libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping",
 
 # serde
 serde = { workspace = true, features = ["derive"] }
+prost = { workspace = true, features = ["derive"] }
 
 # misc
 itertools.workspace = true

@@ -309,7 +309,7 @@ impl Behaviour {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::{MessageType, ReceivedMessage, Transport, TransportSender};
     use futures_util::StreamExt;
@@ -317,7 +317,7 @@ mod tests {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
 
-    async fn start_nodes(n: NonZeroU16, start_port: u16) -> Vec<Libp2pNode> {
+    pub(crate) async fn start_nodes(n: NonZeroU16, start_port: u16) -> Vec<Libp2pNode> {
         let n = n.get();
 
         let short_ids = (1..=n).collect::<Vec<_>>();
