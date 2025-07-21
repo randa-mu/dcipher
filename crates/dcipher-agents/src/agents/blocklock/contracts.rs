@@ -10,7 +10,7 @@ mod blocklock_sender {
         #[derive(Debug)]
         #[sol(rpc)]
         BlocklockSender,
-        "../blocklock-solidity/out/BlocklockSender.sol/BlocklockSender.json"
+        "../../blocklock-solidity/out/BlocklockSender.sol/BlocklockSender.json"
     );
 
     impl_payment_config!(BlocklockSender::getConfigReturn);

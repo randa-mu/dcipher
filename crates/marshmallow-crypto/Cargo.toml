@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [ 
+    "adkg",
+    "pairing_utils",
+    "silent-threshold-encryption",
+]
+
+# Use custom patch to fix arkworks' FieldHasher
+[patch.crates-io]
+ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}

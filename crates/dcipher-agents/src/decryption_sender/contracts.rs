@@ -6,5 +6,5 @@ sol!(
     #[derive(Debug)]
     #[sol(rpc)]
     DecryptionSender,
-    "../blocklock-solidity/out/DecryptionSender.sol/DecryptionSender.json"
+    "../../blocklock-solidity/out/DecryptionSender.sol/DecryptionSender.json"
 );

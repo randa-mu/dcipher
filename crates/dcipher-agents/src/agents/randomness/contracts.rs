@@ -10,7 +10,7 @@ mod randomness_sender {
         #[derive(Debug)]
         #[sol(rpc)]
         RandomnessSender,
-        "../randomness-solidity/out/RandomnessSender.sol/RandomnessSender.json"
+        "../../randomness-solidity/out/RandomnessSender.sol/RandomnessSender.json"
     );
 
     impl_payment_config!(RandomnessSender::getConfigReturn);

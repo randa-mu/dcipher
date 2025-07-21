@@ -4,5 +4,5 @@ alloy::sol!(
     #[derive(Debug)]
     #[sol(rpc)]
     SignatureSender,
-    "../randomness-solidity/out/SignatureSender.sol/SignatureSender.json"
+    "../../randomness-solidity/out/SignatureSender.sol/SignatureSender.json"
 );

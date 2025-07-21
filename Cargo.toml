@@ -1,15 +1,18 @@
 [workspace]
 resolver = "3"
 members = [
-    "blocklock-agent",
+    "crates/blocklock-agent",
+    "crates/dcipher-agents",
+    "crates/dsigner",
+    "crates/marshmallow-crypto/adkg",
+    "crates/marshmallow-crypto/pairing_utils",
+    "crates/marshmallow-crypto/silent-threshold-encryption",
     "crates/network",
-    "dcipher-agents",
-    "dsigner",
-    "omnievent",
-    "onlyswaps-verifier",
-    "randomness-agent",
-    "signer",
-    "superalloy"
+    "crates/omnievent",
+    "crates/onlyswaps-verifier",
+    "crates/randomness-agent",
+    "crates/signer",
+    "crates/superalloy"
 ]
 
 [workspace.package]
@@ -18,10 +21,10 @@ edition = "2024"
 
 [workspace.dependencies]
 # workspace crates
-dcipher-agents = { path = "./dcipher-agents" }
-dcipher-signer = { path = "./signer" }
+dcipher-agents = { path = "./crates/dcipher-agents" }
+dcipher-signer = { path = "./crates/signer" }
 dcipher-network = { path = "./crates/network" }
-superalloy = { path = "./superalloy" }
+superalloy = { path = "./crates/superalloy" }
 
 # blockchain
 alloy = { version = "1.0", default-features = false }
@@ -31,7 +34,7 @@ ark-bn254 = "0.4.0"
 ark-ec = "0.4.2"
 ark-ff = "0.4.2"
 ark-std = "0.4.0"
-pairing_utils = { path = "./marshmallow-crypto/pairing_utils" }
+pairing_utils = { path = "./crates/marshmallow-crypto/pairing_utils" }
 
 # hashes
 digest = "0.10"
