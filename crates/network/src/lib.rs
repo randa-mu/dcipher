@@ -80,7 +80,7 @@ pub trait Transport {
         + Unpin
         + 'static;
 
-    type Sender: TransportSender<Identity = Self::Identity> + Send + Sync + 'static;
+    type Sender: TransportSender<Identity = Self::Identity> + Clone + Send + Sync + 'static;
 
     /// Obtain a [`TransportSender`] that can be used to send messages.
     fn sender(&mut self) -> Option<Self::Sender>;

@@ -5,6 +5,7 @@ use futures_util::stream::BoxStream;
 use prost::Message;
 use std::borrow::Cow;
 use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tokio_util::sync::CancellationToken;
 
 /// A dispatcher that can be used to multiplex many topics in a single [`Transport`].
@@ -179,12 +180,13 @@ where
 impl<_TransportSender> TopicBasedTransport for TopicBasedTransportImpl<_TransportSender, Vec<u8>>
 where
     _TransportSender: TransportSender + Clone + Send + Sync + 'static,
-    TransportImpl<_TransportSender, _TransportSender::Error, Vec<u8>>:
+    TransportImpl<_TransportSender, BroadcastStreamRecvError, Vec<u8>>:
         Transport<Identity = _TransportSender::Identity>,
 {
+    type Transport = TransportImpl<_TransportSender, BroadcastStreamRecvError, Vec<u8>>;
     type Identity = _TransportSender::Identity;
 
-    fn get_transport_for<T>(&self, topic: T) -> Option<impl Transport<Identity = Self::Identity>>
+    fn get_transport_for<T>(&self, topic: T) -> Option<Self::Transport>
     where
         T: Topic,
     {
@@ -206,7 +208,7 @@ where
             .boxed();
 
         Some(TransportImpl {
-            receiver: receiver_stream.into(),
+            receiver: Some(receiver_stream),
             transport_sender: TransportSenderImpl {
                 transport_sender,
                 topic: topic_cloned,
