@@ -17,3 +17,16 @@ pub trait TopicBasedTransport: Clone {
     where
         T: Topic;
 }
+
+/// Blanket implementation for arc'ed topic based transport
+impl<TBT: TopicBasedTransport> TopicBasedTransport for std::sync::Arc<TBT> {
+    type Transport = TBT::Transport;
+    type Identity = TBT::Identity;
+
+    fn get_transport_for<T>(&self, topic: T) -> Option<Self::Transport>
+    where
+        T: Topic,
+    {
+        self.as_ref().get_transport_for(topic)
+    }
+}

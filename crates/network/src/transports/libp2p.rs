@@ -5,8 +5,9 @@ mod dialer;
 mod events_handler;
 pub mod metrics;
 mod point_to_point;
-mod transport;
+pub mod transport;
 
+use crate::PartyIdentifier;
 use crate::transports::libp2p::dialer::PeriodicDialBehaviour;
 use crate::transports::libp2p::events_handler::EventsHandler;
 use crate::transports::libp2p::point_to_point::{
@@ -33,17 +34,20 @@ const DEFAULT_REDIAL_INTERVAL: Duration = Duration::from_secs(2 * 60); // 2mins
 
 /// Holds configuration parameters and obtain a [`Libp2pNode`] by running
 /// [`Self::run`](Libp2pNodeConfig::run).
-pub struct Libp2pNodeConfig {
+pub struct Libp2pNodeConfig<ID> {
     key: Keypair,
-    short_id: u16,
-    peers: PeerDetails,
+    short_id: ID,
+    peers: PeerDetails<ID>,
     redial_interval: Duration,
 }
 
 /// A libp2p node actively running in a background task.
-pub struct Libp2pNode {
+pub struct Libp2pNode<ID>
+where
+    ID: PartyIdentifier,
+{
     events_handler_handle: JoinHandle<Result<(), Libp2pNodeError>>,
-    transport: Option<Libp2pTransport<u16>>,
+    transport: Option<Libp2pTransport<ID>>,
     cancel: CancellationToken,
 }
 
@@ -68,14 +72,14 @@ pub enum Libp2pNodeError {
     Join(#[from] tokio::task::JoinError),
 }
 
-impl Libp2pNodeConfig {
+impl<ID: PartyIdentifier> Libp2pNodeConfig<ID> {
     /// Create a new libp2p node.
     pub fn new(
         key: Keypair,
-        short_id: u16,
+        short_id: ID,
         peer_addrs: Vec<Multiaddr>,
         peer_ids: Vec<PeerId>,
-        peer_short_ids: Vec<u16>,
+        peer_short_ids: Vec<ID>,
     ) -> Self {
         if peer_addrs.len() != peer_ids.len() || peer_addrs.len() != peer_short_ids.len() {
             panic!("run requires all inputs array to be of equal length");
@@ -101,7 +105,7 @@ impl Libp2pNodeConfig {
 
     /// Runs a new libp2p node that listens on `listen_addr`, forwards messages from the swarm to `tx_received_messages`,
     /// and broadcasts messages from `rx_messages_to_send` to the swarm.
-    pub fn run(self, listen_addr: Multiaddr) -> Result<Libp2pNode, Libp2pNodeError> {
+    pub fn run(self, listen_addr: Multiaddr) -> Result<Libp2pNode<ID>, Libp2pNodeError> {
         // Create a new swarm
         let mut swarm = configure_swarm(
             self.key.clone(),
@@ -131,7 +135,7 @@ impl Libp2pNodeConfig {
                 .condition(PeerCondition::Always)
                 .build();
             if let Err(e) = swarm.dial(dial_opts) {
-                tracing::error!(error = ?e, peer_id = %p.peer_id, short_id = p.short_id, multiaddrs = ?p.multiaddrs, "Failed to dial peer at given multiaddresses")
+                tracing::error!(error = ?e, peer_id = %p.peer_id, short_id = ?p.short_id, multiaddrs = ?p.multiaddrs, "Failed to dial peer at given multiaddresses")
             }
         });
 
@@ -165,8 +169,8 @@ impl Libp2pNodeConfig {
     }
 }
 
-impl Libp2pNode {
-    pub fn get_transport(&mut self) -> Option<Libp2pTransport<u16>> {
+impl<ID: PartyIdentifier> Libp2pNode<ID> {
+    pub fn get_transport(&mut self) -> Option<Libp2pTransport<ID>> {
         self.transport.take()
     }
 
@@ -177,11 +181,11 @@ impl Libp2pNode {
 }
 
 /// Configure a libp2p swarm by setting up the keypair, various layers and the behaviour
-fn configure_swarm(
+fn configure_swarm<ID: PartyIdentifier>(
     keypair: Keypair,
-    peers: impl IntoIterator<Item = PeerDetail>,
+    peers: impl IntoIterator<Item = PeerDetail<ID>>,
     redial_interval: Duration,
-) -> Result<Swarm<Behaviour>, Libp2pNodeError> {
+) -> Result<Swarm<Behaviour<ID>>, Libp2pNodeError> {
     let peer_id = keypair.public().to_peer_id();
     Ok(libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
@@ -201,14 +205,14 @@ fn configure_swarm(
 }
 
 #[derive(Clone, Debug)]
-struct PeerDetail {
-    short_id: u16,
+struct PeerDetail<ID> {
+    short_id: ID,
     peer_id: PeerId,
     multiaddrs: Vec<Multiaddr>,
 }
 
-impl PeerDetail {
-    fn new(peer_id: PeerId, short_id: u16, multiaddrs: Vec<Multiaddr>) -> Self {
+impl<ID> PeerDetail<ID> {
+    fn new(peer_id: PeerId, short_id: ID, multiaddrs: Vec<Multiaddr>) -> Self {
         Self {
             short_id,
             peer_id,
@@ -217,15 +221,15 @@ impl PeerDetail {
     }
 }
 
-struct PeerDetails {
-    from_peer_id: HashMap<PeerId, PeerDetail>,
-    short_id_to_peer_id: HashMap<u16, PeerId>,
+struct PeerDetails<ID> {
+    from_peer_id: HashMap<PeerId, PeerDetail<ID>>,
+    short_id_to_peer_id: HashMap<ID, PeerId>,
 }
 
-impl FromIterator<PeerDetail> for PeerDetails {
+impl<ID: PartyIdentifier> FromIterator<PeerDetail<ID>> for PeerDetails<ID> {
     fn from_iter<I>(values: I) -> Self
     where
-        I: IntoIterator<Item = PeerDetail>,
+        I: IntoIterator<Item = PeerDetail<ID>>,
     {
         let from_peer_id = HashMap::from_iter(values.into_iter().map(|d| (d.peer_id, d)));
         let short_id_to_peer_id =
@@ -238,16 +242,16 @@ impl FromIterator<PeerDetail> for PeerDetails {
     }
 }
 
-impl PeerDetails {
-    fn values(&self) -> impl Iterator<Item = &PeerDetail> {
+impl<ID: PartyIdentifier> PeerDetails<ID> {
+    fn values(&self) -> impl Iterator<Item = &PeerDetail<ID>> {
         self.from_peer_id.values()
     }
 
-    fn get(&self, peer_id: &PeerId) -> Option<&PeerDetail> {
+    fn get(&self, peer_id: &PeerId) -> Option<&PeerDetail<ID>> {
         self.from_peer_id.get(peer_id)
     }
 
-    fn get_short_id(&self, peer_id: &PeerId) -> Option<u16> {
+    fn get_short_id(&self, peer_id: &PeerId) -> Option<ID> {
         self.get(peer_id).map(|p| p.short_id).or_else(|| {
             tracing::error!(
                 sender_peer_id = %peer_id,
@@ -257,28 +261,27 @@ impl PeerDetails {
         })
     }
 
-    fn get_peer_id(&self, short_id: &u16) -> Option<&PeerId> {
+    fn get_peer_id(&self, short_id: &ID) -> Option<&PeerId> {
         self.short_id_to_peer_id.get(short_id)
     }
 }
 
 /// Libp2p Behaviour with floodsub and a peer whitelist.
 #[derive(NetworkBehaviour)]
-struct Behaviour {
+struct Behaviour<ID> {
     allowed_peers: allow_block_list::Behaviour<AllowedPeers>,
     floodsub: floodsub::Floodsub,
     point_to_point: request_response::Behaviour<DcipherPoint2PointMessageCodec>,
     ping: ping::Behaviour,
-    periodic_dial: PeriodicDialBehaviour,
+    periodic_dial: PeriodicDialBehaviour<ID>,
 }
 
-impl Behaviour {
+impl<ID: PartyIdentifier> Behaviour<ID> {
     /// Create a new behaviour
-    fn new(
-        local_peer_id: PeerId,
-        peers: impl IntoIterator<Item = PeerDetail>,
-        redial_interval: Duration,
-    ) -> Self {
+    fn new<I>(local_peer_id: PeerId, peers: I, redial_interval: Duration) -> Self
+    where
+        I: IntoIterator<Item = PeerDetail<ID>>,
+    {
         let peers = peers.into_iter().collect::<Vec<_>>();
 
         // Build a list of allowed peers
@@ -313,14 +316,15 @@ pub(crate) mod tests {
     use super::*;
     use crate::{MessageType, ReceivedMessage, Transport, TransportSender};
     use futures_util::StreamExt;
-    use std::num::NonZeroU16;
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
 
-    pub(crate) async fn start_nodes(n: NonZeroU16, start_port: u16) -> Vec<Libp2pNode> {
-        let n = n.get();
+    pub(crate) async fn start_nodes<ID: PartyIdentifier>(
+        short_ids: &[ID],
+        start_port: u16,
+    ) -> Vec<Libp2pNode<ID>> {
+        let n = short_ids.len().try_into().expect("too many peers");
 
-        let short_ids = (1..=n).collect::<Vec<_>>();
         let libp2p_sks = short_ids
             .iter()
             .map(|_| Keypair::generate_ed25519())
@@ -330,8 +334,7 @@ pub(crate) mod tests {
             .map(|sk| sk.public().to_peer_id())
             .collect::<Vec<_>>();
 
-        let libp2p_addrs = short_ids
-            .iter()
+        let libp2p_addrs = (0..n)
             .map(|i| {
                 format!("/ip4/127.0.0.1/tcp/{}", start_port + i)
                     .parse()
@@ -339,18 +342,16 @@ pub(crate) mod tests {
             })
             .collect::<Vec<_>>();
 
-        short_ids
-            .iter()
-            .zip(libp2p_addrs.clone())
-            .map(|(i, listen_addr)| {
+        izip!(short_ids.iter(), libp2p_addrs.iter(), libp2p_sks)
+            .map(|(i, listen_addr, libp2p_sk)| {
                 Libp2pNodeConfig::new(
-                    libp2p_sks[usize::from(*i) - 1].clone(),
+                    libp2p_sk,
                     *i,
                     libp2p_addrs.clone(),
                     libp2p_peer_ids.clone(),
-                    short_ids.clone(),
+                    short_ids.to_vec(),
                 )
-                .run(listen_addr)
+                .run(listen_addr.to_owned())
                 .expect("failed to start node")
             })
             .collect()
@@ -366,11 +367,10 @@ pub(crate) mod tests {
 
         let global_timeout = Duration::from_millis(2000);
 
-        let [mut node_1, mut node_2]: [Libp2pNode; 2] =
-            start_nodes(const { NonZeroU16::new(2).unwrap() }, 32200)
-                .await
-                .try_into()
-                .unwrap_or_else(|_| panic!("failed to create node"));
+        let [mut node_1, mut node_2]: [Libp2pNode<_>; 2] = start_nodes(&[1u16, 2], 32200)
+            .await
+            .try_into()
+            .unwrap_or_else(|_| panic!("failed to create node"));
 
         let mut transport_1 = node_1.get_transport().unwrap();
         let mut transport_2 = node_2.get_transport().unwrap();
@@ -420,8 +420,8 @@ pub(crate) mod tests {
 
         let global_timeout = Duration::from_millis(2000);
 
-        let [mut node_1, mut node_2, mut node_3]: [Libp2pNode; 3] =
-            start_nodes(const { NonZeroU16::new(3).unwrap() }, 32300)
+        let [mut node_1, mut node_2, mut node_3]: [Libp2pNode<_>; 3] =
+            start_nodes(&[1, 2, 3], 32300)
                 .await
                 .try_into()
                 .unwrap_or_else(|_| panic!("failed to create node"));

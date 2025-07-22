@@ -1,6 +1,6 @@
 //! In memory transport that is primarily designed for use in tests.
 
-use crate::{ReceivedMessage, Recipient, Transport, TransportSender};
+use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
 use std::collections::VecDeque;
@@ -18,20 +18,21 @@ pub enum MemoryTransportError {
 pub struct MemoryNetwork;
 
 #[derive(Clone, Debug)]
-struct BusMemoryMessage<M> {
-    sender: u16,
-    recipient: Recipient<u16>,
+struct BusMemoryMessage<ID: PartyIdentifier, M> {
+    sender: ID,
+    recipient: Recipient<ID>,
     m: M,
 }
 
-pub struct BusMemoryTransport<M = Vec<u8>> {
-    id: u16,
-    tx_channel: broadcast::Sender<BusMemoryMessage<M>>,
-    rx_channel: Option<broadcast::Receiver<BusMemoryMessage<M>>>, // need mutex for interior mutability + Sync
+pub struct BusMemoryTransport<ID: PartyIdentifier, M = Vec<u8>> {
+    id: ID,
+    tx_channel: broadcast::Sender<BusMemoryMessage<ID, M>>,
+    rx_channel: Option<broadcast::Receiver<BusMemoryMessage<ID, M>>>,
 }
 
-impl<M> Clone for BusMemoryTransport<M>
+impl<ID, M> Clone for BusMemoryTransport<ID, M>
 where
+    ID: PartyIdentifier,
     M: Clone,
 {
     fn clone(&self) -> Self {
@@ -44,14 +45,16 @@ where
 }
 
 #[derive(Clone)]
-pub struct BusMemorySender<M> {
-    id: u16,
-    tx_channel: broadcast::Sender<BusMemoryMessage<M>>,
+pub struct BusMemorySender<ID: PartyIdentifier, M> {
+    id: ID,
+    tx_channel: broadcast::Sender<BusMemoryMessage<ID, M>>,
 }
 
 impl MemoryNetwork {
     /// Get n individual transports
-    pub fn get_transports(ids: impl IntoIterator<Item = u16>) -> VecDeque<BusMemoryTransport> {
+    pub fn get_transports<ID: PartyIdentifier>(
+        ids: impl IntoIterator<Item = ID>,
+    ) -> VecDeque<BusMemoryTransport<ID>> {
         let (tx, _) = broadcast::channel(4096);
 
         ids.into_iter()
@@ -64,12 +67,12 @@ impl MemoryNetwork {
     }
 }
 
-impl Transport for BusMemoryTransport<Vec<u8>> {
+impl<ID: PartyIdentifier> Transport for BusMemoryTransport<ID, Vec<u8>> {
     type Error = BroadcastStreamRecvError;
-    type Identity = u16;
+    type Identity = ID;
     type ReceiveMessageStream =
-        BoxStream<'static, Result<ReceivedMessage<u16, Vec<u8>>, Self::Error>>;
-    type Sender = BusMemorySender<Vec<u8>>;
+        BoxStream<'static, Result<ReceivedMessage<ID, Vec<u8>>, Self::Error>>;
+    type Sender = BusMemorySender<ID, Vec<u8>>;
 
     fn sender(&mut self) -> Option<Self::Sender> {
         Some(BusMemorySender {
@@ -100,8 +103,8 @@ impl Transport for BusMemoryTransport<Vec<u8>> {
     }
 }
 
-impl TransportSender for BusMemorySender<Vec<u8>> {
-    type Identity = u16;
+impl<ID: PartyIdentifier> TransportSender for BusMemorySender<ID, Vec<u8>> {
+    type Identity = ID;
     type Error = MemoryTransportError;
 
     async fn send(&self, msg: Vec<u8>, to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
