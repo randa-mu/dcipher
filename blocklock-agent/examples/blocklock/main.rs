@@ -147,7 +147,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
-    Libp2pNode,
+    Libp2pNode<u16>,
     CancellationToken,
     impl Stopper + 'lt_out,
     impl RequestChannel<Request = DecryptionRequest> + 'lt_out,

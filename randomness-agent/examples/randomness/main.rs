@@ -131,7 +131,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     randomness_sender_contract: RandomnessSender::RandomnessSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
-    Libp2pNode,
+    Libp2pNode<u16>,
     CancellationToken,
     impl Stopper + 'lt_out,
     impl RequestChannel<Request = SignatureRequest> + 'lt_out,
