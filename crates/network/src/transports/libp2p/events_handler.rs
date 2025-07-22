@@ -87,20 +87,31 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
             msg,
         } = msg;
 
-        let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
-            tracing::error!(
-                ?recipient_short_id,
-                "Cannot send message to peer with unknown peer id"
-            );
-            return;
-        };
+        if recipient_short_id == self.short_id {
+            tracing::debug!("Forwarding direct message to self");
+            if self
+                .tx_received_messages
+                .send(ReceivedMessage::new_direct(self.short_id, msg))
+                .is_err()
+            {
+                tracing::error!("Libp2p node failed to forward to self: channel closed");
+            }
+        } else {
+            let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
+                tracing::error!(
+                    ?recipient_short_id,
+                    "Cannot send message to peer with unknown peer id"
+                );
+                return;
+            };
 
-        let request_id = self
-            .swarm
-            .behaviour_mut()
-            .point_to_point
-            .send_request(peer_id, msg);
-        tracing::debug!(point_to_point_request_id = ?request_id, %peer_id, ?recipient_short_id, "Sent point to point message to peer");
+            let request_id = self
+                .swarm
+                .behaviour_mut()
+                .point_to_point
+                .send_request(peer_id, msg);
+            tracing::debug!(point_to_point_request_id = ?request_id, %peer_id, ?recipient_short_id, "Sent point to point message to peer");
+        }
     }
 
     fn send_broadcast_message_to_swarm(&mut self, msg: SendBroadcastMessage) {
