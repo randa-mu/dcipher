@@ -1,4 +1,4 @@
-name: push-blocklock-agent-docker
+name: push-blocklock-weft-docker
 on:
   push:
     branches:
@@ -35,7 +35,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs
+          images: ${{ env.DOCKER_REGISTRY }}/blocklock-weft-rs
           labels: |
             maintainer=${{ env.IMAGE_MAINTAINER }}
             org.opencontainers.image.title=blocklock-agent-rs
@@ -71,8 +71,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
-          file: ./blocklock-agent/Dockerfile
+          file: ./blocklock-weft/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:${{ steps.meta.outputs.version }}
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:main-latest
-          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:${{ steps.meta.outputs.version }},mode=max
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-weft-rs-cache:${{ steps.meta.outputs.version }},mode=max

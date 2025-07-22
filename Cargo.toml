@@ -1,8 +1,11 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/blocklock-agent",
-    "crates/dcipher-agents",
+    "crates/blocklock-weft",
+    "crates/blocklock-warp",
+    "crates/enc-core",
+    "crates/payment-warp",
+    "crates/randomness-warp",
     "crates/dsigner",
     "crates/marshmallow-crypto/adkg",
     "crates/marshmallow-crypto/pairing_utils",
@@ -10,7 +13,7 @@ members = [
     "crates/network",
     "crates/omnievent",
     "crates/onlyswaps-verifier",
-    "crates/randomness-agent",
+    "crates/randomness-weft",
     "crates/signer",
     "crates/superalloy"
 ]
@@ -21,7 +24,10 @@ edition = "2024"
 
 [workspace.dependencies]
 # workspace crates
-dcipher-agents = { path = "./crates/dcipher-agents" }
+enc-core = { path = "./crates/enc-core" }
+payment-warp = { path = "./crates/payment-warp" }
+randomness-warp = { path = "./crates/randomness-warp" }
+blocklock-warp = { path = "./crates/blocklock-warp" }
 dcipher-signer = { path = "./crates/signer" }
 dcipher-network = { path = "./crates/network" }
 superalloy = { path = "./crates/superalloy" }

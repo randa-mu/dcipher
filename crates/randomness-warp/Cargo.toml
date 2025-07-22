@@ -1,0 +1,27 @@
+[package]
+name = "randomness-warp"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+
+[dependencies]
+# workspace crates
+enc-core = { path = "../enc-core", features = ["signature_sender", "fulfiller"] }
+payment-warp = { path = "../payment-warp" }
+alloy = { workspace = true, features = ["default", "provider-ws"] }
+
+# async
+futures-util = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+
+# logs / metrics
+prometheus = { workspace = true }
+tracing = { workspace = true }
+
+# misc
+thiserror = { workspace = true }
+
+[dev-dependencies]
+alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
