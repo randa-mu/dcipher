@@ -3,6 +3,7 @@
 
 use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
+use contracts_core::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
 use alloy::primitives::Bytes;
 use std::borrow::Cow;
 use crate::DecryptionRequest;

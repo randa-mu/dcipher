@@ -1458,6 +1458,7 @@ dependencies = [
  "ark-ec",
  "ark-ff 0.4.2",
  "ark-std 0.4.0",
+ "contracts-core",
  "digest 0.10.7",
  "fulfiller-core",
  "futures-util",
@@ -4713,6 +4714,7 @@ name = "payment-warp"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "contracts-core",
  "fulfiller-core",
  "futures-util",
  "prometheus",

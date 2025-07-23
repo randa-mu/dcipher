@@ -3,12 +3,7 @@
 // pub use blocklock_sender::*;
 #[cfg(feature = "blocklock")]
 pub mod blocklock {
-    use super::*;
-    // use crate::blocklock_sender::BlocklockSender::{TypesLib, BLS};
-    use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
-    use alloy::sol_types::SolType;
-
-   mod blocklock_sender {
+   pub mod blocklock_sender {
        use crate::{impl_payment_config, impl_payment_contract};
        use crate::payment::{PaymentConfig, PaymentContract, DefaultRequestDetails};
 

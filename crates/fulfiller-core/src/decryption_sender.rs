@@ -4,6 +4,11 @@ pub mod async_signer;
 pub mod single_call_fulfiller;
 pub mod single_party_signer;
 
+// Re-export contracts from contracts_core
+pub mod contracts {
+    pub use contracts_core::blocklock::decryption_sender::DecryptionSender;
+}
+
 use crate::decryption_sender::async_signer::DecryptionSenderAsyncSigner;
 use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::RetryStrategy;

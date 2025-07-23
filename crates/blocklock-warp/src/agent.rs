@@ -8,7 +8,8 @@ use crate::condition_resolver::{
 };
 use crate::metrics::Metrics;
 use fulfiller_core::decryption_sender::DecryptionRequest;
-use fulfiller_core::decryption_sender::contracts::{DecryptionSender, TypesLib};
+use fulfiller_core::decryption_sender::contracts::DecryptionSender;
+use contracts_core::blocklock::blocklock::decryption_sender::TypesLib;
 use fulfiller_core::fulfiller::RequestChannel;
 use alloy::network::Ethereum;
 use alloy::primitives::U256;

@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use crate::fulfiller::TransactionFulfiller;
 use crate::decryption_sender::SignedDecryptionRequest;
+use crate::decryption_sender::contracts::DecryptionSender;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SingleCallTxFullfillerError {

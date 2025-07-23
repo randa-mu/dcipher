@@ -1,8 +1,8 @@
 //! Concrete implementation of a [`AsynchronousSigner`] for the single-party setting where
 //! signatures and decryption keys are issued immediately.
 
-use contracts_core::blocklock::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::ibe_helper::{IbeCiphertext, PairingIbeSigner};
+use crate::{DecryptionRequest, SignedDecryptionRequest};
+use contracts_core::ibe_helper::{IbeCiphertext, PairingIbeSigner};
 use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;

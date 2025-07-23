@@ -18,6 +18,11 @@ pub mod signer {
     pub use dcipher_signer::*;
 }
 
+// Re-export contracts from contracts-core
+pub mod contracts {
+    pub use contracts_core::blocklock::blocklock::blocklock_sender::BlocklockSender;
+}
+
 // Re-exports
 #[cfg(feature = "decryption_sender")]
 pub use decryption_sender::*;

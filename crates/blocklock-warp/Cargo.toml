@@ -8,6 +8,7 @@ default = []
 
 [dependencies]
 # workspace crates
+contracts-core = { path = "../contracts-core", features = ["blocklock"] }
 fulfiller-core = { path = "../fulfiller-core", features = ["decryption_sender", "fulfiller", "blocklock"] }
 payment-warp = { path = "../payment-warp" }
 alloy = { workspace = true, features = ["default", "provider-ws"] }
