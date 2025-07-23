@@ -1,12 +1,12 @@
 //! [`AsynchronousSigner`] for decryption requests. Unlike [`AsyncThresholdSigner`](crate::signer::threshold_signer::AsyncThresholdSigner),
 //! this signer allows to sign identical conditions as is often the case with the decryption sender contract.
 
-use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
-use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
 use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
 use std::borrow::Cow;
+use crate::DecryptionRequest;
+use crate::SignedDecryptionRequest;
 
 pub struct DecryptionSenderAsyncSigner<CS, AsyncSigner> {
     cs: CS,
@@ -80,8 +80,8 @@ where
 #[cfg(feature = "blocklock")] // need blocklock types for ibe
 pub(crate) mod tests {
     use super::*;
-    use crate::decryption_sender::DecryptionRequest;
-    use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
+    use contracts_core::decryption_sender::DecryptionRequest;
+    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
     use crate::ser::EvmSerialize;
     // use crate::ser::tests::bn254::encode_ciphertext;
     use crate::signer::{AsynchronousSigner, BlsSigner};

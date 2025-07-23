@@ -60,7 +60,7 @@ jobs:
         working-directory: ./blocklock-solidity
         run: npm ci
 
-      - name: blocklock-solidity - Build Solidity contracts
+      - name: blocklock-solidity - Build Solidity contracts-core
         working-directory: ./blocklock-solidity
         run: npm run build:forge
 
@@ -69,7 +69,7 @@ jobs:
         working-directory: ./randomness-solidity
         run: npm ci
 
-      - name: randomness-solidity - Build Solidity contracts
+      - name: randomness-solidity - Build Solidity contracts-core
         working-directory: ./randomness-solidity
         run: npm run build:forge
 

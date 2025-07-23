@@ -1,0 +1,38 @@
+[package]
+name = "contracts-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+ark-bn254 = { workspace = true }
+ark-ec = { workspace = true }
+ark-std = { workspace = true }
+ark-ff = { workspace = true }
+sha3 = { workspace = true }
+digest = { workspace = true }
+pairing_utils = { workspace = true }
+
+# logs / metrics
+tracing = { workspace = true }
+# misc
+thiserror = { workspace = true }
+
+
+[features]
+default = []
+blocklock = []
+#futures-util = { workspace = true }
+#tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+## logs / metrics
+#prometheus = { workspace = true }
+#tracing = { workspace = true }
+#
+## serde
+#serde = { workspace = true, features = ["derive"] }
+## misc
+#thiserror = { workspace = true }
+#
+[dev-dependencies]
+alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+hex = { workspace = true }

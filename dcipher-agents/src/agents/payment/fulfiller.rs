@@ -1,4 +1,4 @@
-//! Generic fulfillment logic for dcipher payment contracts.
+//! Generic fulfillment logic for dcipher payment contracts-core.
 
 use crate::agents::payment::PaymentContract;
 use crate::agents::payment::estimator::{

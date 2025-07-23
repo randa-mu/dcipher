@@ -3,6 +3,7 @@
 use alloy::primitives::Bytes;
 use ark_ec::AffineRepr;
 
+
 /// Serialize into an EVM Bytes type.
 pub trait EvmSerialize {
     fn ser_bytes(&self) -> Bytes;
@@ -33,66 +34,15 @@ impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
     }
 }
 
-#[cfg(feature = "blocklock")]
-pub use blocklock::*;
 
-#[cfg(feature = "blocklock")]
-mod blocklock {
-    use super::*;
-    use crate::agents::blocklock::contracts::TypesLib;
-    use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
-    use alloy::sol_types::SolType;
-
-    #[derive(thiserror::Error, Debug)]
-    pub enum IbeIdentityOnBn254G1CiphertextError {
-        #[error("abi decode error")]
-        AbiDecode(#[from] alloy::sol_types::Error),
-
-        #[error("invalid ephemeral pk")]
-        InvalidEphemeralPk,
-    }
-
-    impl EvmDeserialize for IbeIdentityOnBn254G1Ciphertext {
-        type Error = IbeIdentityOnBn254G1CiphertextError;
-
-        fn deser(bytes: &Bytes) -> Result<Self, Self::Error> {
-            use ark_ff::PrimeField;
-
-            let ciphertext = TypesLib::Ciphertext::abi_decode(bytes)?;
-            let x0: [u8; 32] = ciphertext.u.x[0].to_be_bytes();
-            let x1: [u8; 32] = ciphertext.u.x[1].to_be_bytes();
-            let y0: [u8; 32] = ciphertext.u.y[0].to_be_bytes();
-            let y1: [u8; 32] = ciphertext.u.y[1].to_be_bytes();
-
-            let x0 = ark_bn254::Fq::from_be_bytes_mod_order(&x0);
-            let x1 = ark_bn254::Fq::from_be_bytes_mod_order(&x1);
-            let y0 = ark_bn254::Fq::from_be_bytes_mod_order(&y0);
-            let y1 = ark_bn254::Fq::from_be_bytes_mod_order(&y1);
-
-            let x = ark_bn254::Fq2::new(x0, x1);
-            let y = ark_bn254::Fq2::new(y0, y1);
-
-            // Use unchecked to return results instead of panicking
-            let eph_pk = ark_ec::short_weierstrass::Affine::new_unchecked(x, y);
-            if !eph_pk.is_on_curve()
-                || !eph_pk.is_in_correct_subgroup_assuming_on_curve()
-                || eph_pk.is_zero()
-            {
-                Err(Self::Error::InvalidEphemeralPk)?
-            }
-
-            Ok(Self::new(eph_pk))
-        }
-    }
-}
 
 #[cfg(test)]
 pub(crate) mod tests {
     #[cfg(all(feature = "blocklock", feature = "ibe"))] // uses blocklock types & ibe
     pub(crate) mod bn254 {
         use super::super::*;
-        use crate::agents::blocklock::contracts::{BLS, TypesLib};
-        use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
+        use contracts_core::blocklock_sender::contracts::{BLS, TypesLib};
+        use contracts_core::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
         use alloy::primitives::U256;
         use alloy::sol_types::SolValue;
         use ark_ff::{BigInteger, Fp, PrimeField};

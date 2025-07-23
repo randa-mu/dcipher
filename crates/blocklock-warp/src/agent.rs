@@ -1,15 +1,15 @@
 //! Agent managing the state of the blocklock smart contract and forwarding fulfilled request to a
 //! fulfiller's request channel.
 
-use enc_core::RequestId;
+use fulfiller_core::RequestId;
 use crate::{BlockNumber, BlocklockConditionUpdate};
 use crate::condition_resolver::{
     BlocklockConditionResolver, BlocklockConditionResolverError,
 };
 use crate::metrics::Metrics;
-use enc_core::decryption_sender::DecryptionRequest;
-use enc_core::decryption_sender::contracts::{DecryptionSender, TypesLib};
-use enc_core::fulfiller::RequestChannel;
+use fulfiller_core::decryption_sender::DecryptionRequest;
+use fulfiller_core::decryption_sender::contracts::{DecryptionSender, TypesLib};
+use fulfiller_core::fulfiller::RequestChannel;
 use alloy::network::Ethereum;
 use alloy::primitives::U256;
 use alloy::primitives::ruint::FromUintError;

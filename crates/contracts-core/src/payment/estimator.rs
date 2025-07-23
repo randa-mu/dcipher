@@ -1,6 +1,6 @@
 //! Estimate gas costs to ensure that fulfilling a request results in profits.
 
-use crate::{PaymentConfig, PaymentContract, RequestDetails};
+use super::{PaymentConfig, PaymentContract, RequestDetails};
 use alloy::contract::SolCallBuilder;
 use alloy::network::Network;
 use alloy::primitives::{Address, U256};

@@ -1,12 +1,11 @@
 //! Blocklock agent implementation for managing blocklock smart contract state
 //! and forwarding fulfilled requests to a fulfiller's request channel.
 
-use enc_core::BlockNumber;
+use fulfiller_core::BlockNumber;
 use serde::{Deserialize, Serialize};
 
 pub mod agent;
 pub mod condition_resolver;
-pub mod contracts;
 pub mod fulfiller;
 pub mod metrics;
 
@@ -76,6 +75,5 @@ impl std::error::Error for BlocklockConditionDecodeError {}
 // Re-export main types
 pub use agent::*;
 pub use condition_resolver::*;
-pub use contracts::*;
 pub use fulfiller::*;
 pub use metrics::*;

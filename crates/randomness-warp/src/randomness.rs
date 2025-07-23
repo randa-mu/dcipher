@@ -1,4 +1,4 @@
-use enc_core::{RequestId, BlockNumber, fulfiller::RequestChannel, signature_sender::{SignatureRequest, contracts::{SignatureSender, TypesLib}}};
+use fulfiller_core::{RequestId, BlockNumber, fulfiller::RequestChannel, signature_sender::{SignatureRequest, contracts::{SignatureSender, TypesLib}}};
 use crate::metrics::Metrics;
 use alloy::network::Ethereum;
 use alloy::primitives::U256;

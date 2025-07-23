@@ -3,7 +3,7 @@ resolver = "3"
 members = [
     "crates/blocklock-weft",
     "crates/blocklock-warp",
-    "crates/enc-core",
+    "crates/fulfiller-core",
     "crates/payment-warp",
     "crates/randomness-warp",
     "crates/dsigner",
@@ -15,8 +15,8 @@ members = [
     "crates/onlyswaps-verifier",
     "crates/randomness-weft",
     "crates/signer",
-    "crates/superalloy"
-]
+    "crates/superalloy",
+    "crates/contracts-core"]
 
 [workspace.package]
 version = "0.1.0"
@@ -24,7 +24,8 @@ edition = "2024"
 
 [workspace.dependencies]
 # workspace crates
-enc-core = { path = "./crates/enc-core" }
+contracts-core = { path = "./crates/contracts-core" }
+fulfiller-core = { path = "./crates/fulfiller-core" }
 payment-warp = { path = "./crates/payment-warp" }
 randomness-warp = { path = "./crates/randomness-warp" }
 blocklock-warp = { path = "./crates/blocklock-warp" }

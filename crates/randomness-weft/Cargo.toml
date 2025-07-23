@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 # workspace crates
-enc-core = { path = "../enc-core", features = ["signature_sender", "fulfiller"] }
+fulfiller-core = { path = "../fulfiller-core", features = ["signature_sender", "fulfiller"] }
 randomness-warp = { path = "../randomness-warp" }
 
 # blockchain

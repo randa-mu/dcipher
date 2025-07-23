@@ -1,5 +1,5 @@
 [package]
-name = "enc-core"
+name = "fulfiller-core"
 version.workspace = true
 edition.workspace = true
 
@@ -20,6 +20,7 @@ rayon = []
 
 [dependencies]
 # workspace crates
+contracts-core = { workspace = true, features = ["blocklock"] }
 dcipher-signer = { workspace = true, optional = true }
 
 alloy = { workspace = true, features = ["default", "provider-ws"], optional = true}

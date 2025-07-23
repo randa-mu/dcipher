@@ -3,10 +3,10 @@
 use alloy::providers::Provider;
 use anyhow::anyhow;
 use blocklock_warp::BlocklockAgent;
-use enc_core::decryption_sender::DecryptionRequest;
-use enc_core::decryption_sender::contracts::DecryptionSender;
-use enc_core::decryption_sender::contracts::DecryptionSender::DecryptionRequested;
-use enc_core::fulfiller::{RequestChannel, Ticker};
+use fulfiller_core::decryption_sender::DecryptionRequest;
+use fulfiller_core::decryption_sender::contracts::DecryptionSender;
+use fulfiller_core::decryption_sender::contracts::DecryptionSender::DecryptionRequested;
+use fulfiller_core::fulfiller::{RequestChannel, Ticker};
 use futures::Stream;
 use futures_util::StreamExt;
 use std::future::Future;

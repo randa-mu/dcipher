@@ -52,11 +52,12 @@ where
 }
 
 /// Helper struct implementing [`RequestDetails`]
+#[derive(Debug, Clone)]
 pub struct DefaultRequestDetails {
-    #[allow(unused)]
     pub id: U256,
     pub callback: Address,
     pub callback_gas_limit: u32,
+    pub is_subscription: bool,
     pub direct_fee_paid: Option<U256>,
     pub subscription_balance: Option<u128>,
 }
@@ -75,7 +76,7 @@ impl RequestDetails for DefaultRequestDetails {
     }
 
     fn is_subscription(&self) -> bool {
-        self.subscription_balance.is_some()
+        self.is_subscription
     }
 
     fn direct_fee_paid(&self) -> Option<U256> {
@@ -139,12 +140,16 @@ macro_rules! impl_payment_contract {
                 self.getConfig().call().await
             }
 
-            async fn get_request_details(&self, id: alloy::primitives::U256) -> Result<Self::RequestDetails, alloy::contract::Error> {
+            async fn get_request_details(
+                &self,
+                id: alloy::primitives::U256,
+            ) -> Result<Self::RequestDetails, alloy::contract::Error> {
                 let details = self.getRequest(id).call().await?;
                 let mut request_details = DefaultRequestDetails {
                     id,
                     callback: details.callback,
                     callback_gas_limit: details.callbackGasLimit,
+                    is_subscription: !details.subId.is_zero(),
                     direct_fee_paid: None,
                     subscription_balance: None,
                 };
@@ -183,3 +188,11 @@ macro_rules! impl_payment_contract {
         }
     };
 }
+
+// Submodule declarations
+pub mod estimator;
+pub mod fulfiller;
+
+// Re-export key items from submodules
+pub use estimator::*;
+pub use fulfiller::*;

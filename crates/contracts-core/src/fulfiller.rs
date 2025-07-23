@@ -1,6 +1,5 @@
-//! Generic fulfillment logic for dcipher payment contracts.
+//! Generic fulfillment logic for dcipher payment contracts-core.
 
-use crate::PaymentContract;
 use crate::estimator::{
     OtherPaymentEstimatorError, PaymentEstimatorCostError, PaymentEstimatorError,
     RequestFulfillmentEstimator,
@@ -11,6 +10,7 @@ use alloy::primitives::{Address, TxHash, U256};
 use alloy::providers::{Provider, WalletProvider};
 use alloy::sol_types::SolCall;
 use std::time::Duration;
+use crate::payment::PaymentContract;
 
 #[derive(thiserror::Error, Debug)]
 pub enum GenericFulfillerError {

@@ -1,4 +1,4 @@
-//! Solidity imports for the randomness contracts.
+//! Solidity imports for the randomness contracts-core.
 
 pub use randomness_sender::*;
 

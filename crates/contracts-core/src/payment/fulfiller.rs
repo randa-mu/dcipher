@@ -1,7 +1,7 @@
 //! Generic fulfillment logic for dcipher payment contracts.
 
-use crate::PaymentContract;
-use crate::estimator::{
+use super::PaymentContract;
+use super::estimator::{
     OtherPaymentEstimatorError, PaymentEstimatorCostError, PaymentEstimatorError,
     RequestFulfillmentEstimator,
 };
@@ -72,7 +72,7 @@ where
         requests: I,
     ) -> Vec<Result<(), GenericFulfillerError>>
     where
-        I: IntoIterator<Item = (U256, SC)> + Send + 'lt_self,
+        I: IntoIterator<Item=(U256, SC)> + Send + 'lt_self,
         I::IntoIter: Send,
         SC: SolCall,
     {
@@ -132,7 +132,7 @@ where
         request_id: U256,
         fulfillment_call: &impl SolCall,
     ) -> Result<
-        impl Future<Output = Result<TxHash, alloy::providers::PendingTransactionError>> + 'a,
+        impl Future<Output=Result<TxHash, alloy::providers::PendingTransactionError>> + 'a,
         GenericFulfillerError,
     > {
         let fulfillment_params = self

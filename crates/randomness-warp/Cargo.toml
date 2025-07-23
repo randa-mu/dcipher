@@ -8,7 +8,7 @@ default = []
 
 [dependencies]
 # workspace crates
-enc-core = { path = "../enc-core", features = ["signature_sender", "fulfiller"] }
+fulfiller-core = { path = "../fulfiller-core", features = ["signature_sender", "fulfiller"] }
 payment-warp = { path = "../payment-warp" }
 alloy = { workspace = true, features = ["default", "provider-ws"] }
 

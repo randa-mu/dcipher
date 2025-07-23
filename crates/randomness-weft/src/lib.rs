@@ -3,8 +3,8 @@
 use alloy::providers::Provider;
 use anyhow::anyhow;
 use randomness_warp::RandomnessAgent;
-use enc_core::fulfiller::{RequestChannel, Ticker};
-use enc_core::signature_sender::{SignatureRequest, contracts::{SignatureSender, SignatureSender::SignatureRequested}};
+use fulfiller_core::fulfiller::{RequestChannel, Ticker};
+use fulfiller_core::signature_sender::{SignatureRequest, contracts::{SignatureSender, SignatureSender::SignatureRequested}};
 use futures::Stream;
 use futures_util::StreamExt;
 use std::future::Future;

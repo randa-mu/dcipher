@@ -2,13 +2,13 @@
 //! [`BlocklockFulfiller`] attempts to fulfil decryption requests sequentially with a transaction
 //! per fulfillment.
 
-use crate::contracts::BlocklockSender;
 use crate::metrics::Metrics;
 use payment_warp::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
 use payment_warp::fulfiller::{GenericFulfiller, GenericFulfillerError};
-use enc_core::decryption_sender::SignedDecryptionRequest;
-use enc_core::decryption_sender::contracts::DecryptionSender;
-use enc_core::fulfiller::TransactionFulfiller;
+use fulfiller_core::contracts::BlocklockSender;
+use fulfiller_core::decryption_sender::SignedDecryptionRequest;
+use fulfiller_core::decryption_sender::contracts::DecryptionSender;
+use fulfiller_core::fulfiller::TransactionFulfiller;
 use alloy::network::{Ethereum, Network};
 use alloy::providers::{Provider, WalletProvider};
 use futures_util::FutureExt;

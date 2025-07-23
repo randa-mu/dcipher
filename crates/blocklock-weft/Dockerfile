@@ -1,6 +1,6 @@
 # Image must be built from the root
 
-# Image building solidity contracts
+# Image building solidity contracts-core
 ARG NODE_VERSION=22.3
 FROM europe-west1-docker.pkg.dev/randamu-prod/candyland/node:${NODE_VERSION} AS sol_builder
 WORKDIR /app

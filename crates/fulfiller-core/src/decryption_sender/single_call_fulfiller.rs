@@ -2,14 +2,14 @@
 //! [`SingleCallTxFulfiller`] attempts to fulfil decryption requests sequentially with a transaction
 //! per fulfillment.
 
-use crate::decryption_sender::SignedDecryptionRequest;
-use crate::decryption_sender::contracts::DecryptionSender;
-use crate::fulfiller::TransactionFulfiller;
 use alloy::primitives::TxHash;
 use alloy::providers::Provider;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use std::time::Duration;
+
+use crate::fulfiller::TransactionFulfiller;
+use crate::decryption_sender::SignedDecryptionRequest;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SingleCallTxFullfillerError {

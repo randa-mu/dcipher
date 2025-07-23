@@ -7,8 +7,8 @@ pub mod signature_sender;
 #[cfg(feature = "fulfiller")]
 pub mod fulfiller;
 
-#[cfg(feature = "ibe")]
-pub mod ibe_helper;
+// #[cfg(feature = "ibe")]
+// pub mod ibe_helper;
 
 #[cfg(feature = "evm")]
 pub mod ser;
@@ -29,25 +29,34 @@ pub use signature_sender::*;
 pub use fulfiller::*;
 
 // Common types
+#[cfg(feature = "evm")]
 use alloy::primitives::U256;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
 
-/// A unique identifier for a request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct RequestId(pub U256);
+#[cfg(feature = "evm")]
+mod request_id {
+    use super::*;
+    
+    /// A unique identifier for a request.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+    pub struct RequestId(pub U256);
 
-impl From<U256> for RequestId {
-    fn from(value: U256) -> Self {
-        Self(value)
+    impl From<U256> for RequestId {
+        fn from(value: U256) -> Self {
+            Self(value)
+        }
+    }
+
+    impl From<RequestId> for U256 {
+        fn from(value: RequestId) -> Self {
+            value.0
+        }
     }
 }
 
-impl From<RequestId> for U256 {
-    fn from(value: RequestId) -> Self {
-        value.0
-    }
-}
+#[cfg(feature = "evm")]
+pub use request_id::RequestId;
 
 /// A block number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
