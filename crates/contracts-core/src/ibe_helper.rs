@@ -257,8 +257,8 @@ mod bn254 {
             fn verify(
                 &self,
                 m: impl AsRef<[u8]>,
-                signature: Self::SignatureGroup,
-                public_key: Self::PublicKeyGroup,
+                signature: <Self as BlsVerifier>::SignatureGroup,
+                public_key: <Self as PairingIbeCipherSuite>::PublicKeyGroup,
             ) -> bool {
                 self.verify_decryption_key(m.as_ref(), signature, public_key)
             }
@@ -272,7 +272,7 @@ mod bn254 {
         {
             type Error = Infallible;
 
-            fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
+            fn sign(&self, m: impl AsRef<[u8]>) -> Result<<Self as BlsVerifier>::SignatureGroup, <Self as BlsSigner>::Error> {
                 let identity = self.h1(m.as_ref());
                 Ok(self.decryption_key(identity))
             }

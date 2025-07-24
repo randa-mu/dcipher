@@ -81,10 +81,10 @@ where
 #[cfg(feature = "blocklock")] // need blocklock types for ibe
 pub(crate) mod tests {
     use super::*;
-    use contracts_core::decryption_sender::DecryptionRequest;
+    use crate::decryption_sender::DecryptionRequest;
     use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
     use crate::ser::EvmSerialize;
-    // use crate::ser::tests::bn254::encode_ciphertext;
+    use crate::ser::tests::bn254::encode_ciphertext;
     use crate::signer::{AsynchronousSigner, BlsSigner};
     use alloy::primitives::{Bytes, U256};
     use ark_bn254::Fr;

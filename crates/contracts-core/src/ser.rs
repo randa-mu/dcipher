@@ -39,7 +39,7 @@ pub use blocklock::*;
 #[cfg(feature = "blocklock")]
 mod blocklock {
     use super::*;
-    use contracts_core::blocklock::contracts::TypesLib;
+    use crate::blocklock::blocklock_sender::TypesLib;
     use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
     use alloy::sol_types::SolType;
 
@@ -91,7 +91,7 @@ pub(crate) mod tests {
     #[cfg(all(feature = "blocklock", feature = "ibe"))] // uses blocklock types & ibe
     pub(crate) mod bn254 {
         use super::super::*;
-        use crate::agents::blocklock::contracts::{BLS, TypesLib};
+        use crate::blocklock::blocklock_sender::{BLS, TypesLib};
         use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
         use alloy::primitives::U256;
         use alloy::sol_types::SolValue;

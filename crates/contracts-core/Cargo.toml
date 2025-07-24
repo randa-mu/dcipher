@@ -12,6 +12,7 @@ ark-ff = { workspace = true }
 sha3 = { workspace = true }
 digest = { workspace = true }
 pairing_utils = { workspace = true }
+dcipher-signer = { workspace = true, optional = true }
 
 # logs / metrics
 tracing = { workspace = true }
@@ -22,7 +23,7 @@ thiserror = { workspace = true }
 [features]
 default = []
 blocklock = []
-signer = []
+signer = ["dep:dcipher-signer"]
 
 #futures-util = { workspace = true }
 #tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }

@@ -1780,6 +1780,7 @@ dependencies = [
  "ark-ec",
  "ark-ff 0.4.2",
  "ark-std 0.4.0",
+ "dcipher-signer",
  "digest 0.10.7",
  "hex",
  "pairing_utils",

@@ -55,6 +55,12 @@ impl From<BlocklockCondition> for Vec<u8> {
     }
 }
 
+impl From<BlocklockCondition> for alloy::primitives::Bytes {
+    fn from(condition: BlocklockCondition) -> Self {
+        condition.to_bytes().into()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlocklockConditionDecodeError {
     InvalidFormat,

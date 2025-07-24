@@ -28,6 +28,42 @@ pub mod blocklock {
        );
    }
 
+   pub mod mock_blocklock_receiver {
+       alloy::sol!(
+           #[derive(Debug)]
+           #[sol(rpc)]
+           MockBlocklockReceiver,
+           "../../blocklock-solidity/out/MockBlocklockReceiver.sol/MockBlocklockReceiver.json"
+       );
+   }
+
+   pub mod uups_proxy {
+       alloy::sol!(
+           #[derive(Debug)]
+           #[sol(rpc)]
+           UUPSProxy,
+           "../../blocklock-solidity/out/UUPSProxy.sol/UUPSProxy.json"
+       );
+   }
+
+   pub mod blocklock_signature_scheme {
+       alloy::sol!(
+           #[derive(Debug)]
+           #[sol(rpc)]
+           BlocklockSignatureScheme,
+           "../../blocklock-solidity/out/BlocklockSignatureScheme.sol/BlocklockSignatureScheme.json"
+       );
+   }
+
+   pub mod signature_scheme_address_provider {
+       alloy::sol!(
+           #[derive(Debug)]
+           #[sol(rpc)]
+           SignatureSchemeAddressProvider,
+           "../../blocklock-solidity/out/SignatureSchemeAddressProvider.sol/SignatureSchemeAddressProvider.json"
+       );
+   }
+
    #[derive(thiserror::Error, Debug)]
    pub enum IbeIdentityOnBn254G1CiphertextError {
        #[error("abi decode error")]

@@ -3,36 +3,10 @@
 use alloy::primitives::Bytes;
 use ark_ec::AffineRepr;
 
+// Re-export from contracts-core to get the implementations
+pub use contracts_core::ser::{EvmSerialize, EvmDeserialize};
 
-/// Serialize into an EVM Bytes type.
-pub trait EvmSerialize {
-    fn ser_bytes(&self) -> Bytes;
-}
-
-/// Deserialize from an EVM Bytes type.
-pub trait EvmDeserialize {
-    type Error: std::error::Error + Send + Sync + 'static;
-
-    fn deser(bytes: &Bytes) -> Result<Self, Self::Error>
-    where
-        Self: Sized;
-}
-
-impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
-    fn ser_bytes(&self) -> Bytes {
-        use ark_bn254::Fq;
-        use ark_ff::{BigInteger, PrimeField, Zero};
-
-        let (x, y) = match self.xy() {
-            Some((x, y)) => (x, y),
-            None => (&Fq::zero(), &Fq::zero()),
-        };
-
-        [x.into_bigint().to_bytes_be(), y.into_bigint().to_bytes_be()]
-            .concat()
-            .into()
-    }
-}
+// EvmSerialize implementation is now provided by contracts-core
 
 
 
@@ -41,7 +15,8 @@ pub(crate) mod tests {
     #[cfg(all(feature = "blocklock", feature = "ibe"))] // uses blocklock types & ibe
     pub(crate) mod bn254 {
         use super::super::*;
-        use contracts_core::blocklock_sender::contracts::{BLS, TypesLib};
+        use contracts_core::blocklock::blocklock_sender::{BLS, TypesLib};
+        use contracts_core::ser::IbeIdentityOnBn254G1CiphertextError;
         use contracts_core::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
         use alloy::primitives::U256;
         use alloy::sol_types::SolValue;
