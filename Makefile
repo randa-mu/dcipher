@@ -1,3 +1,4 @@
+.DEFAULT_GOAL=all
 .PHONY= git solidity-deps build-forge-all build-forge-all-concurrent clean-node-modules clean-solidity-out clean_dcipher $(addprefix run_,$(DIRS))
 DCIPHER_MODULE_DIRS := onlyswaps-verifier dsigner
 SOLIDITY_DIRS := $(wildcard *-solidity/)

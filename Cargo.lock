@@ -16,12 +16,26 @@ name = "adkg"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.4.2",
+ "ark-poly",
+ "ark-std 0.4.0",
  "async-trait",
+ "bson",
+ "chacha20poly1305",
+ "digest 0.10.7",
+ "futures",
+ "hkdf",
  "itertools 0.13.0",
+ "pairing_utils",
+ "rand 0.8.5",
+ "rayon",
  "reed-solomon",
+ "serde",
  "sha3",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
 ]
@@ -74,6 +88,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
 dependencies = [
  "cfg-if",
+ "getrandom 0.3.3",
  "once_cell",
  "version_check",
  "zerocopy",
@@ -1524,6 +1539,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
 dependencies = [
  "tinyvec",
+]
+
+[[package]]
+name = "bson"
+version = "2.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7969a9ba84b0ff843813e7249eed1678d9b6607ce5a3b8f0a47af3fcf7978e6e"
+dependencies = [
+ "ahash",
+ "base64 0.22.1",
+ "bitvec",
+ "getrandom 0.2.16",
+ "getrandom 0.3.3",
+ "hex",
+ "indexmap 2.10.0",
+ "js-sys",
+ "once_cell",
+ "rand 0.9.2",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "time",
+ "uuid",
 ]
 
 [[package]]
@@ -5953,6 +5991,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8437fd221bde2d4ca316d61b90e337e9e702b3820b87d63caa9ba6c02bd06d96"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_cbor"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5979,6 +6026,7 @@ version = "1.0.141"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30b9eff21ebe718216c6ec64e1d9ac57087aad11efc64e32002bce4a0d4c03d3"
 dependencies = [
+ "indexmap 2.10.0",
  "itoa",
  "memchr",
  "ryu",
@@ -7242,6 +7290,7 @@ checksum = "3cf4199d1e5d15ddd86a694e4d0dffa9c323ce759fea589f00fef9d81cc1931d"
 dependencies = [
  "getrandom 0.3.3",
  "js-sys",
+ "serde",
  "sha1_smol",
  "wasm-bindgen",
 ]

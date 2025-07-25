@@ -16,7 +16,8 @@ members = [
     "crates/randomness-weft",
     "crates/signer",
     "crates/superalloy",
-    "crates/contracts-core"]
+    "crates/contracts-core",
+]
 
 [workspace.package]
 version = "0.1.0"
