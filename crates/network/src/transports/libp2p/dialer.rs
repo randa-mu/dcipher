@@ -8,8 +8,8 @@ use libp2p::core::transport::PortUse;
 use libp2p::swarm::behaviour::{ConnectionClosed, ConnectionEstablished, DialFailure};
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{
-    ConnectionDenied, ConnectionId, FromSwarm, NetworkBehaviour, THandler, THandlerInEvent,
-    THandlerOutEvent, ToSwarm, dummy,
+    ConnectionDenied, ConnectionId, DialError, FromSwarm, NetworkBehaviour, THandler,
+    THandlerInEvent, THandlerOutEvent, ToSwarm, dummy,
 };
 use libp2p::{Multiaddr, PeerId};
 use std::collections::HashMap;
@@ -133,8 +133,18 @@ impl<ID: PartyIdentifier> PeriodicDialBehaviour<ID> {
                 if let Some((peer_id, peer)) =
                     peer_id.and_then(|id| self.peers.get_mut(&id).map(|info| (id, info)))
                 {
-                    peer.status = PeerStatus::FailedToDial;
-                    tracing::warn!(?error, peer_id = %peer_id, short_id = ?peer.detail.short_id, "Failed to dial peer");
+                    match error {
+                        // Do not warn log when the peer dial attempt is aborted, likely because the
+                        // peer is connected, or another dial attempt is in progress.
+                        DialError::DialPeerConditionFalse(_) => {
+                            tracing::debug!(?error, peer_id = %peer_id, short_id = ?peer.detail.short_id, "Dial peer attempt not done due to dial condition");
+                        }
+
+                        _ => {
+                            peer.status = PeerStatus::FailedToDial;
+                            tracing::warn!(?error, peer_id = %peer_id, short_id = ?peer.detail.short_id, "Failed to dial peer");
+                        }
+                    }
                 } else {
                     tracing::warn!(?error, "Failed to dial unknown peer");
                 }
