@@ -3,9 +3,9 @@
 use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Zero;
-use pairing_utils::hash_to_curve::CustomPairingHashToCurve;
 use std::convert::Infallible;
 use std::ops::Neg;
+use utils::hash_to_curve::CustomPairingHashToCurve;
 
 pub mod threshold_signer;
 

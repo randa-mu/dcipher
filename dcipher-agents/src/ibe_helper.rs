@@ -74,8 +74,8 @@ mod bn254 {
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::Zero;
     use digest::core_api::BlockSizeUser;
-    use pairing_utils::hash_to_curve::CustomPairingHashToCurve;
     use std::ops::Neg;
+    use utils::hash_to_curve::CustomPairingHashToCurve;
 
     /// Cipher suite for IBE w/ identity on bn254 G1.
     #[derive(Clone, Debug)]

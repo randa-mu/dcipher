@@ -13,12 +13,12 @@ use dcipher_network::{ReceivedMessage, Transport, TransportSender};
 use futures_util::{Stream, StreamExt};
 use itertools::Either;
 use lru::LruCache;
-use pairing_utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
+use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 type SignatureGroup<BLS> = <BLS as BlsVerifier>::SignatureGroup;
 
@@ -51,7 +51,7 @@ struct PartialSignature<G> {
 ))]
 struct PartialSignatureWithMessage<G> {
     m: Vec<u8>,
-    #[serde(with = "pairing_utils::serialize::point::base64")]
+    #[serde(with = "utils::serialize::point::base64")]
     sig: G,
 }
 

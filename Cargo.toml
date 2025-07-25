@@ -31,7 +31,7 @@ ark-bn254 = "0.4.0"
 ark-ec = "0.4.2"
 ark-ff = "0.4.2"
 ark-std = "0.4.0"
-pairing_utils = { path = "./marshmallow-crypto/pairing_utils" }
+utils = { path = "./marshmallow-crypto/utils" }
 
 # hashes
 digest = "0.10"
