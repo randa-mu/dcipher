@@ -1,12 +1,13 @@
 //! Concrete implementation of a [`AsynchronousSigner`] for the single-party setting where
 //! signatures and decryption keys are issued immediately.
+use std::borrow::Cow;
 
-use crate::ser::EvmSerialize;
+use alloy::primitives::Bytes;
+
 use crate::signer::AsynchronousSigner;
 use crate::{DecryptionRequest, SignedDecryptionRequest};
-use alloy::primitives::Bytes;
 use contracts_core::ibe_helper::{IbeCiphertext, PairingIbeSigner};
-use std::borrow::Cow;
+use contracts_core::ser::EvmSerialize;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StandaloneSignerError {

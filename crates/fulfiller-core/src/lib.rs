@@ -10,9 +10,6 @@ pub mod fulfiller;
 // #[cfg(feature = "ibe")]
 // pub mod ibe_helper;
 
-#[cfg(feature = "evm")]
-pub mod ser;
-
 #[cfg(feature = "signer")]
 pub mod signer {
     pub use dcipher_signer::*;

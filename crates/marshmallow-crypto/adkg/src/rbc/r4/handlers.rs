@@ -12,6 +12,7 @@ use crate::{
 use sha3::{Digest, Sha3_256};
 use tracing::{debug, error, info, warn};
 
+
 /// Handle proposal messages.
 pub(super) async fn rbc_receive_proposal<T>(
     sender: PartyId,

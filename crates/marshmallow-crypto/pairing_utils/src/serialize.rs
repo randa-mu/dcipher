@@ -1,6 +1,7 @@
 /// Serialization module for the pairings used by marshmallow.
 use thiserror::Error;
 
+
 pub mod fq;
 pub mod point;
 

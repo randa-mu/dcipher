@@ -1,9 +1,9 @@
 //! [`AsynchronousSigner`] for signature requests.
+use alloy::primitives::Bytes;
 
-use crate::ser::EvmSerialize;
 use crate::signature_sender::{SignatureRequest, SignedSignatureRequest};
 use crate::signer::AsynchronousSigner;
-use alloy::primitives::Bytes;
+use contracts_core::ser::EvmSerialize;
 
 pub struct SignatureSenderAsyncSigner<AsyncSigner>(AsyncSigner);
 

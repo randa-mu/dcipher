@@ -54,3 +54,4 @@ thiserror = { workspace = true }
 [dev-dependencies]
 hex = { workspace = true }
 alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+contracts-core = { workspace = true, features = ["blocklock", "signer", "testing"] }

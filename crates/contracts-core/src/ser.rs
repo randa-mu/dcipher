@@ -37,7 +37,7 @@ impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
 pub use blocklock::*;
 
 #[cfg(feature = "blocklock")]
-mod blocklock {
+pub mod blocklock {
     use super::*;
     use crate::blocklock::blocklock_sender::TypesLib;
     use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
@@ -86,10 +86,10 @@ mod blocklock {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod tests {
+#[cfg(any(test, feature = "testing"))]
+pub mod tests {
     #[cfg(all(feature = "blocklock"))] // uses blocklock types & ibe
-    pub(crate) mod bn254 {
+    pub mod bn254 {
         use super::super::*;
         use crate::blocklock::blocklock_sender::{TypesLib, BLS};
         use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
@@ -121,7 +121,7 @@ pub(crate) mod tests {
             assert_eq!(EvmSerialize::ser_bytes(&p).as_ref(), bytes_encoding);
         }
 
-        pub(crate) fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {
+        pub fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {
             let x0 = U256::from_be_bytes::<32>(x0.try_into().unwrap());
             let x1 = U256::from_be_bytes::<32>(x1.try_into().unwrap());
             let y0 = U256::from_be_bytes::<32>(y0.try_into().unwrap());

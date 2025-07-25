@@ -1,12 +1,12 @@
 //! [`AsynchronousSigner`] for decryption requests. Unlike [`AsyncThresholdSigner`](crate::signer::threshold_signer::AsyncThresholdSigner),
 //! this signer allows to sign identical conditions as is often the case with the decryption sender contract.
 
-use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use crate::DecryptionRequest;
 use crate::SignedDecryptionRequest;
 use alloy::primitives::Bytes;
 use contracts_core::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
+use contracts_core::ser::EvmSerialize;
 use std::borrow::Cow;
 
 pub struct DecryptionSenderAsyncSigner<CS, AsyncSigner> {
@@ -81,18 +81,19 @@ where
 #[cfg(feature = "blocklock")] // need blocklock types for ibe
 pub(crate) mod tests {
     use super::*;
-    use crate::decryption_sender::DecryptionRequest;
-    use crate::ser::tests::bn254::encode_ciphertext;
-    use crate::ser::EvmSerialize;
-    use crate::signer::{AsynchronousSigner, BlsSigner};
+    use std::collections::HashMap;
+    use std::sync::Arc;
     use alloy::primitives::{Bytes, U256};
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
-    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
-    use std::collections::HashMap;
-    use std::sync::Arc;
     use tokio::sync::watch;
+
+    use crate::decryption_sender::DecryptionRequest;
+    use crate::signer::{AsynchronousSigner, BlsSigner};
+
+    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
+    use contracts_core::ser::tests::bn254::encode_ciphertext as blocklock_encode_ciphertext;
 
     pub(crate) fn create_ciphertext(eph_pk: ark_bn254::G2Affine) -> Bytes {
         let (x, y) = eph_pk.xy().unwrap();
@@ -102,7 +103,7 @@ pub(crate) mod tests {
         let y0 = y.c0.into_bigint().to_bytes_be();
         let y1 = y.c1.into_bigint().to_bytes_be();
 
-        encode_ciphertext(&x0, &x1, &y0, &y1)
+        blocklock_encode_ciphertext(&x0, &x1, &y0, &y1)
     }
 
     #[derive(Clone, Debug, thiserror::Error)]
