@@ -1,34 +1,34 @@
 use crate::transports::libp2p::dialer::PeriodicDialEvent;
 use crate::transports::libp2p::metrics::Metrics;
 use crate::transports::libp2p::{
-    Behaviour, BehaviourEvent, Libp2pNodeError, PeerDetails, LIBP2P_MAIN_TOPIC,
+    Behaviour, BehaviourEvent, LIBP2P_MAIN_TOPIC, Libp2pNodeError, PeerDetails,
 };
 use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
-use crate::ReceivedMessage;
+use crate::{PartyIdentifier, ReceivedMessage};
 use futures_util::StreamExt;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::request_response::{Event as RequestResponseEvent, Message as RequestResponseMessage};
-use libp2p::{floodsub, ping, swarm::SwarmEvent, Swarm};
+use libp2p::{Swarm, floodsub, ping, swarm::SwarmEvent};
 use std::num::NonZeroU32;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
-pub(super) struct EventsHandler {
-    short_id: u16,
-    swarm: Swarm<Behaviour>,
-    peers: PeerDetails,
-    tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
-    rx_messages_to_send: UnboundedReceiver<TransportAction<u16>>,
+pub(super) struct EventsHandler<ID: PartyIdentifier> {
+    short_id: ID,
+    swarm: Swarm<Behaviour<ID>>,
+    peers: PeerDetails<ID>,
+    tx_received_messages: UnboundedSender<ReceivedMessage<ID>>,
+    rx_messages_to_send: UnboundedReceiver<TransportAction<ID>>,
     cancellation_token: CancellationToken,
 }
 
-impl EventsHandler {
+impl<ID: PartyIdentifier> EventsHandler<ID> {
     pub(super) fn new(
-        short_id: u16,
-        swarm: Swarm<Behaviour>,
-        peers: PeerDetails,
-        tx_received_messages: UnboundedSender<ReceivedMessage<u16>>,
-        rx_messages_to_send: UnboundedReceiver<TransportAction<u16>>,
+        short_id: ID,
+        swarm: Swarm<Behaviour<ID>>,
+        peers: PeerDetails<ID>,
+        tx_received_messages: UnboundedSender<ReceivedMessage<ID>>,
+        rx_messages_to_send: UnboundedReceiver<TransportAction<ID>>,
         cancellation_token: CancellationToken,
     ) -> Self {
         Self {
@@ -57,7 +57,7 @@ impl EventsHandler {
     }
 }
 
-impl EventsHandler {
+impl<ID: PartyIdentifier> EventsHandler<ID> {
     /// Main event loop handling incoming events from swarm, and incoming messages from the `rx_messages_to_send` channel.
     async fn swarm_event_loop(&mut self) -> Result<(), Libp2pNodeError> {
         let mut ready_send_messages = false;
@@ -81,26 +81,37 @@ impl EventsHandler {
         }
     }
 
-    fn send_direct_message_to_swarm(&mut self, msg: SendDirectMessage<u16>) {
+    fn send_direct_message_to_swarm(&mut self, msg: SendDirectMessage<ID>) {
         let SendDirectMessage {
             to: recipient_short_id,
             msg,
         } = msg;
 
-        let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
-            tracing::error!(
-                recipient_short_id,
-                "Cannot send message to peer with unknown peer id"
-            );
-            return;
-        };
+        if recipient_short_id == self.short_id {
+            tracing::debug!("Forwarding direct message to self");
+            if self
+                .tx_received_messages
+                .send(ReceivedMessage::new_direct(self.short_id, msg))
+                .is_err()
+            {
+                tracing::error!("Libp2p node failed to forward to self: channel closed");
+            }
+        } else {
+            let Some(peer_id) = self.peers.get_peer_id(&recipient_short_id) else {
+                tracing::error!(
+                    ?recipient_short_id,
+                    "Cannot send message to peer with unknown peer id"
+                );
+                return;
+            };
 
-        let request_id = self
-            .swarm
-            .behaviour_mut()
-            .point_to_point
-            .send_request(peer_id, msg);
-        tracing::debug!(point_to_point_request_id = ?request_id, %peer_id, recipient_short_id, "Sent point to point message to peer");
+            let request_id = self
+                .swarm
+                .behaviour_mut()
+                .point_to_point
+                .send_request(peer_id, msg);
+            tracing::debug!(point_to_point_request_id = ?request_id, %peer_id, ?recipient_short_id, "Sent point to point message to peer");
+        }
     }
 
     fn send_broadcast_message_to_swarm(&mut self, msg: SendBroadcastMessage) {
@@ -124,7 +135,7 @@ impl EventsHandler {
 
     fn handle_swarm_event(
         &mut self,
-        event: SwarmEvent<BehaviourEvent>,
+        event: SwarmEvent<BehaviourEvent<ID>>,
         ready_send_messages: &mut bool,
     ) {
         match event {
@@ -215,7 +226,11 @@ impl EventsHandler {
         }
     }
 
-    fn handle_behaviour_event(&mut self, event: BehaviourEvent, ready_send_messages: &mut bool) {
+    fn handle_behaviour_event(
+        &mut self,
+        event: BehaviourEvent<ID>,
+        ready_send_messages: &mut bool,
+    ) {
         match event {
             BehaviourEvent::Floodsub(event) => {
                 self.handle_floodsub_event(event, ready_send_messages);
@@ -252,13 +267,13 @@ impl EventsHandler {
                     return;
                 };
 
-                tracing::debug!(sender_peer_id = %sender_peer_id, sender_short_id = short_id, "Libp2p node received message from peer");
+                tracing::debug!(sender_peer_id = %sender_peer_id, sender_short_id = ?short_id, "Libp2p node received message from peer");
                 if self
                     .tx_received_messages
                     .send(ReceivedMessage::new_broadcast(short_id, data.to_vec()))
                     .is_err()
                 {
-                    tracing::error!(sender_peer_id = %sender_peer_id, sender_short_id = short_id, "Libp2p node failed to forward message through channel: channel closed");
+                    tracing::error!(sender_peer_id = %sender_peer_id, sender_short_id = ?short_id, "Libp2p node failed to forward message through channel: channel closed");
                 }
             }
 
@@ -300,7 +315,7 @@ impl EventsHandler {
                     return;
                 };
 
-                tracing::debug!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Received point to point message from peer");
+                tracing::debug!(%sender_peer_id, ?sender_short_id, point_to_point_request_id = ?request_id, "Received point to point message from peer");
                 // Send an ack to the sender
                 if self
                     .swarm
@@ -309,9 +324,9 @@ impl EventsHandler {
                     .send_response(channel, ())
                     .is_ok()
                 {
-                    tracing::debug!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Sent point to point response to peer");
+                    tracing::debug!(%sender_peer_id, ?sender_short_id, point_to_point_request_id = ?request_id, "Sent point to point response to peer");
                 } else {
-                    tracing::error!(%sender_peer_id, sender_short_id, point_to_point_request_id = ?request_id, "Failed to send point to point response");
+                    tracing::error!(%sender_peer_id, ?sender_short_id, point_to_point_request_id = ?request_id, "Failed to send point to point response");
                 }
 
                 // Forward the message through channel
@@ -320,7 +335,7 @@ impl EventsHandler {
                     .send(ReceivedMessage::new_direct(sender_short_id, msg))
                     .is_err()
                 {
-                    tracing::error!(%sender_peer_id, sender_short_id, "Libp2p node failed to forward message through channel: channel closed");
+                    tracing::error!(%sender_peer_id, ?sender_short_id, "Libp2p node failed to forward message through channel: channel closed");
                 }
             }
 

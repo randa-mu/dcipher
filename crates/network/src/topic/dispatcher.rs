@@ -202,7 +202,7 @@ where
                         Ok(msg) => msg,
                         Err(e) => return Some(Err(e)),
                     };
-                    msg_topic.eq(topic.as_ref()).then(|| Ok(msg))
+                    msg_topic.eq(topic.as_ref()).then_some(Ok(msg))
                 }
             })
             .boxed();
@@ -372,10 +372,9 @@ mod tests {
     #[tokio::test]
     async fn can_send_and_receive_on_many_topics_libp2p() {
         use crate::transports::libp2p::{self, Libp2pNode};
-        use std::num::NonZeroU16;
 
-        let [mut node_1, mut node_2]: [Libp2pNode; 2] =
-            libp2p::tests::start_nodes(const { NonZeroU16::new(2).unwrap() }, 43260)
+        let [mut node_1, mut node_2]: [Libp2pNode<_>; 2] =
+            libp2p::tests::start_nodes(&[1u16, 2], 43260)
                 .await
                 .try_into()
                 .unwrap_or_else(|_| panic!("failed to start nodes"));

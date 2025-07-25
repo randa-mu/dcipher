@@ -1,13 +1,20 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::hash::Hash;
 
 pub mod topic;
 #[cfg(feature = "transports")]
 pub mod transports;
 
-pub trait PartyIdentifier: std::fmt::Display + Clone + Debug + Eq + PartialEq {}
+pub trait PartyIdentifier:
+    std::fmt::Display + Copy + Clone + Debug + Eq + PartialEq + Hash + Send + Sync + 'static
+{
+}
 
-impl<T> PartyIdentifier for T where T: std::fmt::Display + Clone + Debug + Eq + PartialEq {}
+impl<T> PartyIdentifier for T where
+    T: std::fmt::Display + Copy + Clone + Debug + Eq + PartialEq + Hash + Send + Sync + 'static
+{
+}
 
 /// Recipient of a message.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

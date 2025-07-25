@@ -84,7 +84,7 @@ fn get_signer(
     config: &Args,
     nodes_config: &NodesConfiguration,
 ) -> anyhow::Result<(
-    Libp2pNode,
+    Libp2pNode<u16>,
     CancellationToken,
     AsyncThresholdSigner<BN254SignatureOnG1Signer>,
     ark_bn254::G2Affine,
