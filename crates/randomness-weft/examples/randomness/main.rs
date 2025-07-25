@@ -14,6 +14,8 @@ use fulfiller_core::signature_sender::{SignatureRequest, SignatureSenderFulfille
 use fulfiller_core::signer::threshold_signer::ThresholdSigner;
 use fulfiller_core::signer::BN254SignatureOnG1Signer;
 use randomness_agent::{run_agent, NotifyTicker, RANDOMNESS_SCHEME_ID};
+use randomness_warp::contracts::RandomnessSender;
+use randomness_warp::fulfiller::RandomnessFulfiller;
 use randomness_warp::RandomnessAgent;
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
@@ -21,8 +23,6 @@ use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::Layer;
-use randomness_warp::contracts::RandomnessSender;
-use randomness_warp::fulfiller::RandomnessFulfiller;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -81,12 +81,12 @@ where
 #[cfg(feature = "blocklock")] // need blocklock types for ibe
 pub(crate) mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::sync::Arc;
     use alloy::primitives::{Bytes, U256};
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
+    use std::collections::HashMap;
+    use std::sync::Arc;
     use tokio::sync::watch;
 
     use crate::decryption_sender::DecryptionRequest;
