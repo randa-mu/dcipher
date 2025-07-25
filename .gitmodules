@@ -1,12 +1,12 @@
 [submodule "blocklock-solidity"]
 	path = blocklock-solidity
 	url = ../blocklock-solidity.git
-[submodule "marshmallow-crypto"]
-	path = crates/marshmallow-crypto
-	url = ../marshmallow-crypto.git
 [submodule "randomness-solidity"]
 	path = randomness-solidity
 	url = ../randomness-solidity.git
 [submodule "dcipher-proto"]
 	path = protobuf
 	url = ../dcipher-proto.git
+[submodule "marshmallow-crypto"]
+	path = crates/marshmallow-crypto
+	url = ../marshmallow-crypto
