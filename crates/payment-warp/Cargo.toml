@@ -9,23 +9,5 @@ default = []
 [dependencies]
 # workspace crates
 contracts-core = { path = "../contracts-core" }
-fulfiller-core = { path = "../fulfiller-core", features = ["fulfiller", "evm"] }
-
-alloy = { workspace = true, features = ["default", "provider-ws"] }
-
-# async
-futures-util = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
-
-# logs / metrics
-prometheus = { workspace = true }
-tracing = { workspace = true }
-
-# serde
-serde = { workspace = true, features = ["derive"] }
-
-# misc
-thiserror = { workspace = true }
 
 [dev-dependencies]
-alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }

@@ -2531,13 +2531,10 @@ dependencies = [
  "ark-std 0.4.0",
  "contracts-core",
  "dcipher-signer",
- "digest 0.10.7",
  "futures-util",
  "hex",
- "pairing_utils",
  "prometheus",
  "serde",
- "sha3",
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
@@ -4715,15 +4712,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 name = "payment-warp"
 version = "0.1.0"
 dependencies = [
- "alloy",
  "contracts-core",
- "fulfiller-core",
- "futures-util",
- "prometheus",
- "serde",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
 ]
 
 [[package]]
