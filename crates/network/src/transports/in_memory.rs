@@ -1,12 +1,12 @@
 //! In memory transport that is primarily designed for use in tests.
 
 use crate::{ReceivedMessage, Recipient, Transport, TransportSender};
-use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
+use futures_util::StreamExt;
 use std::collections::VecDeque;
 use tokio::sync::broadcast;
-use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
+use tokio_stream::wrappers::BroadcastStream;
 
 #[derive(thiserror::Error, Debug)]
 #[error("memory transport error")]

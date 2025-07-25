@@ -7,6 +7,7 @@ edition.workspace = true
 # blockchain
 alloy = { workspace = true, features = ["default", "provider-ws"] }
 blocklock-warp = { workspace = true }
+contracts-core = { workspace = true, features = ["blocklock"] }
 fulfiller-core = { workspace = true, features = ["decryption_sender", "fulfiller"] }
 
 # async

@@ -1,14 +1,14 @@
-use fulfiller_core::{RequestId, BlockNumber, fulfiller::RequestChannel, signature_sender::{SignatureRequest, contracts::{SignatureSender, TypesLib}}};
 use crate::metrics::Metrics;
 use alloy::network::Ethereum;
-use alloy::primitives::U256;
 use alloy::primitives::ruint::FromUintError;
+use alloy::primitives::U256;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
+use fulfiller_core::{fulfiller::RequestChannel, signature_sender::{contracts::{SignatureSender, TypesLib}, SignatureRequest}, BlockNumber, RequestId};
 use std::ops::{Add, Sub};
 use tracing::Instrument;
 
 #[derive(thiserror::Error, Debug)]
-enum InternalRandomnessAgentError {
+pub enum InternalRandomnessAgentError {
     #[error("failed to cast solidity type to u64: {1}")]
     FromUintCast(#[source] FromUintError<u64>, &'static str),
 

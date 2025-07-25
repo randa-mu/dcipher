@@ -2,8 +2,8 @@
 
 use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
 use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
-use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
+use futures_util::StreamExt;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 

@@ -1,20 +1,21 @@
 //! Agent managing the state of the blocklock smart contract and forwarding fulfilled request to a
 //! fulfiller's request channel.
 
-use fulfiller_core::RequestId;
-use crate::{BlockNumber, BlocklockConditionUpdate};
 use crate::condition_resolver::{
     BlocklockConditionResolver, BlocklockConditionResolverError,
 };
 use crate::metrics::Metrics;
-use fulfiller_core::decryption_sender::DecryptionRequest;
-use fulfiller_core::decryption_sender::contracts::DecryptionSender;
-use contracts_core::blocklock::blocklock::decryption_sender::TypesLib;
-use fulfiller_core::fulfiller::RequestChannel;
+use crate::{BlockNumber, BlocklockConditionUpdate};
 use alloy::network::Ethereum;
-use alloy::primitives::U256;
 use alloy::primitives::ruint::FromUintError;
+use alloy::primitives::U256;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
+use contracts_core::blocklock::blocklock::decryption_sender::TypesLib as DecryptionSenderTypes;
+
+use fulfiller_core::decryption_sender::contracts::DecryptionSender;
+use fulfiller_core::decryption_sender::DecryptionRequest;
+use fulfiller_core::fulfiller::RequestChannel;
+use fulfiller_core::RequestId;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Add, Sub};
@@ -26,7 +27,7 @@ pub enum BlocklockAgentError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum InternalBlocklockAgentError {
+pub enum InternalBlocklockAgentError {
     #[error(transparent)]
     ConditionResolver(#[from] BlocklockConditionResolverError),
 
@@ -540,14 +541,14 @@ impl Default for BlocklockAgentSavedState {
 
 /// Helper struct used for TypesLibDecryptionRequest
 struct TypesLibDecryptionRequest {
-    inner: TypesLib::DecryptionRequest,
+    inner: DecryptionSenderTypes::DecryptionRequest,
     id: U256,
 }
 
 impl TypesLibDecryptionRequest {
     pub fn from_typeslib_decryption_request(
         request_id: U256,
-        value: TypesLib::DecryptionRequest,
+        value: DecryptionSenderTypes::DecryptionRequest,
     ) -> Self {
         Self {
             id: request_id,
@@ -570,17 +571,6 @@ impl From<TypesLibDecryptionRequest> for DecryptionRequest {
 mod tests {
     use super::*;
     use crate::BlocklockCondition;
-    use contracts_core::blocklock::blocklock_sender::BlocklockSender;
-    use contracts_core::blocklock::decryption_sender::DecryptionSender::{
-        DecryptionRequested, DecryptionSenderInstance,
-    };
-    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
-    use contracts_core::ser::EvmSerialize;
-    use contracts_core::blocklock::mock_blocklock_receiver::MockBlocklockReceiver::{self, MockBlocklockReceiverInstance};
-    use contracts_core::blocklock::blocklock_sender::{BLS, TypesLib};
-    use contracts_core::blocklock::uups_proxy::UUPSProxy;
-    use contracts_core::blocklock::blocklock_signature_scheme::BlocklockSignatureScheme;
-    use contracts_core::blocklock::signature_scheme_address_provider::SignatureSchemeAddressProvider;
     use alloy::consensus::constants::ETH_TO_WEI;
     use alloy::hex;
     use alloy::network::{Ethereum, TransactionBuilder};
@@ -591,16 +581,29 @@ mod tests {
     use alloy::sol_types::{SolEvent, SolValue};
     use ark_ec::{AffineRepr, CurveGroup, Group};
     use ark_ff::{BigInteger, MontFp, PrimeField};
-    use ark_std::UniformRand;
     use ark_std::rand::thread_rng;
-    use futures_util::StreamExt;
+    use ark_std::UniformRand;
     use futures_util::future::join_all;
+    use futures_util::StreamExt;
     use std::collections::VecDeque;
     use std::ops::AddAssign;
     use std::rc::Rc;
     use std::str::FromStr;
     use std::sync::Mutex;
     use std::time::Duration;
+
+    use contracts_core::blocklock::blocklock_sender::BlocklockSender;
+    use contracts_core::blocklock::blocklock_signature_scheme::BlocklockSignatureScheme;
+    use contracts_core::blocklock::decryption_sender::DecryptionSender::{
+        DecryptionRequested, DecryptionSenderInstance,
+    };
+    use contracts_core::blocklock::mock_blocklock_receiver::MockBlocklockReceiver::MockBlocklockReceiverInstance;
+    use contracts_core::blocklock::mock_blocklock_receiver::TypesLib as MockBlocklockReceiverTypes;
+    use contracts_core::blocklock::mock_blocklock_receiver::BLS as MockBlocklockReceiverBLS;
+    use contracts_core::blocklock::signature_scheme_address_provider::SignatureSchemeAddressProvider;
+    use contracts_core::blocklock::uups_proxy::UUPSProxy;
+    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
+    use contracts_core::ser::EvmSerialize;
 
     const SK: ark_bn254::Fr =
         MontFp!("3742516928081212610066329633174215531795997236046512785163691679786522890575");
@@ -749,7 +752,7 @@ mod tests {
         deploy_imulticall3(&provider).await;
 
         // Deploy mockblocklock receiver and fund it in order to create requests
-        let mockblocklock_receiver = MockBlocklockReceiver::MockBlocklockReceiverInstance::deploy(
+        let mockblocklock_receiver = MockBlocklockReceiverInstance::deploy(
             provider.clone(),
             blocklock_proxy.address().to_owned(),
         )
@@ -798,27 +801,20 @@ mod tests {
             .unwrap();
     }
 
-    fn rand_ciphertext() -> TypesLib::Ciphertext {
+    fn rand_ciphertext() -> MockBlocklockReceiverTypes::Ciphertext {
         let u = ark_bn254::G2Affine::rand(&mut thread_rng());
         let (x, y) = to_sol_g2(u);
-        TypesLib::Ciphertext {
-            u: BLS::PointG2 { x, y },
+        MockBlocklockReceiverTypes::Ciphertext {
+            u: MockBlocklockReceiverBLS::PointG2 { x, y },
             v: Bytes::from(vec![0; 32]),
             w: Bytes::from(vec![0; 4]),
         }
     }
 
-    // Convert between different Ciphertext types using ABI encoding/decoding
-    fn convert_ciphertext_via_abi(ct: TypesLib::Ciphertext) -> alloy::primitives::Bytes {
-        use alloy::sol_types::SolValue;
-        // Encode the ciphertext as ABI bytes - this should be compatible with any contract expecting the same structure
-        ct.abi_encode().into()
-    }
-
     async fn register_ciphertext<P>(
         decryption_sender: &DecryptionSenderInstance<P>,
         mockblocklock_receiver: &MockBlocklockReceiverInstance<P>,
-        ct: TypesLib::Ciphertext,
+        ct: contracts_core::blocklock::mock_blocklock_receiver::TypesLib::Ciphertext,
         condition: BlocklockCondition,
     ) -> DecryptionRequested
     where
@@ -834,19 +830,14 @@ mod tests {
             .with_poll_interval(Duration::from_millis(20))
             .into_stream();
 
-        // TODO: Implement proper type conversion between contract-generated Ciphertext types
-        // The core issue is that alloy::sol! generates private modules that can't be re-exported
-        // This needs to be addressed by either:
-        // 1. Using the same contract definition for both sender and receiver
-        // 2. Implementing a proper ABI-based conversion function
-        // 3. Using raw contract calls with manual ABI encoding
-        
-        println!("Warning: MockBlocklockReceiver contract call temporarily disabled due to type conversion issues");
-        println!("Ciphertext type: {:?}", std::any::type_name::<TypesLib::Ciphertext>());
-        println!("Condition: {:?}", condition);
-        
-        // For now, we skip the actual contract call to allow compilation and basic functionality
-        // The tests that depend on this will fail, but the core build will succeed
+        mockblocklock_receiver
+            .createTimelockRequestWithSubscription(500_000, condition.into(), ct)
+            .send()
+            .await
+            .unwrap()
+            .watch()
+            .await
+            .unwrap();
 
         let decryption_requested_log = decryption_requested_stream.next().await.unwrap();
         DecryptionRequested::decode_log(&decryption_requested_log[0].clone().into())

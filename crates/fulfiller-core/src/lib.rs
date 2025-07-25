@@ -42,7 +42,7 @@ use std::ops::{Add, Sub};
 #[cfg(feature = "evm")]
 mod request_id {
     use super::*;
-    
+
     /// A unique identifier for a request.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
     pub struct RequestId(pub U256);

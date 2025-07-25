@@ -3,11 +3,11 @@
 
 use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
-use contracts_core::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
-use alloy::primitives::Bytes;
-use std::borrow::Cow;
 use crate::DecryptionRequest;
 use crate::SignedDecryptionRequest;
+use alloy::primitives::Bytes;
+use contracts_core::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
+use std::borrow::Cow;
 
 pub struct DecryptionSenderAsyncSigner<CS, AsyncSigner> {
     cs: CS,
@@ -82,14 +82,14 @@ where
 pub(crate) mod tests {
     use super::*;
     use crate::decryption_sender::DecryptionRequest;
-    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
-    use crate::ser::EvmSerialize;
     use crate::ser::tests::bn254::encode_ciphertext;
+    use crate::ser::EvmSerialize;
     use crate::signer::{AsynchronousSigner, BlsSigner};
     use alloy::primitives::{Bytes, U256};
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
+    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::watch;

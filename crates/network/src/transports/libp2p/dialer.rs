@@ -2,13 +2,13 @@
 //! dial disconnected peers.
 
 use crate::transports::libp2p::PeerDetail;
-use libp2p::core::Endpoint;
 use libp2p::core::transport::PortUse;
+use libp2p::core::Endpoint;
 use libp2p::swarm::behaviour::{ConnectionClosed, ConnectionEstablished, DialFailure};
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{
-    ConnectionDenied, ConnectionId, FromSwarm, NetworkBehaviour, THandler, THandlerInEvent,
-    THandlerOutEvent, ToSwarm, dummy,
+    dummy, ConnectionDenied, ConnectionId, FromSwarm, NetworkBehaviour, THandler,
+    THandlerInEvent, THandlerOutEvent, ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
 use std::collections::HashMap;

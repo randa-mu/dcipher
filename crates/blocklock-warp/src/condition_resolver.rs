@@ -43,7 +43,7 @@ pub enum BlocklockConditionUpdate {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum BlocklockConditionResolverError {
+pub enum BlocklockConditionResolverError {
     #[error("invalid condition")]
     BlocklockConditionDecode(#[from] BlocklockConditionDecodeError),
 

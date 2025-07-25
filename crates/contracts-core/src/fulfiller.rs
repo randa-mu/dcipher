@@ -4,13 +4,13 @@ use crate::estimator::{
     OtherPaymentEstimatorError, PaymentEstimatorCostError, PaymentEstimatorError,
     RequestFulfillmentEstimator,
 };
+use crate::payment::PaymentContract;
 use alloy::contract::SolCallBuilder;
 use alloy::network::{Network, ReceiptResponse};
 use alloy::primitives::{Address, TxHash, U256};
 use alloy::providers::{Provider, WalletProvider};
 use alloy::sol_types::SolCall;
 use std::time::Duration;
-use crate::payment::PaymentContract;
 
 #[derive(thiserror::Error, Debug)]
 pub enum GenericFulfillerError {

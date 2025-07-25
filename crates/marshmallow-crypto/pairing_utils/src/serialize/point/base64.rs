@@ -2,6 +2,7 @@
 use super::{PointDeserializeCompressed, PointSerializeCompressed};
 use serde::{Deserialize, Deserializer, Serializer};
 
+
 pub fn serialize<S, A: PointSerializeCompressed>(p: &A, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -27,6 +28,7 @@ pub mod array {
     use arrayvec::ArrayVec;
     use serde::de::{Deserializer, SeqAccess, Visitor};
     use serde::{ser::SerializeTuple, Serializer};
+
 
     pub fn serialize<S, A: PointSerializeCompressed, const N: usize>(
         ps: &[A; N],
@@ -98,6 +100,7 @@ pub mod vec {
     use super::*;
     use serde::de::{Deserializer, SeqAccess, Visitor};
     use serde::{ser::SerializeTuple, Serializer};
+
 
     pub fn serialize<S, A: PointSerializeCompressed>(ps: &[A], s: S) -> Result<S::Ok, S::Error>
     where

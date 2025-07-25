@@ -1,10 +1,10 @@
 //! Generic fulfillment logic for dcipher payment contracts.
 
-use super::PaymentContract;
 use super::estimator::{
     OtherPaymentEstimatorError, PaymentEstimatorCostError, PaymentEstimatorError,
     RequestFulfillmentEstimator,
 };
+use super::PaymentContract;
 use alloy::contract::SolCallBuilder;
 use alloy::network::{Network, ReceiptResponse};
 use alloy::primitives::{Address, TxHash, U256};

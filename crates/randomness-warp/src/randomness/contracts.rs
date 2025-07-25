@@ -1,7 +1,5 @@
 //! Solidity imports for the randomness contracts-core.
 
-pub use randomness_sender::*;
-
 mod randomness_sender {
     use payment_warp::{impl_payment_config, impl_payment_contract};
 

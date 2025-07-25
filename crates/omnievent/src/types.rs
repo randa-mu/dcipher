@@ -1,7 +1,7 @@
 use crate::proto_types::{self, BlockSafety, RegisterNewEventRequest};
 use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
 use alloy::eips::BlockNumberOrTag;
-use alloy::primitives::{Address, B256, LogData, keccak256};
+use alloy::primitives::{keccak256, Address, LogData, B256};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};

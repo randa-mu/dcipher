@@ -13,11 +13,11 @@ use super::{
     fq::{FqDeserialize, FqSerialize},
     SerializationError,
 };
-use ::base64::prelude::*;
 use ark_ec::{
     short_weierstrass::{Affine, Projective, SWCurveConfig},
     AffineRepr, CurveGroup,
 };
+use ::base64::prelude::*;
 
 pub trait PointSerializeCompressed {
     fn ser(&self) -> Result<Vec<u8>, SerializationError>;

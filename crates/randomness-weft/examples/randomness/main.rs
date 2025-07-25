@@ -7,22 +7,22 @@ use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
-use randomness_warp::randomness::RandomnessAgent;
-use randomness_warp::agents::randomness::contracts::RandomnessSender;
-use randomness_warp::agents::randomness::fulfiller::RandomnessFulfiller;
+use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use fulfiller_core::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use fulfiller_core::signature_sender::contracts::SignatureSender;
 use fulfiller_core::signature_sender::{SignatureRequest, SignatureSenderFulfillerConfig};
-use fulfiller_core::signer::BN254SignatureOnG1Signer;
 use fulfiller_core::signer::threshold_signer::ThresholdSigner;
-use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
-use randomness_agent::{NotifyTicker, RANDOMNESS_SCHEME_ID, run_agent};
+use fulfiller_core::signer::BN254SignatureOnG1Signer;
+use randomness_agent::{run_agent, NotifyTicker, RANDOMNESS_SCHEME_ID};
+use randomness_warp::RandomnessAgent;
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::Layer;
 use tracing_subscriber::prelude::*;
+use tracing_subscriber::Layer;
+use randomness_warp::contracts::RandomnessSender;
+use randomness_warp::fulfiller::RandomnessFulfiller;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

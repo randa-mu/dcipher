@@ -3,15 +3,16 @@ use alloy::transports::http::reqwest;
 use anyhow::anyhow;
 use ark_ff::{BigInteger, PrimeField};
 use clap::Parser;
-use dcipher_agents::fulfiller::RetryStrategy;
-use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
+use figment::Figment;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use fulfiller_core::RetryStrategy;
 
 /// Wrapper around ark_bn254::Fr that allows deserialization from hex
 pub struct FrWrapper(ark_bn254::Fr);

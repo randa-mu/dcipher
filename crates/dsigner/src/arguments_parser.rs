@@ -1,8 +1,8 @@
 use anyhow::anyhow;
 use ark_ff::{BigInteger, PrimeField};
 use clap::Parser;
-use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
+use figment::Figment;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 use std::num::{NonZeroU16, NonZeroUsize};

@@ -7,22 +7,22 @@ use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
-use blocklock_weft::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
-use blocklock_warp::{BlocklockAgent, BlocklockAgentSavedState};
-use fulfiller_core::contracts::BlocklockSender;
-use fulfiller_core::fulfiller::BlocklockFulfiller;
-use fulfiller_core::contracts::DecryptionSender;
-use fulfiller_core::{DecryptionRequest, DecryptionSenderFulfillerConfig};
-use fulfiller_core::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
-use fulfiller_core::ibe_helper::IbeIdentityOnBn254G1Suite;
-use fulfiller_core::signer::threshold_signer::ThresholdSigner;
+use blocklock_warp::{BlocklockAgent, BlocklockAgentSavedState, BlocklockFulfiller};
+use blocklock_weft::{run_agent, NotifyTicker, BLOCKLOCK_SCHEME_ID};
+use contracts_core::ibe_helper::IbeIdentityOnBn254G1Suite;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
+use fulfiller_core::contracts::BlocklockSender;
+use fulfiller_core::decryption_sender::DecryptionSender;
+use fulfiller_core::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
+use fulfiller_core::signer::threshold_signer::ThresholdSigner;
+use fulfiller_core::{DecryptionRequest, DecryptionSenderFulfillerConfig};
+// use fulfiller_core::decryption_sender::contracts::DecryptionSender;
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::Layer;
 use tracing_subscriber::prelude::*;
+use tracing_subscriber::Layer;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -168,7 +168,7 @@ where
 
     // Add own pk to the list if required
     if pks.len() == usize::from(args.key_config.n.get() - 1) {
-        let pk = ark_bn254::G2Affine::generator() * sk;
+        let pk = ark_bn254::G2Affine::generator() * &sk;
         pks.insert(
             usize::from(args.key_config.node_id.get() - 1),
             pk.into_affine(),

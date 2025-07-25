@@ -88,10 +88,10 @@ mod blocklock {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    #[cfg(all(feature = "blocklock", feature = "ibe"))] // uses blocklock types & ibe
+    #[cfg(all(feature = "blocklock"))] // uses blocklock types & ibe
     pub(crate) mod bn254 {
         use super::super::*;
-        use crate::blocklock::blocklock_sender::{BLS, TypesLib};
+        use crate::blocklock::blocklock_sender::{TypesLib, BLS};
         use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
         use alloy::primitives::U256;
         use alloy::sol_types::SolValue;

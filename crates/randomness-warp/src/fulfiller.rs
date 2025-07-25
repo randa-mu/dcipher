@@ -2,16 +2,16 @@
 //! [`RandomnessFulfiller`] attempts to fulfil randomness requests sequentially with a transaction
 //! per fulfillment.
 
-use payment_warp::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
-use payment_warp::fulfiller::{GenericFulfiller, GenericFulfillerError};
 use crate::contracts::RandomnessSender;
 use crate::metrics::Metrics;
-use fulfiller_core::fulfiller::TransactionFulfiller;
-use fulfiller_core::signature_sender::{SignedSignatureRequest, contracts::SignatureSender};
 use alloy::network::{Ethereum, Network};
 use alloy::providers::{Provider, WalletProvider};
-use futures_util::FutureExt;
+use fulfiller_core::fulfiller::TransactionFulfiller;
+use fulfiller_core::signature_sender::{contracts::SignatureSender, SignedSignatureRequest};
 use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
+use payment_warp::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
+use payment_warp::fulfiller::{GenericFulfiller, GenericFulfillerError};
 use std::time::Duration;
 
 pub type RandomnessFulfillerError = GenericFulfillerError;

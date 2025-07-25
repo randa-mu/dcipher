@@ -1,10 +1,10 @@
 //! Helper traits used to serialize and deserialize various types into EVM bytes.
 
-use alloy::primitives::Bytes;
 use ark_ec::AffineRepr;
+use alloy::primitives::Bytes;
 
 // Re-export from contracts-core to get the implementations
-pub use contracts_core::ser::{EvmSerialize, EvmDeserialize};
+pub use contracts_core::ser::{EvmDeserialize, EvmSerialize};
 
 // EvmSerialize implementation is now provided by contracts-core
 
@@ -15,12 +15,12 @@ pub(crate) mod tests {
     #[cfg(all(feature = "blocklock", feature = "ibe"))] // uses blocklock types & ibe
     pub(crate) mod bn254 {
         use super::super::*;
-        use contracts_core::blocklock::blocklock_sender::{BLS, TypesLib};
-        use contracts_core::ser::IbeIdentityOnBn254G1CiphertextError;
-        use contracts_core::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
         use alloy::primitives::U256;
         use alloy::sol_types::SolValue;
         use ark_ff::{BigInteger, Fp, PrimeField};
+        use contracts_core::blocklock::blocklock_sender::{TypesLib, BLS};
+        use contracts_core::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
+        use contracts_core::ser::IbeIdentityOnBn254G1CiphertextError;
 
         #[test]
         fn ark_bn254_g1_serialize() {

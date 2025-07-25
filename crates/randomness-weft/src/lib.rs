@@ -2,11 +2,11 @@
 
 use alloy::providers::Provider;
 use anyhow::anyhow;
-use randomness_warp::RandomnessAgent;
 use fulfiller_core::fulfiller::{RequestChannel, Ticker};
-use fulfiller_core::signature_sender::{SignatureRequest, contracts::{SignatureSender, SignatureSender::SignatureRequested}};
+use fulfiller_core::signature_sender::{contracts::{SignatureSender, SignatureSender::SignatureRequested}, SignatureRequest};
 use futures::Stream;
 use futures_util::StreamExt;
+use randomness_warp::RandomnessAgent;
 use std::future::Future;
 use std::sync::Arc;
 

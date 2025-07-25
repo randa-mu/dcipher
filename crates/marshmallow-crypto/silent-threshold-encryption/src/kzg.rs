@@ -6,7 +6,7 @@ use ark_ec::{pairing::Pairing, CurveGroup, Group};
 use ark_ec::{scalar_mul::fixed_base::FixedBase, VariableBaseMSM};
 use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::DenseUVPolynomial;
-use ark_std::{format, marker::PhantomData, ops::*, vec};
+use ark_std::{marker::PhantomData, ops::*, vec};
 
 use ark_std::rand::RngCore;
 

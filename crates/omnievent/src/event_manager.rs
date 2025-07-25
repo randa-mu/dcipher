@@ -293,8 +293,8 @@ where
 #[cfg(test)]
 #[allow(clippy::bool_assert_comparison)]
 pub(crate) mod tests {
-    use crate::event_manager::EventManager;
     use crate::event_manager::db::in_memory::InMemoryDatabase;
+    use crate::event_manager::EventManager;
     use alloy::dyn_abi::DynSolValue;
     use alloy::network::Ethereum;
     use alloy::node_bindings::Anvil;

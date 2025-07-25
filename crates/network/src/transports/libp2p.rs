@@ -16,10 +16,10 @@ use crate::transports::libp2p::transport::Libp2pTransport;
 use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;
 use libp2p::identity::Keypair;
-use libp2p::swarm::NetworkBehaviour;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
+use libp2p::swarm::NetworkBehaviour;
 use libp2p::{
-    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, ping, request_response, tcp, yamux,
+    allow_block_list, floodsub, noise, ping, request_response, tcp, yamux, Multiaddr, PeerId, Swarm,
 };
 use std::collections::HashMap;
 use std::time::Duration;

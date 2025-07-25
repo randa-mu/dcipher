@@ -4,10 +4,10 @@
 #[cfg(feature = "blocklock")]
 pub mod blocklock {
    pub mod blocklock_sender {
+       use crate::payment::{DefaultRequestDetails, PaymentConfig, PaymentContract};
        use crate::{impl_payment_config, impl_payment_contract};
-       use crate::payment::{PaymentConfig, PaymentContract, DefaultRequestDetails};
 
-        alloy::sol!(
+       alloy::sol!(
             #[allow(clippy::too_many_arguments)]
             #[derive(Debug)]
             #[sol(rpc)]

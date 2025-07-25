@@ -1,14 +1,14 @@
-use crate::ReceivedMessage;
 use crate::transports::libp2p::dialer::PeriodicDialEvent;
 use crate::transports::libp2p::metrics::Metrics;
 use crate::transports::libp2p::{
-    Behaviour, BehaviourEvent, LIBP2P_MAIN_TOPIC, Libp2pNodeError, PeerDetails,
+    Behaviour, BehaviourEvent, Libp2pNodeError, PeerDetails, LIBP2P_MAIN_TOPIC,
 };
 use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
+use crate::ReceivedMessage;
 use futures_util::StreamExt;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::request_response::{Event as RequestResponseEvent, Message as RequestResponseMessage};
-use libp2p::{Swarm, floodsub, ping, swarm::SwarmEvent};
+use libp2p::{floodsub, ping, swarm::SwarmEvent, Swarm};
 use std::num::NonZeroU32;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;

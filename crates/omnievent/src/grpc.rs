@@ -10,8 +10,8 @@ use crate::types::{EventId, ParseRegisterNewEventRequestError, ParsedRegisterNew
 use futures_util::StreamExt;
 use std::sync::Arc;
 use superalloy::provider::MultiChainProvider;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
 pub struct OmniEventServiceImpl<MP, DB> {

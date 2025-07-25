@@ -1,11 +1,11 @@
 use anyhow::anyhow;
-use dcipher_agents::agents::randomness::metrics::Metrics as RandomnessMetrics;
-use dcipher_agents::signer::threshold_signer::metrics::Metrics as ThresholdSignerMetrics;
-use dcipher_network::transports::libp2p::metrics::Metrics as Libp2pMetrics;
 use prometheus::{Encoder, TextEncoder};
 use std::net::IpAddr;
-use warp::Filter;
 use warp::http::StatusCode;
+use warp::Filter;
+use dcipher_network::transports::libp2p::metrics::Metrics as Libp2pMetrics;
+use randomness_warp::metrics::Metrics as RandomnessMetrics;
+use randomness_warp::metrics::Metrics as ThresholdSignerMetrics;
 
 pub async fn start_api(listen_addr: IpAddr, port: u16) -> anyhow::Result<()> {
     let health = warp::path!("health")

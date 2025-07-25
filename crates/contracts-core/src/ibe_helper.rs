@@ -66,11 +66,11 @@ pub trait IbeCiphertext {
 pub use bn254::IbeIdentityOnBn254G1Ciphertext;
 pub use bn254::IbeIdentityOnBn254G1Suite;
 
-mod bn254 {
+pub mod bn254 {
     use super::*;
     use crate::ibe_helper::expander::Expander;
-    use ark_ec::CurveGroup;
     use ark_ec::pairing::PairingOutput;
+    use ark_ec::CurveGroup;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::Zero;
     use digest::core_api::BlockSizeUser;

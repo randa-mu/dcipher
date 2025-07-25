@@ -1486,6 +1486,7 @@ dependencies = [
  "base64 0.22.1",
  "blocklock-warp",
  "clap",
+ "contracts-core",
  "dcipher-network",
  "figment",
  "fulfiller-core",

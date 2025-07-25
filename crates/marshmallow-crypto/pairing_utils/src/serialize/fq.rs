@@ -1,8 +1,8 @@
 //! Serialization module for field elements.
 use super::SerializationError;
 use crate::helpers::u32_to_usize;
-use ::base64::prelude::*;
 use ark_ff::{BigInteger, Field, Fp, FpConfig, PrimeField, QuadExtConfig, QuadExtField};
+use ::base64::prelude::*;
 use itertools::Itertools;
 
 /// Trait used to serialize field elements.

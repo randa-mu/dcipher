@@ -4,13 +4,13 @@
 
 use alloy::primitives::TxHash;
 use alloy::providers::Provider;
-use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
 use std::time::Duration;
 
-use crate::fulfiller::TransactionFulfiller;
-use crate::decryption_sender::SignedDecryptionRequest;
 use crate::decryption_sender::contracts::DecryptionSender;
+use crate::decryption_sender::SignedDecryptionRequest;
+use crate::fulfiller::TransactionFulfiller;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SingleCallTxFullfillerError {

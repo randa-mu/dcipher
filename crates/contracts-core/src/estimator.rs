@@ -1,12 +1,12 @@
 //! Estimate gas costs to ensure that fulfilling a request results in profits.
 
+use crate::payment::{PaymentConfig, PaymentContract, RequestDetails};
 use alloy::contract::SolCallBuilder;
 use alloy::network::Network;
 use alloy::primitives::{Address, U256};
 use alloy::providers::{MulticallItem, Provider};
 use alloy::sol_types::SolCall;
 use std::marker::PhantomData;
-use crate::payment::{PaymentConfig, PaymentContract, RequestDetails};
 
 /// Fulfillment parameters that must be used to fulfil a request.
 #[derive(Copy, Clone, Debug)]
