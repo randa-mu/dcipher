@@ -276,12 +276,10 @@ mod sha2_named {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // Test ciphersuites for BLS12-381
     #[cfg(feature = "bls12-381")]
     mod bls12_381 {
-        use super::*;
+        use super::super::*;
 
         #[test]
         fn bls12_rfc9380() {
