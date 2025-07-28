@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use dcipher_network::transports::libp2p::metrics::Metrics as Libp2pMetrics;
 use prometheus::{Encoder, TextEncoder};
 use randomness_warp::metrics::Metrics as RandomnessMetrics;
-use randomness_warp::metrics::Metrics as ThresholdSignerMetrics;
+use signer::threshold_signer::metrics::Metrics as ThresholdSignerMetrics;
 use std::net::IpAddr;
 use warp::http::StatusCode;
 use warp::Filter;

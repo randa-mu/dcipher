@@ -1,15 +1,15 @@
 [workspace]
 resolver = "3"
 members = [
+    "crates/adkg",
+    "crates/adkg-cli",
+    "crates/network",
     "crates/blocklock-weft",
     "crates/blocklock-warp",
     "crates/fulfiller-core",
     "crates/payment-warp",
     "crates/randomness-warp",
     "crates/dsigner",
-    "crates/marshmallow-crypto/adkg",
-    "crates/marshmallow-crypto/pairing_utils",
-    "crates/marshmallow-crypto/silent-threshold-encryption",
     "crates/network",
     "crates/omnievent",
     "crates/onlyswaps-verifier",
@@ -17,6 +17,7 @@ members = [
     "crates/signer",
     "crates/superalloy",
     "crates/contracts-core",
+    "crates/utils",
 ]
 
 [workspace.package]
@@ -25,6 +26,7 @@ edition = "2024"
 
 [workspace.dependencies]
 # workspace crates
+adkg = { path = "./crates/adkg" }
 contracts-core = { path = "./crates/contracts-core" }
 fulfiller-core = { path = "./crates/fulfiller-core" }
 payment-warp = { path = "./crates/payment-warp" }
@@ -39,10 +41,12 @@ alloy = { version = "1.0", default-features = false }
 
 # crypto
 ark-bn254 = "0.4.0"
+ark-bls12-381 = "0.4.0"
 ark-ec = "0.4.2"
 ark-ff = "0.4.2"
+ark-poly = "0.4.2"
 ark-std = "0.4.0"
-pairing_utils = { path = "./crates/marshmallow-crypto/pairing_utils" }
+utils = { path = "./crates/utils", features = ["bn254"] }
 
 # hashes
 digest = "0.10"
@@ -88,6 +92,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 figment = { version = "0.10" }
 hex = "0.4"
 itertools = "0.14"
+rand = "0.8.0"
 thiserror = "2.0"
 
 [patch.crates-io]

@@ -21,8 +21,8 @@ use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::Layer;
+use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

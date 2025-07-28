@@ -1,11 +1,11 @@
 use crate::topic::{Topic, TopicBasedTransport};
 use crate::{ReceivedMessage, Recipient, Transport, TransportSender};
-use futures_util::stream::BoxStream;
 use futures_util::StreamExt;
+use futures_util::stream::BoxStream;
 use prost::Message;
 use std::borrow::Cow;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tokio_util::sync::CancellationToken;
 
 /// A dispatcher that can be used to multiplex many topics in a single [`Transport`].

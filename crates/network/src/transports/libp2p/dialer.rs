@@ -3,8 +3,8 @@
 
 use crate::PartyIdentifier;
 use crate::transports::libp2p::PeerDetail;
-use libp2p::core::transport::PortUse;
 use libp2p::core::Endpoint;
+use libp2p::core::transport::PortUse;
 use libp2p::swarm::behaviour::{ConnectionClosed, ConnectionEstablished, DialFailure};
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{

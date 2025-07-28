@@ -35,7 +35,7 @@ superalloy = { workspace = true }
 ark-bn254 = { workspace = true }
 ark-ec = { workspace = true }
 ark-ff = { workspace = true }
-pairing_utils = { path = "../marshmallow-crypto/pairing_utils" }
+utils.workspace = true
 
 # async
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }

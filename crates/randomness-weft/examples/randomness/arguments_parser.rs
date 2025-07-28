@@ -188,7 +188,7 @@ pub struct NodeConfiguration {
     pub node_id: NonZeroU16,
 
     /// BN254 public key of the node
-    #[serde(with = "pairing_utils::serialize::point::base64")]
+    #[serde(with = "utils::serialize::point::base64")]
     pub bls_pk: ark_bn254::G2Affine,
 
     /// Libp2p peer address

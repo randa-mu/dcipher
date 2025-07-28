@@ -12,7 +12,7 @@ use fulfiller_core::signer::threshold_signer::{
     lagrange_points_interpolate_at, AsyncThresholdSigner, ThresholdSigner,
 };
 use fulfiller_core::signer::{AsynchronousSigner, BN254SignatureOnG1Signer};
-use pairing_utils::serialize::point::PointSerializeCompressed;
+use utils::serialize::point::PointSerializeCompressed;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::net::TcpListener;

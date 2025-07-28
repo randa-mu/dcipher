@@ -11,7 +11,7 @@ ark-std = { workspace = true }
 ark-ff = { workspace = true }
 sha3 = { workspace = true }
 digest = { workspace = true }
-pairing_utils = { workspace = true }
+utils = { workspace = true }
 dcipher-signer = { workspace = true, optional = true }
 
 # logs / metrics

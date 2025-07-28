@@ -5,7 +5,7 @@ use warp::http::StatusCode;
 use warp::Filter;
 
 use blocklock_warp::metrics::Metrics as BlocklockMetrics;
-use blocklock_warp::metrics::Metrics as ThresholdSignerMetrics;
+use signer::threshold_signer::metrics::Metrics as ThresholdSignerMetrics;
 use dcipher_network::transports::libp2p::metrics::Metrics as Libp2pMetrics;
 
 pub async fn start_api(listen_addr: IpAddr, port: u16) -> anyhow::Result<()> {
