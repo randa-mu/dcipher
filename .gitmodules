@@ -7,6 +7,3 @@
 [submodule "dcipher-proto"]
 	path = protobuf
 	url = ../dcipher-proto.git
-[submodule "marshmallow-crypto"]
-	path = crates/marshmallow-crypto
-	url = ../marshmallow-crypto
