@@ -85,9 +85,17 @@ impl<ID: PartyIdentifier> Libp2pNodeConfig<ID> {
             panic!("run requires all inputs array to be of equal length");
         }
 
-        let peers = FromIterator::from_iter(izip!(peer_ids, peer_addrs, peer_short_ids).map(
-            |(peer_id, multiaddr, short_id)| PeerDetail::new(peer_id, short_id, vec![multiaddr]),
-        ));
+        // Build the peers, removing oneself if necessary
+        let peers =
+            FromIterator::from_iter(izip!(peer_ids, peer_addrs, peer_short_ids).filter_map(
+                |(peer_id, multiaddr, peer_short_id)| {
+                    if short_id == peer_short_id {
+                        None
+                    } else {
+                        Some(PeerDetail::new(peer_id, peer_short_id, vec![multiaddr]))
+                    }
+                },
+            ));
 
         Self {
             key,
