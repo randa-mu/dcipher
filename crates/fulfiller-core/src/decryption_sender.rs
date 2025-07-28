@@ -9,8 +9,6 @@ pub mod contracts {
     pub use contracts_core::blocklock::decryption_sender::DecryptionSender;
 }
 
-use contracts_core::ser::IbeIdentityOnBn254G1CiphertextError;
-use contracts_core::ser::EvmDeserialize;
 use crate::decryption_sender::async_signer::DecryptionSenderAsyncSigner;
 pub use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::RetryStrategy;
@@ -19,6 +17,8 @@ use crate::fulfiller::{Identifier, TransactionFulfiller};
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
 use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Ciphertext, PairingIbeCipherSuite};
+use contracts_core::ser::EvmDeserialize;
+use contracts_core::ser::IbeIdentityOnBn254G1CiphertextError;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::marker::PhantomData;
