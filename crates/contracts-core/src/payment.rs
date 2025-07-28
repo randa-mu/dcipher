@@ -39,12 +39,14 @@ where
     type PaymentConfig: PaymentConfig;
     type RequestDetails: RequestDetails;
 
-    async fn get_config(&self) -> Result<Self::PaymentConfig, alloy::contract::Error>;
+    fn get_config(
+        &self,
+    ) -> impl Future<Output = Result<Self::PaymentConfig, alloy::contract::Error>> + Send;
 
-    async fn get_request_details(
+    fn get_request_details(
         &self,
         id: U256,
-    ) -> Result<Self::RequestDetails, alloy::contract::Error>;
+    ) -> impl Future<Output = Result<Self::RequestDetails, alloy::contract::Error>> + Send;
 
     fn provider(&self) -> &P;
 

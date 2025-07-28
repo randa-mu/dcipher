@@ -34,7 +34,7 @@ impl TryFrom<&[u8]> for BlocklockCondition {
         if bytes.is_empty() {
             return Err(BlocklockConditionDecodeError::InvalidFormat);
         }
-        
+
         match bytes[0] {
             0 => {
                 if bytes.len() != 9 {
@@ -42,7 +42,9 @@ impl TryFrom<&[u8]> for BlocklockCondition {
                 }
                 let mut block_bytes = [0u8; 8];
                 block_bytes.copy_from_slice(&bytes[1..9]);
-                Ok(BlocklockCondition::BlockNumber(BlockNumber(u64::from_be_bytes(block_bytes))))
+                Ok(BlocklockCondition::BlockNumber(BlockNumber(
+                    u64::from_be_bytes(block_bytes),
+                )))
             }
             _ => Err(BlocklockConditionDecodeError::UnknownType),
         }

@@ -17,7 +17,7 @@ pub mod signer {
 
 // Re-export contracts from contracts-core
 pub mod contracts {
-    pub use contracts_core::blocklock::blocklock::blocklock_sender::BlocklockSender;
+    pub use contracts_core::blocklock::blocklock_sender::BlocklockSender;
 }
 
 // Re-exports

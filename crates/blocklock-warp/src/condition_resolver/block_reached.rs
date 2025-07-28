@@ -1,7 +1,7 @@
 //! Condition resolver for block numbers.
 
-use crate::condition_resolver::ChildResolver;
 use crate::BlockNumber;
+use crate::condition_resolver::ChildResolver;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 
@@ -92,8 +92,8 @@ where
 mod tests {
     use super::*;
     use crate::condition_resolver::StandaloneResolver;
-    use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
 
     #[test]
     fn should_resolve_when_block_reached() {

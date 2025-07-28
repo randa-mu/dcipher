@@ -11,8 +11,8 @@ pub mod contracts {
 
 use crate::decryption_sender::async_signer::DecryptionSenderAsyncSigner;
 pub use crate::decryption_sender::contracts::DecryptionSender;
-use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::RetryStrategy;
+use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::{Identifier, TransactionFulfiller};
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
@@ -126,7 +126,7 @@ impl TryInto<IbeIdentityOnBn254G1Ciphertext> for DecryptionRequest {
         // The ciphertext should contain the ephemeral public key as a G2 point
         if self.ciphertext.len() != 128 {
             return Err(DecryptionRequestConversionError::InvalidCiphertext(
-                format!("Expected 128 bytes, got {}", self.ciphertext.len())
+                format!("Expected 128 bytes, got {}", self.ciphertext.len()),
             ));
         }
 
@@ -137,7 +137,7 @@ impl TryInto<IbeIdentityOnBn254G1Ciphertext> for DecryptionRequest {
         // Parse x coordinate (c0, c1)
         let x_c0_bytes = &x_bytes[0..32];
         let x_c1_bytes = &x_bytes[32..64];
-        
+
         // Parse y coordinate (c0, c1)
         let y_c0_bytes = &y_bytes[0..32];
         let y_c1_bytes = &y_bytes[32..64];
@@ -155,10 +155,10 @@ impl TryInto<IbeIdentityOnBn254G1Ciphertext> for DecryptionRequest {
         let y = Fq2::new(y_c0, y_c1);
 
         let eph_pk = G2Affine::new(x, y);
-        
+
         if !eph_pk.is_on_curve() {
             return Err(DecryptionRequestConversionError::InvalidCiphertext(
-                "Point is not on curve".to_string()
+                "Point is not on curve".to_string(),
             ));
         }
 

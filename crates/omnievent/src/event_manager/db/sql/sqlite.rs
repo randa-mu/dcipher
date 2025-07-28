@@ -245,8 +245,8 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
 
 #[cfg(test)]
 mod tests {
-    use crate::event_manager::db::sql::sqlite::SqliteEventDatabase;
     use crate::event_manager::db::EventsDatabase;
+    use crate::event_manager::db::sql::sqlite::SqliteEventDatabase;
     use crate::proto_types::BlockSafety;
     use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEventSpec};
     use alloy::primitives::{Address, LogData};

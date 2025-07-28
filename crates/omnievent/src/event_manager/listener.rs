@@ -3,8 +3,8 @@
 use crate::event_manager::DecodedEvent;
 use crate::types::{EventFieldData, EventId, RegisteredEventSpec};
 use alloy::rpc::types::Log;
-use futures_util::stream::{BoxStream, SelectAll};
 use futures_util::StreamExt;
+use futures_util::stream::{BoxStream, SelectAll};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use tokio::task::JoinError;
@@ -269,7 +269,7 @@ mod tests {
     use crate::types::ParsedEventField;
     use alloy::dyn_abi::{DynSolType, DynSolValue};
     use alloy::node_bindings::Anvil;
-    use alloy::primitives::{bytes, Address, B256, U256};
+    use alloy::primitives::{Address, B256, U256, bytes};
     use alloy::providers::{ProviderBuilder, WsConnect};
     use futures_util::StreamExt;
     use std::str::FromStr;

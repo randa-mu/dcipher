@@ -8,7 +8,7 @@ use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
 use blocklock_warp::{BlocklockAgent, BlocklockAgentSavedState, BlocklockFulfiller};
-use blocklock_weft::{run_agent, NotifyTicker, BLOCKLOCK_SCHEME_ID};
+use blocklock_weft::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
 use contracts_core::ibe_helper::IbeIdentityOnBn254G1Suite;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use fulfiller_core::contracts::BlocklockSender;
@@ -168,7 +168,7 @@ where
 
     // Add own pk to the list if required
     if pks.len() == usize::from(args.key_config.n.get() - 1) {
-        let pk = ark_bn254::G2Affine::generator() * &sk;
+        let pk = ark_bn254::G2Affine::generator() * sk;
         pks.insert(
             usize::from(args.key_config.node_id.get() - 1),
             pk.into_affine(),

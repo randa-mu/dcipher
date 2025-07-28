@@ -1,9 +1,9 @@
 //! [`AsynchronousSigner`] for decryption requests. Unlike [`AsyncThresholdSigner`](crate::signer::threshold_signer::AsyncThresholdSigner),
 //! this signer allows to sign identical conditions as is often the case with the decryption sender contract.
 
-use crate::signer::AsynchronousSigner;
 use crate::DecryptionRequest;
 use crate::SignedDecryptionRequest;
+use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
 use contracts_core::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
 use contracts_core::ser::EvmSerialize;
@@ -82,9 +82,12 @@ where
 pub(crate) mod tests {
     use super::*;
     use alloy::primitives::{Bytes, U256};
+    use alloy::sol_types::SolValue;
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
+    use contracts_core::blocklock::blocklock_sender::BLS as BlocklockSenderBLS;
+    use contracts_core::blocklock::blocklock_sender::TypesLib as BlocklockSenderTypes;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::watch;
@@ -93,7 +96,24 @@ pub(crate) mod tests {
     use crate::signer::{AsynchronousSigner, BlsSigner};
 
     use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
-    use contracts_core::ser::tests::bn254::encode_ciphertext as blocklock_encode_ciphertext;
+
+    fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {
+        let x0 = U256::from_be_bytes::<32>(x0.try_into().unwrap());
+        let x1 = U256::from_be_bytes::<32>(x1.try_into().unwrap());
+        let y0 = U256::from_be_bytes::<32>(y0.try_into().unwrap());
+        let y1 = U256::from_be_bytes::<32>(y1.try_into().unwrap());
+
+        let ciphertext = BlocklockSenderTypes::Ciphertext {
+            u: BlocklockSenderBLS::PointG2 {
+                x: [x0, x1],
+                y: [y0, y1],
+            },
+            v: Bytes::from(vec![0; 32]),
+            w: Bytes::from(vec![0; 4]),
+        };
+
+        Bytes::from(ciphertext.abi_encode())
+    }
 
     pub(crate) fn create_ciphertext(eph_pk: ark_bn254::G2Affine) -> Bytes {
         let (x, y) = eph_pk.xy().unwrap();
@@ -103,7 +123,7 @@ pub(crate) mod tests {
         let y0 = y.c0.into_bigint().to_bytes_be();
         let y1 = y.c1.into_bigint().to_bytes_be();
 
-        blocklock_encode_ciphertext(&x0, &x1, &y0, &y1)
+        encode_ciphertext(&x0, &x1, &y0, &y1)
     }
 
     #[derive(Clone, Debug, thiserror::Error)]

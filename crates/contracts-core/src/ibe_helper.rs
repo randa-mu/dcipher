@@ -69,8 +69,8 @@ pub use bn254::IbeIdentityOnBn254G1Suite;
 pub mod bn254 {
     use super::*;
     use crate::ibe_helper::expander::Expander;
-    use ark_ec::pairing::PairingOutput;
     use ark_ec::CurveGroup;
+    use ark_ec::pairing::PairingOutput;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::Zero;
     use digest::core_api::BlockSizeUser;
@@ -272,7 +272,11 @@ pub mod bn254 {
         {
             type Error = Infallible;
 
-            fn sign(&self, m: impl AsRef<[u8]>) -> Result<<Self as BlsVerifier>::SignatureGroup, <Self as BlsSigner>::Error> {
+            fn sign(
+                &self,
+                m: impl AsRef<[u8]>,
+            ) -> Result<<Self as BlsVerifier>::SignatureGroup, <Self as BlsSigner>::Error>
+            {
                 let identity = self.h1(m.as_ref());
                 Ok(self.decryption_key(identity))
             }

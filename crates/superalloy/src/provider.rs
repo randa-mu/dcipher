@@ -2,7 +2,7 @@ mod multi;
 
 pub use multi::*;
 
-use crate::retry::{with_retry, RetryStrategy};
+use crate::retry::{RetryStrategy, with_retry};
 use alloy::consensus::BlockHeader;
 use alloy::providers::fillers::{
     BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller,
@@ -11,11 +11,11 @@ use alloy::providers::{Identity, Provider, ProviderBuilder, RootProvider, WsConn
 use alloy::transports::http::reqwest;
 use alloy::transports::{RpcError, TransportError, TransportErrorKind};
 use futures::Stream;
-use futures_util::{stream, StreamExt};
+use futures_util::{StreamExt, stream};
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use thiserror::Error;
 

@@ -3,7 +3,10 @@
 use alloy::providers::Provider;
 use anyhow::anyhow;
 use fulfiller_core::fulfiller::{RequestChannel, Ticker};
-use fulfiller_core::signature_sender::{contracts::{SignatureSender, SignatureSender::SignatureRequested}, SignatureRequest};
+use fulfiller_core::signature_sender::{
+    SignatureRequest,
+    contracts::{SignatureSender, SignatureSender::SignatureRequested},
+};
 use futures::Stream;
 use futures_util::StreamExt;
 use randomness_warp::RandomnessAgent;

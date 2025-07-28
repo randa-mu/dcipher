@@ -24,7 +24,6 @@ thiserror = { workspace = true }
 default = []
 blocklock = []
 signer = ["dep:dcipher-signer"]
-testing = []
 
 [dev-dependencies]
 alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }

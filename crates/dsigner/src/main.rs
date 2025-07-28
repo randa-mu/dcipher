@@ -6,13 +6,12 @@ use ark_ff::{BigInteger, PrimeField};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use fulfiller_core::signer::threshold_signer::{
-    lagrange_points_interpolate_at, AsyncThresholdSigner, ThresholdSigner,
+    AsyncThresholdSigner, ThresholdSigner, lagrange_points_interpolate_at,
 };
 use fulfiller_core::signer::{AsynchronousSigner, BN254SignatureOnG1Signer};
-use utils::serialize::point::PointSerializeCompressed;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -20,6 +19,7 @@ use tokio_util::sync::CancellationToken;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use utils::serialize::point::PointSerializeCompressed;
 
 // Request structure for the sign endpoint
 #[derive(Deserialize)]

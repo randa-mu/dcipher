@@ -1,21 +1,19 @@
 //! Agent managing the state of the blocklock smart contract and forwarding fulfilled request to a
 //! fulfiller's request channel.
 
-use crate::condition_resolver::{
-    BlocklockConditionResolver, BlocklockConditionResolverError,
-};
+use crate::condition_resolver::{BlocklockConditionResolver, BlocklockConditionResolverError};
 use crate::metrics::Metrics;
 use crate::{BlockNumber, BlocklockConditionUpdate};
 use alloy::network::Ethereum;
-use alloy::primitives::ruint::FromUintError;
 use alloy::primitives::U256;
+use alloy::primitives::ruint::FromUintError;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
-use contracts_core::blocklock::blocklock::decryption_sender::TypesLib as DecryptionSenderTypes;
+use contracts_core::blocklock::decryption_sender::TypesLib as DecryptionSenderTypes;
 
-use fulfiller_core::decryption_sender::contracts::DecryptionSender;
-use fulfiller_core::decryption_sender::DecryptionRequest;
-use fulfiller_core::fulfiller::RequestChannel;
 use fulfiller_core::RequestId;
+use fulfiller_core::decryption_sender::DecryptionRequest;
+use fulfiller_core::decryption_sender::contracts::DecryptionSender;
+use fulfiller_core::fulfiller::RequestChannel;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Add, Sub};
@@ -581,10 +579,10 @@ mod tests {
     use alloy::sol_types::{SolEvent, SolValue};
     use ark_ec::{AffineRepr, CurveGroup, Group};
     use ark_ff::{BigInteger, MontFp, PrimeField};
-    use ark_std::rand::thread_rng;
     use ark_std::UniformRand;
-    use futures_util::future::join_all;
+    use ark_std::rand::thread_rng;
     use futures_util::StreamExt;
+    use futures_util::future::join_all;
     use std::collections::VecDeque;
     use std::ops::AddAssign;
     use std::rc::Rc;
@@ -597,12 +595,14 @@ mod tests {
     use contracts_core::blocklock::decryption_sender::DecryptionSender::{
         DecryptionRequested, DecryptionSenderInstance,
     };
+    use contracts_core::blocklock::mock_blocklock_receiver::BLS as MockBlocklockReceiverBLS;
     use contracts_core::blocklock::mock_blocklock_receiver::MockBlocklockReceiver::MockBlocklockReceiverInstance;
     use contracts_core::blocklock::mock_blocklock_receiver::TypesLib as MockBlocklockReceiverTypes;
-    use contracts_core::blocklock::mock_blocklock_receiver::BLS as MockBlocklockReceiverBLS;
     use contracts_core::blocklock::signature_scheme_address_provider::SignatureSchemeAddressProvider;
     use contracts_core::blocklock::uups_proxy::UUPSProxy;
-    use contracts_core::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
+    use contracts_core::ibe_helper::{
+        IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner,
+    };
     use contracts_core::ser::EvmSerialize;
 
     const SK: ark_bn254::Fr =

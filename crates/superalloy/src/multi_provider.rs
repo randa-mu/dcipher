@@ -1,10 +1,10 @@
 //! Module that allows receiving events from multiple RPC providers concurrently.
 
-use crate::provider::{watch_block_numbers, RecommendedProvider, WatchError};
+use crate::provider::{RecommendedProvider, WatchError, watch_block_numbers};
 use alloy::network::Ethereum;
 use alloy::providers::{Provider, RootProvider};
 use futures_util::future::join_all;
-use futures_util::{stream, Stream, StreamExt};
+use futures_util::{Stream, StreamExt, stream};
 use std::time::Duration;
 
 /// Helper to obtain streams from multiple RPC providers.

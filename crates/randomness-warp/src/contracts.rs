@@ -3,7 +3,10 @@
 pub use randomness_sender::*;
 
 mod randomness_sender {
-    use payment_warp::{impl_payment_config, impl_payment_contract, DefaultRequestDetails, PaymentConfig, PaymentContract};
+    use payment_warp::{
+        DefaultRequestDetails, PaymentConfig, PaymentContract, impl_payment_config,
+        impl_payment_contract,
+    };
 
     alloy::sol!(
         #[allow(clippy::too_many_arguments)]

@@ -9,7 +9,7 @@ use libp2p::swarm::behaviour::{ConnectionClosed, ConnectionEstablished, DialFail
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{
     ConnectionDenied, ConnectionId, DialError, FromSwarm, NetworkBehaviour, THandler,
-    THandlerInEvent, THandlerOutEvent, ToSwarm, dummy
+    THandlerInEvent, THandlerOutEvent, ToSwarm, dummy,
 };
 use libp2p::{Multiaddr, PeerId};
 use std::collections::HashMap;

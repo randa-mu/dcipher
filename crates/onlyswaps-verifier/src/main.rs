@@ -1,5 +1,5 @@
-use axum::routing::get;
 use axum::Router;
+use axum::routing::get;
 use clap::Parser;
 use std::io::Error;
 use tokio::net::TcpListener;

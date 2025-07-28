@@ -86,16 +86,34 @@ pub mod blocklock {
     }
 }
 
-#[cfg(any(test, feature = "testing"))]
-pub mod tests {
-    #[cfg(all(feature = "blocklock"))] // uses blocklock types & ibe
-    pub mod bn254 {
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "blocklock")] // uses blocklock types & ibe
+    mod bn254 {
         use super::super::*;
-        use crate::blocklock::blocklock_sender::{TypesLib, BLS};
-        use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
+        use crate::blocklock::blocklock_sender::{BLS, TypesLib};
+        use crate::ibe_helper::IbeCiphertext;
         use alloy::primitives::U256;
         use alloy::sol_types::SolValue;
         use ark_ff::{BigInteger, Fp, PrimeField};
+
+        fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {
+            let x0 = U256::from_be_bytes::<32>(x0.try_into().unwrap());
+            let x1 = U256::from_be_bytes::<32>(x1.try_into().unwrap());
+            let y0 = U256::from_be_bytes::<32>(y0.try_into().unwrap());
+            let y1 = U256::from_be_bytes::<32>(y1.try_into().unwrap());
+
+            let ciphertext = TypesLib::Ciphertext {
+                u: BLS::PointG2 {
+                    x: [x0, x1],
+                    y: [y0, y1],
+                },
+                v: Bytes::from(vec![0; 32]),
+                w: Bytes::from(vec![0; 4]),
+            };
+
+            Bytes::from(ciphertext.abi_encode())
+        }
 
         #[test]
         fn ark_bn254_g1_serialize() {
@@ -121,26 +139,10 @@ pub mod tests {
             assert_eq!(EvmSerialize::ser_bytes(&p).as_ref(), bytes_encoding);
         }
 
-        pub fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {
-            let x0 = U256::from_be_bytes::<32>(x0.try_into().unwrap());
-            let x1 = U256::from_be_bytes::<32>(x1.try_into().unwrap());
-            let y0 = U256::from_be_bytes::<32>(y0.try_into().unwrap());
-            let y1 = U256::from_be_bytes::<32>(y1.try_into().unwrap());
-
-            let ciphertext = TypesLib::Ciphertext {
-                u: BLS::PointG2 {
-                    x: [x0, x1],
-                    y: [y0, y1],
-                },
-                v: Bytes::from(vec![0; 32]),
-                w: Bytes::from(vec![0; 4]),
-            };
-
-            Bytes::from(ciphertext.abi_encode())
-        }
-
         #[test]
         fn ark_bn254_identity_g1_ciphertext_deserialize() {
+            use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
+
             // Eph pk in the correct subgroup
             let x0_bytes =
                 hex::decode("053c8b871fb2beb16c6dd8505b72606b5b41f02327f5258ccc705bff58ba5e62")
