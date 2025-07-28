@@ -62,15 +62,6 @@ mod contracts {
             "../../blocklock-solidity/out/SignatureSchemeAddressProvider.sol/SignatureSchemeAddressProvider.json"
         );
     }
-
-    #[derive(thiserror::Error, Debug)]
-    pub enum IbeIdentityOnBn254G1CiphertextError {
-        #[error("abi decode error")]
-        AbiDecode(#[from] alloy::sol_types::Error),
-
-        #[error("invalid ephemeral pk")]
-        InvalidEphemeralPk,
-    }
 }
 
 // Re-export the blocklock module contents when the feature is enabled
