@@ -4,10 +4,11 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-libp2p = ["dep:libp2p"]
 rayon = ["dep:rayon"]
 
 [dependencies]
+dcipher-network.workspace = true
+
 # crypto
 ark-bn254 = { workspace = true }
 ark-ec = { workspace = true }
@@ -27,9 +28,6 @@ tokio-util = { workspace = true }
 prometheus = { workspace = true }
 tracing = { workspace = true }
 
-# network
-libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "serde"], optional = true }
-
 # serde
 serde = { workspace = true, features = ["derive"] }
 serde_cbor.workspace = true
@@ -39,3 +37,6 @@ itertools = { workspace = true }
 thiserror = { workspace = true }
 lru = "0.14"
 rayon = { version = "1.10", optional = true }
+
+[dev-dependencies]
+dcipher-network = { workspace = true, features = ["libp2p", "in_memory"] }

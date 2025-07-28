@@ -1,14 +1,15 @@
 //! A behaviour used to keep track of connected peers and periodically inform the swarm to
 //! dial disconnected peers.
 
-use crate::threshold_signer::libp2p::PeerDetail;
+use crate::PartyIdentifier;
+use crate::transports::libp2p::PeerDetail;
 use libp2p::core::Endpoint;
 use libp2p::core::transport::PortUse;
 use libp2p::swarm::behaviour::{ConnectionClosed, ConnectionEstablished, DialFailure};
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{
-    ConnectionDenied, ConnectionId, FromSwarm, NetworkBehaviour, THandler, THandlerInEvent,
-    THandlerOutEvent, ToSwarm, dummy,
+    ConnectionDenied, ConnectionId, DialError, FromSwarm, NetworkBehaviour, THandler,
+    THandlerInEvent, THandlerOutEvent, ToSwarm, dummy,
 };
 use libp2p::{Multiaddr, PeerId};
 use std::collections::HashMap;
@@ -36,8 +37,8 @@ impl PeerStatus {
 }
 
 #[derive(Clone, Debug)]
-struct CurrentPeerStatus {
-    detail: PeerDetail,
+struct CurrentPeerStatus<ID> {
+    detail: PeerDetail<ID>,
     status: PeerStatus,
 }
 
@@ -46,8 +47,8 @@ struct CurrentPeerStatus {
 /// emits a list of peers through the [`PeriodicDialEvent::MultiDial`] event. The user should
 /// use the provided [`Vec<DialOpts>`] to dial peers.
 #[derive(Debug)]
-pub struct PeriodicDialBehaviour {
-    peers: HashMap<PeerId, CurrentPeerStatus>,
+pub struct PeriodicDialBehaviour<ID> {
+    peers: HashMap<PeerId, CurrentPeerStatus<ID>>,
     dial_interval: tokio::time::Interval,
 }
 
@@ -56,8 +57,8 @@ pub struct PeriodicDialBehaviour {
 pub enum PeriodicDialEvent {
     MultiDial(Vec<DialOpts>),
 }
-impl PeriodicDialBehaviour {
-    pub fn new(dial_interval: Duration, peers: impl IntoIterator<Item = PeerDetail>) -> Self {
+impl<ID: PartyIdentifier> PeriodicDialBehaviour<ID> {
+    pub fn new(dial_interval: Duration, peers: impl IntoIterator<Item = PeerDetail<ID>>) -> Self {
         let peers = HashMap::from_iter(peers.into_iter().map(|detail| {
             (
                 detail.peer_id,
@@ -75,7 +76,7 @@ impl PeriodicDialBehaviour {
     }
 }
 
-impl PeriodicDialBehaviour {
+impl<ID: PartyIdentifier> PeriodicDialBehaviour<ID> {
     fn handle_swarm_event(&mut self, event: FromSwarm) {
         match event {
             // The swarm has established a new connection with a peer.
@@ -107,7 +108,7 @@ impl PeriodicDialBehaviour {
                         {
                             *num_connections = remaining_established;
                         } else {
-                            tracing::warn!(peer_id = %peer_id, short_id = peer.detail.short_id, "ConnectionClosed on peer that is not marked as connected");
+                            tracing::warn!(peer_id = %peer_id, short_id = ?peer.detail.short_id, "ConnectionClosed on peer that is not marked as connected");
                         }
                     } else {
                         // Peer is now disconnected
@@ -118,7 +119,7 @@ impl PeriodicDialBehaviour {
                         {
                             *last_seen
                         } else {
-                            tracing::warn!(peer_id = %peer_id, short_id = peer.detail.short_id, "ConnectionClosed on peer that is not marked as connected");
+                            tracing::warn!(peer_id = %peer_id, short_id = ?peer.detail.short_id, "ConnectionClosed on peer that is not marked as connected");
                             SystemTime::now()
                         };
 
@@ -132,8 +133,18 @@ impl PeriodicDialBehaviour {
                 if let Some((peer_id, peer)) =
                     peer_id.and_then(|id| self.peers.get_mut(&id).map(|info| (id, info)))
                 {
-                    peer.status = PeerStatus::FailedToDial;
-                    tracing::warn!(?error, peer_id = %peer_id, short_id = peer.detail.short_id, "Failed to dial peer");
+                    match error {
+                        // Do not warn log when the peer dial attempt is aborted, likely because the
+                        // peer is connected, or another dial attempt is in progress.
+                        DialError::DialPeerConditionFalse(_) => {
+                            tracing::debug!(?error, peer_id = %peer_id, short_id = ?peer.detail.short_id, "Dial peer attempt not done due to dial condition");
+                        }
+
+                        _ => {
+                            peer.status = PeerStatus::FailedToDial;
+                            tracing::warn!(?error, peer_id = %peer_id, short_id = ?peer.detail.short_id, "Failed to dial peer");
+                        }
+                    }
                 } else {
                     tracing::warn!(?error, "Failed to dial unknown peer");
                 }
@@ -144,7 +155,7 @@ impl PeriodicDialBehaviour {
     }
 }
 
-impl NetworkBehaviour for PeriodicDialBehaviour {
+impl<ID: PartyIdentifier> NetworkBehaviour for PeriodicDialBehaviour<ID> {
     type ConnectionHandler = dummy::ConnectionHandler;
 
     type ToSwarm = PeriodicDialEvent;

@@ -1,0 +1,37 @@
+[package]
+name = "dcipher-network"
+version.workspace = true
+edition.workspace = true
+
+[features]
+libp2p = ["transports", "dep:libp2p"]
+in_memory = ["transports"]
+transports = []
+metrics = ["dep:prometheus"]
+
+[dependencies]
+# async
+async-trait.workspace = true
+futures.workspace = true
+futures-util.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+tokio-stream = { workspace = true, features = ["sync"] }
+tokio-util.workspace = true
+
+# logs / metrics
+prometheus = { workspace = true, optional = true }
+tracing.workspace = true
+
+# network
+libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "request-response"], optional = true }
+
+# serde
+serde = { workspace = true, features = ["derive"] }
+prost = { workspace = true, features = ["derive"] }
+
+# misc
+itertools.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
