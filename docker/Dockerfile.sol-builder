@@ -1,0 +1,19 @@
+ARG NODE_VERSION=22.3
+ARG DOCKER_REGISTRY=europe-west1-docker.pkg.dev/randamu-prod/candyland
+ARG SOLIDITY_PROJECT_DIR
+
+FROM ${DOCKER_REGISTRY}/node:${NODE_VERSION} AS sol_builder_base
+WORKDIR /build
+
+RUN curl -L https://foundry.paradigm.xyz | bash
+ENV PATH="/root/.foundry/bin:${PATH}"
+RUN foundryup
+
+FROM sol_builder_base AS sol_builder
+WORKDIR /build/${SOLIDITY_PROJECT_DIR}
+COPY ./${SOLIDITY_PROJECT_DIR}/package.json ./
+COPY ./${SOLIDITY_PROJECT_DIR}/package-lock.json ./
+RUN npm install
+
+COPY ./${SOLIDITY_PROJECT_DIR} ./
+RUN export FOUNDRY_PROFILE=build && forge install --no-git && forge build
