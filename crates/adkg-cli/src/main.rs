@@ -3,6 +3,8 @@
 mod adkg_dyx20;
 mod cli;
 mod keygen;
+#[cfg(feature = "metrics")]
+mod metrics;
 mod scheme;
 
 use crate::adkg_dyx20::adkg_dyx20_bn254_g1_keccak256;
@@ -154,6 +156,8 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
         grace_period,
         priv_out,
         pub_out,
+        #[cfg(feature = "metrics")]
+        metrics_params,
     } = args;
 
     // Make sure priv_out / pub_out do not exist
@@ -190,6 +194,10 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     let id = PartyId(id.get());
     let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
     let mut rng = AdkgStdRng::new(OsRng);
+
+    // Start metrics server if enabled
+    #[cfg(feature = "metrics")]
+    adkg_metrics(&metrics_params);
 
     // Start libp2p transport
     let (libp2p_node, dispatcher, topic_transport) =
@@ -234,6 +242,14 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(feature = "metrics")]
+fn adkg_metrics(metrics_params: &cli::MetricsParams) {
+    tokio::task::spawn(metrics::start_metrics_api(
+        metrics_params.metrics_listen_addr,
+        metrics_params.metrics_port,
+    ));
 }
 
 /// Write the ADKG outputs in priv / pub files.

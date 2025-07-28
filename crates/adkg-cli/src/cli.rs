@@ -118,4 +118,33 @@ pub struct RunAdkg {
         help = "The output file used to store the ADKG public keys"
     )]
     pub pub_out: PathBuf,
+
+    #[cfg(feature = "metrics")]
+    #[command(flatten)]
+    pub metrics_params: MetricsParams,
+}
+
+#[cfg(feature = "metrics")]
+#[derive(Parser, Debug)]
+pub struct MetricsParams {
+    #[arg(
+        long,
+        help = "Expose metrics on a http endpoint",
+        default_value = "false"
+    )]
+    pub metrics: bool,
+
+    #[arg(
+        long,
+        help = "Address used by http server exposing metrics",
+        default_value = "127.0.0.1"
+    )]
+    pub metrics_listen_addr: std::net::IpAddr,
+
+    #[arg(
+        long,
+        help = "Port used by the http server exposing metrics",
+        default_value = "8080"
+    )]
+    pub metrics_port: u16,
 }
