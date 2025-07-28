@@ -2513,14 +2513,17 @@ dependencies = [
  "ark-std 0.4.0",
  "contracts-core",
  "dcipher-signer",
+ "digest 0.10.7",
  "futures-util",
  "hex",
  "prometheus",
  "serde",
+ "sha3",
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
  "tracing",
+ "utils",
 ]
 
 [[package]]
