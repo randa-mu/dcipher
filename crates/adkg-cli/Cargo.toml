@@ -1,0 +1,28 @@
+[package]
+name = "adkg-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dcipher-network = { workspace = true, features = ["libp2p"] }
+adkg = { workspace = true, features = ["bn254"] }
+utils = { workspace = true, features = ["bn254", "sha3"] }
+ark-bn254.workspace = true
+ark-ec.workspace = true
+ark-std.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+itertools.workspace = true
+libp2p = { workspace = true, features = ["serde"] }
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml = "0.9"
+tokio = { workspace = true, features = ["fs", "net", "rt", "sync", "macros", "io-util", "time", "tracing"] }
+tokio-util.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+base64 = "0.22"
+anyhow = "1.0.86"
+humantime = "2.2.0"
+chrono = { version = "0.4.41", features = ["serde"] }
