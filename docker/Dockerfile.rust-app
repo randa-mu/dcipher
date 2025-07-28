@@ -1,0 +1,57 @@
+# XXX: DO NOT MODIFY!!
+#
+# This is a duplication of the other component dockerfiles in this directory
+# in order to make sure that this dockerfile _can_ build as a standalone.
+# The intention is that the other dockerfiles have been previously built
+# and so all of these layers apart from the final few will be cached already.
+ARG NODE_VERSION=22.3
+ARG DOCKER_REGISTRY=europe-west1-docker.pkg.dev/randamu-prod/candyland
+ARG APPLICATION
+ARG SOLIDITY_PROJECT_DIR
+
+FROM ${DOCKER_REGISTRY}/node:${NODE_VERSION} AS sol_builder_base
+WORKDIR /build
+
+RUN curl -L https://foundry.paradigm.xyz | bash
+ENV PATH="/root/.foundry/bin:${PATH}"
+RUN foundryup
+
+FROM sol_builder_base AS sol_builder
+WORKDIR /build/${SOLIDITY_PROJECT_DIR}
+COPY ./${SOLIDITY_PROJECT_DIR}/package.json ./
+COPY ./${SOLIDITY_PROJECT_DIR}/package-lock.json ./
+RUN npm install
+
+COPY ./${SOLIDITY_PROJECT_DIR} ./
+RUN export FOUNDRY_PROFILE=build && forge install --no-git && forge build
+
+
+# Duplicate the cargo-chef instructions here so that
+# it can build independently as well as rely on the
+# cached layer from a previous step/run/command
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+ARG SOLIDITY_PROJECT_DIR
+ARG APPLICATION
+WORKDIR /build
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+COPY --from=planner /build/recipe.json recipe.json
+
+# Build dependencies - this is the caching Docker layer!
+RUN cargo chef cook --release --recipe-path recipe.json
+
+COPY --from=sol_builder /build/${SOLIDITY_PROJECT_DIR}/out ./${SOLIDITY_PROJECT_DIR}/out
+RUN cargo build --release --package ${APPLICATION} --example ${APPLICATION}
+
+# XXX: This is the business end of this docker file, you can modify this :)
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y libssl3 dnsutils
+WORKDIR /app
+# COPY --from=builder /build/${APPLICATION}/ .
+COPY --from=builder /build/target/release/examples/${APPLICATION} /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/${APPLICATION}"]
+
