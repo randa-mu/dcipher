@@ -2,7 +2,10 @@
 resolver = "3"
 members = [
     "blocklock-agent",
+    "crates/adkg",
+    "crates/adkg-cli",
     "crates/network",
+    "crates/utils",
     "dcipher-agents",
     "dsigner",
     "omnievent",
@@ -18,6 +21,7 @@ edition = "2024"
 
 [workspace.dependencies]
 # workspace crates
+adkg = { path = "./crates/adkg" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
@@ -31,7 +35,7 @@ ark-bn254 = "0.4.0"
 ark-ec = "0.4.2"
 ark-ff = "0.4.2"
 ark-std = "0.4.0"
-utils = { path = "./marshmallow-crypto/utils" }
+utils = { path = "./crates/utils" }
 
 # hashes
 digest = "0.10"
