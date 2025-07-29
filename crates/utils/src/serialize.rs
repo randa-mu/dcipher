@@ -1,4 +1,4 @@
-/// Serialization module for the pairings used by marshmallow.
+/// Serialization module for the pairings used by dcipher.
 use thiserror::Error;
 
 pub mod fq;
