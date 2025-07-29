@@ -30,8 +30,6 @@ runs:
       with:
         prefix-key: ${{ runner.os }}-cargo
         key: ${{ inputs.extra-cache-key }}
-      env:
-        ACTIONS_CACHE_URL: ${{ secrets.ACTIONS_CACHE_URL }}
 
     - name: Check formatting
       working-directory: ${{ inputs.working-directory }}
