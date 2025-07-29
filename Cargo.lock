@@ -61,16 +61,16 @@ dependencies = [
  "humantime",
  "itertools 0.14.0",
  "libp2p",
+ "prometheus",
  "rand 0.8.5",
  "serde",
- "serde_json",
  "thiserror 2.0.12",
  "tokio",
- "tokio-util",
  "toml 0.9.2",
  "tracing",
  "tracing-subscriber",
  "utils",
+ "warp",
 ]
 
 [[package]]
