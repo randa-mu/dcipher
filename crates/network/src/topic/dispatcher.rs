@@ -1,12 +1,21 @@
 use crate::topic::{Topic, TopicBasedTransport};
-use crate::{ReceivedMessage, Recipient, Transport, TransportSender};
+use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
 use futures_util::StreamExt;
-use futures_util::stream::BoxStream;
 use prost::Message;
 use std::borrow::Cow;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tokio_util::sync::CancellationToken;
+
+const TOPIC_CHANNEL_CACHE_SIZE: usize = 256;
+
+type Receiver<I, M> = tokio::sync::broadcast::Receiver<ReceivedMessage<I, M>>;
+type Sender<I, M> = tokio::sync::broadcast::Sender<ReceivedMessage<I, M>>;
+type ChannelsMapEntry<I, M> = (Option<Sender<I, M>>, Option<Receiver<I, M>>);
+type ChannelsMap<I, M> = HashMap<Cow<'static, [u8]>, ChannelsMapEntry<I, M>>;
+type Channels<I, M> = Arc<std::sync::Mutex<ChannelsMap<I, M>>>;
 
 /// A dispatcher that can be used to multiplex many topics in a single [`Transport`].
 pub struct TopicDispatcher {
@@ -19,11 +28,6 @@ pub enum TopicDispatcherError {
     #[error("no more items in stream")]
     EmptyStream,
 }
-
-type TopicMessageTuple<I, M = Vec<u8>> = (Vec<u8>, ReceivedMessage<I, M>);
-
-type BoxReceivedMessageStream<T, M, E> =
-    BoxStream<'static, Result<ReceivedMessage<<T as TransportSender>::Identity, M>, E>>;
 
 impl Default for TopicDispatcher {
     fn default() -> Self {
@@ -60,15 +64,14 @@ impl TopicDispatcher {
             .expect("failed to obtain receiver");
         let transport_sender = transport.sender().expect("failed to obtain sender");
 
-        let (dispatcher_sender, dispatcher_receiver) = tokio::sync::broadcast::channel(1024);
-
+        let channels = Channels::default();
         self.recv_task_handle = Some(tokio::task::spawn(Self::recv_task::<_Transport>(
             receiver,
-            dispatcher_sender,
+            channels.clone(),
             self.cancel.clone(),
         )));
 
-        TopicBasedTransportImpl::new(transport_sender, dispatcher_receiver)
+        TopicBasedTransportImpl::new(transport_sender, channels)
     }
 
     pub async fn stop(mut self) {
@@ -81,13 +84,13 @@ impl TopicDispatcher {
 
     async fn recv_task<_Transport>(
         recv_stream: _Transport::ReceiveMessageStream,
-        dispatcher_sender: tokio::sync::broadcast::Sender<TopicMessageTuple<_Transport::Identity>>,
+        channels: Channels<_Transport::Identity, Vec<u8>>,
         cancel: CancellationToken,
     ) where
         _Transport: Transport,
     {
         tokio::select! {
-            res = Self::recv_loop::<_Transport>(recv_stream, dispatcher_sender) => {
+            res = Self::recv_loop::<_Transport>(recv_stream, channels) => {
                 tracing::error!(?res, "Dispatcher loop exited unexpectedly");
             }
 
@@ -99,11 +102,13 @@ impl TopicDispatcher {
 
     async fn recv_loop<_Transport>(
         mut recv_stream: _Transport::ReceiveMessageStream,
-        dispatcher_sender: tokio::sync::broadcast::Sender<TopicMessageTuple<_Transport::Identity>>,
+        channels: Channels<_Transport::Identity, Vec<u8>>,
     ) -> Result<(), TopicDispatcherError>
     where
         _Transport: Transport,
     {
+        // Local broadcast senders used before locking shared struct
+        let mut local_senders = HashMap::new();
         loop {
             let m: ReceivedMessage<_> = match recv_stream.next().await {
                 Some(Ok(m)) => m,
@@ -130,8 +135,29 @@ impl TopicDispatcher {
                 content,
             };
 
-            if dispatcher_sender.send((topic, m)).is_err() {
-                tracing::info!("Lost message due to lack of receivers");
+            let topic: Cow<[u8]> = Cow::Owned(topic);
+
+            let sender = {
+                // First, try to get from local sender
+                let sender = local_senders.get(&topic);
+                if let Some(sender) = sender {
+                    sender
+                } else {
+                    // Lock shared struct, and insert (tx, rx)
+                    let mut channels = channels.lock().expect("a task panicked holding the mutex");
+                    let (tx, _) = channels_get_or_insert(topic.clone(), &mut channels);
+                    let tx = tx
+                        .take()
+                        .expect("must be Some as local_senders does not contain the sender");
+                    local_senders.entry(topic).or_insert(tx)
+                }
+            };
+
+            // Only attempt to send if a receiver exists. No edge-case between sending / recreating a
+            // receiver as we only allow a single receiver currently.
+            if sender.receiver_count() > 0 && sender.send(m).is_err() {
+                // Cleanup / re-creating a receiver is probably sound, but log and monitor for now
+                tracing::warn!("Dispatcher lost message due to lack of receivers");
             }
         }
     }
@@ -142,8 +168,7 @@ where
     _TransportSender: TransportSender,
 {
     transport_sender: _TransportSender,
-    dispatcher_receiver:
-        tokio::sync::broadcast::Receiver<TopicMessageTuple<_TransportSender::Identity, M>>,
+    channels: Channels<_TransportSender::Identity, M>,
 }
 
 impl<_TransportSender, M> TopicBasedTransportImpl<_TransportSender, M>
@@ -153,13 +178,11 @@ where
 {
     fn new(
         transport_sender: _TransportSender,
-        dispatcher_receiver: tokio::sync::broadcast::Receiver<
-            TopicMessageTuple<_TransportSender::Identity, M>,
-        >,
+        channels: Channels<_TransportSender::Identity, M>,
     ) -> Self {
         Self {
             transport_sender,
-            dispatcher_receiver,
+            channels,
         }
     }
 }
@@ -172,7 +195,7 @@ where
     fn clone(&self) -> Self {
         Self {
             transport_sender: self.transport_sender.clone(),
-            dispatcher_receiver: self.dispatcher_receiver.resubscribe(),
+            channels: self.channels.clone(),
         }
     }
 }
@@ -180,10 +203,9 @@ where
 impl<_TransportSender> TopicBasedTransport for TopicBasedTransportImpl<_TransportSender, Vec<u8>>
 where
     _TransportSender: TransportSender + Clone + Send + Sync + 'static,
-    TransportImpl<_TransportSender, BroadcastStreamRecvError, Vec<u8>>:
-        Transport<Identity = _TransportSender::Identity>,
+    TransportImpl<_TransportSender, Vec<u8>>: Transport<Identity = _TransportSender::Identity>,
 {
-    type Transport = TransportImpl<_TransportSender, BroadcastStreamRecvError, Vec<u8>>;
+    type Transport = TransportImpl<_TransportSender, Vec<u8>>;
     type Identity = _TransportSender::Identity;
 
     fn get_transport_for<T>(&self, topic: T) -> Option<Self::Transport>
@@ -192,48 +214,45 @@ where
     {
         let transport_sender = self.transport_sender.clone();
         let topic: Cow<[u8]> = Cow::Owned(topic.as_ref().to_owned());
-        let topic_cloned = topic.clone();
 
-        let receiver_stream = BroadcastStream::new(self.dispatcher_receiver.resubscribe())
-            .filter_map(move |item| {
-                let topic = topic.clone();
-                async move {
-                    let (msg_topic, msg) = match item {
-                        Ok(msg) => msg,
-                        Err(e) => return Some(Err(e)),
-                    };
-                    msg_topic.eq(topic.as_ref()).then_some(Ok(msg))
-                }
-            })
-            .boxed();
+        // try to take an existing receiver, or create a new channel
+        let mut channels = self
+            .channels
+            .lock()
+            .expect("a task holding the mutex panicked");
+        let (_, receiver) = channels_get_or_insert(topic.clone(), &mut channels);
+
+        // if a receiver for that topic has already been taken, return None
+        let receiver = receiver.take()?;
+        // Create a new receiver stream
+        let receiver_stream = BroadcastStream::new(receiver);
 
         Some(TransportImpl {
             receiver: Some(receiver_stream),
             transport_sender: TransportSenderImpl {
                 transport_sender,
-                topic: topic_cloned,
+                topic,
             },
         })
     }
 }
 
-pub struct TransportImpl<_TransportSender, E, M = Vec<u8>>
+pub struct TransportImpl<_TransportSender, M = Vec<u8>>
 where
     _TransportSender: TransportSender,
 {
-    receiver: Option<BoxReceivedMessageStream<_TransportSender, M, E>>,
+    receiver: Option<BroadcastStream<ReceivedMessage<_TransportSender::Identity, M>>>,
     transport_sender: TransportSenderImpl<_TransportSender>,
 }
 
-impl<_TransportSender, E> Transport for TransportImpl<_TransportSender, E, Vec<u8>>
+impl<_TransportSender> Transport for TransportImpl<_TransportSender, Vec<u8>>
 where
     _TransportSender: TransportSender + Clone + Send + Sync + 'static,
-    E: std::error::Error + Send + Sync + 'static,
 {
-    type Error = E;
+    type Error = BroadcastStreamRecvError;
     type Identity = _TransportSender::Identity;
     type ReceiveMessageStream =
-        BoxStream<'static, Result<ReceivedMessage<Self::Identity, Vec<u8>>, E>>;
+        BroadcastStream<ReceivedMessage<_TransportSender::Identity, Vec<u8>>>;
     type Sender = TransportSenderImpl<_TransportSender>;
 
     fn sender(&mut self) -> Option<Self::Sender> {
@@ -265,6 +284,21 @@ where
         };
         self.transport_sender.send(m.encode_to_vec(), to).await
     }
+}
+
+/// Helper used to get an existing entry, or insert a value into a locked [`ChannelsMap`]
+fn channels_get_or_insert<'a, I, M>(
+    topic: Cow<'static, [u8]>,
+    channels: &'a mut std::sync::MutexGuard<'_, ChannelsMap<I, M>>,
+) -> &'a mut ChannelsMapEntry<I, M>
+where
+    I: PartyIdentifier,
+    M: Clone,
+{
+    channels.entry(topic).or_insert_with(|| {
+        let (tx, rx) = tokio::sync::broadcast::channel(TOPIC_CHANNEL_CACHE_SIZE);
+        (Some(tx), Some(rx))
+    })
 }
 
 #[derive(Clone, prost::Message)]
