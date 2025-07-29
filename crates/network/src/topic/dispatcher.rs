@@ -223,10 +223,7 @@ where
         let (_, receiver) = channels_get_or_insert(topic.clone(), &mut channels);
 
         // if a receiver for that topic has already been taken, return None
-        let Some(receiver) = receiver.take() else {
-            return None;
-        };
-
+        let receiver = receiver.take()?;
         // Create a new receiver stream
         let receiver_stream = BroadcastStream::new(receiver);
 
@@ -290,9 +287,9 @@ where
 }
 
 /// Helper used to get an existing entry, or insert a value into a locked [`ChannelsMap`]
-fn channels_get_or_insert<'a, 'b, I, M>(
+fn channels_get_or_insert<'a, I, M>(
     topic: Cow<'static, [u8]>,
-    channels: &'a mut std::sync::MutexGuard<'b, ChannelsMap<I, M>>,
+    channels: &'a mut std::sync::MutexGuard<'_, ChannelsMap<I, M>>,
 ) -> &'a mut ChannelsMapEntry<I, M>
 where
     I: PartyIdentifier,
