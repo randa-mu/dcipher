@@ -28,5 +28,5 @@ pub async fn start_metrics_api(listen_addr: IpAddr, port: u16) -> anyhow::Result
 
     let routes = health.or(metrics);
     warp::serve(routes).run((listen_addr, port)).await;
-    Err(anyhow!("HTTP API server stopped"))
+    Err(anyhow!("metrics HTTP API server stopped"))
 }
