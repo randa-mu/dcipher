@@ -113,18 +113,47 @@ The test server also deploys the following emitter contract:
 contract EventEmitter {
     event StringEmitted(string value);
     event Subscribed(address indexed subscriber, uint256 indexed subId);
+    event BridgeReceipt(
+        bytes32 indexed requestId, uint256 indexed srcChainId, address indexed solver, uint256 amountOut
+    );
+
+    function emitBridgeReceipt(bytes32 requestId, uint256 srcChainId, address solver, uint256 amountOut) external {
+        emit BridgeReceipt(requestId, srcChainId, solver, amountOut);
+    }
 
     function emitString(string calldata _value) external {
         emit StringEmitted(_value);
     }
 
-    function emitSubscribed(uint256 calldata _sub_id) external {
+    function emitSubscribed(uint256 _sub_id) external {
         emit Subscribed(msg.sender, _sub_id);
     }
 }
 ```
 
+To register the `BridgeReceipt` event, the following command may be used:
+```bash
+> grpcurl -import-path ./dcipher-proto -proto omnievent/events.proto -plaintext -d '{"chain_id": 1337, "address": "IO7wOMg7eg81fUq8ZLj2OUJ9evY=", "event_name": "BridgeReceipt", "fields": [{"sol_type": "bytes32", "indexed": true}, {"sol_type": "uint256", "indexed": true}, {"sol_type": "address", "indexed": true}, {"sol_type": "uint256", "indexed": false}], "block_safety": "BLOCK_SAFETY_LATEST" }' 127.0.0.1:8080 events.OmniEventService/RegisterEvent
+{
+  "uuid": "G3xRpoYdXUSNsLOukqaeZw=="
+}
+```
+
+
 You can easily emit events with the following cast command:
 ```bash
-> cast send 0x20EEF038C83B7a0f357D4aBC64b8f639427D7Af6 "emitString(string)()" 'Hello World!' --private-key 0x836fd4eecd5fc23eb480581cf91f638b5dacfa6ffa3a931b1f0421a5d58cfa5a --rpc-url http://localhost:1337 
+> cast send 0x20EEF038C83B7a0f357D4aBC64b8f639427D7Af6 \
+  "emitBridgeReceipt(bytes32,uint256,address,uint256)" \
+  0x0000000000000000000000000000000000000000000000000000000000000001 \
+  0x1338 \
+  0x20EEF038C83B7a0f357D4aBC64b8f639427D7Af6 \
+  200 \
+ --private-key 0x836fd4eecd5fc23eb480581cf91f638b5dacfa6ffa3a931b1f0421a5d58cfa5a
+ --rpc-url http://localhost:1338
+
+[...]
+logs                 [{"address":"0x20eef038c83b7a0f357d4abc64b8f639427d7af6","topics":["0xc83fb1112417b2c6f38082f57a7cbc310fb31193b164c603669f3b691ba9a43e","0x0000000000000000000000000000000000000000000000000000000000000001","0x0000000000000000000000000000000000000000000000000000000000001337","0x00000000000000000000000020eef038c83b7a0f357d4abc64b8f639427d7af6"],"data":"0x00000000000000000000000000000000000000000000000000000000000000c8","blockHash":"0xe091f413a8f6f3e231df4f0d5f912aba2a0e2ed1145bbd4394c2c9baf4c4dd90","blockNumber":"0x4","blockTimestamp":"0x6888a7ab","transactionHash":"0x3bab1a6bdbfdfbcb2eefc63f9893372b3a004035b9cd893491dca6eed2a1dff6","transactionIndex":"0x0","logIndex":"0x0","removed":false}]
+[...]
+status               1 (success)
+[...]
 ```
