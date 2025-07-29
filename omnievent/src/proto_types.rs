@@ -85,6 +85,14 @@ mod events {
                 (Self::Bytes(filter), DynSolValue::Bytes(value)) => {
                     Some(filter.apply(value.to_owned()))
                 }
+                (Self::Bytes(filter), DynSolValue::FixedBytes(value, n)) => {
+                    // only valid if the exact values are of length n
+                    if filter.exact_values.iter().all(|v| v.len() == *n) {
+                        Some(filter.apply(value.to_vec()))
+                    } else {
+                        None
+                    }
+                }
                 (Self::AbiBytes(filter), value) => Some(filter.apply(value.abi_encode())),
                 _ => None, // Value cannot be filtered, return None
             }
