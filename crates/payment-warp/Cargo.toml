@@ -1,0 +1,13 @@
+[package]
+name = "payment-warp"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+
+[dependencies]
+# workspace crates
+contracts-core = { path = "../contracts-core" }
+
+[dev-dependencies]

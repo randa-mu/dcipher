@@ -5,5 +5,5 @@
 	path = randomness-solidity
 	url = ../randomness-solidity.git
 [submodule "dcipher-proto"]
-	path = dcipher-proto
+	path = protobuf
 	url = ../dcipher-proto.git

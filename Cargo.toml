@@ -1,18 +1,23 @@
 [workspace]
 resolver = "3"
 members = [
-    "blocklock-agent",
     "crates/adkg",
     "crates/adkg-cli",
     "crates/network",
+    "crates/blocklock-weft",
+    "crates/blocklock-warp",
+    "crates/fulfiller-core",
+    "crates/payment-warp",
+    "crates/randomness-warp",
+    "crates/dsigner",
+    "crates/network",
+    "crates/omnievent",
+    "crates/onlyswaps-verifier",
+    "crates/randomness-weft",
+    "crates/signer",
+    "crates/superalloy",
+    "crates/contracts-core",
     "crates/utils",
-    "dcipher-agents",
-    "dsigner",
-    "omnievent",
-    "onlyswaps-verifier",
-    "randomness-agent",
-    "signer",
-    "superalloy"
 ]
 
 [workspace.package]
@@ -22,10 +27,14 @@ edition = "2024"
 [workspace.dependencies]
 # workspace crates
 adkg = { path = "./crates/adkg" }
-dcipher-agents = { path = "./dcipher-agents" }
-dcipher-signer = { path = "./signer" }
+contracts-core = { path = "./crates/contracts-core" }
+fulfiller-core = { path = "./crates/fulfiller-core" }
+payment-warp = { path = "./crates/payment-warp" }
+randomness-warp = { path = "./crates/randomness-warp" }
+blocklock-warp = { path = "./crates/blocklock-warp" }
+dcipher-signer = { path = "./crates/signer" }
 dcipher-network = { path = "./crates/network" }
-superalloy = { path = "./superalloy" }
+superalloy = { path = "./crates/superalloy" }
 
 # blockchain
 alloy = { version = "1.0", default-features = false }

@@ -1478,7 +1478,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "blocklock-agent"
+name = "blocklock-warp"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.4.2",
+ "ark-std 0.4.0",
+ "contracts-core",
+ "digest 0.10.7",
+ "fulfiller-core",
+ "futures-util",
+ "hex",
+ "payment-warp",
+ "prometheus",
+ "serde",
+ "sha3",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "utils",
+]
+
+[[package]]
+name = "blocklock-weft"
 version = "0.1.0"
 dependencies = [
  "alloy",
@@ -1487,10 +1512,12 @@ dependencies = [
  "ark-ec",
  "ark-ff 0.4.2",
  "base64 0.22.1",
+ "blocklock-warp",
  "clap",
- "dcipher-agents",
+ "contracts-core",
  "dcipher-network",
  "figment",
+ "fulfiller-core",
  "futures",
  "futures-util",
  "libp2p",
@@ -1764,6 +1791,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "contracts-core"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.4.2",
+ "ark-std 0.4.0",
+ "dcipher-signer",
+ "digest 0.10.7",
+ "hex",
+ "sha3",
+ "thiserror 2.0.12",
+ "tracing",
+ "utils",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2007,29 +2052,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dcipher-agents"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "ark-bn254",
- "ark-ec",
- "ark-ff 0.4.2",
- "ark-std 0.4.0",
- "dcipher-signer",
- "digest 0.10.7",
- "futures-util",
- "hex",
- "prometheus",
- "serde",
- "sha3",
- "thiserror 2.0.12",
- "tokio",
- "tokio-util",
- "tracing",
- "utils",
-]
-
-[[package]]
 name = "dcipher-network"
 version = "0.1.0"
 dependencies = [
@@ -2189,9 +2211,9 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "clap",
- "dcipher-agents",
  "dcipher-network",
  "figment",
+ "fulfiller-core",
  "hex",
  "libp2p",
  "serde",
@@ -2478,6 +2500,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fulfiller-core"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.4.2",
+ "ark-std 0.4.0",
+ "contracts-core",
+ "dcipher-signer",
+ "digest 0.10.7",
+ "futures-util",
+ "hex",
+ "prometheus",
+ "serde",
+ "sha3",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "utils",
 ]
 
 [[package]]
@@ -4603,6 +4649,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "payment-warp"
+version = "0.1.0"
+dependencies = [
+ "contracts-core",
+]
+
+[[package]]
 name = "pem"
 version = "3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5194,13 +5247,14 @@ dependencies = [
  "ark-ff 0.4.2",
  "base64 0.22.1",
  "clap",
- "dcipher-agents",
  "dcipher-network",
  "figment",
+ "fulfiller-core",
  "futures",
  "futures-util",
  "libp2p",
  "prometheus",
+ "randomness-warp",
  "serde",
  "serde_json",
  "superalloy",
@@ -5210,6 +5264,20 @@ dependencies = [
  "tracing-subscriber",
  "utils",
  "warp",
+]
+
+[[package]]
+name = "randomness-warp"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "fulfiller-core",
+ "futures-util",
+ "payment-warp",
+ "prometheus",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
