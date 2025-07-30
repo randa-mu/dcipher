@@ -2646,12 +2646,12 @@ dependencies = [
  "figment",
  "hex",
  "libp2p",
- "pairing_utils",
  "serde_json",
  "superalloy",
  "tokio",
  "tokio-util",
  "tracing-subscriber",
+ "utils",
  "warp",
 ]
 

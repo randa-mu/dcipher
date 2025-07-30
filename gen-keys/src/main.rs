@@ -8,7 +8,7 @@ use ark_std::UniformRand;
 use base64::prelude::*;
 use clap::{Arg, Command};
 use libp2p::identity::Keypair;
-use pairing_utils::serialize::point::PointSerializeCompressed;
+use utils::serialize::point::PointSerializeCompressed;
 
 fn main() -> anyhow::Result<()> {
     let args = Command::new("gen-keys")
