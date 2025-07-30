@@ -74,35 +74,6 @@ mod events {
     }
 
     impl occurrence_data_filter::Filter {
-        pub fn is_compatible(&self, sol_type: &alloy::dyn_abi::DynSolType) -> bool {
-            use alloy::dyn_abi::DynSolType;
-
-            match self {
-                Self::String(_) => {
-                    matches!(sol_type, DynSolType::String)
-                }
-                Self::Int(_) => {
-                    matches!(sol_type, DynSolType::Int(_))
-                }
-                Self::Uint(_) => {
-                    matches!(sol_type, DynSolType::Uint(_))
-                }
-                Self::Bool(_) => {
-                    matches!(sol_type, DynSolType::Bool)
-                }
-                Self::Bytes(_) => {
-                    matches!(sol_type, DynSolType::Bytes)
-                }
-                Self::Address(_) => {
-                    matches!(sol_type, DynSolType::Address)
-                }
-                Self::AbiBytes(_) => {
-                    // We can always compare filter by abi bytes
-                    true
-                }
-            }
-        }
-
         /// Returns Some(bool) if the filter can be applied, None otherwise
         pub fn apply(&self, value: &DynSolValue) -> Option<bool> {
             match (self, value) {
@@ -113,6 +84,14 @@ mod events {
                 (Self::Address(filter), DynSolValue::Address(value)) => Some(filter.apply(value)),
                 (Self::Bytes(filter), DynSolValue::Bytes(value)) => {
                     Some(filter.apply(value.to_owned()))
+                }
+                (Self::Bytes(filter), DynSolValue::FixedBytes(value, n)) => {
+                    // only valid if the exact values are of length n
+                    if filter.exact_values.iter().all(|v| v.len() == *n) {
+                        Some(filter.apply(value.to_vec()))
+                    } else {
+                        None
+                    }
                 }
                 (Self::AbiBytes(filter), value) => Some(filter.apply(value.abi_encode())),
                 _ => None, // Value cannot be filtered, return None
