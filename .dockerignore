@@ -1,6 +1,7 @@
 **/node_modules/
 **/target/
 .git/
-Dockerfile
-.dockerignore
-.gitignore
+**/Dockerfile
+**/docker-compose.yml
+**/.dockerignore
+**/.gitignore

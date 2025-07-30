@@ -1,0 +1,17 @@
+[[nodes]]
+node_id = 1
+bls_pk = "8B+C/L2B3jNC/hhTWazj9kE+d1J72OZ8pfzIKiK7UP4B/3RhGWT5CowEGJusZHwH6UcKbjXf9C1Ymubk+T5tCQ=="
+peer_id = "12D3KooWCstHCeW2oDVBuVf51BqGETFLUsF8HyuUo179zYf14uim"
+address = "/dns4/dsigner-0/tcp/9000"
+
+[[nodes]]
+node_id = 2
+bls_pk = "rt0YMBQmjj2EfCxF2veRaQMx8jQwJkAyV7YzCl2ntZcYathmFurv/uKPJA30nqieXi1ru2R3pR1qu8wEolDKig=="
+peer_id = "12D3KooWQseGUx36aa7jAPtJZbUwJcEGRE6BrocuDt3xhziD6E4y"
+address = "/dns4/dsigner-1/tcp/9000"
+
+[[nodes]]
+node_id = 3
+bls_pk = "nLqB9FaIUKn6RPnADUtbqn+V3MD3UcQffTMaza4J5qECVSTp5Qhl60jmCSPmFe3HI1G6ryvZgiLus9Av77UPpw=="
+peer_id = "12D3KooWNfJQAeunoXFGgDKVKtZxJujYfmda7NWKjtLH5QdE4NQo"
+address = "/dns4/dsigner-2/tcp/9000"
