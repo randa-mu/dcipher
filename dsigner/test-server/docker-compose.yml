@@ -1,0 +1,57 @@
+services:
+  dsigner-0:
+    image: europe-west1-docker.pkg.dev/randamu-prod/candyland/dsigner
+    build: 
+      context: ../..
+      dockerfile: ./dsigner/Dockerfile
+    environment:
+      - DSIGNER_NODE_ID=1
+      - DSIGNER_NODES_CONFIG=/nodes_config.toml
+      - DSIGNER_LIBP2P_KEY=CAESQPMj/pE3NhlxdxnYMm/mrWSCL73MahVzqGc+RMq3fCJALXnZpnXvXOjo32T/EunfSLmMKzOPjgw9lOK7zBLXdT4=
+      - DSIGNER_BLS_KEY=0x236df50ed1190c5eb152e88d4e9dcb5d3e022097538970e3eea4400b3c15e4a3
+    volumes:
+      - "./nodes_config.toml:/nodes_config.toml"
+    env_file:
+      - common.env
+    ports:
+      - "127.0.0.1:8080:8080"
+    expose:
+      - 9000
+
+  dsigner-1:
+    image: europe-west1-docker.pkg.dev/randamu-prod/candyland/dsigner
+    build: 
+      context: ../..
+      dockerfile: ./dsigner/Dockerfile
+    environment:
+      - DSIGNER_NODE_ID=2
+      - DSIGNER_NODES_CONFIG=/nodes_config.toml
+      - DSIGNER_LIBP2P_KEY=CAESQLOr6Sj3EAJ1J56g4RCeZBpLpDniHIHxPFUK91TdEQPX37Y/27wKqfaELPOSmorBmUEiBmy1geliYLAeYKMroSI=
+      - DSIGNER_BLS_KEY=0x0d93eff59209675dfdc823a3fbb1120d9694fb4f7647221c014b92047a97cd44
+    volumes:
+      - "./nodes_config.toml:/nodes_config.toml"
+    env_file:
+      - common.env
+    ports:
+      - "127.0.0.1:8081:8080"
+    expose:
+      - 9000
+
+  dsigner-2:
+    image: europe-west1-docker.pkg.dev/randamu-prod/candyland/dsigner
+    build: 
+      context: ../..
+      dockerfile: ./dsigner/Dockerfile
+    environment:
+      - DSIGNER_NODE_ID=3
+      - DSIGNER_NODES_CONFIG=/nodes_config.toml
+      - DSIGNER_LIBP2P_KEY=CAESQD8yitObEz8uoRlBu0K42sfc32I2QPYuoBBBmzo4H7CdvtVxDi7XL1mSvbiCCaLj0suCMknox26HrSdPptn5T+A=
+      - DSIGNER_BLS_KEY=0x281e394f342b6287028da4712a45b11b175bbe5012be43e557d4d991a919b5e6
+    volumes:
+      - "./nodes_config.toml:/nodes_config.toml"
+    env_file:
+      - common.env
+    ports:
+      - "127.0.0.1:8082:8080"
+    expose:
+      - 9000
