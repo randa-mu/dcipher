@@ -97,7 +97,7 @@ pub trait Transport {
 }
 
 /// A sender for (broadcast) messages.
-pub trait TransportSender {
+pub trait TransportSender: Send + Sync {
     type Identity: PartyIdentifier + Send + Sync + 'static;
     type Error: std::error::Error + Send + Sync + 'static;
 
@@ -105,16 +105,19 @@ pub trait TransportSender {
         &self,
         msg: Vec<u8>,
         to: Recipient<Self::Identity>,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send + Sync;
 
-    fn broadcast(&self, msg: Vec<u8>) -> impl Future<Output = Result<(), Self::Error>> + Send {
+    fn broadcast(
+        &self,
+        msg: Vec<u8>,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send + Sync {
         self.send(msg, Recipient::All)
     }
 
     fn broadcast_echo_self(
         &self,
         msg: Vec<u8>,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send + Sync {
         self.send(msg, Recipient::AllIncludingSelf)
     }
 
@@ -122,7 +125,7 @@ pub trait TransportSender {
         &self,
         msg: Vec<u8>,
         to: Self::Identity,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send + Sync {
         self.send(msg, Recipient::Single(to))
     }
 }
