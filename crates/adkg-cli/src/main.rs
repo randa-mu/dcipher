@@ -6,6 +6,7 @@ mod keygen;
 #[cfg(feature = "metrics")]
 mod metrics;
 mod scheme;
+mod transcripts;
 
 use crate::adkg_dyx20::adkg_dyx20_bn254_g1_keccak256;
 use crate::cli::{Cli, Commands, Generate, NewScheme, RunAdkg};
@@ -23,6 +24,9 @@ use clap::Parser;
 use dcipher_network::topic::dispatcher::{TopicBasedTransportImpl, TopicDispatcher};
 use dcipher_network::transports::libp2p::transport::Libp2pSender;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
+use dcipher_network::transports::writer;
+use dcipher_network::transports::writer::TransportWriter;
+use dcipher_network::transports::writer::TransportWriterSender;
 use itertools::Itertools;
 use libp2p::{Multiaddr, PeerId};
 use rand::rngs::OsRng;
@@ -156,6 +160,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
         grace_period,
         priv_out,
         pub_out,
+        transcript_out,
         #[cfg(feature = "metrics")]
         metrics_params,
     } = args;
@@ -200,9 +205,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     adkg_metrics(&metrics_params);
 
     // Start libp2p transport
-    let (libp2p_node, dispatcher, topic_transport) =
-        get_libp2p_transport(id, &sk, listen_address, &group_config).await?;
-    let topic_transport = Arc::new(topic_transport);
+    let transports = get_libp2p_transports(id, &sk, listen_address, &group_config).await?;
 
     let output = match scheme_config.adkg_scheme_name.as_str() {
         <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME => {
@@ -213,7 +216,8 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
                 scheme_config,
                 grace_period,
                 timeout,
-                topic_transport.clone(),
+                transports.topic_transport.clone(),
+                Some(transports.writer),
                 &mut rng,
             )
             .await
@@ -223,17 +227,37 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     };
 
     tracing::info!("Stopping libp2p dispatcher...");
-    dispatcher.stop().await;
+    transports.topic_dispatcher.stop().await;
 
     tracing::info!("Stopping libp2p transport...");
-    if let Err(e) = libp2p_node.stop().await {
+    if let Err(e) = transports.node.stop().await {
         tracing::error!(error = ?e, "Failed to stop libp2p node");
     }
 
     match output {
-        Ok(output) => {
-            tracing::info!(used_sessions = ?output.used_sessions, "Successfully obtained secret key from ADKG");
-            write_adkg_keys(output, &priv_out, &pub_out, adkg_scheme_name, &group_config)?;
+        Ok((adkg_out, opt_transcript)) => {
+            tracing::info!(used_sessions = ?adkg_out.used_sessions, "Successfully obtained secret key from ADKG");
+            write_adkg_keys(
+                adkg_out,
+                &priv_out,
+                &pub_out,
+                adkg_scheme_name,
+                &group_config,
+            )?;
+
+            if let Some(transcript_out) = transcript_out {
+                if let Some(transcript) = opt_transcript {
+                    if let Err(e) = fs::write(&transcript_out, transcript) {
+                        tracing::error!(error = ?e, transcript_out = %transcript_out.display(), "Failed to write transcript to file");
+                    } else {
+                        tracing::info!(transcript_out = %transcript_out.display(), "Successfully wrote transcript to file");
+                    }
+                } else {
+                    tracing::error!(
+                        "transcript_out file specified, but ADKG returned an empty transcript.."
+                    );
+                }
+            }
         }
         Err(e) => {
             tracing::info!(error = ?e, "Failed to execute ADKG");
@@ -318,16 +342,25 @@ where
     Ok(())
 }
 
-async fn get_libp2p_transport(
+type TopicTransport = TopicBasedTransportImpl<
+    TransportWriterSender<writer::InMemoryWriter<PartyId, Vec<u8>>, Libp2pSender<PartyId>>,
+>;
+
+type InMemoryWriter = writer::InMemoryWriter<PartyId, Vec<u8>>;
+
+struct Libp2pTransports {
+    node: Libp2pNode<PartyId>,
+    writer: InMemoryWriter,
+    topic_dispatcher: TopicDispatcher,
+    topic_transport: Arc<TopicTransport>,
+}
+
+async fn get_libp2p_transports(
     id: PartyId,
     sk: &PrivateKeyMaterial,
     listen_addr: Multiaddr,
     group_config: &GroupConfig,
-) -> anyhow::Result<(
-    Libp2pNode<PartyId>,
-    TopicDispatcher,
-    TopicBasedTransportImpl<Libp2pSender<PartyId>>,
-)> {
+) -> anyhow::Result<Libp2pTransports> {
     // Make sure that the identifiers are unique
     let (peer_addrs, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>) = group_config
         .nodes
@@ -353,13 +386,25 @@ async fn get_libp2p_transport(
     let transport = node
         .get_transport()
         .ok_or(anyhow!("failed to get topic transport"))?;
-    let mut dispatcher = TopicDispatcher::new();
-    let topic_transport = dispatcher.start(transport);
+
+    // Always create a writer for now, even if it ends up not being used if transcripts are disabled.
+    // In the future, we probably want to return an enum dispatched type implementing [`TopicTransport`]
+    // to support returning different implementations of [`TopicTransport`] at run-time, since [`TopicTransport`]
+    // is not dyn-compatible.
+    let transport_writer = TransportWriter::new_in_memory(transport);
+    let writer = transport_writer.writer().to_owned();
+    let mut topic_dispatcher = TopicDispatcher::new();
+    let topic_transport = topic_dispatcher.start(transport_writer).into();
 
     tracing::info!("Waiting a few seconds for networking to settle...");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    Ok((node, dispatcher, topic_transport))
+    Ok(Libp2pTransports {
+        node,
+        topic_transport,
+        topic_dispatcher,
+        writer,
+    })
 }
 
 impl FromStr for GroupConfig {
