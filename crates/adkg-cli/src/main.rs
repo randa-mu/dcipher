@@ -415,7 +415,14 @@ impl FromStr for GroupConfig {
         }
 
         // Align the group config to a unix timestamp ending in 00
-        let next_timestamp = ((group_config.start_time.timestamp() / 100) + 1) * 100;
+        let timestamp = group_config.start_time.timestamp();
+        let timestamp_mod = timestamp % 100;
+        let next_timestamp = if timestamp_mod == 0 {
+            timestamp
+        } else {
+            timestamp + (100 - timestamp_mod)
+        };
+
         group_config.start_time =
             chrono::DateTime::<chrono::Utc>::from_timestamp(next_timestamp, 0)
                 .ok_or(anyhow!("failed to align unix timestamp"))?;
