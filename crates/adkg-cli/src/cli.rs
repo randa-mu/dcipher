@@ -119,6 +119,12 @@ pub struct RunAdkg {
     )]
     pub pub_out: PathBuf,
 
+    #[arg(
+        long,
+        help = "The output file used to store the encrypted ADKG transcript"
+    )]
+    pub transcript_out: Option<PathBuf>,
+
     #[cfg(feature = "metrics")]
     #[command(flatten)]
     pub metrics_params: MetricsParams,

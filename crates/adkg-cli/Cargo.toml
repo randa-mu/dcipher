@@ -9,13 +9,14 @@ metrics = ["dep:warp", "dep:prometheus", "dcipher-network/metrics"]
 [dependencies]
 # workspace crates
 adkg = { workspace = true, features = ["bn254"] }
-dcipher-network = { workspace = true, features = ["libp2p"] }
+dcipher-network = { workspace = true, features = ["libp2p", "writer"] }
 utils = { workspace = true, features = ["bn254", "sha3"] }
 
 # crypto
 ark-bn254.workspace = true
 ark-ec.workspace = true
 ark-std.workspace = true
+chacha20poly1305.workspace = true
 
 # async
 tokio = { workspace = true, features = ["fs", "net", "rt", "sync", "macros", "io-util", "time", "tracing"] }
@@ -33,6 +34,8 @@ warp = { version = "0.3.7", optional = true }
 
 # serde
 serde.workspace = true
+serde_json.workspace = true
+serde_with = { workspace = true, features = ["base64"] }
 toml.workspace = true
 
 # misc
