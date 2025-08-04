@@ -1,5 +1,5 @@
 .PHONY= git solidity-deps build-forge-all build-forge-all-concurrent clean-node-modules clean-solidity-out clean_dcipher $(addprefix run_,$(DIRS))
-DCIPHER_MODULE_DIRS := onlyswaps-verifier dsigner
+DCIPHER_MODULE_DIRS := dsigner
 SOLIDITY_DIRS := $(wildcard *-solidity/)
 
 git:
@@ -21,7 +21,7 @@ build_cargo: deps
 	cargo build
 
 # If you want to pass args run
-# make run_onlyswaps-verifier ARGS="-v"
+# make run_dsigner ARGS="-v"
 run_%: deps
 	cargo run --bin $* -- $(ARGS)
 
