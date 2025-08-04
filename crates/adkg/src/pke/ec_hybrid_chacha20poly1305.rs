@@ -21,9 +21,11 @@ const KDF_DST: &[u8] = b"EC_HYBRID-v1_CHACHA20POLY1305_HKDF_SHA3-256";
 #[error("opaque ec hybrid encryption error")]
 pub struct HybridEncryptionError;
 
+#[serde_with::serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Ciphertext(#[serde(with = "serde_bytes")] Vec<u8>);
+pub struct Ciphertext(#[serde_as(as = "utils::Base64OrBytes")] Vec<u8>);
 
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
 #[serde(bound(
     serialize = "CG: PointSerializeCompressed",
@@ -33,10 +35,11 @@ pub struct HybridCiphertext<CG: CurveGroup> {
     #[serde(with = "utils::serialize::point::base64")]
     pub sender_pk: CG,
     pub ct: Ciphertext,
-    #[serde(with = "serde_bytes")]
+    #[serde_as(as = "utils::Base64OrBytes")]
     pub nonce: Vec<u8>,
 }
 
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
 #[serde(bound(
     serialize = "CG: PointSerializeCompressed",
@@ -45,7 +48,7 @@ pub struct HybridCiphertext<CG: CurveGroup> {
 pub struct MultiHybridCiphertext<CG: CurveGroup> {
     #[serde(with = "utils::serialize::point::base64")]
     pub sender_pk: CG,
-    #[serde(with = "serde_bytes")]
+    #[serde_as(as = "utils::Base64OrBytes")]
     pub nonce: Vec<u8>,
     pub cts: Vec<Ciphertext>,
 }
