@@ -14,21 +14,23 @@ use utils::serialize::{
 };
 
 /// Message sent throughout the ACSS protocol.
+#[serde_with::serde_as]
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(tag = "acss_message")]
 pub enum AcssMessage {
     Ok,
     Ready,
     Implicate(ImplicateMessage),
-    ShareRecovery(#[serde(with = "serde_bytes")] Vec<u8>),
+    ShareRecovery(#[serde_as(as = "utils::Base64OrBytes")] Vec<u8>),
 }
 
 /// Message used to implicate the dealer upon receiving an invalid share.
+#[serde_with::serde_as]
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct ImplicateMessage {
-    #[serde(with = "serde_bytes")]
+    #[serde_as(as = "utils::Base64OrBytes")]
     pub pi: Vec<u8>, // serialized dleq proof
-    #[serde(with = "serde_bytes")]
+    #[serde_as(as = "utils::Base64OrBytes")]
     pub k: Vec<u8>, // serialized shared key between the dealer and the receiving party
 }
 
