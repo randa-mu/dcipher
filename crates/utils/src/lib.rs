@@ -46,7 +46,6 @@ mod serde_as {
     impl<'de, T> DeserializeAs<'de, T> for Base64OrBytes
     where
         T: TryFrom<Vec<u8>>,
-        T::Error: std::fmt::Display,
         serde_with::Bytes: DeserializeAs<'de, T>,
     {
         fn deserialize_as<D>(deserializer: D) -> Result<T, D::Error>
