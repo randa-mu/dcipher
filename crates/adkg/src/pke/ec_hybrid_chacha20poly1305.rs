@@ -14,6 +14,7 @@ use sha3::Sha3_256;
 use thiserror::Error;
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
+pub const NONCE_LENGTH: usize = 12;
 // todo: dynamically build DST using curve name when refactoring DSTs across codebase
 const KDF_DST: &[u8] = b"EC_HYBRID-v1_CHACHA20POLY1305_HKDF_SHA3-256";
 
@@ -36,7 +37,7 @@ pub struct HybridCiphertext<CG: CurveGroup> {
     pub sender_pk: CG,
     pub ct: Ciphertext,
     #[serde_as(as = "utils::Base64OrBytes")]
-    pub nonce: Vec<u8>,
+    pub nonce: [u8; NONCE_LENGTH],
 }
 
 #[serde_with::serde_as]
@@ -49,7 +50,7 @@ pub struct MultiHybridCiphertext<CG: CurveGroup> {
     #[serde(with = "utils::serialize::point::base64")]
     pub sender_pk: CG,
     #[serde_as(as = "utils::Base64OrBytes")]
-    pub nonce: Vec<u8>,
+    pub nonce: [u8; NONCE_LENGTH],
     pub cts: Vec<Ciphertext>,
 }
 
@@ -114,7 +115,7 @@ where
     Ok(MultiHybridCiphertext {
         cts,
         sender_pk,
-        nonce: nonce.to_vec(),
+        nonce: nonce.into(),
     })
 }
 
@@ -138,7 +139,7 @@ where
     Ok(HybridCiphertext {
         sender_pk: *sender_pk,
         ct,
-        nonce: nonce.to_vec(),
+        nonce: nonce.to_owned().into(),
     })
 }
 
