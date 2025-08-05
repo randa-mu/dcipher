@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::task::{JoinError, JoinSet};
 use tokio_util::sync::CancellationToken;
+use tracing::Instrument;
 
 pub struct MultiRbc<RBCConfig>
 where
@@ -77,9 +78,19 @@ where
                             unreachable!("cannot have more than one sid matching node_id");
                         };
                         let m: Vec<u8> = rx_own_rbc.await.unwrap();
-                        (sid, rbc.start(&m, cancel).await)
+                        (
+                            sid,
+                            rbc.start(&m, cancel)
+                                .instrument(tracing::info_span!("RBC::start", ?sid))
+                                .await,
+                        )
                     } else {
-                        (sid, rbc.listen(&predicate, sid.into(), cancel).await)
+                        (
+                            sid,
+                            rbc.listen(&predicate, sid.into(), cancel)
+                                .instrument(tracing::info_span!("RBC::listen", ?sid))
+                                .await,
+                        )
                     }
                 }
             });

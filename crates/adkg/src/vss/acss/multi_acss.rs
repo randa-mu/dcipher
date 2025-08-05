@@ -12,6 +12,7 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
+use tracing::Instrument;
 
 pub struct MultiAcss<CG, ACSSConfig>
 where
@@ -78,9 +79,12 @@ where
                 async move {
                     // Start the acss tasks
                     let res = if sid == node_id {
-                        acss.deal(&s, cancellation_token, sender, &mut rng).await
+                        acss.deal(&s, cancellation_token, sender, &mut rng)
+                            .instrument(tracing::info_span!("ACSS::deal", ?sid))
+                            .await
                     } else {
                         acss.get_share(sid.into(), cancellation_token, sender, &mut rng)
+                            .instrument(tracing::info_span!("ACSS::get_share", ?sid))
                             .await
                     };
 
