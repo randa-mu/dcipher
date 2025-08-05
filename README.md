@@ -8,7 +8,7 @@ make git run_dsigner
 ```
 or
 ```bash
-make git run_onlyswaps-verifier ARGS="--port=8080"
+make git run_dsigner ARGS="--port=8080"
 ```
 
 ## To just build without running

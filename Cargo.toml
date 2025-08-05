@@ -9,7 +9,6 @@ members = [
     "dcipher-agents",
     "dsigner",
     "omnievent",
-    "onlyswaps-verifier",
     "randomness-agent",
     "signer",
     "superalloy"
