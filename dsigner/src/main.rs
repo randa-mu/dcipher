@@ -12,7 +12,6 @@ use dcipher_agents::signer::threshold_signer::{
 };
 use dcipher_agents::signer::{AsynchronousSigner, BN254SignatureOnG1Signer};
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
-use pairing_utils::serialize::point::PointSerializeCompressed;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -20,6 +19,7 @@ use tokio_util::sync::CancellationToken;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use utils::serialize::point::PointSerializeCompressed;
 
 // Request structure for the sign endpoint
 #[derive(Deserialize)]
