@@ -8,7 +8,9 @@ libp2p = ["transports", "dep:libp2p"]
 in_memory = ["transports"]
 transports = []
 
-writer = ["dep:chrono"]
+writer = ["replayable", "dep:chrono"]
+reader = ["replayable"]
+replayable = []
 
 metrics = ["dep:prometheus"]
 
