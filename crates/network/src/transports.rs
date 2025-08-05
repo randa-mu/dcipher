@@ -4,8 +4,8 @@ use crate::PartyIdentifier;
 pub mod in_memory;
 #[cfg(feature = "libp2p")]
 pub mod libp2p;
-#[cfg(feature = "writer")]
-pub mod writer;
+#[cfg(feature = "replayable")]
+pub mod replayable;
 
 #[derive(Clone, Debug)]
 pub enum TransportAction<I: PartyIdentifier> {

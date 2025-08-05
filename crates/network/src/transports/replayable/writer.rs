@@ -34,24 +34,6 @@ pub struct InMemoryWriter<ID: PartyIdentifier, M> {
     messages: Arc<tokio::sync::Mutex<InMemoryEntries<ID, M>>>,
 }
 
-/// The entries of an [`InMemoryWriter`].
-pub type InMemoryEntries<ID, M> = HashMap<InMemoryEntryType<ID>, Vec<InMemoryEntry<ID, M>>>;
-
-/// The type of entries used by an [`InMemoryWriter`].
-#[derive(Hash, Eq, PartialEq, Clone, Debug)]
-pub enum InMemoryEntryType<ID> {
-    Broadcast,
-    Direct(ID),
-}
-
-/// An entry stored inside an [`InMemoryWriter`].
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct InMemoryEntry<ID: PartyIdentifier, M> {
-    pub timestamp: i64,
-    pub recipient: Recipient<ID>,
-    pub msg: M,
-}
-
 impl<ID: PartyIdentifier, M> Default for InMemoryWriter<ID, M> {
     fn default() -> Self {
         Self {
@@ -110,10 +92,29 @@ where
     }
 }
 
+/// The entries of an [`InMemoryWriter`].
+pub type InMemoryEntries<ID, M> = HashMap<InMemoryEntryType<ID>, Vec<InMemoryEntry<ID, M>>>;
+
+/// The type of entries used by an [`InMemoryWriter`].
+#[derive(Hash, Eq, PartialEq, Clone, Debug)]
+pub enum InMemoryEntryType<ID> {
+    Broadcast,
+    Direct(ID),
+}
+
+/// An entry stored inside an [`InMemoryWriter`].
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct InMemoryEntry<ID: PartyIdentifier, M> {
+    pub timestamp: i64,
+    pub recipient: Recipient<ID>,
+    pub msg: M,
+}
+
 impl<ID: PartyIdentifier, MFrom> InMemoryEntry<ID, MFrom>
 where
     ID: PartyIdentifier,
 {
+    /// Convert an [`InMemoryEntry`] for a type of message [`MFrom`] into a type of message [`M`]
     pub fn into_new_m<M>(self) -> InMemoryEntry<ID, M>
     where
         MFrom: Into<M>,

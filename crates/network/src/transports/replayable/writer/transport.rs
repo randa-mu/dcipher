@@ -1,6 +1,6 @@
 //! Implementation of [`Transport`] that forwards sent messages to a [`MessageWriter`].
 
-use crate::transports::writer::{InMemoryWriter, MessageWriter};
+use crate::transports::replayable::writer::{InMemoryWriter, MessageWriter};
 use crate::{Recipient, Transport, TransportSender};
 
 /// [`Transport`] forwarding sent messages to a writer.
