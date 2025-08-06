@@ -64,7 +64,7 @@ where
     // Calculate time to sleep before actively executing the adkg
     let sleep_duration = (group_config.start_time - chrono::Utc::now())
         .to_std() // TimeDelta to positive duration
-        .context("start_time cannot be in the past")?;
+        .unwrap_or_else(|_| Duration::from_secs(0));
 
     tracing::info!(
         "Sleeping for {} before starting ADKG at {}",
@@ -88,7 +88,7 @@ where
                     tokio::time::sleep(adkg_grace_period).await;
 
                     let transcript = if let Some(writer) = writer {
-                        match encrypt_transcripts(id, group_config, &writer, &pks, scheme.generator_g(), &mut thread_rng()).await {
+                        match encrypt_transcripts(id, group_config, &writer, &sk, &pks, &mut thread_rng()).await {
                             Ok(transcript) => Some(transcript),
                             Err(e) => {
                                 tracing::error!(error = ?e, "Failed to generate ADKG transcript");
@@ -149,18 +149,17 @@ pub async fn adkg_dyx20_bn254_g1_keccak256_rescue(
 
     // Deserialize the transcripts
     let transcripts = transcripts.into_iter().map(|t| {
-        serde_json::from_slice::<DYX20EncryptedTranscript<ark_bn254::G1Projective>>(&t)
-            .context("failed to deserialize transcripts")
+        serde_json::from_slice::<DYX20Transcript>(&t).context("failed to deserialize transcripts")
     });
 
     // Decrypt the transcripts
     let messages = transcripts.map(|t| -> anyhow::Result<_> {
         let transcript = t?;
         let sender = transcript.id;
-        let Transcript {
+        let TranscriptData {
             broadcasts,
             directs,
-        } = decrypt_transcript(id, &adkg_sk, &adkg_pk, transcript)?;
+        } = decrypt_transcript(id, &adkg_sk, adkg_pks.as_slice(), transcript)?;
         Ok((sender, broadcasts, directs))
     });
 
@@ -213,11 +212,9 @@ pub async fn adkg_dyx20_bn254_g1_keccak256_rescue(
 
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
-struct ChaCha20BroadcastCiphertext<
-    CG: CurveGroup + PointSerializeCompressed + PointDeserializeCompressed,
-> {
+struct ChaCha20BroadcastCiphertext {
     /// one unique ciphertext per participant to store a shared encryption key
-    encrypted_key: MultiHybridCiphertext<CG>,
+    encrypted_key: MultiHybridCiphertext,
 
     /// chacha20+poly1305 nonce
     #[serde_as(as = "utils::Base64OrBytes")]
@@ -235,35 +232,39 @@ struct ChaCha20BroadcastCiphertext<
 //  applying their signature on top of an already encrypted transcript.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "CG: PointSerializeCompressed",
-    deserialize = "CG: PointDeserializeCompressed"
-))]
-pub struct DYX20EncryptedTranscript<CG: CurveGroup> {
+struct DYX20Transcript {
     /// identifier of the party who created the transcript
-    pub id: PartyId,
+    id: PartyId,
 
     /// nonce used to encrypt the broadcast messages
     #[serde_as(as = "utils::Base64OrBytes")]
-    pub broadcasts_nonce: [u8; NONCE_LENGTH],
+    broadcasts_nonce: [u8; NONCE_LENGTH],
 
     /// encrypted key used to encrypt broadcasts
-    pub broadcasts_key: MultiHybridCiphertext<CG>,
+    broadcasts_key_ct: MultiHybridCiphertext,
 
     /// encrypted broadcasts
     #[serde_as(as = "utils::Base64OrBytes")]
-    pub broadcasts: Vec<u8>,
+    broadcasts_ct: Vec<u8>,
 
     /// encrypted direct messages
-    pub directs: Vec<HybridCiphertext<CG>>,
+    directs_cts: Vec<HybridCiphertext>,
+}
+
+struct TranscriptData {
+    /// broadcast message sent to all parties
+    broadcasts: BroadcastMessages<Vec<u8>>,
+
+    /// messages sent to a specific party
+    directs: DirectMessages<Vec<u8>>,
 }
 
 async fn encrypt_transcripts(
     id: PartyId,
     group_config: &GroupConfig,
     writer: &InMemoryWriter,
-    pks: &[ark_bn254::G1Projective],
-    g: ark_bn254::G1Projective,
+    adkg_sk: &ark_bn254::Fr, // the secret sk such that g * sk == pks[id]
+    adkg_pks: &[ark_bn254::G1Projective],
     rng: &mut (impl Rng + CryptoRng),
 ) -> anyhow::Result<EncryptedAdkgTranscript> {
     let mut transcript = writer.take().await;
@@ -305,22 +306,24 @@ async fn encrypt_transcripts(
         .map_err(|_| anyhow!("failed to encrypt broadcasts"))?;
 
     // Encrypt the secret key n times, i.e., one ciphertext per party
-    let enc_broadcast_key = ec_hybrid_chacha20poly1305::encrypt_multi(
-        &vec![broadcasts_key.to_vec(); pks.len()],
-        pks,
-        &g,
+    let enc_broadcast_key = ec_hybrid_chacha20poly1305::encrypt_multi_static(
+        adkg_sk,
+        adkg_pks[id],
+        &vec![broadcasts_key.to_vec(); adkg_pks.len()],
+        adkg_pks,
         &mut *rng,
     )
     .context("failed to encrypt broadcast secret key")?;
 
     // Encrypt the direct messages with a per-party key
     let enc_directs = directs
-        .zip_eq(pks)
+        .zip_eq(adkg_pks)
         .map(|(direct_msg, pki)| -> anyhow::Result<_> {
-            Ok(ec_hybrid_chacha20poly1305::encrypt(
+            Ok(ec_hybrid_chacha20poly1305::encrypt_with_sk(
+                adkg_sk,
+                &adkg_pks[id],
                 direct_msg?.as_slice(),
                 pki,
-                &g,
                 rng,
             )?)
         })
@@ -328,35 +331,38 @@ async fn encrypt_transcripts(
         .context("failed to encrypt direct messages")?;
 
     // Serialize the encrypted transcript w/ json for readability
-    let transcript = serde_json::to_vec(&DYX20EncryptedTranscript {
+    let transcript = serde_json::to_vec(&DYX20Transcript {
         id,
-        broadcasts_key: enc_broadcast_key,
+        broadcasts_key_ct: enc_broadcast_key,
         broadcasts_nonce: broadcasts_nonce.into(),
-        broadcasts: enc_broadcasts,
-        directs: enc_directs,
+        broadcasts_ct: enc_broadcasts,
+        directs_cts: enc_directs,
     })
     .context("failed to serialize encrypted transcript")?;
     Ok(transcript)
 }
 
-struct Transcript {
-    broadcasts: BroadcastMessages<Vec<u8>>,
-    directs: DirectMessages<Vec<u8>>,
-}
-
 fn decrypt_transcript<CG>(
-    id: PartyId,
-    adkg_sk: &CG::ScalarField,
-    adkg_pk: &CG,
-    transcript_ct: DYX20EncryptedTranscript<CG>,
-) -> anyhow::Result<Transcript>
+    receiver_id: PartyId,
+    adkg_sk: &CG::ScalarField, // the secret sk such that g * sk == pks[id]
+    adkg_pks: &[CG],
+    transcript_ct: DYX20Transcript,
+) -> anyhow::Result<TranscriptData>
 where
     CG: CurveGroup + PointSerializeCompressed,
 {
+    let sender_id = transcript_ct.id;
+    let sender_pk = adkg_pks[sender_id];
+
     // Decrypt the broadcasts_key
     let broadcasts_key = transcript_ct
-        .broadcasts_key
-        .decrypt_one(id.as_index(), adkg_sk, adkg_pk)
+        .broadcasts_key_ct
+        .decrypt_one(
+            receiver_id.as_index(),
+            adkg_sk,
+            &adkg_pks[receiver_id],
+            &sender_pk,
+        )
         .context("failed to decrypt broadcasts ciphertext")?;
 
     // Decrypt broadcast messages
@@ -365,19 +371,19 @@ where
         .into();
     let broadcasts_nonce = transcript_ct.broadcasts_nonce.into();
     let broadcasts = ChaCha20Poly1305::new(&broadcasts_key)
-        .decrypt(&broadcasts_nonce, transcript_ct.broadcasts.as_slice())
+        .decrypt(&broadcasts_nonce, transcript_ct.broadcasts_ct.as_slice())
         .map_err(|_| anyhow!("failed to decrypt broadcasts"))?;
     let broadcasts: BroadcastMessages =
         serde_json::from_slice(&broadcasts).context("failed to deserialize broadcast messages")?;
 
     // Decrypt direct messages
-    let directs = transcript_ct.directs[id]
-        .decrypt(adkg_sk, adkg_pk)
+    let directs = transcript_ct.directs_cts[receiver_id]
+        .decrypt(adkg_sk, &adkg_pks[receiver_id], &sender_pk)
         .context("failed to decrypt direct messages")?;
     let directs: DirectMessages =
         serde_json::from_slice(&directs).context("failed to deserialize direct messages")?;
 
-    Ok(Transcript {
+    Ok(TranscriptData {
         broadcasts: broadcasts.into(),
         directs: directs.into(),
     })

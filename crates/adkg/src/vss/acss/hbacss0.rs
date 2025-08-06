@@ -12,7 +12,7 @@ use crate::network::{RetryStrategy, broadcast_with_self};
 use crate::nizk::NIZKDleqProof;
 use crate::rbc::ReliableBroadcastConfig;
 use crate::{
-    pke::ec_hybrid_chacha20poly1305::{self, MultiHybridCiphertext},
+    pke::ec_hybrid_chacha20poly1305::{self, EphemeralMultiHybridCiphertext},
     rbc::{RbcPredicate, ReliableBroadcast},
     vss::feldman::{self},
 };
@@ -427,7 +427,7 @@ where
         self,
         share: Option<CG::ScalarField>,
         output: oneshot::Sender<Hbacss0Output<CG>>,
-        enc_shares: &MultiHybridCiphertext<CG>,
+        enc_shares: &EphemeralMultiHybridCiphertext<CG>,
         public_poly: &[CG],
         rng: &mut RNG,
     ) -> Result<(), Box<AcssError>>
@@ -593,8 +593,12 @@ where
             )
         }
 
-        let Ok(m) = bson::from_slice::<AcssBroadcastMessage<CG>>(m) else {
-            return false;
+        let m= match bson::from_slice::<AcssBroadcastMessage<CG>>(m) {
+            Ok(m) => m,
+            Err(e) => {
+                warn!(error = ?e, "Failed to decode AcssBroadcastMessage");
+                return false;
+            }
         };
 
         // Decrypt and validate share
@@ -615,7 +619,7 @@ where
 
 /// Verify that a hybrid encryption ciphertext can be decrypted and is a valid Feldman share for party i.
 fn feld_eval_verify<CG>(
-    ct: &MultiHybridCiphertext<CG>,
+    ct: &EphemeralMultiHybridCiphertext<CG>,
     public_poly: &[CG],
     g: &CG,
     i: PartyId,

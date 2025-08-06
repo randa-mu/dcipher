@@ -26,29 +26,45 @@ pub struct HybridEncryptionError;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Ciphertext(#[serde_as(as = "utils::Base64OrBytes")] Vec<u8>);
 
+/// A ciphertext that uses an ephemeral key.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
 #[serde(bound(
     serialize = "CG: PointSerializeCompressed",
     deserialize = "CG: PointDeserializeCompressed"
 ))]
-pub struct HybridCiphertext<CG: CurveGroup> {
+pub struct EphemeralHybridCiphertext<CG: CurveGroup> {
     #[serde(with = "utils::serialize::point::base64")]
     pub sender_pk: CG,
+    pub inner: HybridCiphertext,
+}
+
+/// A ciphertext that uses a pre-shared key.
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct HybridCiphertext {
     pub ct: Ciphertext,
     #[serde_as(as = "utils::Base64OrBytes")]
     pub nonce: [u8; NONCE_LENGTH],
 }
 
+/// A multi hybrid ciphertext that relies on an ephemeral key.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
 #[serde(bound(
     serialize = "CG: PointSerializeCompressed",
     deserialize = "CG: PointDeserializeCompressed"
 ))]
-pub struct MultiHybridCiphertext<CG: CurveGroup> {
+pub struct EphemeralMultiHybridCiphertext<CG: CurveGroup> {
     #[serde(with = "utils::serialize::point::base64")]
     pub sender_pk: CG,
+    pub inner: MultiHybridCiphertext,
+}
+
+/// A multi ciphertext that relies on a pre-shared key.
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct MultiHybridCiphertext {
     #[serde_as(as = "utils::Base64OrBytes")]
     pub nonce: [u8; NONCE_LENGTH],
     pub cts: Vec<Ciphertext>,
@@ -60,7 +76,7 @@ pub fn encrypt<CG, RNG>(
     recipient_pk: &CG,
     g: &CG,
     rng: &mut RNG,
-) -> Result<HybridCiphertext<CG>, HybridEncryptionError>
+) -> Result<EphemeralHybridCiphertext<CG>, HybridEncryptionError>
 where
     CG: CurveGroup + PointSerializeCompressed,
     RNG: RngCore + CryptoRng,
@@ -68,7 +84,8 @@ where
     let sender_sk = CG::ScalarField::rand(rng);
     let sender_pk = *g * sender_sk;
 
-    encrypt_with_sk(&sender_sk, &sender_pk, m, recipient_pk, rng)
+    let inner = encrypt_with_sk(&sender_sk, &sender_pk, m, recipient_pk, rng)?;
+    Ok(EphemeralHybridCiphertext { sender_pk, inner })
 }
 
 /// Encrypt a message towards a specific public key with a specific secret key.
@@ -78,7 +95,7 @@ pub fn encrypt_with_sk<CG, RNG>(
     m: &[u8],
     recipient_pk: &CG,
     rng: &mut RNG,
-) -> Result<HybridCiphertext<CG>, HybridEncryptionError>
+) -> Result<HybridCiphertext, HybridEncryptionError>
 where
     CG: CurveGroup + PointSerializeCompressed,
     RNG: RngCore + CryptoRng,
@@ -88,12 +105,14 @@ where
     encrypt_internal(sender_sk, sender_pk, &nonce, m, recipient_pk)
 }
 
+/// Encrypt multiple messages towards multiple recipients while re-using the same nonce to slightly
+/// optimize the ciphertext length.
 pub fn encrypt_multi<CG, RNG>(
     ms: &[Vec<u8>],
     recipients_pks: &[CG],
     g: &CG,
     rng: &mut RNG,
-) -> Result<MultiHybridCiphertext<CG>, HybridEncryptionError>
+) -> Result<EphemeralMultiHybridCiphertext<CG>, HybridEncryptionError>
 where
     CG: CurveGroup + PointSerializeCompressed,
     RNG: RngCore + CryptoRng,
@@ -102,6 +121,23 @@ where
     let sender_sk = CG::ScalarField::rand(rng);
     let sender_pk = *g * sender_sk;
 
+    let inner = encrypt_multi_static(&sender_sk, sender_pk, ms, recipients_pks, rng)?;
+    Ok(EphemeralMultiHybridCiphertext { sender_pk, inner })
+}
+
+/// Encrypt multiple messages towards multiple recipients with a static key while re-using the same
+/// nonce to slightly optimize the ciphertext length.
+pub fn encrypt_multi_static<CG, RNG>(
+    sender_sk: &CG::ScalarField,
+    sender_pk: CG,
+    ms: &[Vec<u8>],
+    recipients_pks: &[CG],
+    rng: &mut RNG,
+) -> Result<MultiHybridCiphertext, HybridEncryptionError>
+where
+    CG: CurveGroup + PointSerializeCompressed,
+    RNG: RngCore + CryptoRng,
+{
     // Generate random nonce common to all parties
     let nonce: Nonce = ChaCha20Poly1305::generate_nonce(rng);
 
@@ -109,12 +145,11 @@ where
     let cts = recipients_pks
         .iter()
         .zip(ms)
-        .map(|(pk, m)| Ok(encrypt_internal(&sender_sk, &sender_pk, &nonce, m, pk)?.ct))
+        .map(|(pk, m)| Ok(encrypt_internal(sender_sk, &sender_pk, &nonce, m, pk)?.ct))
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(MultiHybridCiphertext {
         cts,
-        sender_pk,
         nonce: nonce.into(),
     })
 }
@@ -126,7 +161,7 @@ fn encrypt_internal<CG>(
     nonce: &Nonce,
     m: &[u8],
     recipient_pk: &CG,
-) -> Result<HybridCiphertext<CG>, HybridEncryptionError>
+) -> Result<HybridCiphertext, HybridEncryptionError>
 where
     CG: CurveGroup + PointSerializeCompressed,
 {
@@ -137,7 +172,6 @@ where
     // Encrypt ciphertext
     let ct = sym_encrypt(&k, nonce, m)?.into();
     Ok(HybridCiphertext {
-        sender_pk: *sender_pk,
         ct,
         nonce: nonce.to_owned().into(),
     })
@@ -178,7 +212,7 @@ fn sym_decrypt(k: &Key, nonce: &Nonce, ct: &[u8]) -> Result<Vec<u8>, HybridEncry
     cipher.decrypt(nonce, ct).map_err(|_| HybridEncryptionError)
 }
 
-impl<CG> HybridCiphertext<CG>
+impl<CG> EphemeralHybridCiphertext<CG>
 where
     CG: CurveGroup + PointSerializeCompressed,
 {
@@ -188,9 +222,8 @@ where
         recipient_sk: &CG::ScalarField,
         recipient_pk: &CG,
     ) -> Result<Vec<u8>, HybridEncryptionError> {
-        // Derive symmetric key
-        let shared_key = self.sender_pk * *recipient_sk;
-        self.decrypt_shared_key(&shared_key, recipient_pk)
+        self.inner
+            .decrypt(recipient_sk, recipient_pk, &self.sender_pk)
     }
 
     /// Decrypt a hybrid ciphertext using a pre-computed shared_key.
@@ -199,8 +232,39 @@ where
         shared_key: &CG,
         recipient_pk: &CG,
     ) -> Result<Vec<u8>, HybridEncryptionError> {
+        self.inner
+            .decrypt_shared_key(shared_key, recipient_pk, &self.sender_pk)
+    }
+}
+
+impl HybridCiphertext {
+    /// Decrypt a hybrid ciphertext using the recipient's secret key.
+    pub fn decrypt<CG>(
+        &self,
+        recipient_sk: &CG::ScalarField,
+        recipient_pk: &CG,
+        sender_pk: &CG,
+    ) -> Result<Vec<u8>, HybridEncryptionError>
+    where
+        CG: CurveGroup + PointSerializeCompressed,
+    {
         // Derive symmetric key
-        let k: Key = derive_shared_sym_key(shared_key, &self.sender_pk, recipient_pk)?.into();
+        let shared_key = *sender_pk * recipient_sk;
+        self.decrypt_shared_key(&shared_key, recipient_pk, sender_pk)
+    }
+
+    /// Decrypt a hybrid ciphertext using a pre-computed shared_key.
+    pub fn decrypt_shared_key<CG>(
+        &self,
+        shared_key: &CG,
+        recipient_pk: &CG,
+        sender_pk: &CG,
+    ) -> Result<Vec<u8>, HybridEncryptionError>
+    where
+        CG: CurveGroup + PointSerializeCompressed,
+    {
+        // Derive symmetric key
+        let k: Key = derive_shared_sym_key(shared_key, sender_pk, recipient_pk)?.into();
 
         // Decrypt ciphertext
         let nonce = Nonce::from_slice(&self.nonce);
@@ -208,7 +272,7 @@ where
     }
 }
 
-impl<CG> MultiHybridCiphertext<CG>
+impl<CG> EphemeralMultiHybridCiphertext<CG>
 where
     CG: CurveGroup + PointSerializeCompressed,
 {
@@ -236,12 +300,53 @@ where
         shared_key: &CG,
         recipient_pk: &CG,
     ) -> Result<Vec<u8>, HybridEncryptionError> {
-        let Some(ct) = self.cts.get(i) else {
+        let Some(ct) = self.inner.cts.get(i) else {
             Err(HybridEncryptionError)?
         };
 
         // Derive symmetric key
         let k: Key = derive_shared_sym_key(shared_key, &self.sender_pk, recipient_pk)?.into();
+
+        // Decrypt ciphertext
+        let nonce = Nonce::from_slice(&self.inner.nonce);
+        sym_decrypt(&k, nonce, ct.as_ref())
+    }
+}
+
+impl MultiHybridCiphertext {
+    /// Decrypt a hybrid ciphertext at index i.
+    pub fn decrypt_one<CG>(
+        &self,
+        i: usize,
+        recipient_sk: &CG::ScalarField,
+        recipient_pk: &CG,
+        sender_pk: &CG,
+    ) -> Result<Vec<u8>, HybridEncryptionError>
+    where
+        CG: CurveGroup + PointSerializeCompressed,
+    {
+        // Derive shared key
+        let shared_key = *sender_pk * recipient_sk;
+        self.decrypt_one_with_shared_key(i, &shared_key, recipient_pk, sender_pk)
+    }
+
+    /// Decrypt a hybrid ciphertext at index i using a pre-computed shared_key.
+    pub fn decrypt_one_with_shared_key<CG>(
+        &self,
+        i: usize,
+        shared_key: &CG,
+        recipient_pk: &CG,
+        sender_pk: &CG,
+    ) -> Result<Vec<u8>, HybridEncryptionError>
+    where
+        CG: CurveGroup + PointSerializeCompressed,
+    {
+        let Some(ct) = self.cts.get(i) else {
+            Err(HybridEncryptionError)?
+        };
+
+        // Derive symmetric key
+        let k: Key = derive_shared_sym_key(shared_key, sender_pk, recipient_pk)?.into();
 
         // Decrypt ciphertext
         let nonce = Nonce::from_slice(&self.nonce);
