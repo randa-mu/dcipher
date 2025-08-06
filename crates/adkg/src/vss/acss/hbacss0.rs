@@ -593,7 +593,7 @@ where
             )
         }
 
-        let m= match bson::from_slice::<AcssBroadcastMessage<CG>>(m) {
+        let m = match bson::from_slice::<AcssBroadcastMessage<CG>>(m) {
             Ok(m) => m,
             Err(e) => {
                 warn!(error = ?e, "Failed to decode AcssBroadcastMessage");
