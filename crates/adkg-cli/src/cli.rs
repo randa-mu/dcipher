@@ -33,6 +33,12 @@ pub enum Commands {
     /// Start distributed key generation
     #[command(about = "Start distributed key generation with a set of parties")]
     Run(RunAdkg),
+
+    /// Recover your own share by relying on n - t transcripts.
+    #[command(
+        about = "Recover your own share by relying on the ADKG transcripts from n - t participants"
+    )]
+    Rescue(Rescue),
 }
 
 /// Generate a new scheme configuration
@@ -78,17 +84,8 @@ pub struct Generate {
 /// Start distributed key generation
 #[derive(Parser, Debug)]
 pub struct RunAdkg {
-    #[arg(long, help = "The scheme configuration in a toml file")]
-    pub scheme: PathBuf,
-
-    #[arg(long = "group", help = "The group configuration in a toml file")]
-    pub group_file: PathBuf,
-
-    #[arg(long = "priv", help = "The private key material stored in a toml file")]
-    pub priv_file: PathBuf,
-
-    #[arg(long, help = "The unique identifier used by the node for the ADKG")]
-    pub id: NonZeroUsize,
+    #[command(flatten)]
+    pub common: AdkgRunCommon,
 
     #[arg(long, help = "The libp2p listen address for ADKG messages")]
     pub listen_address: Multiaddr,
@@ -109,16 +106,6 @@ pub struct RunAdkg {
     )]
     pub grace_period: std::time::Duration,
 
-    #[arg(long, help = "The output file used to store the ADKG private key")]
-    pub priv_out: PathBuf,
-
-    #[arg(
-        long,
-        short,
-        help = "The output file used to store the ADKG public keys"
-    )]
-    pub pub_out: PathBuf,
-
     #[arg(
         long,
         help = "The output file used to store the encrypted ADKG transcript"
@@ -128,6 +115,41 @@ pub struct RunAdkg {
     #[cfg(feature = "metrics")]
     #[command(flatten)]
     pub metrics_params: MetricsParams,
+}
+
+/// Use transcripts from n - t nodes to recover our secret key.
+#[derive(Parser, Debug)]
+pub struct Rescue {
+    #[command(flatten)]
+    pub common: AdkgRunCommon,
+
+    #[arg(help = "A list of files containing encrypted transcripts")]
+    pub transcript_files: Vec<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
+pub struct AdkgRunCommon {
+    #[arg(long, help = "The scheme configuration in a toml file")]
+    pub scheme: PathBuf,
+
+    #[arg(long = "group", help = "The group configuration in a toml file")]
+    pub group_file: PathBuf,
+
+    #[arg(long = "priv", help = "The private key material stored in a toml file")]
+    pub priv_file: PathBuf,
+
+    #[arg(long, help = "The unique identifier used by the node for the ADKG")]
+    pub id: NonZeroUsize,
+
+    #[arg(long, help = "The output file used to store the ADKG private key")]
+    pub priv_out: PathBuf,
+
+    #[arg(
+        long,
+        short,
+        help = "The output file used to store the ADKG public keys"
+    )]
+    pub pub_out: PathBuf,
 }
 
 #[cfg(feature = "metrics")]

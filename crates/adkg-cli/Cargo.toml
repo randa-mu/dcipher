@@ -9,7 +9,7 @@ metrics = ["dep:warp", "dep:prometheus", "dcipher-network/metrics"]
 [dependencies]
 # workspace crates
 adkg = { workspace = true, features = ["bn254"] }
-dcipher-network = { workspace = true, features = ["libp2p", "writer"] }
+dcipher-network = { workspace = true, features = ["libp2p", "reader", "writer"] }
 utils = { workspace = true, features = ["bn254", "sha3"] }
 
 # crypto
