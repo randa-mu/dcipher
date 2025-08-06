@@ -1,7 +1,9 @@
 //! Various public and private types used by hbacss0
 use crate::helpers::PartyId;
 use crate::nizk::NizkError;
-use crate::pke::ec_hybrid_chacha20poly1305::{HybridEncryptionError, MultiHybridCiphertext};
+use crate::pke::ec_hybrid_chacha20poly1305::{
+    EphemeralMultiHybridCiphertext, HybridEncryptionError,
+};
 use crate::vss::acss::hbacss0::Hbacss0Output;
 use ark_ec::CurveGroup;
 use serde::{Deserialize, Serialize};
@@ -86,7 +88,7 @@ pub(super) enum AcssStatus<CG: CurveGroup> {
     deserialize = "CG: PointDeserializeCompressed"
 ))]
 pub(super) struct AcssBroadcastMessage<CG: CurveGroup> {
-    pub(super) enc_shares: MultiHybridCiphertext<CG>,
+    pub(super) enc_shares: EphemeralMultiHybridCiphertext<CG>,
     #[serde(with = "utils::serialize::point::base64::vec")]
     pub(super) public_poly: Vec<CG>,
 }
