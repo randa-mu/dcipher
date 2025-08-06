@@ -8,10 +8,11 @@ mod metrics;
 mod scheme;
 mod transcripts;
 
-use crate::adkg_dyx20::adkg_dyx20_bn254_g1_keccak256;
-use crate::cli::{Cli, Commands, Generate, NewScheme, RunAdkg};
+use crate::adkg_dyx20::{adkg_dyx20_bn254_g1_keccak256, adkg_dyx20_bn254_g1_keccak256_rescue};
+use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::keygen::{PrivateKeyMaterial, PublicKeyMaterial, keygen};
 use crate::scheme::new_scheme_config;
+use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::adkg::AdkgOutput;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
@@ -24,9 +25,9 @@ use clap::Parser;
 use dcipher_network::topic::dispatcher::{TopicBasedTransportImpl, TopicDispatcher};
 use dcipher_network::transports::libp2p::transport::Libp2pSender;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
-use dcipher_network::transports::writer;
-use dcipher_network::transports::writer::TransportWriter;
-use dcipher_network::transports::writer::TransportWriterSender;
+use dcipher_network::transports::replayable::writer;
+use dcipher_network::transports::replayable::writer::TransportWriter;
+use dcipher_network::transports::replayable::writer::TransportWriterSender;
 use itertools::Itertools;
 use libp2p::{Multiaddr, PeerId};
 use rand::rngs::OsRng;
@@ -97,6 +98,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Generate(args) => generate(args)?,
 
         Commands::Run(args) => run_adkg(args).await?,
+
+        Commands::Rescue(args) => rescue_adkg(args).await?,
     }
 
     Ok(())
@@ -151,50 +154,30 @@ fn generate(args: Generate) -> anyhow::Result<()> {
 
 async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     let RunAdkg {
-        scheme,
-        group_file,
-        priv_file,
-        id,
+        common:
+            AdkgRunCommon {
+                scheme,
+                group_file,
+                priv_file,
+                id,
+                priv_out,
+                pub_out,
+            },
         listen_address,
         timeout,
         grace_period,
-        priv_out,
-        pub_out,
         transcript_out,
         #[cfg(feature = "metrics")]
         metrics_params,
     } = args;
 
-    // Make sure priv_out / pub_out do not exist
-    if priv_out.exists() {
-        Err(anyhow!(
-            "priv_out file already exists, refusing to overwrite"
-        ))?
+    // Parse common inputs
+    let (scheme_config, group_config, sk) =
+        parse_adkg_common(&scheme, &group_file, &priv_file, &priv_out, &pub_out)?;
+
+    if chrono::Utc::now() >= group_config.aligned_start_datetime()? {
+        tracing::warn!("The start date specified in the group configuration is in the past");
     }
-    if pub_out.exists() {
-        Err(anyhow!(
-            "pub_out file already exists, refusing to overwrite"
-        ))?
-    }
-
-    // Make sure priv_out / pub_out are writable
-    fs::write(&priv_out, "").context("failed to write private key file")?;
-    fs::write(&pub_out, "").context("failed to write public key file")?;
-
-    // Deserialize the configs
-    let scheme_config: AdkgSchemeConfig =
-        toml::from_str(&fs::read_to_string(&scheme).context("failed to read scheme file")?)
-            .context("failed to parse scheme config")?;
-
-    let group_config = GroupConfig::from_str(
-        &fs::read_to_string(&group_file).context("failed to read group file")?,
-    )
-    .context("failed to parse group config")?;
-
-    let sk: PrivateKeyMaterial = toml::from_str(
-        &fs::read_to_string(priv_file).context("failed to read private key material")?,
-    )
-    .context("failed to parse private key material")?;
 
     let id = PartyId(id.get());
     let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
@@ -234,16 +217,149 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
         tracing::error!(error = ?e, "Failed to stop libp2p node");
     }
 
+    process_adkg_output(
+        &priv_out,
+        &pub_out,
+        transcript_out,
+        &group_config,
+        adkg_scheme_name,
+        output,
+    )?;
+
+    Ok(())
+}
+
+async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
+    let Rescue {
+        common:
+            AdkgRunCommon {
+                scheme,
+                group_file,
+                priv_file,
+                id,
+                priv_out,
+                pub_out,
+            },
+        transcript_files,
+    } = args;
+
+    // Parse common inputs
+    let (scheme_config, group_config, sk) =
+        parse_adkg_common(&scheme, &group_file, &priv_file, &priv_out, &pub_out)?;
+
+    // Parse transcripts
+    let transcripts = transcript_files
+        .into_iter()
+        .map(|transcript_file| {
+            fs::read(&transcript_file).with_context(|| {
+                format!("failed to read transcript `{}`", transcript_file.display())
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if transcripts.len() < group_config.n.get() - group_config.t.get() {
+        Err(anyhow!(
+            "Not enough transcripts specified, expected number of transcripts >= n - t = {}",
+            group_config.n.get() - group_config.t.get()
+        ))?;
+    }
+
+    let id = PartyId(id.get());
+    let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
+    let mut rng = AdkgStdRng::new(OsRng);
+    let output = match scheme_config.adkg_scheme_name.as_str() {
+        <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME => {
+            adkg_dyx20_bn254_g1_keccak256_rescue(
+                id,
+                &sk.adkg_sk,
+                &group_config,
+                scheme_config,
+                transcripts,
+                &mut rng,
+            )
+            .await
+        }
+
+        _ => Err(anyhow!("Unsupported adkg scheme"))?,
+    };
+
+    process_adkg_output(
+        &priv_out,
+        &pub_out,
+        None,
+        &group_config,
+        adkg_scheme_name,
+        output.map(|out| (out, None)),
+    )?;
+
+    Ok(())
+}
+
+fn parse_adkg_common(
+    scheme: &PathBuf,
+    group_file: &PathBuf,
+    priv_file: &PathBuf,
+    priv_out: &PathBuf,
+    pub_out: &PathBuf,
+) -> anyhow::Result<(AdkgSchemeConfig, GroupConfig, PrivateKeyMaterial)> {
+    // Deserialize the configs
+    let scheme_config: AdkgSchemeConfig =
+        toml::from_str(&fs::read_to_string(scheme).context("failed to read scheme file")?)
+            .context("failed to parse scheme config")?;
+
+    let group_config = GroupConfig::from_str(
+        &fs::read_to_string(group_file).context("failed to read group file")?,
+    )
+    .context("failed to parse group config")?;
+
+    let sk: PrivateKeyMaterial = toml::from_str(
+        &fs::read_to_string(priv_file).context("failed to read private key material")?,
+    )
+    .context("failed to parse private key material")?;
+
+    // Make sure priv_out / pub_out do not exist
+    if priv_out.exists() {
+        Err(anyhow!(
+            "priv_out file already exists, refusing to overwrite"
+        ))?
+    }
+    if pub_out.exists() {
+        Err(anyhow!(
+            "pub_out file already exists, refusing to overwrite"
+        ))?
+    }
+
+    // Make sure priv_out / pub_out are writable
+    fs::write(priv_out, "").context("failed to write private key file")?;
+    fs::write(pub_out, "").context("failed to write public key file")?;
+
+    Ok((scheme_config, group_config, sk))
+}
+
+#[cfg(feature = "metrics")]
+fn adkg_metrics(metrics_params: &cli::MetricsParams) {
+    tokio::task::spawn(metrics::start_metrics_api(
+        metrics_params.metrics_listen_addr,
+        metrics_params.metrics_port,
+    ));
+}
+
+/// Process the ADKG output
+fn process_adkg_output<CG>(
+    priv_out: &PathBuf,
+    pub_out: &PathBuf,
+    transcript_out: Option<PathBuf>,
+    group_config: &GroupConfig,
+    adkg_scheme_name: String,
+    output: anyhow::Result<(AdkgOutput<CG>, Option<EncryptedAdkgTranscript>)>,
+) -> anyhow::Result<()>
+where
+    CG: CurveGroup + PointSerializeCompressed,
+    CG::ScalarField: FqSerialize,
+{
     match output {
         Ok((adkg_out, opt_transcript)) => {
             tracing::info!(used_sessions = ?adkg_out.used_sessions, "Successfully obtained secret key from ADKG");
-            write_adkg_keys(
-                adkg_out,
-                &priv_out,
-                &pub_out,
-                adkg_scheme_name,
-                &group_config,
-            )?;
+            write_adkg_keys(adkg_out, priv_out, pub_out, adkg_scheme_name, group_config)?;
 
             if let Some(transcript_out) = transcript_out {
                 if let Some(transcript) = opt_transcript {
@@ -264,16 +380,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
             Err(e)?
         }
     }
-
     Ok(())
-}
-
-#[cfg(feature = "metrics")]
-fn adkg_metrics(metrics_params: &cli::MetricsParams) {
-    tokio::task::spawn(metrics::start_metrics_api(
-        metrics_params.metrics_listen_addr,
-        metrics_params.metrics_port,
-    ));
 }
 
 /// Write the ADKG outputs in priv / pub files.
@@ -455,12 +562,17 @@ impl FromStr for GroupConfig {
             Err(anyhow!("found multiaddr {multiaddr} more than once"))?;
         }
 
-        if chrono::Utc::now() >= group_config.start_time {
-            Err(anyhow!("start time cannot be in the past"))?;
-        }
+        // Sort the nodes
+        group_config.nodes.sort_by(|p1, p2| p1.id.cmp(&p2.id));
 
+        Ok(group_config)
+    }
+}
+
+impl GroupConfig {
+    pub fn aligned_start_datetime(&self) -> anyhow::Result<chrono::DateTime<chrono::Utc>> {
         // Align the group config to a unix timestamp ending in 00
-        let timestamp = group_config.start_time.timestamp();
+        let timestamp = self.start_time.timestamp();
         let timestamp_mod = timestamp % 100;
         let next_timestamp = if timestamp_mod == 0 {
             timestamp
@@ -468,13 +580,7 @@ impl FromStr for GroupConfig {
             timestamp + (100 - timestamp_mod)
         };
 
-        group_config.start_time =
-            chrono::DateTime::<chrono::Utc>::from_timestamp(next_timestamp, 0)
-                .ok_or(anyhow!("failed to align unix timestamp"))?;
-
-        // Sort the nodes
-        group_config.nodes.sort_by(|p1, p2| p1.id.cmp(&p2.id));
-
-        Ok(group_config)
+        chrono::DateTime::<chrono::Utc>::from_timestamp(next_timestamp, 0)
+            .ok_or(anyhow!("failed to align unix timestamp"))
     }
 }
