@@ -35,7 +35,7 @@ warp = { version = "0.3.7", optional = true }
 # serde
 serde.workspace = true
 serde_json.workspace = true
-serde_with = { workspace = true, features = ["base64"] }
+serde_with.workspace = true
 toml.workspace = true
 
 # misc
