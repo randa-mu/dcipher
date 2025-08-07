@@ -105,8 +105,44 @@ adkg-cli run                                \
   --priv adkg.priv                          \
   --id 1                                    \
   --listen-address "/ip4/0.0.0.0/tcp/7777"  \
+  --transcript-out adkg.transcript          \
   --priv-out adkg.ceremony.priv             \
   --pub-out adkg.ceremony.pub 
 ```
 
 Notice that we also include two output files used to store the private and public output of the ADKG.
+
+We also include a third file, with `--transcript-out`, which is used to store an encrypted transcript of messages sent during the ADKG.
+The transcript should be sent to the other participants should a node fail to run the `ADKG` ceremony.
+
+### Additional options
+**Logging**\
+The log level can be changed using the `LOG_LEVEL` env variable.
+The specified level should follow the [`EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives) syntax.
+
+**Metrics**\
+A prometheus metrics endpoint may be enabled by adding the `--features metrics` flag when compiling the cli, and by adding the `--metrics` flag to the `run` command.
+This exports metrics on the `127.0.0.1:8080/metrics` endpoint by default.
+
+## Rescue ADKG
+In the case where a participant misses the ceremony, or fails to join due to network issues, the `rescue` command may be used to recover the secret output.
+Currently, this command only works if the shares of the participant running the `rescue` command were not used by the other nodes.
+In other words, if the node fails during the execution of the `ADKG`, recovering the secrets may not be possible in the current version of the tool.
+
+Before running the `rescue` command, we need to obtain the transcripts from the participants that successfully executed the `ADKG`.
+This should be at least `n - t` nodes.
+
+The `rescue` command is run as follows:
+```bash
+adkg-cli rescue                             \
+  --scheme ./scheme.toml                    \
+  --group ./group.toml                      \
+  --priv adkg.priv                          \
+  --id 1                                    \
+  --priv-out adkg.ceremony.priv             \
+  --pub-out adkg.ceremony.pub               \
+  ./transcripts/*
+```
+
+It mostly contains the same arguments as `run`, but also contains a positional argument used to specify the path to the transcripts.
+Here, we stored the `n - t` transcripts in the `./transcripts` folder.
