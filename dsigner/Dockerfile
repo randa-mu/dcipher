@@ -16,11 +16,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-RUN cargo build --release -p dsigner
+RUN cargo build --release --example dsigner_http
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libssl3 dnsutils
 WORKDIR /app
-COPY --from=builder /app/target/release/dsigner /usr/local/bin
-ENTRYPOINT ["/usr/local/bin/dsigner"]
+COPY --from=builder /app/target/release/examples/dsigner_http /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/dsigner_http"]
