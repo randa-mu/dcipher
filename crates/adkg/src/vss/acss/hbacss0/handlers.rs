@@ -8,7 +8,8 @@ use crate::network::broadcast_with_self;
 use crate::rbc::ReliableBroadcastConfig;
 use crate::{
     helpers::lagrange_interpolate_at, nizk::NIZKDleqProof,
-    pke::ec_hybrid_chacha20poly1305::MultiHybridCiphertext, vss::acss::hbacss0::feld_eval_verify,
+    pke::ec_hybrid_chacha20poly1305::EphemeralMultiHybridCiphertext,
+    vss::acss::hbacss0::feld_eval_verify,
 };
 use ark_ec::CurveGroup;
 use dcipher_network::TransportSender;
@@ -177,7 +178,7 @@ where
     pub(super) async fn implicate_handler(
         &self,
         msg: &ImplicateMessage,
-        enc_shares: &MultiHybridCiphertext<CG>,
+        enc_shares: &EphemeralMultiHybridCiphertext<CG>,
         public_poly: &[CG],
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,
@@ -307,7 +308,7 @@ where
     pub(super) async fn recovery_handler(
         &self,
         shared_key: &[u8],
-        enc_shares: &MultiHybridCiphertext<CG>,
+        enc_shares: &EphemeralMultiHybridCiphertext<CG>,
         public_poly: &[CG],
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,

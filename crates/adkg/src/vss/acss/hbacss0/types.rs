@@ -1,7 +1,9 @@
 //! Various public and private types used by hbacss0
 use crate::helpers::PartyId;
 use crate::nizk::NizkError;
-use crate::pke::ec_hybrid_chacha20poly1305::{HybridEncryptionError, MultiHybridCiphertext};
+use crate::pke::ec_hybrid_chacha20poly1305::{
+    EphemeralMultiHybridCiphertext, HybridEncryptionError,
+};
 use crate::vss::acss::hbacss0::Hbacss0Output;
 use ark_ec::CurveGroup;
 use serde::{Deserialize, Serialize};
@@ -14,21 +16,23 @@ use utils::serialize::{
 };
 
 /// Message sent throughout the ACSS protocol.
+#[serde_with::serde_as]
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(tag = "acss_message")]
 pub enum AcssMessage {
     Ok,
     Ready,
     Implicate(ImplicateMessage),
-    ShareRecovery(#[serde(with = "serde_bytes")] Vec<u8>),
+    ShareRecovery(#[serde_as(as = "utils::Base64OrBytes")] Vec<u8>),
 }
 
 /// Message used to implicate the dealer upon receiving an invalid share.
+#[serde_with::serde_as]
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct ImplicateMessage {
-    #[serde(with = "serde_bytes")]
+    #[serde_as(as = "utils::Base64OrBytes")]
     pub pi: Vec<u8>, // serialized dleq proof
-    #[serde(with = "serde_bytes")]
+    #[serde_as(as = "utils::Base64OrBytes")]
     pub k: Vec<u8>, // serialized shared key between the dealer and the receiving party
 }
 
@@ -84,7 +88,7 @@ pub(super) enum AcssStatus<CG: CurveGroup> {
     deserialize = "CG: PointDeserializeCompressed"
 ))]
 pub(super) struct AcssBroadcastMessage<CG: CurveGroup> {
-    pub(super) enc_shares: MultiHybridCiphertext<CG>,
+    pub(super) enc_shares: EphemeralMultiHybridCiphertext<CG>,
     #[serde(with = "utils::serialize::point::base64::vec")]
     pub(super) public_poly: Vec<CG>,
 }
