@@ -226,10 +226,7 @@ struct ChaCha20BroadcastCiphertext {
 }
 
 /// An encrypted adkg transcript that can be stored and sent to nodes.
-// TODO: We need to add signature to the transcript. We should probably sign the plaintext, and do a
-//  signature per-participant where the plaintext is broadcast + direct messages to participant i.
-//  Since the direct messages are encrypted per-party, this prevents participants from blindly
-//  applying their signature on top of an already encrypted transcript.
+/// Authenticity of the transcript is obtained by relying on hybrid encryption w/ static public keys.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
 struct DYX20Transcript {
