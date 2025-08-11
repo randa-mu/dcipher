@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 # blockchain
 alloy = { workspace = true, features = ["default", "provider-ws"] }
-dcipher-agents = { workspace = true, features = ["blocklock"] }
+dcipher-agents = { workspace = true, features = ["blocklock", "bn254"] }
 
 # async
 futures = { workspace = true }

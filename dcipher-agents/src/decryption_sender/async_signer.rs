@@ -1,4 +1,4 @@
-//! [`AsynchronousSigner`] for decryption requests. Unlike [`AsyncThresholdSigner`](crate::signer::threshold_signer::AsyncThresholdSigner),
+//! [`AsynchronousSigner`] for decryption requests. Unlike [`AsyncThresholdSigner`](crate::signer::bls::AsyncThresholdSigner),
 //! this signer allows to sign identical conditions as is often the case with the decryption sender contract.
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
@@ -77,18 +77,19 @@ where
 }
 
 #[cfg(test)]
-#[cfg(feature = "blocklock")] // need blocklock types for ibe
+#[cfg(all(feature = "blocklock", feature = "bn254"))] // need blocklock types for ibe
 pub(crate) mod tests {
     use super::*;
     use crate::decryption_sender::DecryptionRequest;
     use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
     use crate::ser::EvmSerialize;
     use crate::ser::tests::bn254::encode_ciphertext;
-    use crate::signer::{AsynchronousSigner, BlsSigner};
+    use crate::signer::AsynchronousSigner;
     use alloy::primitives::{Bytes, U256};
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
+    use dcipher_signer::bls::BlsSigner;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::watch;

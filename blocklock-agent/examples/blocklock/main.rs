@@ -15,7 +15,7 @@ use dcipher_agents::decryption_sender::contracts::DecryptionSender;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
-use dcipher_agents::signer::threshold_signer::ThresholdSigner;
+use dcipher_agents::signer::bls::ThresholdSigner;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;

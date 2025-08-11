@@ -15,10 +15,13 @@ decryption_sender = ["fulfiller", "ibe", "evm"]
 signature_sender = ["fulfiller", "evm"]
 ibe = []
 
+# signing
+bn254 = ["dcipher-signer/bn254"]
+signer = ["dep:dcipher-signer"]
+
 # misc
 evm = ["dep:alloy"]
 fulfiller = ["signer"]
-signer = ["dep:dcipher-signer"]
 rayon = ["dcipher-signer/rayon"]
 
 [dependencies]

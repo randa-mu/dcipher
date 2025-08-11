@@ -241,12 +241,12 @@ mod bn254 {
         }
     }
 
-    #[cfg(feature = "signer")]
+    #[cfg(all(feature = "signer", feature = "bn254"))]
     mod signer {
         use crate::ibe_helper::{
             IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner,
         };
-        use dcipher_signer::{BlsSigner, BlsVerifier};
+        use dcipher_signer::bls::{BlsSigner, BlsVerifier};
         use std::convert::Infallible;
 
         /// Implementation of a BLS verifier [`IbeIdentityOnBn254G1Suite`].
@@ -400,10 +400,8 @@ mod expander {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     mod bn254 {
-        use super::*;
+        use super::super::*;
         use ark_ff::MontFp;
 
         #[test]
