@@ -17,6 +17,7 @@ pub struct Rfc9380Dst(pub Vec<u8>);
 ///     `%application_name%_%curve_name%_%expand%_%hash_name%_%mapping%_%encoding%_%suffix%_`
 /// where `expand` is set to `XMD` when using a fixed-width hash function, and to `XOF` when using an
 /// extendable-output function.
+#[derive(Clone)]
 pub struct Rfc9380DstBuilder {
     application_name: Option<Vec<u8>>,
     curve_id: Option<Vec<u8>>,
@@ -179,10 +180,16 @@ impl Rfc9380DstBuilder {
         self
     }
 
+    /// Build with the default prefix separator ('_')
     pub fn build(self) -> Rfc9380Dst {
+        self.build_with_app_name_sep(b'_')
+    }
+
+    /// Build with a custom prefix separator
+    pub fn build_with_app_name_sep(self, prefix_sep: u8) -> Rfc9380Dst {
         let mut dst = vec![];
         if let Some(application_name) = self.application_name {
-            dst = [dst, application_name, vec![b'_']].concat();
+            dst = [dst, application_name, vec![prefix_sep]].concat();
         }
 
         if let Some(curve_name) = self.curve_id {
