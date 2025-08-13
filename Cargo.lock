@@ -2053,6 +2053,7 @@ dependencies = [
 name = "dcipher-signer"
 version = "0.1.0"
 dependencies = [
+ "ark-bls12-381",
  "ark-bn254",
  "ark-ec",
  "ark-ff 0.4.2",

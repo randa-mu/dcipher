@@ -37,6 +37,7 @@ itertools = { workspace = true }
 thiserror = { workspace = true }
 lru = "0.14"
 rayon = { version = "1.10", optional = true }
+ark-bls12-381.workspace = true
 
 [dev-dependencies]
 dcipher-network = { workspace = true, features = ["libp2p", "in_memory"] }

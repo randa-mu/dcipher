@@ -91,3 +91,54 @@ impl BlsSigner for BN254SignatureOnG1Signer {
         Ok(sig.into_affine())
     }
 }
+
+/// Concrete implementation of a [`BlsSigner`] on the BLS12_381 curve w/ signatures on G1.
+#[derive(Clone)]
+pub struct BLS12_381SignatureOnG1Signer {
+    sk: ark_bls12_381::Fr,
+    dst: Vec<u8>,
+}
+
+impl BLS12_381SignatureOnG1Signer {
+    pub fn new(sk: ark_bls12_381::Fr, dst: Vec<u8>) -> Self {
+        Self { sk, dst }
+    }
+}
+
+impl BlsVerifier for BLS12_381SignatureOnG1Signer {
+    type SignatureGroup = ark_bls12_381::G1Affine;
+    type PublicKeyGroup = ark_bls12_381::G2Affine;
+
+    fn verify(
+        &self,
+        m: impl AsRef<[u8]>,
+        signature: Self::SignatureGroup,
+        public_key: Self::PublicKeyGroup,
+    ) -> bool {
+        if !signature.is_on_curve()
+            || !signature.is_in_correct_subgroup_assuming_on_curve()
+            || signature.is_zero()
+        {
+            return false;
+        }
+
+        let m =
+            ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha3::Keccak256>(m.as_ref(), &self.dst);
+        ark_bls12_381::Bls12_381::multi_pairing(
+            [m.neg(), signature.into()],
+            [public_key, Self::PublicKeyGroup::generator()],
+        )
+        .is_zero()
+    }
+}
+
+impl BlsSigner for BLS12_381SignatureOnG1Signer {
+    type Error = Infallible;
+
+    fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
+        let m =
+            ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha3::Keccak256>(m.as_ref(), &self.dst);
+        let sig = m * self.sk;
+        Ok(sig.into_affine())
+    }
+}
