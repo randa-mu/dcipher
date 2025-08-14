@@ -593,69 +593,92 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::BN254SignatureOnG1Signer;
-    use ark_bn254::Fr;
+    use crate::{BLS12_381SignatureOnG1Signer, BN254SignatureOnG1Signer};
     use ark_ff::MontFp;
     use dcipher_network::transports::in_memory::MemoryNetwork;
     use std::time::Duration;
 
-    #[tokio::test]
-    async fn async_threshold_signer() {
-        let n = 3;
-        let t = 2;
-        let g2 = ark_bn254::G2Affine::generator();
+    macro_rules! gen_async_threshold_signer {
+        ($Fr: ty, $G2: ty, $make_signer: ident) => {
+            let n = 3;
+            let t = 2;
+            let g2 = <$G2>::generator();
 
-        let _sk: Fr =
-            MontFp!("7685086713915354683875500702831995067084988389812060097318430034144315778947");
-        let sk1: Fr =
-            MontFp!("5840327440053394277204603653048962762290958051681898697354171413163183818203");
-        let sk2: Fr =
-            MontFp!("3995568166191433870533706603265930457496927713551737297389912792182051857459");
-        let sk3: Fr =
-            MontFp!("2150808892329473463862809553482898152702897375421575897425654171200919896715");
-        let pks = vec![g2 * sk1, g2 * sk2, g2 * sk3];
-        let pks = pks
-            .into_iter()
-            .map(|pki| pki.into_affine())
-            .collect::<Vec<_>>();
+            let _sk: $Fr = MontFp!(
+                "7685086713915354683875500702831995067084988389812060097318430034144315778947"
+            );
+            let sk1: $Fr = MontFp!(
+                "5840327440053394277204603653048962762290958051681898697354171413163183818203"
+            );
+            let sk2: $Fr = MontFp!(
+                "3995568166191433870533706603265930457496927713551737297389912792182051857459"
+            );
+            let sk3: $Fr = MontFp!(
+                "2150808892329473463862809553482898152702897375421575897425654171200919896715"
+            );
+            let pks = vec![g2 * sk1, g2 * sk2, g2 * sk3];
+            let pks = pks
+                .into_iter()
+                .map(|pki| pki.into_affine())
+                .collect::<Vec<_>>();
 
-        let cs1 =
-            BN254SignatureOnG1Signer::new(sk1, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
-        let cs2 =
-            BN254SignatureOnG1Signer::new(sk2, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
-        let cs3 =
-            BN254SignatureOnG1Signer::new(sk3, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
+            let cs1 = $make_signer(sk1);
+            let cs2 = $make_signer(sk2);
+            let cs3 = $make_signer(sk3);
 
-        // Get transports
-        let mut transports = MemoryNetwork::get_transports(1..=3);
+            // Get transports
+            let mut transports = MemoryNetwork::get_transports(1..=3);
 
-        // Start three threshold signers
-        let (_, ch1) =
-            ThresholdSigner::new(cs1, n, t, 1, pks.clone()).run(transports.pop_front().unwrap());
-        let (_, ch2) =
-            ThresholdSigner::new(cs2, n, t, 2, pks.clone()).run(transports.pop_front().unwrap());
-        let (_, ch3) =
-            ThresholdSigner::new(cs3, n, t, 3, pks.clone()).run(transports.pop_front().unwrap());
+            // Start three threshold signers
+            let (_, ch1) = ThresholdSigner::new(cs1, n, t, 1, pks.clone())
+                .run(transports.pop_front().unwrap());
+            let (_, ch2) = ThresholdSigner::new(cs2, n, t, 2, pks.clone())
+                .run(transports.pop_front().unwrap());
+            let (_, ch3) = ThresholdSigner::new(cs3, n, t, 3, pks.clone())
+                .run(transports.pop_front().unwrap());
 
-        let message = b"my test message";
-        let fut_sig1 = ch1.async_sign(message.to_vec());
-        let fut_sig2 = ch2.async_sign(message.to_vec());
-        let fut_sig3 = ch3.async_sign(message.to_vec());
+            let message = b"my test message";
+            let fut_sig1 = ch1.async_sign(message.to_vec());
+            let fut_sig2 = ch2.async_sign(message.to_vec());
+            let fut_sig3 = ch3.async_sign(message.to_vec());
 
-        // Wait for signatures up to 1 second
-        let sigs = tokio::select! {
-            sigs = futures_util::future::join_all([fut_sig1, fut_sig2, fut_sig3]) => {
-                sigs
-            }
+            // Wait for signatures up to 1 second
+            let sigs = tokio::select! {
+                sigs = futures_util::future::join_all([fut_sig1, fut_sig2, fut_sig3]) => {
+                    sigs
+                }
 
-            _ = tokio::time::sleep(Duration::from_millis(1000)) => {
-                panic!("failed to obtain threshold signatures after waiting 1000ms");
-            }
+                _ = tokio::time::sleep(Duration::from_millis(1000)) => {
+                    panic!("failed to obtain threshold signatures after waiting 1000ms");
+                }
+            };
+
+            assert_eq!(sigs.len(), 3);
+            assert!(sigs[0].is_ok());
+            assert!(sigs[1].is_ok());
+            assert!(sigs[2].is_ok());
         };
+    }
 
-        assert_eq!(sigs.len(), 3);
-        assert!(sigs[0].is_ok());
-        assert!(sigs[1].is_ok());
-        assert!(sigs[2].is_ok());
+    fn make_signer_bn254(sk: ark_bn254::Fr) -> BN254SignatureOnG1Signer {
+        BN254SignatureOnG1Signer::new(sk, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec())
+    }
+
+    fn make_signer_bls12_381(sk: ark_bls12_381::Fr) -> BLS12_381SignatureOnG1Signer {
+        BLS12_381SignatureOnG1Signer::new(sk, b"BLS12_381G1_XMD:SHA-256_SVDW_RO_H1_".to_vec())
+    }
+
+    #[tokio::test]
+    async fn async_threshold_signer_bn254() {
+        gen_async_threshold_signer!(ark_bn254::Fr, ark_bn254::G2Affine, make_signer_bn254);
+    }
+
+    #[tokio::test]
+    async fn async_threshold_signer_bls12_381() {
+        gen_async_threshold_signer!(
+            ark_bls12_381::Fr,
+            ark_bls12_381::G2Affine,
+            make_signer_bls12_381
+        );
     }
 }
