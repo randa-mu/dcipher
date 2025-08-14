@@ -258,7 +258,8 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
         .collect::<Result<Vec<_>, _>>()?;
     if transcripts.len() < group_config.n.get() - group_config.t.get() {
         Err(anyhow!(
-            "Not enough transcripts specified, expected number of transcripts >= n - t = {}",
+            "Not enough transcripts specified: number of transcripts = {}, expected at least n - t = {}",
+            transcripts.len(),
             group_config.n.get() - group_config.t.get()
         ))?;
     }
