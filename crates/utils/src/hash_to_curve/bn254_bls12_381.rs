@@ -200,7 +200,7 @@ mod bn254 {
 
 #[cfg(feature = "bls12-381")]
 mod bls12_381 {
-    use crate::hash_to_curve::{CustomHashToCurve, HashToCurve};
+    use crate::hash_to_curve::{CustomHashToCurve, CustomPairingHashToCurve, HashToCurve};
     use digest::core_api::BlockSizeUser;
     use digest::DynDigest;
 
@@ -217,6 +217,22 @@ mod bls12_381 {
         sha2::Sha256,
         "BLS12_381G2_XMD:SHA-256_SVDW_RO_"
     );
+
+    impl CustomPairingHashToCurve for ark_bls12_381::Bls12_381 {
+        fn hash_to_g1_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+            message: &[u8],
+            dst: &[u8],
+        ) -> Self::G1 {
+            Self::G1::hash_to_curve_custom::<H>(message, dst)
+        }
+
+        fn hash_to_g2_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+            message: &[u8],
+            dst: &[u8],
+        ) -> Self::G2 {
+            Self::G2::hash_to_curve_custom::<H>(message, dst)
+        }
+    }
 
     fn bls12381_hash_to_g1_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
         message: &[u8],
@@ -562,6 +578,52 @@ mod tests {
             let p: ark_ec::short_weierstrass::Projective<ark_bn254::g2::Config> =
                 ark_bn254::Bn254::hash_to_g2_custom::<sha2::Sha256>(msg, DST);
             assert_eq!(p, hex64_to_g2_bn254("1435fd84aa43c699230e371f6fea3545ce7e053cbbb06a320296a2b81efddc702a8a360585b6b05996ef69c3c09b2c6fb17afe2b1e944f07559c53178eabf171", "2820188dcdc13ffdca31694942418afa1d6dfaaf259d012fab4da52b0f592e38142f08e2441ec431defc24621b73cfe0252d19b243cb55b84bdeb85de039207a"));
+        }
+    }
+    #[cfg(feature = "bls12-381")]
+    mod bls12_381 {
+        use crate::hash_to_curve::CustomPairingHashToCurve;
+        use ark_bls12_381::Bls12_381;
+        use ark_ff::{BigInteger, PrimeField};
+        use rstest::*;
+
+        // RFC 9380 § J.9.1 test vectors
+        #[rstest]
+        #[case(
+            b"",
+            "052926add2207b76ca4fa57a8734416c8dc95e24501772c814278700eed6d1e4e8cf62d9c09db0fac349612b759e79a1",
+            "08ba738453bfed09cb546dbb0783dbb3a5f1f566ed67bb6be0e8c67e2e81a4cc68ee29813bb7994998f3eae0c9c6a265",
+        )]
+        #[case(
+            b"abc",
+            "03567bc5ef9c690c2ab2ecdf6a96ef1c139cc0b2f284dca0a9a7943388a49a3aee664ba5379a7655d3c68900be2f6903",
+            "0b9c15f3fe6e5cf4211f346271d7b01c8f3b28be689c8429c85b67af215533311f0b8dfaaa154fa6b88176c229f2885d",
+        )]
+        #[case(
+            b"abcdef0123456789",
+            "11e0b079dea29a68f0383ee94fed1b940995272407e3bb916bbf268c263ddd57a6a27200a784cbc248e84f357ce82d98",
+            "03a87ae2caf14e8ee52e51fa2ed8eefe80f02457004ba4d486d6aa1f517c0889501dc7413753f9599b099ebcbbd2d709",
+        )]
+        #[case(
+            b"q128_qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+            "15f68eaa693b95ccb85215dc65fa81038d69629f70aeee0d0f677cf22285e7bf58d7cb86eefe8f2e9bc3f8cb84fac488",
+            "1807a1d50c29f430b8cafc4f8638dfeeadf51211e1602a5f184443076715f91bb90a48ba1e370edce6ae1062f5e6dd38",
+        )]
+        #[case(
+            b"a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "082aabae8b7dedb0e78aeb619ad3bfd9277a2f77ba7fad20ef6aabdc6c31d19ba5a6d12283553294c1825c4b3ca2dcfe",
+            "05b84ae5a942248eea39e1d91030458c40153f3b654ab7872d779ad1e942856a20c438e8d99bc8abfbf74729ce1f7ac8",
+        )]
+        fn test_bls12381_g1_hash_to_point(
+            #[case] msg: &[u8],
+            #[case] p_x: &str,
+            #[case] p_y: &str,
+        ) {
+            const DST: &[u8] = b"QUUX-V01-CS02-with-BLS12381G1_XMD:SHA-256_SSWU_RO_";
+
+            let p = Bls12_381::hash_to_g1_custom::<sha2::Sha256>(msg, DST);
+            assert_eq!(hex::encode(p.x.into_bigint().to_bytes_be()), p_x);
+            assert_eq!(hex::encode(p.y.into_bigint().to_bytes_be()), p_y);
         }
     }
 }

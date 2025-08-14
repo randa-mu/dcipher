@@ -37,7 +37,7 @@ ark-ec = "0.4.2"
 ark-ff = "0.4.2"
 ark-poly = "0.4.2"
 ark-std = "0.4.0"
-utils = { path = "./crates/utils", features = ["bn254"] }
+utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 
 # hashes
 digest = "0.10"
