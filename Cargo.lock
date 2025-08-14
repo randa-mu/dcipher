@@ -2070,6 +2070,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_cbor",
+ "sha2",
  "sha3",
  "thiserror 2.0.12",
  "tokio",

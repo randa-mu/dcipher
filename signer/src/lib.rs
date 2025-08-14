@@ -136,8 +136,7 @@ impl BlsSigner for BLS12_381SignatureOnG1Signer {
     type Error = Infallible;
 
     fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
-        let m =
-            ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha3::Keccak256>(m.as_ref(), &self.dst);
+        let m = ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha2::Sha256>(m.as_ref(), &self.dst);
         let sig = m * self.sk;
         Ok(sig.into_affine())
     }

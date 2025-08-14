@@ -42,6 +42,7 @@ utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 
 # hashes
 digest = "0.10"
+sha2 = "0.10"
 sha3 = "0.10"
 
 # async
