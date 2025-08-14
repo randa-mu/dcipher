@@ -7,6 +7,11 @@ edition.workspace = true
 libp2p = ["transports", "dep:libp2p"]
 in_memory = ["transports"]
 transports = []
+
+writer = ["replayable", "dep:chrono"]
+reader = ["replayable"]
+replayable = []
+
 metrics = ["dep:prometheus"]
 
 [dependencies]
@@ -30,6 +35,7 @@ serde = { workspace = true, features = ["derive"] }
 prost = { workspace = true, features = ["derive"] }
 
 # misc
+chrono = { workspace = true, optional = true }
 itertools.workspace = true
 thiserror.workspace = true
 

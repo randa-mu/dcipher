@@ -57,10 +57,11 @@ pub enum View {
 }
 
 /// Message to send a partial evaluation for the common coin tossing protocol.
+#[serde_with::serde_as]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CoinEvalMessage {
     pub(crate) round: u8,
-    #[serde(with = "serde_bytes")]
+    #[serde_as(as = "utils::Base64OrBytes")]
     pub(crate) eval: Vec<u8>,
 }
 

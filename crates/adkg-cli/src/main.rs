@@ -6,11 +6,13 @@ mod keygen;
 #[cfg(feature = "metrics")]
 mod metrics;
 mod scheme;
+mod transcripts;
 
-use crate::adkg_dyx20::adkg_dyx20_bn254_g1_keccak256;
-use crate::cli::{Cli, Commands, Generate, NewScheme, RunAdkg};
+use crate::adkg_dyx20::{adkg_dyx20_bn254_g1_keccak256, adkg_dyx20_bn254_g1_keccak256_rescue};
+use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::keygen::{PrivateKeyMaterial, PublicKeyMaterial, keygen};
 use crate::scheme::new_scheme_config;
+use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::adkg::AdkgOutput;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
@@ -23,6 +25,9 @@ use clap::Parser;
 use dcipher_network::topic::dispatcher::{TopicBasedTransportImpl, TopicDispatcher};
 use dcipher_network::transports::libp2p::transport::Libp2pSender;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
+use dcipher_network::transports::replayable::writer;
+use dcipher_network::transports::replayable::writer::TransportWriter;
+use dcipher_network::transports::replayable::writer::TransportWriterSender;
 use itertools::Itertools;
 use libp2p::{Multiaddr, PeerId};
 use rand::rngs::OsRng;
@@ -93,6 +98,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Generate(args) => generate(args)?,
 
         Commands::Run(args) => run_adkg(args).await?,
+
+        Commands::Rescue(args) => rescue_adkg(args).await?,
     }
 
     Ok(())
@@ -147,18 +154,168 @@ fn generate(args: Generate) -> anyhow::Result<()> {
 
 async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     let RunAdkg {
-        scheme,
-        group_file,
-        priv_file,
-        id,
+        common:
+            AdkgRunCommon {
+                scheme,
+                group_file,
+                priv_file,
+                id,
+                priv_out,
+                pub_out,
+            },
         listen_address,
         timeout,
         grace_period,
-        priv_out,
-        pub_out,
+        transcript_out,
         #[cfg(feature = "metrics")]
         metrics_params,
     } = args;
+
+    // Parse common inputs
+    let (scheme_config, group_config, sk) =
+        parse_adkg_common(&scheme, &group_file, &priv_file, &priv_out, &pub_out)?;
+
+    if chrono::Utc::now() >= group_config.aligned_start_datetime()? {
+        tracing::warn!("The start date specified in the group configuration is in the past");
+    }
+
+    let id = PartyId(id.get());
+    let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
+    let mut rng = AdkgStdRng::new(OsRng);
+
+    // Start metrics server if enabled
+    #[cfg(feature = "metrics")]
+    adkg_metrics(&metrics_params);
+
+    // Start libp2p transport
+    let transports = get_libp2p_transports(id, &sk, listen_address, &group_config).await?;
+
+    let output = match scheme_config.adkg_scheme_name.as_str() {
+        <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME => {
+            adkg_dyx20_bn254_g1_keccak256(
+                id,
+                &sk.adkg_sk,
+                &group_config,
+                scheme_config,
+                grace_period,
+                timeout,
+                transports.topic_transport.clone(),
+                Some(transports.writer),
+                &mut rng,
+            )
+            .await
+        }
+
+        _ => Err(anyhow!("Unsupported adkg scheme"))?,
+    };
+
+    tracing::info!("Stopping libp2p dispatcher...");
+    transports.topic_dispatcher.stop().await;
+
+    tracing::info!("Stopping libp2p transport...");
+    if let Err(e) = transports.node.stop().await {
+        tracing::error!(error = ?e, "Failed to stop libp2p node");
+    }
+
+    process_adkg_output(
+        &priv_out,
+        &pub_out,
+        transcript_out,
+        &group_config,
+        adkg_scheme_name,
+        output,
+    )?;
+
+    Ok(())
+}
+
+async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
+    let Rescue {
+        common:
+            AdkgRunCommon {
+                scheme,
+                group_file,
+                priv_file,
+                id,
+                priv_out,
+                pub_out,
+            },
+        transcript_files,
+    } = args;
+
+    // Parse common inputs
+    let (scheme_config, group_config, sk) =
+        parse_adkg_common(&scheme, &group_file, &priv_file, &priv_out, &pub_out)?;
+
+    // Parse transcripts
+    let transcripts = transcript_files
+        .into_iter()
+        .map(|transcript_file| {
+            fs::read(&transcript_file).with_context(|| {
+                format!("failed to read transcript `{}`", transcript_file.display())
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if transcripts.len() < group_config.n.get() - group_config.t.get() {
+        Err(anyhow!(
+            "Not enough transcripts specified: number of transcripts = {}, expected at least n - t = {}",
+            transcripts.len(),
+            group_config.n.get() - group_config.t.get()
+        ))?;
+    }
+
+    let id = PartyId(id.get());
+    let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
+    let mut rng = AdkgStdRng::new(OsRng);
+    let output = match scheme_config.adkg_scheme_name.as_str() {
+        <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME => {
+            adkg_dyx20_bn254_g1_keccak256_rescue(
+                id,
+                &sk.adkg_sk,
+                &group_config,
+                scheme_config,
+                transcripts,
+                &mut rng,
+            )
+            .await
+        }
+
+        _ => Err(anyhow!("Unsupported adkg scheme"))?,
+    };
+
+    process_adkg_output(
+        &priv_out,
+        &pub_out,
+        None,
+        &group_config,
+        adkg_scheme_name,
+        output.map(|out| (out, None)),
+    )?;
+
+    Ok(())
+}
+
+fn parse_adkg_common(
+    scheme: &PathBuf,
+    group_file: &PathBuf,
+    priv_file: &PathBuf,
+    priv_out: &PathBuf,
+    pub_out: &PathBuf,
+) -> anyhow::Result<(AdkgSchemeConfig, GroupConfig, PrivateKeyMaterial)> {
+    // Deserialize the configs
+    let scheme_config: AdkgSchemeConfig =
+        toml::from_str(&fs::read_to_string(scheme).context("failed to read scheme file")?)
+            .context("failed to parse scheme config")?;
+
+    let group_config = GroupConfig::from_str(
+        &fs::read_to_string(group_file).context("failed to read group file")?,
+    )
+    .context("failed to parse group config")?;
+
+    let sk: PrivateKeyMaterial = toml::from_str(
+        &fs::read_to_string(priv_file).context("failed to read private key material")?,
+    )
+    .context("failed to parse private key material")?;
 
     // Make sure priv_out / pub_out do not exist
     if priv_out.exists() {
@@ -173,75 +330,10 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     }
 
     // Make sure priv_out / pub_out are writable
-    fs::write(&priv_out, "").context("failed to write private key file")?;
-    fs::write(&pub_out, "").context("failed to write public key file")?;
+    fs::write(priv_out, "").context("failed to write private key file")?;
+    fs::write(pub_out, "").context("failed to write public key file")?;
 
-    // Deserialize the configs
-    let scheme_config: AdkgSchemeConfig =
-        toml::from_str(&fs::read_to_string(&scheme).context("failed to read scheme file")?)
-            .context("failed to parse scheme config")?;
-
-    let group_config = GroupConfig::from_str(
-        &fs::read_to_string(&group_file).context("failed to read group file")?,
-    )
-    .context("failed to parse group config")?;
-
-    let sk: PrivateKeyMaterial = toml::from_str(
-        &fs::read_to_string(priv_file).context("failed to read private key material")?,
-    )
-    .context("failed to parse private key material")?;
-
-    let id = PartyId(id.get());
-    let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
-    let mut rng = AdkgStdRng::new(OsRng);
-
-    // Start metrics server if enabled
-    #[cfg(feature = "metrics")]
-    adkg_metrics(&metrics_params);
-
-    // Start libp2p transport
-    let (libp2p_node, dispatcher, topic_transport) =
-        get_libp2p_transport(id, &sk, listen_address, &group_config).await?;
-    let topic_transport = Arc::new(topic_transport);
-
-    let output = match scheme_config.adkg_scheme_name.as_str() {
-        <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME => {
-            adkg_dyx20_bn254_g1_keccak256(
-                id,
-                &sk.adkg_sk,
-                &group_config,
-                scheme_config,
-                grace_period,
-                timeout,
-                topic_transport.clone(),
-                &mut rng,
-            )
-            .await
-        }
-
-        _ => Err(anyhow!("Unsupported adkg scheme"))?,
-    };
-
-    tracing::info!("Stopping libp2p dispatcher...");
-    dispatcher.stop().await;
-
-    tracing::info!("Stopping libp2p transport...");
-    if let Err(e) = libp2p_node.stop().await {
-        tracing::error!(error = ?e, "Failed to stop libp2p node");
-    }
-
-    match output {
-        Ok(output) => {
-            tracing::info!(used_sessions = ?output.used_sessions, "Successfully obtained secret key from ADKG");
-            write_adkg_keys(output, &priv_out, &pub_out, adkg_scheme_name, &group_config)?;
-        }
-        Err(e) => {
-            tracing::info!(error = ?e, "Failed to execute ADKG");
-            Err(e)?
-        }
-    }
-
-    Ok(())
+    Ok((scheme_config, group_config, sk))
 }
 
 #[cfg(feature = "metrics")]
@@ -250,6 +342,46 @@ fn adkg_metrics(metrics_params: &cli::MetricsParams) {
         metrics_params.metrics_listen_addr,
         metrics_params.metrics_port,
     ));
+}
+
+/// Process the ADKG output
+fn process_adkg_output<CG>(
+    priv_out: &PathBuf,
+    pub_out: &PathBuf,
+    transcript_out: Option<PathBuf>,
+    group_config: &GroupConfig,
+    adkg_scheme_name: String,
+    output: anyhow::Result<(AdkgOutput<CG>, Option<EncryptedAdkgTranscript>)>,
+) -> anyhow::Result<()>
+where
+    CG: CurveGroup + PointSerializeCompressed,
+    CG::ScalarField: FqSerialize,
+{
+    match output {
+        Ok((adkg_out, opt_transcript)) => {
+            tracing::info!(used_sessions = ?adkg_out.used_sessions, "Successfully obtained secret key from ADKG");
+            write_adkg_keys(adkg_out, priv_out, pub_out, adkg_scheme_name, group_config)?;
+
+            if let Some(transcript_out) = transcript_out {
+                if let Some(transcript) = opt_transcript {
+                    if let Err(e) = fs::write(&transcript_out, transcript) {
+                        tracing::error!(error = ?e, transcript_out = %transcript_out.display(), "Failed to write transcript to file");
+                    } else {
+                        tracing::info!(transcript_out = %transcript_out.display(), "Successfully wrote transcript to file");
+                    }
+                } else {
+                    tracing::error!(
+                        "transcript_out file specified, but ADKG returned an empty transcript.."
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            tracing::info!(error = ?e, "Failed to execute ADKG");
+            Err(e)?
+        }
+    }
+    Ok(())
 }
 
 /// Write the ADKG outputs in priv / pub files.
@@ -318,16 +450,25 @@ where
     Ok(())
 }
 
-async fn get_libp2p_transport(
+type TopicTransport = TopicBasedTransportImpl<
+    TransportWriterSender<writer::InMemoryWriter<PartyId, Vec<u8>>, Libp2pSender<PartyId>>,
+>;
+
+type InMemoryWriter = writer::InMemoryWriter<PartyId, Vec<u8>>;
+
+struct Libp2pTransports {
+    node: Libp2pNode<PartyId>,
+    writer: InMemoryWriter,
+    topic_dispatcher: TopicDispatcher,
+    topic_transport: Arc<TopicTransport>,
+}
+
+async fn get_libp2p_transports(
     id: PartyId,
     sk: &PrivateKeyMaterial,
     listen_addr: Multiaddr,
     group_config: &GroupConfig,
-) -> anyhow::Result<(
-    Libp2pNode<PartyId>,
-    TopicDispatcher,
-    TopicBasedTransportImpl<Libp2pSender<PartyId>>,
-)> {
+) -> anyhow::Result<Libp2pTransports> {
     // Make sure that the identifiers are unique
     let (peer_addrs, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>) = group_config
         .nodes
@@ -353,13 +494,25 @@ async fn get_libp2p_transport(
     let transport = node
         .get_transport()
         .ok_or(anyhow!("failed to get topic transport"))?;
-    let mut dispatcher = TopicDispatcher::new();
-    let topic_transport = dispatcher.start(transport);
+
+    // Always create a writer for now, even if it ends up not being used if transcripts are disabled.
+    // In the future, we probably want to return an enum dispatched type implementing [`TopicTransport`]
+    // to support returning different implementations of [`TopicTransport`] at run-time, since [`TopicTransport`]
+    // is not dyn-compatible.
+    let transport_writer = TransportWriter::new_in_memory(transport);
+    let writer = transport_writer.writer().to_owned();
+    let mut topic_dispatcher = TopicDispatcher::new();
+    let topic_transport = topic_dispatcher.start(transport_writer).into();
 
     tracing::info!("Waiting a few seconds for networking to settle...");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    Ok((node, dispatcher, topic_transport))
+    Ok(Libp2pTransports {
+        node,
+        topic_transport,
+        topic_dispatcher,
+        writer,
+    })
 }
 
 impl FromStr for GroupConfig {
@@ -410,19 +563,25 @@ impl FromStr for GroupConfig {
             Err(anyhow!("found multiaddr {multiaddr} more than once"))?;
         }
 
-        if chrono::Utc::now() >= group_config.start_time {
-            Err(anyhow!("start time cannot be in the past"))?;
-        }
-
-        // Align the group config to a unix timestamp ending in 00
-        let next_timestamp = ((group_config.start_time.timestamp() / 100) + 1) * 100;
-        group_config.start_time =
-            chrono::DateTime::<chrono::Utc>::from_timestamp(next_timestamp, 0)
-                .ok_or(anyhow!("failed to align unix timestamp"))?;
-
         // Sort the nodes
         group_config.nodes.sort_by(|p1, p2| p1.id.cmp(&p2.id));
 
         Ok(group_config)
+    }
+}
+
+impl GroupConfig {
+    pub fn aligned_start_datetime(&self) -> anyhow::Result<chrono::DateTime<chrono::Utc>> {
+        // Align the group config to a unix timestamp ending in 00
+        let timestamp = self.start_time.timestamp();
+        let timestamp_mod = timestamp % 100;
+        let next_timestamp = if timestamp_mod == 0 {
+            timestamp
+        } else {
+            timestamp + (100 - timestamp_mod)
+        };
+
+        chrono::DateTime::<chrono::Utc>::from_timestamp(next_timestamp, 0)
+            .ok_or(anyhow!("failed to align unix timestamp"))
     }
 }
