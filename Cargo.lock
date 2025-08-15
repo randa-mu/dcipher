@@ -4449,8 +4449,10 @@ name = "omnievent"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "anyhow",
  "bytes",
  "chrono",
+ "clap",
  "futures",
  "futures-util",
  "hex",
@@ -4470,6 +4472,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 
