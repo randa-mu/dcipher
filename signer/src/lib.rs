@@ -140,3 +140,32 @@ impl BlsSigner for BLS12_381SignatureOnG1Signer {
         Ok(sig.into_affine())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bn254_signer() {
+        let sk = ark_bn254::Fr::from(42u64);
+        let pk = ark_bn254::G2Affine::generator() * sk;
+        let dst = b"TestDomain".to_vec();
+        let signer = BN254SignatureOnG1Signer::new(sk, dst);
+
+        let message = b"Hello, world!";
+        let signature = signer.sign(message).unwrap();
+        assert!(signer.verify(message, signature, pk.into()));
+    }
+
+    #[test]
+    fn test_bls12_381_signer() {
+        let sk = ark_bls12_381::Fr::from(42u64);
+        let pk = ark_bls12_381::G2Affine::generator() * sk;
+        let dst = b"TestDomain".to_vec();
+        let signer = BLS12_381SignatureOnG1Signer::new(sk, dst);
+
+        let message = b"Hello, world!";
+        let signature = signer.sign(message).unwrap();
+        assert!(signer.verify(message, signature, pk.into()));
+    }
+}
