@@ -33,6 +33,44 @@ impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
     }
 }
 
+impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bls12_381::g1::Config> {
+    fn ser_bytes(&self) -> Bytes {
+        use ark_bls12_381::Fq;
+        use ark_ff::{BigInteger, PrimeField, Zero};
+
+        let (x, y) = match self.xy() {
+            Some((x, y)) => (x, y),
+            None => (&Fq::zero(), &Fq::zero()),
+        };
+
+        //[vec![0;16], x.into_bigint().to_bytes_be(), vec![0;16], y.into_bigint().to_bytes_be()]
+        [x.into_bigint().to_bytes_be(), y.into_bigint().to_bytes_be()]
+            .concat()
+            .into()
+    }
+}
+
+impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bls12_381::g2::Config> {
+    fn ser_bytes(&self) -> Bytes {
+        use ark_bls12_381::Fq;
+        use ark_ff::{BigInteger, PrimeField, Zero};
+
+        let (x, y) = match self.xy() {
+            Some((x, y)) => (x, y),
+            None => todo!("Handle G2 point at infinity"),
+        };
+
+        [
+            x.c1.into_bigint().to_bytes_be(),
+            x.c0.into_bigint().to_bytes_be(),
+            y.c1.into_bigint().to_bytes_be(),
+            y.c0.into_bigint().to_bytes_be(),
+        ]
+        .concat()
+        .into()
+    }
+}
+
 #[cfg(feature = "blocklock")]
 pub use blocklock::*;
 

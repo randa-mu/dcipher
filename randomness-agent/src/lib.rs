@@ -13,7 +13,7 @@ use std::future::Future;
 use std::sync::Arc;
 
 /// Scheme ID of the randomness scheme
-pub const RANDOMNESS_SCHEME_ID: &str = "BN254";
+pub const RANDOMNESS_SCHEME_ID: &str = "BLS12381";
 
 /// Ticker using tokio's Notify
 #[derive(Clone, Default)]

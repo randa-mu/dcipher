@@ -22,6 +22,8 @@ serde = { workspace = true, features = ["derive"] }
 
 # misc
 anyhow = { workspace = true }
+ark-bls12-381.workspace = true
+hex.workspace = true
 
 [dev-dependencies]
 # blockchain
