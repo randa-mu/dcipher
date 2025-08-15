@@ -13,7 +13,7 @@ use dcipher_agents::agents::randomness::fulfiller::RandomnessFulfiller;
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::signature_sender::contracts::SignatureSender;
 use dcipher_agents::signature_sender::{SignatureRequest, SignatureSenderFulfillerConfig};
-use dcipher_agents::signer::BN254SignatureOnG1Signer;
+use dcipher_agents::signer::BLS12_381SignatureOnG1Signer;
 use dcipher_agents::signer::threshold_signer::ThresholdSigner;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use randomness_agent::{NotifyTicker, RANDOMNESS_SCHEME_ID, run_agent};
@@ -140,7 +140,7 @@ where
     P: Provider + WalletProvider + Clone + 'static,
 {
     // Parse key
-    let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().into();
+    let sk: ark_bls12_381::Fr = args.key_config.bls_key.to_owned().into();
 
     // Get per-nodes config
     let (mut pks, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = nodes_config
@@ -152,7 +152,7 @@ where
 
     // Add own pk to the list if required
     if pks.len() == usize::from(args.key_config.n.get() - 1) {
-        let pk = ark_bn254::G2Affine::generator() * sk;
+        let pk = ark_bls12_381::G2Affine::generator() * sk;
         pks.insert(
             usize::from(args.key_config.node_id.get() - 1),
             pk.into_affine(),
@@ -161,13 +161,13 @@ where
 
     // Create a threshold signer
     let dst = format!(
-        "dcipher-randomness-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_0x{:064x}_",
+        "dcipher-randomness-v01-BLS12381G1_XMD:SHA-256_SSWU_RO_0x{:064x}_",
         args.chain
             .chain_id
             .expect("chain id must have been set here")
     )
     .into_bytes();
-    let cs = BN254SignatureOnG1Signer::new(sk, dst);
+    let cs = BLS12_381SignatureOnG1Signer::new(sk, dst);
     let ts = ThresholdSigner::new(
         cs,
         args.key_config.n.get(),

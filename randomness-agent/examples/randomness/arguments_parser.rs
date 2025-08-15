@@ -13,8 +13,8 @@ use std::num::NonZeroU16;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-/// Wrapper around ark_bn254::Fr that allows deserialization from hex
-pub struct FrWrapper(ark_bn254::Fr);
+/// Wrapper around ark_bls12_381::Fr that allows deserialization from hex
+pub struct FrWrapper(ark_bls12_381::Fr);
 
 /// Wrapper around libp2p::identity::Keypair with (de)serialization & cmd line parsing.
 #[derive(Clone, Debug)]
@@ -189,7 +189,7 @@ pub struct NodeConfiguration {
 
     /// BN254 public key of the node
     #[serde(with = "utils::serialize::point::base64")]
-    pub bls_pk: ark_bn254::G2Affine,
+    pub bls_pk: ark_bls12_381::G2Affine,
 
     /// Libp2p peer address
     pub address: libp2p::Multiaddr,
@@ -311,7 +311,9 @@ impl<'de> Deserialize<'de> for FrWrapper {
         }
 
         let bytes = hex::decode(&hex_str).map_err(D::Error::custom)?;
-        Ok(FrWrapper(ark_bn254::Fr::from_be_bytes_mod_order(&bytes)))
+        Ok(FrWrapper(ark_bls12_381::Fr::from_be_bytes_mod_order(
+            &bytes,
+        )))
     }
 }
 
@@ -327,12 +329,12 @@ impl FromStr for FrWrapper {
         }
 
         let bytes = hex::decode(&s[2..])?;
-        let s = ark_bn254::Fr::from_be_bytes_mod_order(&bytes);
+        let s = ark_bls12_381::Fr::from_be_bytes_mod_order(&bytes);
         Ok(FrWrapper(s))
     }
 }
 
-impl From<FrWrapper> for ark_bn254::Fr {
+impl From<FrWrapper> for ark_bls12_381::Fr {
     fn from(value: FrWrapper) -> Self {
         value.0
     }
