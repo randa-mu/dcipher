@@ -122,8 +122,7 @@ impl BlsVerifier for BLS12_381SignatureOnG1Signer {
             return false;
         }
 
-        let m =
-            ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha3::Keccak256>(m.as_ref(), &self.dst);
+        let m = ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha2::Sha256>(m.as_ref(), &self.dst);
         ark_bls12_381::Bls12_381::multi_pairing(
             [m.neg(), signature.into()],
             [public_key, Self::PublicKeyGroup::generator()],
