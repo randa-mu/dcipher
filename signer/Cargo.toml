@@ -17,6 +17,7 @@ ark-std = { workspace = true }
 utils = { workspace = true }
 
 # hashes
+sha2 = { workspace = true }
 sha3 = { workspace = true }
 
 # async

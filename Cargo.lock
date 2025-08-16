@@ -2014,6 +2014,7 @@ name = "dcipher-agents"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "ark-bls12-381",
  "ark-bn254",
  "ark-ec",
  "ark-ff 0.4.2",
@@ -2070,6 +2071,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_cbor",
+ "sha2",
  "sha3",
  "thiserror 2.0.12",
  "tokio",
@@ -5194,6 +5196,7 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "anyhow",
+ "ark-bls12-381",
  "ark-bn254",
  "ark-ec",
  "ark-ff 0.4.2",
@@ -5204,6 +5207,7 @@ dependencies = [
  "figment",
  "futures",
  "futures-util",
+ "hex",
  "libp2p",
  "prometheus",
  "serde",

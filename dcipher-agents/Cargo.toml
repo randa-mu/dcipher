@@ -52,6 +52,7 @@ serde = { workspace = true, features = ["derive"] }
 
 # misc
 thiserror = { workspace = true }
+ark-bls12-381.workspace = true
 
 [dev-dependencies]
 hex = { workspace = true }

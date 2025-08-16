@@ -122,8 +122,7 @@ impl BlsVerifier for BLS12_381SignatureOnG1Signer {
             return false;
         }
 
-        let m =
-            ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha3::Keccak256>(m.as_ref(), &self.dst);
+        let m = ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha2::Sha256>(m.as_ref(), &self.dst);
         ark_bls12_381::Bls12_381::multi_pairing(
             [m.neg(), signature.into()],
             [public_key, Self::PublicKeyGroup::generator()],
@@ -136,9 +135,37 @@ impl BlsSigner for BLS12_381SignatureOnG1Signer {
     type Error = Infallible;
 
     fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
-        let m =
-            ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha3::Keccak256>(m.as_ref(), &self.dst);
+        let m = ark_bls12_381::Bls12_381::hash_to_g1_custom::<sha2::Sha256>(m.as_ref(), &self.dst);
         let sig = m * self.sk;
         Ok(sig.into_affine())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bn254_signer() {
+        let sk = ark_bn254::Fr::from(42u64);
+        let pk = ark_bn254::G2Affine::generator() * sk;
+        let dst = b"TestDomain".to_vec();
+        let signer = BN254SignatureOnG1Signer::new(sk, dst);
+
+        let message = b"Hello, world!";
+        let signature = signer.sign(message).unwrap();
+        assert!(signer.verify(message, signature, pk.into()));
+    }
+
+    #[test]
+    fn test_bls12_381_signer() {
+        let sk = ark_bls12_381::Fr::from(42u64);
+        let pk = ark_bls12_381::G2Affine::generator() * sk;
+        let dst = b"TestDomain".to_vec();
+        let signer = BLS12_381SignatureOnG1Signer::new(sk, dst);
+
+        let message = b"Hello, world!";
+        let signature = signer.sign(message).unwrap();
+        assert!(signer.verify(message, signature, pk.into()));
     }
 }
