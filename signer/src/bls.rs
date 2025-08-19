@@ -1,46 +1,54 @@
-//! Concrete implementation of a [`AsynchronousSigner`] for a (t, n) threshold network of
-//! participants.
+//! Implementation of a [`DSignerScheme`] for BLS signatures over any pairing-friendly curve.
 
 mod aggregation;
-#[cfg(feature = "bn254")]
-mod bn254;
+mod dsigner_scheme_impl;
+mod filter;
+mod handlers;
 pub mod metrics;
+mod signer;
 
 pub use aggregation::lagrange_points_interpolate_at;
-#[cfg(feature = "bn254")]
-pub use bn254::*;
+pub use dsigner_scheme_impl::*;
+pub use signer::*;
 
-use crate::AsynchronousSigner;
-use crate::bls::metrics::Metrics;
+use crate::bls::filter::BlsFilter;
+use crate::dsigner::{
+    ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash, SchemeAlgorithm,
+    SchemeDetails, SignatureAlgorithm, SignatureRequest,
+};
+use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
-use dcipher_network::{ReceivedMessage, Transport, TransportSender};
-use futures_util::{Stream, StreamExt};
+use bytes::Bytes;
+use dcipher_network::Transport;
+use digest::DynDigest;
+use digest::core_api::BlockSizeUser;
 use itertools::Either;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
+use strum::VariantArray;
 use tokio_util::sync::CancellationToken;
+use utils::dst::NamedCurveGroup;
+use utils::hash_to_curve::CustomHashToCurve;
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-type SignatureGroup<BLS> = <BLS as BlsVerifier>::SignatureGroup;
+// Bunch of type alias to simplify access to BlsVerifier's associated types
+type E<BLS> = <BLS as BlsVerifier>::E;
+type G1<BLS> = <E<BLS> as Pairing>::G1;
+type G2<BLS> = <E<BLS> as Pairing>::G2;
+type G1Affine<BLS> = <G1<BLS> as CurveGroup>::Affine;
+type G2Affine<BLS> = <G2<BLS> as CurveGroup>::Affine;
 
-type SignatureOrChannel<BLS> =
-    Either<SignatureGroup<BLS>, tokio::sync::watch::Sender<Option<SignatureGroup<BLS>>>>;
+type SignatureOrChannel = Either<Bytes, tokio::sync::watch::Sender<Option<Bytes>>>;
 
-type SharedSignatureCache<BLS> = Arc<std::sync::Mutex<LruCache<Vec<u8>, SignatureOrChannel<BLS>>>>;
+type SharedSignatureCache =
+    Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel>>>;
 
-type SharedPartialsCache<BLS> =
-    Arc<std::sync::Mutex<LruCache<Vec<u8>, HashMap<u16, PartialSignature<SignatureGroup<BLS>>>>>>;
-
-pub struct AsyncThresholdSigner<BLS>
-where
-    BLS: BlsSigner,
-{
-    signatures_cache: SharedSignatureCache<BLS>,
-    new_message_to_sign: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
-}
+type SharedPartialsCache<BLS> = Arc<
+    std::sync::Mutex<LruCache<StoredSignatureRequest, HashMap<u16, PartialSignature<Group<BLS>>>>>,
+>;
 
 #[derive(Clone, Serialize, Deserialize)]
 struct PartialSignature<G> {
@@ -48,24 +56,157 @@ struct PartialSignature<G> {
     sig: G,
 }
 
+#[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+struct StoredSignatureRequest {
+    m: Bytes,
+    dst: Bytes,
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct BlsSignatureRequest {
+    m: Bytes,
+    args: ApplicationArgs,
+    alg: BlsSignatureAlgorithm,
+}
+
+impl TryFrom<SignatureRequest> for BlsSignatureRequest {
+    type Error = BlsThresholdSignerError;
+
+    fn try_from(value: SignatureRequest) -> Result<Self, Self::Error> {
+        let SignatureAlgorithm::Bls(alg) = value.alg else {
+            Err(Self::Error::UnsupportedAlgorithm)?
+        };
+
+        Ok(Self {
+            alg,
+            args: value.args,
+            m: value.m,
+        })
+    }
+}
+
+impl From<BlsSignatureRequest> for SignatureRequest {
+    fn from(value: BlsSignatureRequest) -> Self {
+        Self {
+            alg: SignatureAlgorithm::Bls(value.alg),
+            args: value.args,
+            m: value.m,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
-    serialize = "G: PointSerializeCompressed",
-    deserialize = "G: PointDeserializeCompressed"
+    serialize = "Group<BLS>: Serialize",
+    deserialize = "Group<BLS>: Deserialize<'de>"
 ))]
-struct PartialSignatureWithMessage<G> {
+struct PartialSignatureWithMessage<BLS>
+where
+    BLS: BlsVerifier,
+{
     m: Vec<u8>,
-    #[serde(with = "utils::serialize::point::base64")]
-    sig: G,
+    sig: Group<BLS>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Group<BLS>: Serialize",
+    deserialize = "Group<BLS>: Deserialize<'de>"
+))]
+struct PartialSignatureWithRequest<BLS>
+where
+    BLS: BlsVerifier,
+{
+    sig: Group<BLS>,
+    #[serde(flatten)]
+    req: BlsSignatureRequest,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "G1Affine<BLS>: PointSerializeCompressed, G2Affine<BLS>: PointSerializeCompressed",
+    deserialize = "G1Affine<BLS>: PointDeserializeCompressed, G2Affine<BLS>: PointDeserializeCompressed"
+))]
+enum Group<BLS>
+where
+    BLS: BlsVerifier,
+{
+    G1Affine(#[serde(with = "utils::serialize::point::base64")] G1Affine<BLS>),
+    G2Affine(#[serde(with = "utils::serialize::point::base64")] G2Affine<BLS>),
+}
+
+impl<BLS> Clone for Group<BLS>
+where
+    BLS: BlsVerifier,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<BLS> Copy for Group<BLS> where BLS: BlsVerifier {}
+
+impl<BLS> Group<BLS>
+where
+    BLS: BlsVerifier,
+{
+    fn either(self) -> Either<G1Affine<BLS>, G2Affine<BLS>> {
+        match self {
+            Group::G1Affine(a) => Either::Left(a),
+            Group::G2Affine(a) => Either::Right(a),
+        }
+    }
+}
+
+impl<BLS> From<Group<BLS>> for Either<G1Affine<BLS>, G2Affine<BLS>>
+where
+    BLS: BlsVerifier,
+{
+    fn from(value: Group<BLS>) -> Self {
+        value.either()
+    }
+}
+
+impl<BLS> From<Either<G1Affine<BLS>, G2Affine<BLS>>> for Group<BLS>
+where
+    BLS: BlsVerifier,
+{
+    fn from(value: Either<G1Affine<BLS>, G2Affine<BLS>>) -> Self {
+        match value {
+            Either::Left(a) => Group::G1Affine(a),
+            Either::Right(a) => Group::G2Affine(a),
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum BlsThresholdSignerError {
+    #[error("underlying signer error")]
+    UnderlyingSigner(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("missing partial public key of party {0} on curve g1")]
+    MissingPublicKeyG1(u16),
+
+    #[error("missing partial public key of party {0} on curve g1")]
+    MissingPublicKeyG2(u16),
+
+    #[error("unsupported hash function: {0:?} does not support {1:?}")]
+    UnsupportedHash(BlsSignatureCurve, BlsSignatureHash),
+
+    #[error("unsupported curve: {0:?}")]
+    UnsupportedCurve(BlsSignatureCurve),
+
+    #[error("unsupported algorithm")]
+    UnsupportedAlgorithm,
 }
 
 /// Threshold signer that relies on libp2p to exchange partial signatures.
-pub struct ThresholdSigner<BLS>
+pub struct BlsThresholdSigner<BLS>
 where
     BLS: BlsSigner,
 {
     // Signatures cache
-    signatures_cache: SharedSignatureCache<BLS>,
+    signatures_cache: SharedSignatureCache,
 
     // Map from messages to partials
     partials_cache: SharedPartialsCache<BLS>,
@@ -78,35 +219,44 @@ where
     n: u16,
     t: u16,
     id: u16,
-    pks: Vec<BLS::PublicKeyGroup>,
+
+    // Per party public keys
+    pks_g1: HashMap<u16, G1Affine<BLS>>,
+    pks_g2: HashMap<u16, G2Affine<BLS>>,
+
+    // Group public keys
+    pk_g1: Option<G1Affine<BLS>>,
+    pk_g2: Option<G2Affine<BLS>>,
+
+    // Applications & algorithms filters
+    filter: BlsFilter,
 
     // Enable the node to broadcast a partial signature upon receiving a valid partial.
     eager_signing: bool,
 }
 
-impl<BLS> ThresholdSigner<BLS>
+impl<BLS> BlsThresholdSigner<BLS>
 where
-    BLS: BlsSigner + Clone + Send + Sync + 'static,
-    SignatureGroup<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
+    BLS: BlsSigner,
 {
     /// Create a new threshold signer by specifying the various threshold scheme parameters.
-    pub fn new(cs: BLS, n: u16, t: u16, id: u16, pks: Vec<BLS::PublicKeyGroup>) -> Self {
-        Self {
-            signatures_cache: Arc::new(std::sync::Mutex::new(LruCache::new(
-                const { NonZeroUsize::new(64).unwrap() }, // cache with 64 messages
-            ))),
-            partials_cache: Arc::new(std::sync::Mutex::new(LruCache::new(
-                const { NonZeroUsize::new(64).unwrap() }, // cache with 64 messages
-            ))),
-            signer: cs,
+    pub fn new(
+        cs: BLS,
+        n: u16,
+        t: u16,
+        id: u16,
+        pks_g1: HashMap<u16, G1Affine<BLS>>,
+        pks_g2: HashMap<u16, G2Affine<BLS>>,
+    ) -> Self {
+        Self::new_with_cache_size(
+            cs,
             n,
             t,
             id,
-            pks,
-            // disable eager signing by default, i.e., automatically submitting a partial
-            // signature upon receiving a valid partial from another node.
-            eager_signing: false,
-        }
+            pks_g1,
+            pks_g2,
+            const { NonZeroUsize::new(64).unwrap() },
+        )
     }
 
     /// New threshold signer with a custom LRU cache size.
@@ -115,9 +265,26 @@ where
         n: u16,
         t: u16,
         id: u16,
-        pks: Vec<BLS::PublicKeyGroup>,
+        pks_g1: HashMap<u16, G1Affine<BLS>>,
+        pks_g2: HashMap<u16, G2Affine<BLS>>,
         lru_cache_size: NonZeroUsize,
     ) -> Self {
+        // Compute group public keys
+        let pks_g1_vec = pks_g1
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into_group()))
+            .collect::<Vec<_>>();
+        let pks_g2_vec = pks_g2
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into_group()))
+            .collect::<Vec<_>>();
+        let pk_g1: Option<_> = (!pks_g1_vec.is_empty())
+            .then_some(lagrange_points_interpolate_at(pks_g1_vec.as_slice(), 0).into_affine());
+        let pk_g2: Option<_> = (!pks_g2_vec.is_empty())
+            .then_some(lagrange_points_interpolate_at(pks_g2_vec.as_slice(), 0).into_affine());
+
         Self {
             signatures_cache: Arc::new(std::sync::Mutex::new(LruCache::new(lru_cache_size))),
             partials_cache: Arc::new(std::sync::Mutex::new(LruCache::new(lru_cache_size))),
@@ -125,7 +292,13 @@ where
             n,
             t,
             id,
-            pks,
+            pks_g1,
+            pks_g2,
+            pk_g1,
+            pk_g2,
+            filter: BlsFilter::new(Self::supported_bls_algorithms()),
+            // disable eager signing by default, i.e., automatically submitting a partial
+            // signature upon receiving a valid partial from another node.
             eager_signing: false,
         }
     }
@@ -137,8 +310,59 @@ where
         self
     }
 
+    /// Compute all possible supported algorithms for this curve
+    fn supported_bls_algorithms() -> impl Iterator<Item = BlsSignatureAlgorithm> {
+        let iter_all_hash = |curve| {
+            BlsSignatureHash::VARIANTS
+                .iter()
+                .map(move |&hash| BlsSignatureAlgorithm { hash, curve })
+        };
+
+        iter_all_hash(<G1<BLS> as NamedCurveGroup>::CURVE_ID.into())
+            .chain(iter_all_hash(<G2<BLS> as NamedCurveGroup>::CURVE_ID.into()))
+    }
+}
+
+impl<BLS> BlsThresholdSigner<BLS>
+where
+    BLS: BlsSigner + Clone + Send + Sync + 'static,
+    G1Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
+    G2Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
+{
+    fn scheme_details(&self) -> SchemeDetails {
+        let collect_supported_algs = |curve| {
+            self.filter
+                .supported_algs(&curve)
+                .map(SignatureAlgorithm::Bls)
+                .collect()
+        };
+        let supported_apps: Vec<_> = self.filter.supported_apps().collect();
+
+        let mut scheme_algs = vec![];
+        if let Some(pk_g1) = &self.pk_g1 {
+            scheme_algs.push(SchemeAlgorithm {
+                public_key: PointSerializeCompressed::ser(pk_g1).unwrap().into(),
+                algs: collect_supported_algs(<G2<BLS> as NamedCurveGroup>::CURVE_ID.into()), // sig on G2
+                apps: supported_apps.clone(),
+            });
+        }
+        if let Some(pk_g2) = &self.pk_g2 {
+            scheme_algs.push(SchemeAlgorithm {
+                public_key: PointSerializeCompressed::ser(pk_g2).unwrap().into(),
+                algs: collect_supported_algs(<G1<BLS> as NamedCurveGroup>::CURVE_ID.into()), // sig on G1
+                apps: supported_apps,
+            });
+        }
+
+        SchemeDetails {
+            n: self.n,
+            t: self.t,
+            scheme_algs,
+        }
+    }
+
     /// Runs the threshold signer in a background task and obtain a cancellation token and a registry.
-    pub fn run<T>(self, mut transport: T) -> (CancellationToken, AsyncThresholdSigner<BLS>)
+    pub fn run<T>(self, mut transport: T) -> (CancellationToken, AsyncThresholdSigner)
     where
         T: Transport<Identity = u16>,
     {
@@ -146,11 +370,13 @@ where
         let cancellation_token = CancellationToken::new();
         let (tx_registry_to_signer, rx_signer_to_registry) = tokio::sync::mpsc::unbounded_channel();
 
-        // Create a registry
-        let registry = AsyncThresholdSigner {
-            signatures_cache: arc_self.signatures_cache.clone(),
-            new_message_to_sign: tx_registry_to_signer.clone(),
-        };
+        // Create a [`DSignerScheme`]
+        let signer = AsyncThresholdSigner::new(
+            arc_self.scheme_details(),
+            arc_self.signatures_cache.clone(),
+            tx_registry_to_signer.clone(),
+            arc_self.filter.clone(),
+        );
 
         let partials_stream = transport
             .receiver_stream()
@@ -160,7 +386,7 @@ where
             .expect("transport should provide at least one partial sender");
 
         // Spawn task that handles signing requests from registry
-        tokio::task::spawn(arc_self.clone().recv_new_messages(
+        tokio::task::spawn(arc_self.clone().recv_new_requests(
             rx_signer_to_registry,
             tx_signer_to_network,
             cancellation_token.child_token(),
@@ -173,448 +399,181 @@ where
             cancellation_token.child_token(),
         ));
 
-        (cancellation_token, registry)
+        (cancellation_token, signer)
     }
 
-    async fn recv_new_messages<T>(
-        self: Arc<Self>,
-        mut rx_messages: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>,
-        tx_to_network: T,
-        cancellation_token: CancellationToken,
-    ) where
-        T: TransportSender<Identity = u16>,
-    {
-        #[cfg(feature = "rayon")]
-        use rayon::prelude::*;
-
-        const MAX_BATCH_SIZE: usize = 256;
-
-        let inner_fn = async move {
-            let mut messages = Vec::with_capacity(MAX_BATCH_SIZE);
-
-            loop {
-                let count = rx_messages.recv_many(&mut messages, MAX_BATCH_SIZE).await;
-                if count == 0 {
-                    tracing::warn!("Registry has dropped message sender, exiting recv loop");
-                    break;
-                };
-
-                // Remove messages with partial already issued
-                let messages: Vec<_> = {
-                    let mut partials_cache = self
-                        .partials_cache
-                        .lock()
-                        .expect("a thread panicked holding the mutex");
-
-                    messages
-                        .drain(..)
-                        .filter(|m| {
-                            let Some(partials_map) = partials_cache.get(m) else {
-                                return true; // not yet signed
-                            };
-
-                            if partials_map.contains_key(&self.id) {
-                                tracing::debug!(msg = ?m, "Received message signing request, but message was already signed");
-                                false
-                            } else {
-                                true
-                            }
-                        })
-                        .collect()
-                };
-
-                let span =
-                    tracing::debug_span!("threshold_signer_batch", batch_size = count).entered();
-                #[cfg(feature = "rayon")]
-                tracing::debug!(
-                    messages_count = messages.len(),
-                    "Signing messages in parallel"
-                );
-                #[cfg(not(feature = "rayon"))]
-                tracing::debug!(
-                    messages_count = messages.len(),
-                    "Signing messages sequentially"
-                );
-                let span = span.exit();
-
-                // Create signatures in parallel if rayon is enabled, otherwise use a standard iter
-                #[cfg(feature = "rayon")]
-                let iter = messages.into_par_iter();
-                #[cfg(not(feature = "rayon"))]
-                let iter = messages.into_iter();
-                let (partials, messages): (Vec<_>, Vec<_>) = iter.filter_map(|message| {
-                    tracing::info!(msg = ?message, "Received new message to sign");
-
-                    match self.signer.sign(&message) {
-                        Ok(sig) => Some((sig, message)),
-                        Err(e) => {
-                            tracing::error!(error = ?e, msg = ?message, "Failed to sign message.");
-                            None
-                        }
-                    }
-                }).collect();
-
-                let to_aggregate: Vec<_> = {
-                    let mut partials_cache = self
-                        .partials_cache
-                        .lock()
-                        .expect("a thread panicked with the mutex");
-
-                    // We filter with a sequential iterator here due to side effects
-                    partials.iter().zip(messages.iter()).filter_map(|(partial_sig, m)| {
-                        tracing::info!(msg = ?m, party_id = self.id, "Storing partial signature on message");
-                        let partials = partials_cache.get_or_insert_mut(m.clone(), HashMap::default);
-                        partials.insert(
-                            self.id,
-                            PartialSignature {
-                                id: self.id,
-                                sig: *partial_sig,
-                            },
-                        );
-
-                        // Do we have exactly t partials?
-                        if partials.len() == usize::from(self.t) {
-                            // Aggregate the partials with Lagrange's interpolation
-                            let points = partials
-                                .values()
-                                .map(|partial| (u64::from(partial.id), partial.sig.into_group()))
-                                .collect::<Vec<_>>();
-                            Some(points)
-                        } else {
-                            None
-                        }
-                    }).collect()
-                };
-
-                let span = span.entered();
-                #[cfg(feature = "rayon")]
-                tracing::debug!(
-                    messages_count = messages.len(),
-                    "Aggregating signatures in parallel"
-                );
-                #[cfg(not(feature = "rayon"))]
-                tracing::debug!(
-                    messages_count = messages.len(),
-                    "Aggregating signatures sequentially"
-                );
-                let _span = span.exit();
-
-                // Do the aggregation with a parallel iterator if rayon is enabled
-                #[cfg(feature = "rayon")]
-                let iter = to_aggregate.into_par_iter();
-                #[cfg(not(feature = "rayon"))]
-                let iter = to_aggregate.into_iter();
-                let signatures: Vec<_> = iter
-                    .map(|points| lagrange_points_interpolate_at(&points, 0).into_affine())
-                    .collect();
-
-                // We now have a bunch of signatures, store them
-                {
-                    let mut signatures_cache = self
-                        .signatures_cache
-                        .lock()
-                        .expect("a thread panicked with the mutex");
-
-                    // side effects, sequential iterator
-                    signatures
-                        .into_iter()
-                        .zip(messages.iter())
-                        .for_each(|(sig, message)| {
-                            if let Some(Either::Right(tx_channel)) =
-                                signatures_cache.put(message.to_owned(), Either::Left(sig))
-                            {
-                                // If there previously was a channel stored at the entry, also send signature through it
-                                tx_channel.send_replace(Some(sig));
-                            }
-                        });
-                }
-
-                // Send it to other nodes with libp2p if threshold greater than 1
-                if self.t > 1 {
-                    futures_util::future::join_all(partials.into_iter().zip(messages).map(
-                        async |(sig, message)| {
-                            let partial = PartialSignatureWithMessage { sig, m: message };
-
-                            let m = serde_cbor::to_vec(&partial)
-                                .expect("serialization should always work");
-                            Metrics::report_partials_sent(1);
-                            if let Err(e) = tx_to_network.broadcast(m).await {
-                                tracing::error!(error = ?e, "Failed to send message to signer");
-                            }
-                        },
-                    ))
-                    .await;
-                }
-            }
-        };
-
-        tokio::select! {
-            _ = cancellation_token.cancelled() => {
-                tracing::info!("Stopping recv loop due to cancellation token");
-            },
-
-            _ = inner_fn => (),
-        }
-    }
-
-    async fn recv_new_signatures<E>(
-        self: Arc<Self>,
-        mut partials_stream: impl Stream<Item = Result<ReceivedMessage<u16>, E>> + Unpin + Send,
-        new_message_to_sign: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
-        cancellation_token: CancellationToken,
-    ) where
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        let inner_fn = async move {
-            loop {
-                let ReceivedMessage {
-                    sender: party_id,
-                    content: partial,
-                    ..
-                } = match partials_stream.next().await {
-                    Some(Ok(m)) => m,
-                    Some(Err(e)) => {
-                        tracing::error!(error = ?e, "Failed to receive message");
-                        continue; // receive next message
-                    }
-                    None => {
-                        tracing::warn!("Libp2p node has dropped sender, exiting recv loop");
-                        break; // stop the loop
-                    }
-                };
-
-                let partial: PartialSignatureWithMessage<SignatureGroup<BLS>> =
-                    match serde_cbor::from_slice(&partial) {
-                        Ok(partial) => partial,
-                        Err(e) => {
-                            tracing::error!(
-                                sender_id = party_id,
-                                error = ?e,
-                                "Failed to decode partial signature."
-                            );
-                            continue;
-                        }
-                    };
-
-                Metrics::report_partials_received(1);
-
-                // Verify the validity of the partial signature against its pk
-                let Some(pk) = self.pks.get(usize::from(party_id) - 1) else {
-                    tracing::error!(sender_id = party_id, "Invalid party_id / pks vector");
-                    continue;
-                };
-                if !self.signer.verify(&partial.m, partial.sig, *pk) {
-                    tracing::error!(sender_id = party_id, "Received invalid partial signature");
-                    Metrics::report_invalid_partials(1);
-                    continue;
-                }
-
-                // Valid signature, add it to our cache
-                self.store_and_process_partial(
-                    partial.m.clone(),
-                    PartialSignature {
-                        id: party_id,
-                        sig: partial.sig,
-                    },
-                );
-
-                if self.eager_signing {
-                    // If eager signing is enabled and the message has not been signed already,
-                    // request to broadcast a partial signature on that message
-                    if !self.partial_issued(&partial.m) {
-                        new_message_to_sign
-                            .send(partial.m)
-                            .expect("failed to forward message to signer");
-                    }
-                }
-            }
-        };
-
-        tokio::select! {
-            _ = cancellation_token.cancelled() => {
-                tracing::info!("Stopping recv loop due to cancellation token");
-            },
-
-            _ = inner_fn => (),
-        }
-    }
-
-    /// Verify whether a partial has already been issued or not.
-    fn partial_issued(&self, message: &[u8]) -> bool {
-        let mut partials_cache = self
-            .partials_cache
-            .lock()
-            .expect("a thread panicked holding the mutex");
-        let Some(partials_map) = partials_cache.get(message) else {
-            return false;
-        };
-
-        partials_map.contains_key(&self.id)
-    }
-
-    /// Store a partial signature to the cache, and aggregate it if there are enough partials.
-    fn store_and_process_partial(
-        &self,
-        message: Vec<u8>,
-        partial: PartialSignature<SignatureGroup<BLS>>,
-    ) {
-        tracing::info!(msg = ?message, party_id = partial.id, "Storing partial signature on message");
-        let mut partials_cache = self
-            .partials_cache
-            .lock()
-            .expect("a thread panicked with the mutex");
-        let partials = partials_cache.get_or_insert_mut(message.clone(), HashMap::default);
-        partials.insert(
-            partial.id,
-            PartialSignature {
-                id: partial.id,
-                sig: partial.sig,
-            },
-        );
-
-        // Do we have exactly t partials?
-        if partials.len() == usize::from(self.t) {
-            // Aggregate the partials with Lagrange's interpolation
-            let points = partials
-                .values()
-                .map(|partial| (u64::from(partial.id), partial.sig.into_group()))
-                .collect::<Vec<_>>();
-            let sig = lagrange_points_interpolate_at(&points, 0).into_affine();
-
-            // We now have a signature, store it
-            let mut signatures_cache = self
-                .signatures_cache
-                .lock()
-                .expect("a thread panicked with the mutex");
-            if let Some(Either::Right(tx_channel)) =
-                signatures_cache.put(message, Either::Left(sig))
-            {
-                // If there previously was a channel stored at the entry, also send signature through it
-                tx_channel.send_replace(Some(sig));
-            }
-        }
-    }
-}
-
-#[derive(thiserror::Error, Copy, Clone, Debug)]
-pub enum AsyncThresholdSignerError {
-    #[error("the message to sign has been dropped from cache")]
-    DroppedFromCache,
-
-    #[error("the watch sender has been dropped")]
-    WatchSenderDropped,
-
-    #[error("the channel used to request signatures has been closed")]
-    CannotRequestNewSignatures,
-}
-
-impl<BLS, M> AsynchronousSigner<M> for AsyncThresholdSigner<BLS>
-where
-    BLS: BlsSigner + Send + Sync,
-    M: AsRef<[u8]>,
-    for<'a> &'a SignatureGroup<BLS>: ToOwned,
-{
-    type Error = AsyncThresholdSignerError;
-    type Signature = SignatureGroup<BLS>;
-
-    fn async_sign(
-        &self,
-        m: M,
-    ) -> impl Future<Output = Result<Self::Signature, Self::Error>> + Send {
-        let m = m.as_ref().to_vec();
-        async move {
-            // We have three possibilities here:
-            //  1. The message is not yet present in the map
-            //      => a. insert a watch sender in the map,
-            //         b. we notify of a new message,
-            //         c. return a future awaiting the signature through the watch receiver.
-            //  2. The message is in the map
-            //    2a. it contains a signature
-            //         => return a future that resolves immediately with the signature
-            //    2b. it contains a watch sender
-            //         => do 1.b. and 1.c.
-
-            let signature_or_receiver = {
-                let mut signatures_cache = self
-                    .signatures_cache
-                    .lock()
-                    .expect("a thread panicked with the mutex");
-
-                // This may drop the LRU entry from the map, which results in the
-                // future owning the corresponding receiver resolving in an error.
-                let signature_or_sender = signatures_cache.get_or_insert(m.clone(), || {
-                    let (tx, _) = tokio::sync::watch::channel(None);
-                    Either::Right(tx)
-                });
-
-                match signature_or_sender {
-                    Either::Left(signature) => {
-                        // 2a. The message is in the map and contains a signature
-                        Ok(Either::Left(signature.to_owned()))
-                    }
-
-                    Either::Right(tx) => {
-                        let rx = tx.subscribe();
-
-                        // Notify of the new message to sign
-                        self.new_message_to_sign
-                            .send(m.to_vec())
-                            .map_err(|_| AsyncThresholdSignerError::CannotRequestNewSignatures)?;
-
-                        Ok(Either::Right(rx))
-                    }
-                }
-            }?;
-
-            // If the signature was cached, return immediately
-            match signature_or_receiver {
-                Either::Left(signature) => Ok(signature),
-                Either::Right(mut rx) => {
-                    // A signature may already be in the channel, borrow it and mark it as seen
-                    let signature = *rx.borrow_and_update();
-
-                    if let Some(sig) = signature {
-                        // If it contains a signature, simply return
-                        Ok(sig)
-                    } else {
-                        // Does not yet contain a signature, await for a change and return
-                        match rx.changed().await {
-                            Ok(()) => {
-                                let sig = rx
-                                    .borrow_and_update()
-                                    .expect("watch channel updated but sig is None");
-                                Ok(sig)
-                            }
-                            Err(_) => Err(AsyncThresholdSignerError::WatchSenderDropped)?,
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// A BLS verifier defines the groups used by an instantiation of a BLS signature scheme and a
-/// verification function.
-pub trait BlsVerifier {
-    type SignatureGroup: AffineRepr;
-    type PublicKeyGroup: AffineRepr;
-
-    /// Outputs true if the signature is valid under the specified message and public key.
-    fn verify(
+    /// Sign a message using a specified algorithm
+    fn sign(
         &self,
         m: impl AsRef<[u8]>,
-        signature: Self::SignatureGroup,
-        public_key: Self::PublicKeyGroup,
+        dst: impl AsRef<[u8]>,
+        alg: &BlsSignatureAlgorithm,
+    ) -> Result<Group<BLS>, BlsThresholdSignerError> {
+        match (alg.curve, alg.hash) {
+            // Sign on G1
+            (curve_id, hash_id) if Self::is_curve_g1(curve_id) => {
+                let sig = match hash_id {
+                    #[cfg(feature = "sha2")]
+                    BlsSignatureHash::Sha256 => self.signer.sign_g1::<sha2::Sha256>(m, dst),
+                    #[cfg(feature = "sha3")]
+                    BlsSignatureHash::Keccak256 => self.signer.sign_g1::<sha3::Keccak256>(m, dst),
+                };
+
+                Ok(Group::G1Affine(sig.map_err(|e| {
+                    BlsThresholdSignerError::UnderlyingSigner(e.into())
+                })?))
+            }
+
+            // Sign on G2
+            (curve_id, hash_id) if Self::is_curve_g2(curve_id) => {
+                let sig = match hash_id {
+                    #[cfg(feature = "sha2")]
+                    BlsSignatureHash::Sha256 => self.signer.sign_g2::<sha2::Sha256>(m, dst),
+                    #[cfg(feature = "sha3")]
+                    BlsSignatureHash::Keccak256 => self.signer.sign_g2::<sha3::Keccak256>(m, dst),
+                };
+
+                Ok(Group::G2Affine(sig.map_err(|e| {
+                    BlsThresholdSignerError::UnderlyingSigner(e.into())
+                })?))
+            }
+
+            // Curve is neither G1 nor G2
+            (curve, _) => Err(BlsThresholdSignerError::UnsupportedCurve(curve)),
+        }
+    }
+
+    /// Verify a message using a specified algorithm if supported, Err otherwise
+    fn try_verify(
+        &self,
+        m: impl AsRef<[u8]>,
+        dst: impl AsRef<[u8]>,
+        sig: Group<BLS>,
+        party_id: &u16,
+        alg: &BlsSignatureAlgorithm,
+    ) -> Result<bool, BlsThresholdSignerError> {
+        let pk: Group<BLS> = match &sig {
+            Group::G1Affine(_) => {
+                let pk = self
+                    .pks_g2
+                    .get(party_id)
+                    .cloned()
+                    .or_else(|| {
+                        tracing::warn!(sender_id = party_id, "Missing pk on g2 for party");
+                        None
+                    })
+                    .ok_or(BlsThresholdSignerError::MissingPublicKeyG2(*party_id))?;
+                Ok(Group::G2Affine(pk))
+            }
+            Group::G2Affine(_) => {
+                let pk = self
+                    .pks_g1
+                    .get(party_id)
+                    .cloned()
+                    .or_else(|| {
+                        tracing::warn!(sender_id = party_id, "Missing pk on g1 for party");
+                        None
+                    })
+                    .ok_or(BlsThresholdSignerError::MissingPublicKeyG1(*party_id))?;
+                Ok(Group::G1Affine(pk))
+            }
+        }?;
+
+        match (alg.curve, alg.hash, sig, pk) {
+            // Signature on G1, public key on G2
+            (curve, hash, Group::G1Affine(sig), Group::G2Affine(pk))
+                if Self::is_curve_g1(curve) =>
+            {
+                let valid = match hash {
+                    #[cfg(feature = "sha2")]
+                    BlsSignatureHash::Sha256 => {
+                        self.signer.verify_g1::<sha2::Sha256>(m, dst, sig, pk)
+                    }
+
+                    #[cfg(feature = "sha3")]
+                    BlsSignatureHash::Keccak256 => {
+                        self.signer.verify_g1::<sha3::Keccak256>(m, dst, sig, pk)
+                    }
+                };
+                Ok(valid)
+            }
+
+            // Signature on G2, public key on G1
+            (curve, hash, Group::G2Affine(sig), Group::G1Affine(pk))
+                if Self::is_curve_g2(curve) =>
+            {
+                let valid = match hash {
+                    #[cfg(feature = "sha2")]
+                    BlsSignatureHash::Sha256 => {
+                        self.signer.verify_g2::<sha2::Sha256>(m, dst, sig, pk)
+                    }
+
+                    #[cfg(feature = "sha3")]
+                    BlsSignatureHash::Keccak256 => {
+                        self.signer.verify_g2::<sha3::Keccak256>(m, dst, sig, pk)
+                    }
+                };
+                Ok(valid)
+            }
+
+            // Curve is neither G1 nor G2
+            (curve, ..) => Err(BlsThresholdSignerError::UnsupportedCurve(curve)),
+        }
+    }
+
+    /// Does the specified curve correspond to G1
+    fn is_curve_g1(curve: BlsSignatureCurve) -> bool {
+        <G1<BLS> as NamedCurveGroup>::CURVE_ID == curve.into()
+    }
+
+    /// Does the specified curve correspond to G2
+    fn is_curve_g2(curve: BlsSignatureCurve) -> bool {
+        <G2<BLS> as NamedCurveGroup>::CURVE_ID == curve.into()
+    }
+}
+
+pub trait BlsVerifier
+where
+    <Self::E as Pairing>::G1: CustomHashToCurve + NamedCurveGroup,
+    <Self::E as Pairing>::G2: CustomHashToCurve + NamedCurveGroup,
+{
+    type E: Pairing;
+
+    /// Outputs true if the signature is valid under the specified message, DST, and public key.
+    fn verify_g1<H: DynDigest + BlockSizeUser + Default + Clone>(
+        &self,
+        m: impl AsRef<[u8]>,
+        dst: impl AsRef<[u8]>,
+        signature: <Self::E as Pairing>::G1Affine,
+        public_key: <Self::E as Pairing>::G2Affine,
+    ) -> bool;
+
+    /// Outputs true if the signature is valid under the specified message, DST, and public key.
+    fn verify_g2<H: DynDigest + BlockSizeUser + Default + Clone>(
+        &self,
+        m: impl AsRef<[u8]>,
+        dst: impl AsRef<[u8]>,
+        signature: <Self::E as Pairing>::G2Affine,
+        public_key: <Self::E as Pairing>::G1Affine,
     ) -> bool;
 }
 
-/// A BLS signer extends the [`BlsVerifier`] trait by providing a signature function.
 pub trait BlsSigner: BlsVerifier {
     type Error: std::error::Error + Send + Sync + 'static;
 
-    /// Sign a message using the signer's private key.
-    fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error>;
+    /// Sign a message using the signer's private key and a custom DST.
+    fn sign_g1<H: DynDigest + BlockSizeUser + Default + Clone>(
+        &self,
+        m: impl AsRef<[u8]>,
+        dst: impl AsRef<[u8]>,
+    ) -> Result<<Self::E as Pairing>::G1Affine, Self::Error>;
+
+    /// Sign a message using the signer's private key and a custom DST.
+    fn sign_g2<H: DynDigest + BlockSizeUser + Default + Clone>(
+        &self,
+        m: impl AsRef<[u8]>,
+        dst: impl AsRef<[u8]>,
+    ) -> Result<<Self::E as Pairing>::G2Affine, Self::Error>;
 }
 
 #[cfg(test)]
@@ -622,8 +581,9 @@ mod tests {
     #[cfg(feature = "bn254")]
     mod bn254 {
         use super::super::*;
-        use crate::bls::BN254SignatureOnG1Signer;
+        use crate::dsigner::{ApplicationAnyArgs, ApplicationArgs, DSignerScheme};
         use ark_bn254::Fr;
+        use ark_ec::AffineRepr;
         use ark_ff::MontFp;
         use dcipher_network::transports::in_memory::MemoryNetwork;
         use std::time::Duration;
@@ -632,6 +592,7 @@ mod tests {
         async fn async_threshold_signer() {
             let n = 3;
             let t = 2;
+            let g1 = ark_bn254::G1Affine::generator();
             let g2 = ark_bn254::G2Affine::generator();
 
             let _sk: Fr = MontFp!(
@@ -646,34 +607,49 @@ mod tests {
             let sk3: Fr = MontFp!(
                 "2150808892329473463862809553482898152702897375421575897425654171200919896715"
             );
-            let pks = vec![g2 * sk1, g2 * sk2, g2 * sk3];
-            let pks = pks
+            let pks_g2 = vec![g2 * sk1, g2 * sk2, g2 * sk3];
+            let pks_g2 = pks_g2
                 .into_iter()
-                .map(|pki| pki.into_affine())
-                .collect::<Vec<_>>();
+                .enumerate()
+                .map(|(i, pki)| (i as u16 + 1, pki.into_affine()))
+                .collect::<HashMap<_, _>>();
 
-            let cs1 =
-                BN254SignatureOnG1Signer::new(sk1, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
-            let cs2 =
-                BN254SignatureOnG1Signer::new(sk2, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
-            let cs3 =
-                BN254SignatureOnG1Signer::new(sk3, b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec());
+            let pks_g1 = vec![g1 * sk1, g1 * sk2, g1 * sk3];
+            let pks_g1 = pks_g1
+                .into_iter()
+                .enumerate()
+                .map(|(i, pki)| (i as u16 + 1, pki.into_affine()))
+                .collect::<HashMap<_, _>>();
+
+            let cs1 = BlsPairingSigner::new_bn254(sk1);
+            let cs2 = BlsPairingSigner::new_bn254(sk2);
+            let cs3 = BlsPairingSigner::new_bn254(sk3);
 
             // Get transports
             let mut transports = MemoryNetwork::get_transports(1..=3);
 
             // Start three threshold signers
-            let (_, ch1) = ThresholdSigner::new(cs1, n, t, 1, pks.clone())
+            let (_, ch1) = BlsThresholdSigner::new(cs1, n, t, 1, pks_g1.clone(), pks_g2.clone())
                 .run(transports.pop_front().unwrap());
-            let (_, ch2) = ThresholdSigner::new(cs2, n, t, 2, pks.clone())
+            let (_, ch2) = BlsThresholdSigner::new(cs2, n, t, 2, pks_g1.clone(), pks_g2.clone())
                 .run(transports.pop_front().unwrap());
-            let (_, ch3) = ThresholdSigner::new(cs3, n, t, 3, pks.clone())
+            let (_, ch3) = BlsThresholdSigner::new(cs3, n, t, 3, pks_g1.clone(), pks_g2.clone())
                 .run(transports.pop_front().unwrap());
 
             let message = b"my test message";
-            let fut_sig1 = ch1.async_sign(message.to_vec());
-            let fut_sig2 = ch2.async_sign(message.to_vec());
-            let fut_sig3 = ch3.async_sign(message.to_vec());
+            let req = SignatureRequest {
+                m: message.to_vec().into(),
+                args: ApplicationArgs::Any(ApplicationAnyArgs {
+                    dst_suffix: "TEST".to_owned(),
+                }),
+                alg: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                    curve: BlsSignatureCurve::Bn254G2,
+                    hash: BlsSignatureHash::Keccak256,
+                }),
+            };
+            let fut_sig1 = ch1.async_sign(req.clone());
+            let fut_sig2 = ch2.async_sign(req.clone());
+            let fut_sig3 = ch3.async_sign(req.clone());
 
             // Wait for signatures up to 1 second
             let sigs = tokio::select! {

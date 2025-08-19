@@ -1,7 +1,14 @@
 //! Various traits and implementations used to sign messages.
 
-#[cfg(feature = "bls")]
+/// bls requires at least a curve, and a hash function
+#[cfg(all(
+    feature = "bls",
+    any(feature = "bn254", feature = "bls12-381"),
+    any(feature = "sha2", feature = "sha3")
+))]
 pub mod bls;
+#[cfg(feature = "dsigner")]
+pub mod dsigner;
 
 /// An asynchronous signer is used to generate a signature asynchronously.
 pub trait AsynchronousSigner<M> {
