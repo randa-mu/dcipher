@@ -75,7 +75,7 @@ pub(super) fn get_rfc9380_application_dst(
             (
                 "BLOCKLOCK".to_owned(),
                 b'_',
-                format!("H1_0x{:064x}_", args.chain_id),
+                format!("H1_0x{:064x}", args.chain_id),
             )
         }
         ApplicationArgs::Randomness(args) => {
