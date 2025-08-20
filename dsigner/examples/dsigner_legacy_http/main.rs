@@ -7,19 +7,24 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router, extract::State, routing::post};
-use dcipher_agents::signer::AsynchronousSigner;
-use dcipher_agents::signer::bls::{
-    AsyncThresholdSigner, BN254SignatureOnG1Signer, ThresholdSigner, lagrange_points_interpolate_at,
-};
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
+use dcipher_signer::bls::{
+    AsyncThresholdSigner, BlsPairingSigner, BlsThresholdSigner, lagrange_points_interpolate_at,
+};
+use dcipher_signer::dsigner::{
+    ApplicationAnyArgs, ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
+    BlsSignatureHash, DSignerScheme, SignatureAlgorithm, SignatureRequest,
+};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use utils::serialize::point::PointSerializeCompressed;
 
 // Request structure for the sign endpoint
 #[derive(Deserialize)]
@@ -39,7 +44,7 @@ struct PublicKey(String);
 
 // Application state
 struct AppState {
-    async_signer: AsyncThresholdSigner<BN254SignatureOnG1Signer>,
+    async_signer: AsyncThresholdSigner,
     dst: String,
     pk: PublicKey,
 }
@@ -60,16 +65,25 @@ async fn sign_handler(
 ) -> Response {
     let start = std::time::Instant::now();
 
+    let request = SignatureRequest {
+        alg: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+            curve: BlsSignatureCurve::Bn254G1,
+            hash: BlsSignatureHash::Keccak256,
+        }),
+        args: ApplicationArgs::Any(ApplicationAnyArgs {
+            dst_suffix: "dia-vrf".to_owned(),
+        }),
+        m: payload.m.into(),
+    };
+
     // Call the async signing function
-    let sig_res = state.async_signer.async_sign(&payload.m).await;
+    let sig_res = state.async_signer.async_sign(request).await;
 
     let duration = start.elapsed();
     tracing::debug!("Signing operation took {}ms", duration.as_millis());
 
     if let Ok(sig) = sig_res {
-        let base64_sig = sig
-            .ser_base64()
-            .expect("ser should always work for server-generated content");
+        let base64_sig = BASE64_STANDARD.encode(sig);
         Json(SignResponse {
             signature: base64_sig,
             dst: state.dst.clone(),
@@ -86,7 +100,7 @@ fn get_signer(
 ) -> anyhow::Result<(
     Libp2pNode<u16>,
     CancellationToken,
-    AsyncThresholdSigner<BN254SignatureOnG1Signer>,
+    AsyncThresholdSigner,
     ark_bn254::G2Affine,
 )> {
     // Parse key
@@ -115,23 +129,29 @@ fn get_signer(
     }
 
     // Compute group public key
-    let ids_pks = pks
+    let pks_g2 = pks
         .iter()
         .copied()
         .zip(all_nodes_ids)
-        .map(|(pki, i)| (u64::from(i), pki.into_group()))
-        .collect::<Vec<_>>();
+        .map(|(pki, i)| (i, pki))
+        .collect::<HashMap<_, _>>();
 
-    let pk = lagrange_points_interpolate_at(&ids_pks, 0).into_affine();
+    let pks_g2_vec = pks_g2
+        .clone()
+        .into_iter()
+        .map(|(i, pki)| (u64::from(i), pki.into_group()))
+        .collect::<Vec<_>>();
+    let pk_g2 = lagrange_points_interpolate_at(&pks_g2_vec, 0).into_affine();
 
     // Create a threshold signer
-    let cs = BN254SignatureOnG1Signer::new(sk, config.key_config.dst.clone().into_bytes());
-    let ts = ThresholdSigner::new_with_cache_size(
+    let cs = BlsPairingSigner::<ark_bn254::Bn254>::new(sk);
+    let ts = BlsThresholdSigner::new_with_cache_size(
         cs.clone(),
         config.key_config.n.get(),
         config.key_config.t.get(),
         config.key_config.node_id.get(),
-        pks,
+        Default::default(), // no pk on g1
+        pks_g2,
         config.lru_cache_size,
     )
     .with_eager_signing();
@@ -152,7 +172,7 @@ fn get_signer(
             .expect("newly created node should have a transport"),
     );
 
-    Ok((libp2p_node, ts_stopper, async_signer, pk))
+    Ok((libp2p_node, ts_stopper, async_signer, pk_g2))
 }
 
 #[tokio::main]
