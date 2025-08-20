@@ -240,44 +240,6 @@ mod bn254 {
             self.eph_pk
         }
     }
-
-    #[cfg(all(feature = "signer", feature = "bn254"))]
-    mod signer {
-        use crate::ibe_helper::{
-            IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner,
-        };
-        use dcipher_signer::bls::{BlsSigner, BlsVerifier};
-        use std::convert::Infallible;
-
-        /// Implementation of a BLS verifier [`IbeIdentityOnBn254G1Suite`].
-        impl<S> BlsVerifier for IbeIdentityOnBn254G1Suite<S> {
-            type SignatureGroup = <Self as PairingIbeCipherSuite>::IdentityGroup;
-            type PublicKeyGroup = <Self as PairingIbeCipherSuite>::PublicKeyGroup;
-
-            fn verify(
-                &self,
-                m: impl AsRef<[u8]>,
-                signature: Self::SignatureGroup,
-                public_key: Self::PublicKeyGroup,
-            ) -> bool {
-                self.verify_decryption_key(m.as_ref(), signature, public_key)
-            }
-        }
-
-        /// Implementation of a BLS signer [`IbeIdentityOnBn254G1Suite`].
-        impl<S> BlsSigner for IbeIdentityOnBn254G1Suite<S>
-        where
-            Self: BlsVerifier
-                + PairingIbeSigner<IdentityGroup = <Self as BlsVerifier>::SignatureGroup>,
-        {
-            type Error = Infallible;
-
-            fn sign(&self, m: impl AsRef<[u8]>) -> Result<Self::SignatureGroup, Self::Error> {
-                let identity = self.h1(m.as_ref());
-                Ok(self.decryption_key(identity))
-            }
-        }
-    }
 }
 
 /// Stolen from ark because it's not public, this is so ugly

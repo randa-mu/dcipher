@@ -59,3 +59,5 @@ thiserror = { workspace = true }
 [dev-dependencies]
 hex = { workspace = true }
 alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+dcipher-signer = { workspace = true, features = ["bn254", "sha2", "sha3"] }
+bytes.workspace = true

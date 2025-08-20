@@ -10,11 +10,13 @@ use crate::signature_sender::async_signer::SignatureSenderAsyncSigner;
 use crate::signature_sender::contracts::SignatureSender;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
+use dcipher_signer::dsigner::{ApplicationArgs, DSignerScheme, SignatureAlgorithm};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
 /// Helper struct used to instantiate a [`SignatureSenderFulfiller`], an implementation of [`TickerFulfiller`].
-pub struct SignatureSenderFulfillerConfig<S, TF>(
+pub struct SignatureSenderFulfillerConfig<CG, S, TF>(
+    PhantomData<fn(CG) -> CG>,
     PhantomData<fn(S) -> S>,
     PhantomData<fn(TF) -> TF>,
 );
@@ -23,21 +25,23 @@ pub struct SignatureSenderFulfillerConfig<S, TF>(
 pub type SignatureSenderFulfiller<RS, TF> =
     TickerFulfiller<SignatureRequest, SignedSignatureRequest, RS, TF>;
 
-impl<S, TF> SignatureSenderFulfillerConfig<S, TF>
+impl<CG, S, TF> SignatureSenderFulfillerConfig<CG, S, TF>
 where
-    S: AsynchronousSigner<Bytes>,
+    S: DSignerScheme,
     TF: TransactionFulfiller<SignedRequest = SignedSignatureRequest>,
-    SignatureSenderAsyncSigner<S>:
+    SignatureSenderAsyncSigner<CG, S>:
         AsynchronousSigner<SignatureRequest, Signature = SignedSignatureRequest>,
 {
     /// Instantiate a [`SignatureSenderFulfiller<RS, TF>`](SignatureSenderFulfiller).
     pub fn new_fulfiller(
         signer: S,
+        algorithm: SignatureAlgorithm,
+        application_args: ApplicationArgs,
         transaction_fulfiller: TF,
         max_fulfillment_per_tick: usize,
         retry_strategy: RetryStrategy,
-    ) -> SignatureSenderFulfiller<SignatureSenderAsyncSigner<S>, TF> {
-        let signer = SignatureSenderAsyncSigner::new(signer);
+    ) -> SignatureSenderFulfiller<SignatureSenderAsyncSigner<CG, S>, TF> {
+        let signer = SignatureSenderAsyncSigner::new(signer, algorithm, application_args);
         TickerFulfiller::new(
             signer,
             transaction_fulfiller,

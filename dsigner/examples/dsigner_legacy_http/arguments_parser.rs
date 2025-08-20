@@ -64,12 +64,8 @@ pub struct KeyConfigArgs {
     pub t: NonZeroU16,
 
     /// DST used in the signature scheme
-    #[arg(
-        short,
-        env = "DSIGNER_DST",
-        default_value = "dsigner-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_"
-    )]
-    pub dst: String,
+    #[arg(short, env = "DSIGNER_DST_SUFFIX", default_value = "dsigner")]
+    pub dst_suffix: String,
 
     /// Nodes configuration file
     #[arg(long, env = "DSIGNER_NODES_CONFIG", required = false)]

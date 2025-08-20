@@ -15,8 +15,12 @@ use dcipher_agents::decryption_sender::contracts::DecryptionSender;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
-use dcipher_agents::signer::bls::ThresholdSigner;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
+use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
+use dcipher_signer::dsigner::{
+    ApplicationArgs, ApplicationBlocklockArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
+    BlsSignatureHash, SignatureAlgorithm,
+};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -159,36 +163,33 @@ where
     let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().into();
 
     // Get per-nodes config
-    let (mut pks, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = nodes_config
-        .nodes
-        .iter()
-        .cloned()
-        .map(|c| (c.bls_pk, c.address, c.peer_id, c.node_id.get()))
-        .collect();
+    let (mut pks_g2, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
+        nodes_config
+            .nodes
+            .iter()
+            .cloned()
+            .map(|c| {
+                (
+                    (c.node_id.get(), c.bls_pk),
+                    c.address,
+                    c.peer_id,
+                    c.node_id.get(),
+                )
+            })
+            .collect();
 
     // Add own pk to the list if required
-    if pks.len() == usize::from(args.key_config.n.get() - 1) {
+    if pks_g2.len() == usize::from(args.key_config.n.get() - 1) {
         let pk = ark_bn254::G2Affine::generator() * sk;
-        pks.insert(
-            usize::from(args.key_config.node_id.get() - 1),
-            pk.into_affine(),
-        );
+        pks_g2.push((args.key_config.node_id.get(), pk.into_affine()));
     }
 
     // Create a threshold signer
-    let cs = IbeIdentityOnBn254G1Suite::new_signer(
+    let cs = IbeIdentityOnBn254G1Suite::new(
         b"BLOCKLOCK",
         args.chain
             .chain_id
             .expect("chain id must have been set here"),
-        sk,
-    );
-    let ts = ThresholdSigner::new(
-        cs.clone(),
-        args.key_config.n.get(),
-        args.key_config.t.get(),
-        args.key_config.node_id.get(),
-        pks,
     );
 
     // Create a libp2p transport and start it
@@ -201,7 +202,16 @@ where
     )
     .run(args.libp2p.libp2p_listen_addr.clone())?;
 
-    let (ts_stopper, signer) = ts.run(
+    let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(sk);
+    let signer = BlsThresholdSigner::new(
+        signer,
+        args.key_config.n.get(),
+        args.key_config.t.get(),
+        args.key_config.node_id.get(),
+        Default::default(),
+        pks_g2.into_iter().collect(),
+    );
+    let (ts_stopper, signer) = signer.run(
         node.get_transport()
             .expect("newly created node should have a transport"),
     );
@@ -226,6 +236,16 @@ where
     let fulfiller = DecryptionSenderFulfillerConfig::new_fulfiller(
         cs,
         signer,
+        SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+            curve: BlsSignatureCurve::Bn254G1,
+            hash: BlsSignatureHash::Keccak256,
+        }),
+        ApplicationArgs::Blocklock(ApplicationBlocklockArgs {
+            chain_id: args
+                .chain
+                .chain_id
+                .expect("chain id must have been set at this point"),
+        }),
         blocklock_tx_fulfiller,
         args.chain.max_tx_per_tick,
         args.chain.tx_retry_strategy,

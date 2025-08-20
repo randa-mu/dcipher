@@ -1,6 +1,7 @@
 mod arguments_parser;
 
 use crate::arguments_parser::{Args, DSignerConfig, NodesConfiguration};
+use anyhow::Context;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, PrimeField};
 use axum::http::StatusCode;
@@ -11,7 +12,7 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use dcipher_signer::bls::{
-    AsyncThresholdSigner, BlsPairingSigner, BlsThresholdSigner, lagrange_points_interpolate_at,
+    AsyncThresholdSigner, BlsPairingSigner, BlsThresholdSigner,
 };
 use dcipher_signer::dsigner::{
     ApplicationAnyArgs, ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
@@ -25,6 +26,7 @@ use tokio_util::sync::CancellationToken;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use utils::serialize::point::PointDeserializeCompressed;
 
 // Request structure for the sign endpoint
 #[derive(Deserialize)]
@@ -45,6 +47,8 @@ struct PublicKey(String);
 // Application state
 struct AppState {
     async_signer: AsyncThresholdSigner,
+    alg: SignatureAlgorithm,
+    args: ApplicationArgs,
     dst: String,
     pk: PublicKey,
 }
@@ -66,13 +70,8 @@ async fn sign_handler(
     let start = std::time::Instant::now();
 
     let request = SignatureRequest {
-        alg: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
-            curve: BlsSignatureCurve::Bn254G1,
-            hash: BlsSignatureHash::Keccak256,
-        }),
-        args: ApplicationArgs::Any(ApplicationAnyArgs {
-            dst_suffix: "dia-vrf".to_owned(),
-        }),
+        alg: state.alg,
+        args: state.args.clone(),
         m: payload.m.into(),
     };
 
@@ -97,12 +96,7 @@ async fn sign_handler(
 fn get_signer(
     config: &Args,
     nodes_config: &NodesConfiguration,
-) -> anyhow::Result<(
-    Libp2pNode<u16>,
-    CancellationToken,
-    AsyncThresholdSigner,
-    ark_bn254::G2Affine,
-)> {
+) -> anyhow::Result<(Libp2pNode<u16>, CancellationToken, AsyncThresholdSigner)> {
     // Parse key
     let sk: ark_bn254::Fr = config.key_config.bls_key.to_owned().into();
 
@@ -136,13 +130,6 @@ fn get_signer(
         .map(|(pki, i)| (i, pki))
         .collect::<HashMap<_, _>>();
 
-    let pks_g2_vec = pks_g2
-        .clone()
-        .into_iter()
-        .map(|(i, pki)| (u64::from(i), pki.into_group()))
-        .collect::<Vec<_>>();
-    let pk_g2 = lagrange_points_interpolate_at(&pks_g2_vec, 0).into_affine();
-
     // Create a threshold signer
     let cs = BlsPairingSigner::<ark_bn254::Bn254>::new(sk);
     let ts = BlsThresholdSigner::new_with_cache_size(
@@ -172,7 +159,7 @@ fn get_signer(
             .expect("newly created node should have a transport"),
     );
 
-    Ok((libp2p_node, ts_stopper, async_signer, pk_g2))
+    Ok((libp2p_node, ts_stopper, async_signer))
 }
 
 #[tokio::main]
@@ -188,11 +175,25 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Initialize and start a threshold signer
-    let (libp2p_node, ts_cancel, async_signer, group_pk) =
+    let (libp2p_node, ts_cancel, async_signer) =
         get_signer(&config, &nodes_config.unwrap_or_default())?;
 
+    let alg = SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+        curve: BlsSignatureCurve::Bn254G1,
+        hash: BlsSignatureHash::Keccak256,
+    });
+    let args = ApplicationArgs::Any(ApplicationAnyArgs {
+        dst_suffix: config.key_config.dst_suffix,
+    });
+
+    let params = async_signer
+        .verification_parameters(&alg, &args)
+        .context("failed to obtain dsigner verification parameters")?;
+    let group_pk: ark_bn254::G2Affine = PointDeserializeCompressed::deser(&params.public_key)
+        .context("failed to deserialize dsigner public key")?;
+
     // Convert group pk to string
-    let (x, y) = group_pk.xy().expect("pk cannot be at infinity");
+    let (&x, &y) = group_pk.xy().context("dsigner public key at infinity")?;
     let pk_ser = [
         x.c1.into_bigint().to_bytes_be(),
         x.c0.into_bigint().to_bytes_be(),
@@ -205,7 +206,9 @@ async fn main() -> anyhow::Result<()> {
     // Initialize application state
     let app_state = Arc::new(AppState {
         async_signer,
-        dst: config.key_config.dst,
+        dst: String::from_utf8(params.dst.to_vec())?,
+        alg,
+        args,
         pk,
     });
 

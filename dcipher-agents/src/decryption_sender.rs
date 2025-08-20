@@ -13,6 +13,7 @@ use crate::fulfiller::{Identifier, TransactionFulfiller};
 use crate::ibe_helper::PairingIbeCipherSuite;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
+use dcipher_signer::dsigner::{ApplicationArgs, DSignerScheme, SignatureAlgorithm};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::marker::PhantomData;
@@ -31,7 +32,7 @@ pub type DecryptionSenderFulfiller<RS, TF> =
 impl<CS, S, TF> DecryptionSenderFulfillerConfig<CS, S, TF>
 where
     CS: PairingIbeCipherSuite,
-    S: AsynchronousSigner<Bytes>,
+    S: DSignerScheme,
     TF: TransactionFulfiller<SignedRequest = SignedDecryptionRequest<'static>>,
     DecryptionSenderAsyncSigner<CS, S>:
         AsynchronousSigner<DecryptionRequest, Signature = SignedDecryptionRequest<'static>>,
@@ -40,11 +41,13 @@ where
     pub fn new_fulfiller(
         cs: CS,
         signer: S,
+        algorithm: SignatureAlgorithm,
+        application_args: ApplicationArgs,
         transaction_fulfiller: TF,
         max_fulfillment_per_tick: usize,
         retry_strategy: RetryStrategy,
     ) -> DecryptionSenderFulfiller<DecryptionSenderAsyncSigner<CS, S>, TF> {
-        let signer = DecryptionSenderAsyncSigner::new(cs, signer);
+        let signer = DecryptionSenderAsyncSigner::new(cs, signer, algorithm, application_args);
         TickerFulfiller::new(
             signer,
             transaction_fulfiller,

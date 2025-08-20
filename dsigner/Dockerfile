@@ -2,6 +2,8 @@
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+RUN apt-get update && apt-get install -y protobuf-compiler
+
 WORKDIR /app
 
 FROM chef AS planner
