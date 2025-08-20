@@ -42,6 +42,7 @@ utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 
 # hashes
 digest = "0.10"
+sha2 = "0.10"
 sha3 = "0.10"
 
 # async
@@ -88,6 +89,8 @@ hex = "0.4"
 humantime = "2.2"
 itertools = "0.14"
 rand = "0.8.0"
+strum = { version = "0.27", features = ["derive"] }
+strum_macros = "0.27"
 thiserror = "2.0"
 
 [patch.crates-io]
