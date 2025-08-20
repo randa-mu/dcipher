@@ -11,9 +11,7 @@ use axum::{Json, Router, extract::State, routing::post};
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
-use dcipher_signer::bls::{
-    AsyncThresholdSigner, BlsPairingSigner, BlsThresholdSigner,
-};
+use dcipher_signer::bls::{AsyncThresholdSigner, BlsPairingSigner, BlsThresholdSigner};
 use dcipher_signer::dsigner::{
     ApplicationAnyArgs, ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
     BlsSignatureHash, DSignerScheme, SignatureAlgorithm, SignatureRequest,
