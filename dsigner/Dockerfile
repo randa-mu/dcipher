@@ -18,7 +18,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-RUN cargo build --release --example dsigner_legacy_http
+RUN cargo build --release --example dsigner_legacy_http --all-features
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
