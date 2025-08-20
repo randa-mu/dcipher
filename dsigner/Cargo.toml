@@ -6,6 +6,7 @@ edition.workspace = true
 [features]
 client = []
 server = []
+grpc-server = ["server"]
 
 [dependencies]
 dcipher-signer = { workspace = true, features = ["bls12-381", "bn254", "sha3", "sha2"] }
@@ -59,4 +60,8 @@ tonic-build.workspace = true
 
 [[example]]
 name = "dsigner_grpc"
+required-features = ["grpc-server"]
+
+[[example]]
+name = "dsigner_legacy_http"
 required-features = ["server"]
