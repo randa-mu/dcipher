@@ -86,6 +86,14 @@ pub struct ApplicationAnyArgs {
     pub dst_suffix: String,
 }
 
+/// Verification parameters required to verify a signature.
+#[derive(Clone, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct VerificationParameters {
+    pub public_key: Bytes,
+    pub dst: Bytes,
+}
+
 /// A signature request composed of a message, a signature algorithm, and application-specific argument(s).
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SignatureRequest {
@@ -128,10 +136,17 @@ pub struct SchemeAlgorithm {
 
 /// A dyn-compatible trait that can be used to group various signers of a specific type (e.g., BLS, Frost, ...).
 pub trait DSignerScheme {
+    /// Obtain the scheme details.
     fn details(&self) -> SchemeDetails;
 
     /// Obtain a byte-encoded signature for the associated signature request.
     fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>>;
+
+    fn verification_parameters(
+        &self,
+        alg: &SignatureAlgorithm,
+        args: &ApplicationArgs,
+    ) -> Result<VerificationParameters, DSignerSchemeError>;
 }
 
 impl ApplicationArgs {

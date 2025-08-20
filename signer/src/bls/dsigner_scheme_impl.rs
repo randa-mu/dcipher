@@ -3,7 +3,8 @@
 use crate::bls::filter::BlsFilter;
 use crate::bls::{BlsSignatureRequest, SharedSignatureCache, StoredSignatureRequest};
 use crate::dsigner::{
-    DSignerScheme, DSignerSchemeError, SchemeDetails, SignatureAlgorithm, SignatureRequest,
+    ApplicationArgs, DSignerScheme, DSignerSchemeError, SchemeDetails, SignatureAlgorithm,
+    SignatureRequest, VerificationParameters,
 };
 use bytes::Bytes;
 use futures_util::FutureExt;
@@ -78,6 +79,32 @@ impl From<AsyncThresholdSignerError> for DSignerSchemeError {
 impl DSignerScheme for AsyncThresholdSigner {
     fn details(&self) -> SchemeDetails {
         self.scheme_details.clone()
+    }
+
+    fn verification_parameters(
+        &self,
+        alg: &SignatureAlgorithm,
+        args: &ApplicationArgs,
+    ) -> Result<VerificationParameters, DSignerSchemeError> {
+        // Get dst
+        let SignatureAlgorithm::Bls(bls_alg) = alg else {
+            Err(AsyncThresholdSignerError::AlgorithmNotSupported)?
+        };
+        let Some(dst) = self.filter.get_rfc9380_dst_if_supported(args, bls_alg) else {
+            Err(AsyncThresholdSignerError::ApplicationNotSupported)?
+        };
+
+        // Find compatible public key
+        let public_key = self
+            .scheme_details
+            .scheme_algs
+            .iter()
+            .find(|scheme| scheme.algs.contains(alg)) // tiny number of algs
+            .ok_or(AsyncThresholdSignerError::AlgorithmNotSupported)?
+            .public_key
+            .clone();
+
+        Ok(VerificationParameters { dst, public_key })
     }
 
     fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>> {
