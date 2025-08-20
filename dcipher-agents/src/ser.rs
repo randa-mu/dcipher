@@ -35,17 +35,11 @@ impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
 
 impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bls12_381::g1::Config> {
     fn ser_bytes(&self) -> Bytes {
-        use ark_bls12_381::Fq;
-        use ark_ff::{BigInteger, PrimeField, Zero};
-
-        let (x, y) = match self.xy() {
-            Some((x, y)) => (x, y),
-            None => (&Fq::zero(), &Fq::zero()),
-        };
-
-        [x.into_bigint().to_bytes_be(), y.into_bigint().to_bytes_be()]
-            .concat()
-            .into()
+        use ark_serialize::CanonicalSerialize;
+        let mut buf = Vec::with_capacity(48);
+        self.serialize_compressed(&mut buf)
+            .expect("serialization should not fail");
+        buf.into()
     }
 }
 
