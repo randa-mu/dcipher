@@ -1494,7 +1494,6 @@ dependencies = [
  "dcipher-agents",
  "dcipher-network",
  "dcipher-signer",
- "dsigner",
  "figment",
  "futures",
  "futures-util",

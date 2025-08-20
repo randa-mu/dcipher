@@ -8,7 +8,6 @@ edition.workspace = true
 alloy = { workspace = true, features = ["default", "provider-ws"] }
 dcipher-agents = { workspace = true, features = ["blocklock", "bn254"] }
 dcipher-signer = { workspace = true, features = ["bn254", "sha2"] }
-dsigner = { workspace = true, features = ["server"] }
 
 # async
 futures = { workspace = true }
