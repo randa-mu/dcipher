@@ -10,8 +10,6 @@ use dcipher_signer::dsigner::DSignerScheme;
 use dsigner::proto_types::d_signer_service_server::DSignerServiceServer;
 use dsigner::server::DSignerSchemeManager;
 use dsigner::server::grpc::DSignerServiceImpl;
-use std::net::IpAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -66,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
     let dsigner_service = DSignerServiceImpl::new(Arc::new(manager));
     tonic::transport::Server::builder()
         .add_service(DSignerServiceServer::new(dsigner_service))
-        .serve((IpAddr::from_str("127.0.0.1")?, 8090).into())
+        .serve((config.listen_addr, config.port).into())
         .await?;
 
     tracing::info!("Stopping libp2p dispatcher...");
@@ -91,6 +89,9 @@ where
     BlsPairingSigner<E>: BlsSigner + BlsVerifier<E = E>,
 {
     let (pks_g1, pks_g2) = bls_config
+        .nodes_config
+        .left()
+        .expect("nodes_config not parsed from file")
         .nodes
         .into_iter()
         .map(|n| ((n.id.get(), n.pk_g1), (n.id.get(), n.pk_g2)))
@@ -118,6 +119,10 @@ struct Libp2pTransports {
 fn get_libp2p_transports(network_config: &NetworkConfig) -> anyhow::Result<Libp2pTransports> {
     // Make sure that the identifiers are unique
     let (peer_addrs, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>) = network_config
+        .peers_config
+        .as_ref()
+        .left()
+        .expect("peers_config not parsed from file")
         .peers
         .iter()
         .map(|p| (p.multiaddr.clone(), p.peer_id, p.id.get()))
