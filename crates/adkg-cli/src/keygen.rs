@@ -1,4 +1,3 @@
-use adkg::scheme::bls12_381::DYX22Bls12_381G1Sha256;
 use adkg::scheme::bn254::DYX22Bn254G1Keccak256;
 use adkg::scheme::{AdkgScheme, AdkgSchemeConfig};
 use anyhow::anyhow;
@@ -36,27 +35,7 @@ pub fn keygen(
             };
 
             let pk = PublicKeyMaterial {
-                adkg_pk: adkg_pk
-                    .ser_compressed_base64()
-                    .expect("failed to serialize adkg pk"),
-                peer_id,
-            };
-
-            Ok((sk, pk))
-        }
-
-        DYX22Bls12_381G1Sha256::NAME => {
-            let scheme = DYX22Bls12_381G1Sha256::try_from(scheme_config)?;
-            let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
-            let sk = PrivateKeyMaterial {
-                adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
-                libp2p_sk,
-            };
-
-            let pk = PublicKeyMaterial {
-                adkg_pk: adkg_pk
-                    .ser_compressed_base64()
-                    .expect("failed to serialize adkg pk"),
+                adkg_pk: adkg_pk.ser_base64().expect("failed to serialize adkg pk"),
                 peer_id,
             };
 
