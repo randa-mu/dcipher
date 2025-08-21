@@ -21,7 +21,7 @@ jobs:
       matrix:
         target:
           - image: 'blocklock-agent-rs'
-            description: 'a rust agent for uploading signatures to blockchains'
+            description: 'a rust agent for uploading timelock decryption keys to blockchains'
             path: './blocklock-agent/Dockerfile'
           - image: 'dsigner'
             description: 'a distributed signing service'
@@ -29,6 +29,9 @@ jobs:
           - image: 'onlyswaps-verifier'
             description: 'a rust agent for verifying crosschain swaps'
             path: './onlyswaps-verifier/Dockerfile'
+          - image: 'randomness-agent-rs'
+            description: 'a rust agent for uploading verifiable randomness on request to blockchains'
+            path: './randomness-agent/Dockerfile'
 
     steps:
       - name: Checkout code
