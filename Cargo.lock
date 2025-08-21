@@ -2207,6 +2207,7 @@ dependencies = [
  "clap",
  "dcipher-network",
  "dcipher-signer",
+ "either",
  "figment",
  "futures-util",
  "hex",

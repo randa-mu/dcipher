@@ -53,6 +53,7 @@ thiserror.workspace = true
 [dev-dependencies]
 ark-bn254.workspace = true
 ark-bls12-381.workspace = true
+either = { workspace = true, features = ["serde"] }
 itertools.workspace = true
 utils = { workspace = true, features = ["bn254"] }
 

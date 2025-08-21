@@ -47,7 +47,7 @@ prost = { workspace = true, features = ["derive"], optional = true }
 
 # misc
 bytes = { workspace = true, features = ["serde"], optional = true }
-either = "1.15"
+either.workspace = true
 itertools = { workspace = true }
 thiserror = { workspace = true }
 lru = "0.14"
