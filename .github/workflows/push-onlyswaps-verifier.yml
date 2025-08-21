@@ -38,7 +38,7 @@ jobs:
           labels: |
             maintainer=${{ env.IMAGE_MAINTAINER }}
             org.opencontainers.image.title=onlyswaps-verifier
-            org.opencontainers.image.description="a rust agent for verifying crosschain swaps"
+            org.opencontainers.image.description=""
             org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}
           flavor: |
             latest=false
