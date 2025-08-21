@@ -91,12 +91,12 @@ pub mod bn254 {
     use utils::serialize::SerializationError;
     use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-    pub struct DYX20Bn254G1Keccak256 {
+    pub struct DYX22Bn254G1Keccak256 {
         app_name: String,
         generator_h: ark_bn254::G1Projective,
     }
 
-    impl DYX20Bn254G1Keccak256 {
+    impl DYX22Bn254G1Keccak256 {
         pub fn new(app_name: String, generator_h: ark_bn254::G1Projective) -> Self {
             Self {
                 app_name,
@@ -105,10 +105,10 @@ pub mod bn254 {
         }
     }
 
-    impl AdkgScheme for DYX20Bn254G1Keccak256 {
-        const NAME: &'static str = "DYX20-Bn254G1-Keccak256";
+    impl AdkgScheme for DYX22Bn254G1Keccak256 {
+        const NAME: &'static str = "DYX22-Bn254G1-Keccak256";
 
-        type Error = DYX20Bn254G1Keccak256Error;
+        type Error = DYX22Bn254G1Keccak256Error;
         type Curve = ark_bn254::G1Projective;
         type Hash = sha3::Keccak256;
 
@@ -176,7 +176,7 @@ pub mod bn254 {
     }
 
     #[derive(thiserror::Error, Debug)]
-    pub enum DYX20Bn254G1Keccak256Error {
+    pub enum DYX22Bn254G1Keccak256Error {
         #[error("bad curve id")]
         BadCurveId,
 
@@ -199,8 +199,8 @@ pub mod bn254 {
         PointDeserialize(#[from] SerializationError),
     }
 
-    impl TryFrom<AdkgSchemeConfig> for DYX20Bn254G1Keccak256 {
-        type Error = DYX20Bn254G1Keccak256Error;
+    impl TryFrom<AdkgSchemeConfig> for DYX22Bn254G1Keccak256 {
+        type Error = DYX22Bn254G1Keccak256Error;
 
         fn try_from(value: AdkgSchemeConfig) -> Result<Self, Self::Error> {
             if value.adkg_scheme_name != <Self as AdkgScheme>::NAME {
@@ -234,8 +234,8 @@ pub mod bn254 {
         }
     }
 
-    impl From<DYX20Bn254G1Keccak256> for AdkgSchemeConfig {
-        fn from(value: DYX20Bn254G1Keccak256) -> Self {
+    impl From<DYX22Bn254G1Keccak256> for AdkgSchemeConfig {
+        fn from(value: DYX22Bn254G1Keccak256) -> Self {
             let generator_g = value
                 .generator_g()
                 .ser_compressed_base64()
@@ -247,12 +247,12 @@ pub mod bn254 {
             Self {
                 app_name: value.app_name,
                 adkg_version: ADKG_VERSION.to_owned(),
-                adkg_scheme_name: <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME.to_owned(),
+                adkg_scheme_name: <DYX22Bn254G1Keccak256 as AdkgScheme>::NAME.to_owned(),
                 generator_g,
                 generator_h,
                 curve_id:
-                    <<DYX20Bn254G1Keccak256 as AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
-                hash_id: <<DYX20Bn254G1Keccak256 as AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
+                    <<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
+                hash_id: <<DYX22Bn254G1Keccak256 as AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
             }
         }
     }

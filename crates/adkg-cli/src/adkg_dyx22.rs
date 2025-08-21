@@ -9,7 +9,7 @@ use adkg::pke::ec_hybrid_chacha20poly1305::{
     HybridCiphertext, MultiHybridCiphertext, NONCE_LENGTH,
 };
 use adkg::rand::AdkgRng;
-use adkg::scheme::bn254::DYX20Bn254G1Keccak256;
+use adkg::scheme::bn254::DYX22Bn254G1Keccak256;
 use adkg::scheme::{AdkgScheme, AdkgSchemeConfig};
 use anyhow::{Context, anyhow};
 use ark_ec::{CurveGroup, Group};
@@ -28,7 +28,7 @@ use utils::serialize::fq::FqDeserialize;
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 #[allow(clippy::too_many_arguments)]
-pub async fn adkg_dyx20_bn254_g1_keccak256<TBT>(
+pub async fn adkg_dyx22_bn254_g1_keccak256<TBT>(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
@@ -39,21 +39,21 @@ pub async fn adkg_dyx20_bn254_g1_keccak256<TBT>(
     writer: Option<InMemoryWriter>,
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(
-    AdkgOutput<<DYX20Bn254G1Keccak256 as AdkgScheme>::Curve>,
+    AdkgOutput<<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve>,
     Option<EncryptedAdkgTranscript>,
 )>
 where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let scheme = DYX20Bn254G1Keccak256::try_from(scheme_config)?;
-    let sk = <<DYX20Bn254G1Keccak256 as AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
+    let scheme = DYX22Bn254G1Keccak256::try_from(scheme_config)?;
+    let sk = <<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
         adkg_sk,
     )?;
     let pks = group_config
         .nodes
         .iter()
         .map(|p| {
-            <DYX20Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
+            <DYX22Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
@@ -121,24 +121,24 @@ where
     Ok(res??) // unwrap both errors (timeout + adkg error)
 }
 
-pub async fn adkg_dyx20_bn254_g1_keccak256_rescue(
+pub async fn adkg_dyx22_bn254_g1_keccak256_rescue(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
     scheme_config: AdkgSchemeConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<<DYX20Bn254G1Keccak256 as AdkgScheme>::Curve>> {
-    let scheme = DYX20Bn254G1Keccak256::try_from(scheme_config)?;
+) -> anyhow::Result<AdkgOutput<<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve>> {
+    let scheme = DYX22Bn254G1Keccak256::try_from(scheme_config)?;
     let adkg_sk =
-        <<DYX20Bn254G1Keccak256 as AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
+        <<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
             adkg_sk,
         )?;
     let adkg_pks = group_config
         .nodes
         .iter()
         .map(|p| {
-            <DYX20Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
+            <DYX22Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
@@ -149,7 +149,7 @@ pub async fn adkg_dyx20_bn254_g1_keccak256_rescue(
 
     // Deserialize the transcripts
     let transcripts = transcripts.into_iter().map(|t| {
-        serde_json::from_slice::<DYX20Transcript>(&t).context("failed to deserialize transcripts")
+        serde_json::from_slice::<DYX22Transcript>(&t).context("failed to deserialize transcripts")
     });
 
     // Decrypt the transcripts
@@ -229,7 +229,7 @@ struct ChaCha20BroadcastCiphertext {
 /// Authenticity of the transcript is obtained by relying on hybrid encryption w/ static public keys.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
-struct DYX20Transcript {
+struct DYX22Transcript {
     /// identifier of the party who created the transcript
     id: PartyId,
 
@@ -328,7 +328,7 @@ async fn encrypt_transcripts(
         .context("failed to encrypt direct messages")?;
 
     // Serialize the encrypted transcript w/ json for readability
-    let transcript = serde_json::to_vec(&DYX20Transcript {
+    let transcript = serde_json::to_vec(&DYX22Transcript {
         id,
         broadcasts_key_ct: enc_broadcast_key,
         broadcasts_nonce: broadcasts_nonce.into(),
@@ -343,7 +343,7 @@ fn decrypt_transcript<CG>(
     receiver_id: PartyId,
     adkg_sk: &CG::ScalarField, // the secret sk such that g * sk == pks[id]
     adkg_pks: &[CG],
-    transcript_ct: DYX20Transcript,
+    transcript_ct: DYX22Transcript,
 ) -> anyhow::Result<TranscriptData>
 where
     CG: CurveGroup + PointSerializeCompressed,
