@@ -1,0 +1,15 @@
+node_id = 3
+
+[schemes.test-bls12-381]
+type = "Bls12_381"
+sk = "0x16eff1c711b29ad205b24f1fccbe59c4e4ce14362b09e92f1733c3bbc7683105"
+n = 3
+t = 2
+nodes_config = "./test-bls12-381_nodes.toml"
+
+[schemes.test-bn254]
+type = "Bn254"
+sk = "0x2b08527b8378f41f9f0c9b42f507abcc82ecd060f5cb470d0d8d2449e1b9c236"
+n = 3
+t = 2
+nodes_config = "./test-bn254_nodes.toml"

@@ -1,0 +1,4 @@
+id = 3
+libp2p_listen_addr = "/ip4/0.0.0.0/tcp/9000"
+libp2p_key = "CAESQCUnrqlkKJclP3/fCI6dBUnYXy5bafmwLmDJXaC8a41yxlkTb0sTDzmkxLZojAHamK7+QPu6QoDjqkajv2z9j64="
+peers_config = "./network_peers.toml"
