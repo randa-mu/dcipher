@@ -192,7 +192,10 @@ pub(crate) mod tests {
                     .clone();
                 rx.changed().await.expect("failed to await has_changed");
 
-                Ok(rx.borrow_and_update().clone().unwrap().unwrap())
+                rx.borrow_and_update()
+                    .clone()
+                    .unwrap()
+                    .map_err(|e| DSignerSchemeError::Other(e.into()))
             }
             .boxed()
         }
