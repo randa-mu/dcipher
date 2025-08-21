@@ -1,6 +1,6 @@
 //! CLI tool to start ADKG ceremonies
 
-mod adkg_dyx20;
+mod adkg_dyx22;
 mod cli;
 mod keygen;
 #[cfg(feature = "metrics")]
@@ -8,7 +8,7 @@ mod metrics;
 mod scheme;
 mod transcripts;
 
-use crate::adkg_dyx20::{adkg_dyx20_bn254_g1_keccak256, adkg_dyx20_bn254_g1_keccak256_rescue};
+use crate::adkg_dyx22::{adkg_dyx22_bn254_g1_keccak256, adkg_dyx22_bn254_g1_keccak256_rescue};
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::keygen::{PrivateKeyMaterial, PublicKeyMaterial, keygen};
 use crate::scheme::new_scheme_config;
@@ -16,7 +16,7 @@ use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::adkg::AdkgOutput;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
-use adkg::scheme::bn254::DYX20Bn254G1Keccak256;
+use adkg::scheme::bn254::DYX22Bn254G1Keccak256;
 use adkg::scheme::{AdkgScheme, AdkgSchemeConfig};
 use anyhow::{Context, anyhow};
 use ark_ec::CurveGroup;
@@ -191,8 +191,8 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     let transports = get_libp2p_transports(id, &sk, listen_address, &group_config).await?;
 
     let output = match scheme_config.adkg_scheme_name.as_str() {
-        <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME => {
-            adkg_dyx20_bn254_g1_keccak256(
+        <DYX22Bn254G1Keccak256 as AdkgScheme>::NAME => {
+            adkg_dyx22_bn254_g1_keccak256(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -268,8 +268,8 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
     let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
     let mut rng = AdkgStdRng::new(OsRng);
     let output = match scheme_config.adkg_scheme_name.as_str() {
-        <DYX20Bn254G1Keccak256 as AdkgScheme>::NAME => {
-            adkg_dyx20_bn254_g1_keccak256_rescue(
+        <DYX22Bn254G1Keccak256 as AdkgScheme>::NAME => {
+            adkg_dyx22_bn254_g1_keccak256_rescue(
                 id,
                 &sk.adkg_sk,
                 &group_config,
