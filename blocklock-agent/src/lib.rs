@@ -13,7 +13,7 @@ use std::future::Future;
 use std::sync::Arc;
 
 /// Scheme ID of the blocklock scheme
-pub const BLOCKLOCK_SCHEME_ID: &str = "BN254-BLS-BLOCKLOCK";
+pub const BN254_BLOCKLOCK_SCHEME_ID: &str = "BN254-BLS-BLOCKLOCK";
 
 /// Ticker using tokio's Notify
 #[derive(Clone, Default)]

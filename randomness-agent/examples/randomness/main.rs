@@ -16,7 +16,7 @@ use dcipher_agents::signature_sender::{SignatureRequest, SignatureSenderFulfille
 use dcipher_agents::signer::BLS12_381SignatureOnG1Signer;
 use dcipher_agents::signer::threshold_signer::ThresholdSigner;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
-use randomness_agent::{NotifyTicker, RANDOMNESS_SCHEME_ID, run_agent};
+use randomness_agent::{BLS12_381_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -76,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Create a new randomness agent
     let mut agent = RandomnessAgent::new(
-        RANDOMNESS_SCHEME_ID,
+        BLS12_381_RANDOMNESS_SCHEME_ID,
         config.chain.sync_batch_size,
         channel,
         signature_sender_contract_ro.clone(),
