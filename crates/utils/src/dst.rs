@@ -1,7 +1,7 @@
 //! Module used to dynamically generate RFC 9380 compliant DSTs (domain separation tags).
 
 use ark_ec::CurveGroup;
-use digest::{DynDigest, ExtendableOutput};
+use digest::DynDigest;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -17,6 +17,7 @@ pub struct Rfc9380Dst(pub Vec<u8>);
 ///     `%application_name%_%curve_name%_%expand%_%hash_name%_%mapping%_%encoding%_%suffix%_`
 /// where `expand` is set to `XMD` when using a fixed-width hash function, and to `XOF` when using an
 /// extendable-output function.
+#[derive(Clone)]
 pub struct Rfc9380DstBuilder {
     application_name: Option<Vec<u8>>,
     curve_id: Option<Vec<u8>>,
@@ -27,13 +28,23 @@ pub struct Rfc9380DstBuilder {
 }
 
 /// Identifier for the elliptic curve group based on RFC 9380.
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub enum CurveId {
     Bn254G1,
     Bn254G2,
-    Bls12381G1,
-    Bls12381G2,
-    Custom(Cow<'static, [u8]>),
+    Bls12_381G1,
+    Bls12_381G2,
+    Custom(Cow<'static, [u8]>, MapId),
+}
+
+impl CurveId {
+    pub fn default_mapping(&self) -> MapId {
+        match self {
+            CurveId::Bn254G1 | CurveId::Bn254G2 => MapId::SVDW,
+            CurveId::Bls12_381G1 | CurveId::Bls12_381G2 => MapId::SSWU,
+            CurveId::Custom(_, map_id) => *map_id,
+        }
+    }
 }
 
 impl From<CurveId> for Cow<'static, [u8]> {
@@ -47,15 +58,15 @@ impl From<CurveId> for Cow<'static, [u8]> {
                 const CURVE_ID: Cow<'static, [u8]> = Cow::Borrowed(b"BN254G2");
                 CURVE_ID
             }
-            CurveId::Bls12381G1 => {
+            CurveId::Bls12_381G1 => {
                 const CURVE_ID: Cow<'static, [u8]> = Cow::Borrowed(b"BLS12381G1");
                 CURVE_ID
             }
-            CurveId::Bls12381G2 => {
+            CurveId::Bls12_381G2 => {
                 const CURVE_ID: Cow<'static, [u8]> = Cow::Borrowed(b"BLS12381G2");
                 CURVE_ID
             }
-            CurveId::Custom(name) => name,
+            CurveId::Custom(name, _) => name,
         }
     }
 }
@@ -66,7 +77,7 @@ pub trait NamedCurveGroup: CurveGroup {
 }
 
 /// Identifier for the cryptographic hash function based on RFC 9380.
-#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub enum HashId {
     Sha256,
     Sha3_256,
@@ -85,12 +96,27 @@ impl From<HashId> for Cow<'static, [u8]> {
     }
 }
 
+/// Identifier for extensible-output cryptographic hash functions based on RFC 9380.
+#[derive(Hash, Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
+pub enum XofId {
+    Custom(Cow<'static, [u8]>),
+}
+
+impl From<XofId> for Cow<'static, [u8]> {
+    fn from(value: XofId) -> Self {
+        match value {
+            XofId::Custom(name) => name,
+        }
+    }
+}
+
 /// DynDigest with an associated hash identifier.
 pub trait NamedDynDigest: DynDigest {
     const HASH_ID: HashId;
 }
 
 /// Identifier for the `map_to_curve` function described in RFC 9380.
+#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum MapId {
     SVDW,
     SSWU,
@@ -148,17 +174,17 @@ impl Rfc9380DstBuilder {
         self
     }
 
-    pub fn with_xof_id<H: ExtendableOutput>(mut self, hash_id: HashId) -> Self {
+    pub fn with_xof_id(mut self, hash_id: XofId) -> Self {
         let name: &[u8] = &Cow::from(hash_id);
         self.hash_id = Some([b"XOF:", name].concat().to_vec());
         self
     }
 
     pub fn with_hash<H: NamedDynDigest>(self) -> Self {
-        self.with_hash_id::<H>(H::HASH_ID)
+        self.with_hash_id(H::HASH_ID)
     }
 
-    pub fn with_hash_id<H: DynDigest>(mut self, hash_id: HashId) -> Self {
+    pub fn with_hash_id(mut self, hash_id: HashId) -> Self {
         let name: &[u8] = &Cow::from(hash_id);
         self.hash_id = Some([b"XMD:", name].concat().to_vec());
         self
@@ -179,10 +205,16 @@ impl Rfc9380DstBuilder {
         self
     }
 
+    /// Build with the default prefix separator ('_')
     pub fn build(self) -> Rfc9380Dst {
+        self.build_with_app_name_sep(b'_')
+    }
+
+    /// Build with a custom prefix separator
+    pub fn build_with_app_name_sep(self, prefix_sep: u8) -> Rfc9380Dst {
         let mut dst = vec![];
         if let Some(application_name) = self.application_name {
-            dst = [dst, application_name, vec![b'_']].concat();
+            dst = [dst, application_name, vec![prefix_sep]].concat();
         }
 
         if let Some(curve_name) = self.curve_id {
@@ -245,11 +277,11 @@ mod bls12_381_named {
     use super::{CurveId, NamedCurveGroup};
 
     impl NamedCurveGroup for ark_ec::short_weierstrass::Projective<ark_bls12_381::g1::Config> {
-        const CURVE_ID: CurveId = CurveId::Bls12381G1;
+        const CURVE_ID: CurveId = CurveId::Bls12_381G1;
     }
 
     impl NamedCurveGroup for ark_ec::short_weierstrass::Projective<ark_bls12_381::g2::Config> {
-        const CURVE_ID: CurveId = CurveId::Bls12381G2;
+        const CURVE_ID: CurveId = CurveId::Bls12_381G2;
     }
 }
 
