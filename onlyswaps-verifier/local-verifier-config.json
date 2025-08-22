@@ -1,0 +1,11 @@
+{
+  "networks": [{
+    "chain_id": 31337,
+    "rpc_url": "ws://localhost:31337",
+    "router_address": "0x417e932d69C4dBCDFeE1831afbCD897dF7b52385"
+  }, {
+    "chain_id": 1338,
+    "rpc_url": "ws://localhost:1338",
+    "router_address": "0x417e932d69C4dBCDFeE1831afbCD897dF7b52385"
+  }]
+}
