@@ -8,10 +8,13 @@ mod metrics;
 mod scheme;
 mod transcripts;
 
-use crate::adkg_dyx22::{adkg_dyx22_bn254_g1_keccak256, adkg_dyx22_bn254_g1_keccak256_rescue};
+use crate::adkg_dyx22::{
+    adkg_dyx22_bls12_381_g1_sha256, adkg_dyx22_bn254_g1_keccak256,
+    adkg_dyx22_bn254_g1_keccak256_rescue,
+};
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::keygen::{PrivateKeyMaterial, PublicKeyMaterial, keygen};
-use crate::scheme::new_scheme_config;
+use crate::scheme::{SupportedAdkgScheme, new_scheme_config};
 use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::adkg::AdkgOutput;
 use adkg::helpers::PartyId;
@@ -180,7 +183,10 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     }
 
     let id = PartyId(id.get());
-    let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
+    let adkg_scheme: SupportedAdkgScheme = scheme_config
+        .adkg_scheme_name
+        .parse()
+        .context("adkg scheme not supported")?;
     let mut rng = AdkgStdRng::new(OsRng);
 
     // Start metrics server if enabled
@@ -190,9 +196,9 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     // Start libp2p transport
     let transports = get_libp2p_transports(id, &sk, listen_address, &group_config).await?;
 
-    let output = match scheme_config.adkg_scheme_name.as_str() {
-        <DYX22Bn254G1Keccak256 as AdkgScheme>::NAME => {
-            adkg_dyx22_bn254_g1_keccak256(
+    match adkg_scheme {
+        SupportedAdkgScheme::DYX22Bn254G1Keccak256 => {
+            let output = adkg_dyx22_bn254_g1_keccak256(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -203,11 +209,42 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
                 Some(transports.writer),
                 &mut rng,
             )
-            .await
+            .await;
+
+            process_adkg_output(
+                &priv_out,
+                &pub_out,
+                transcript_out,
+                &group_config,
+                adkg_scheme.to_string(),
+                output,
+            )?;
         }
 
-        _ => Err(anyhow!("Unsupported adkg scheme"))?,
-    };
+        SupportedAdkgScheme::DYX22Bls12_381G1Sha256 => {
+            let output = adkg_dyx22_bls12_381_g1_sha256(
+                id,
+                &sk.adkg_sk,
+                &group_config,
+                scheme_config,
+                grace_period,
+                timeout,
+                transports.topic_transport.clone(),
+                Some(transports.writer),
+                &mut rng,
+            )
+            .await;
+
+            process_adkg_output(
+                &priv_out,
+                &pub_out,
+                transcript_out,
+                &group_config,
+                adkg_scheme.to_string(),
+                output,
+            )?;
+        }
+    }
 
     tracing::info!("Stopping libp2p dispatcher...");
     transports.topic_dispatcher.stop().await;
@@ -216,15 +253,6 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     if let Err(e) = transports.node.stop().await {
         tracing::error!(error = ?e, "Failed to stop libp2p node");
     }
-
-    process_adkg_output(
-        &priv_out,
-        &pub_out,
-        transcript_out,
-        &group_config,
-        adkg_scheme_name,
-        output,
-    )?;
 
     Ok(())
 }
@@ -265,7 +293,10 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
     }
 
     let id = PartyId(id.get());
-    let adkg_scheme_name = scheme_config.adkg_scheme_name.clone();
+    let adkg_scheme_name = scheme_config
+        .adkg_scheme_name
+        .parse()
+        .context("adkg scheme not supported")?;
     let mut rng = AdkgStdRng::new(OsRng);
     let output = match scheme_config.adkg_scheme_name.as_str() {
         <DYX22Bn254G1Keccak256 as AdkgScheme>::NAME => {
