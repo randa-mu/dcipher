@@ -37,6 +37,7 @@ ark-bls12-381 = "0.4.0"
 ark-ec = "0.4.2"
 ark-ff = "0.4.2"
 ark-poly = "0.4.2"
+ark-serialize = "0.4.0"
 ark-std = "0.4.0"
 chacha20poly1305 = "0.10"
 utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
