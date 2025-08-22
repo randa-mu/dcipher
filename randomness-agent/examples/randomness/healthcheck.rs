@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use dcipher_agents::agents::randomness::metrics::Metrics as RandomnessMetrics;
-use dcipher_agents::signer::threshold_signer::metrics::Metrics as ThresholdSignerMetrics;
+use dcipher_agents::signer::bls::metrics::Metrics as ThresholdSignerMetrics;
 use dcipher_network::transports::libp2p::metrics::Metrics as Libp2pMetrics;
 use prometheus::{Encoder, TextEncoder};
 use std::net::IpAddr;

@@ -1,4 +1,4 @@
-//! [`AsynchronousSigner`] for decryption requests. Unlike [`AsyncThresholdSigner`](crate::signer::threshold_signer::AsyncThresholdSigner),
+//! [`AsynchronousSigner`] for decryption requests. Unlike [`AsyncThresholdSigner`](crate::signer::bls::AsyncThresholdSigner),
 //! this signer allows to sign identical conditions as is often the case with the decryption sender contract.
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
@@ -6,55 +6,75 @@ use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
 use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
+use dcipher_signer::dsigner::{
+    ApplicationArgs, DSignerSchemeError, DSignerSchemeSigner, SignatureAlgorithm, SignatureRequest,
+};
 use std::borrow::Cow;
+use utils::serialize::point::PointDeserializeCompressed;
 
-pub struct DecryptionSenderAsyncSigner<CS, AsyncSigner> {
+pub struct DecryptionSenderAsyncSigner<CS, Signer> {
     cs: CS,
-    signer: AsyncSigner,
+    signer: Signer,
+    algorithm: SignatureAlgorithm,
+    application_args: ApplicationArgs,
 }
 
-impl<CS, AsyncSigner> DecryptionSenderAsyncSigner<CS, AsyncSigner> {
-    pub fn new(cs: CS, signer: AsyncSigner) -> Self {
-        Self { cs, signer }
+impl<CS, Signer> DecryptionSenderAsyncSigner<CS, Signer> {
+    pub fn new(
+        cs: CS,
+        signer: Signer,
+        algorithm: SignatureAlgorithm,
+        application_args: ApplicationArgs,
+    ) -> Self {
+        Self {
+            cs,
+            signer,
+            algorithm,
+            application_args,
+        }
     }
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum DecryptionSenderAsyncSignerError<AsyncSignerError>
-where
-    AsyncSignerError: std::error::Error + Send + Sync + 'static,
-{
+pub enum DecryptionSenderAsyncSignerError {
     #[error("failed to parse decryption request into a valid ciphertext")]
     ParseCiphertext(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
+    #[error("failed to parse signature from signer")]
+    ParseSignature(#[from] utils::serialize::SerializationError),
+
     #[error("failed to request signature from async signer")]
-    UnderlyingAsyncSigner(#[source] AsyncSignerError),
+    UnderlyingAsyncSigner(#[from] DSignerSchemeError),
 }
 
-impl<CS, AsyncSigner> AsynchronousSigner<DecryptionRequest>
-    for DecryptionSenderAsyncSigner<CS, AsyncSigner>
+impl<CS, Signer> AsynchronousSigner<DecryptionRequest> for DecryptionSenderAsyncSigner<CS, Signer>
 where
     CS: PairingIbeCipherSuite + Send + Sync,
-    CS::IdentityGroup: EvmSerialize,
-    AsyncSigner: AsynchronousSigner<Bytes, Signature = CS::IdentityGroup> + Send + Sync,
-    AsyncSigner::Error: Clone,
+    CS::IdentityGroup: PointDeserializeCompressed + EvmSerialize,
+    Signer: DSignerSchemeSigner + Sync,
     DecryptionRequest: TryInto<CS::Ciphertext>,
     <DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,
 {
-    type Error = DecryptionSenderAsyncSignerError<AsyncSigner::Error>;
+    type Error = DecryptionSenderAsyncSignerError;
     type Signature = SignedDecryptionRequest<'static>;
 
     async fn async_sign(&self, req: DecryptionRequest) -> Result<Self::Signature, Self::Error> {
+        let signature_req = SignatureRequest {
+            alg: self.algorithm,
+            args: self.application_args.clone(),
+            m: req.condition.clone().into(),
+        };
+
         // Await signature
         let sig = self
             .signer
-            .async_sign(req.condition.clone())
+            .async_sign(signature_req)
             .await
             .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
 
+        let sig = CS::IdentityGroup::deser(&sig)?;
         let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
-
         // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
         let request_id = req.id;
         let ct: CS::Ciphertext = match req.try_into() {
@@ -77,23 +97,30 @@ where
 }
 
 #[cfg(test)]
-#[cfg(feature = "blocklock")] // need blocklock types for ibe
+#[cfg(all(feature = "blocklock", feature = "bn254"))] // need blocklock types for ibe
 pub(crate) mod tests {
     use super::*;
     use crate::decryption_sender::DecryptionRequest;
-    use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite};
+    use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
     use crate::ser::EvmSerialize;
     use crate::ser::tests::bn254::encode_ciphertext;
-    use crate::signer::{AsynchronousSigner, BlsSigner};
-    use alloy::primitives::{Bytes, U256};
+    use crate::signer::AsynchronousSigner;
+    use alloy::primitives::U256;
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
+    use bytes::Bytes;
+    use dcipher_signer::dsigner::{
+        ApplicationAnyArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash,
+    };
+    use futures_util::FutureExt;
+    use futures_util::future::BoxFuture;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::watch;
+    use utils::serialize::point::PointSerializeCompressed;
 
-    pub(crate) fn create_ciphertext(eph_pk: ark_bn254::G2Affine) -> Bytes {
+    pub(crate) fn create_ciphertext(eph_pk: ark_bn254::G2Affine) -> alloy::primitives::Bytes {
         let (x, y) = eph_pk.xy().unwrap();
         let (x, y) = (*x, *y);
         let x0 = x.c0.into_bigint().to_bytes_be();
@@ -108,15 +135,15 @@ pub(crate) mod tests {
     #[error("mock signer error")]
     struct MockSignerError;
 
-    type SignatureResult = Option<Result<ark_bn254::G1Affine, MockSignerError>>;
+    type SignatureResult = Option<Result<Bytes, MockSignerError>>;
 
     #[derive(Clone)]
-    struct MockAsyncSigner {
+    struct MockSigner {
         receivers: Arc<tokio::sync::Mutex<HashMap<Bytes, watch::Receiver<SignatureResult>>>>,
         senders: Arc<std::sync::Mutex<HashMap<Bytes, watch::Sender<SignatureResult>>>>,
     }
 
-    impl MockAsyncSigner {
+    impl MockSigner {
         fn new(conditions: impl IntoIterator<Item = Bytes>) -> Self {
             let (txs, rxs): (Vec<_>, Vec<_>) = conditions
                 .into_iter()
@@ -135,11 +162,7 @@ pub(crate) mod tests {
         }
 
         // Set the response for a specific request
-        fn set_response(
-            &self,
-            condition: &Bytes,
-            result: Result<ark_bn254::G1Affine, MockSignerError>,
-        ) {
+        fn set_response(&self, condition: &Bytes, result: Result<Bytes, MockSignerError>) {
             let tx = self
                 .senders
                 .lock()
@@ -150,21 +173,26 @@ pub(crate) mod tests {
         }
     }
 
-    impl AsynchronousSigner<Bytes> for MockAsyncSigner {
-        type Error = MockSignerError;
-        type Signature = ark_bn254::G1Affine;
+    impl DSignerSchemeSigner for MockSigner {
+        fn async_sign(
+            &self,
+            req: SignatureRequest,
+        ) -> BoxFuture<Result<Bytes, DSignerSchemeError>> {
+            let receivers = self.receivers.clone().lock_owned();
+            async move {
+                let mut rx = receivers
+                    .await
+                    .get(&req.m)
+                    .expect("no receiver found for condition")
+                    .clone();
+                rx.changed().await.expect("failed to await has_changed");
 
-        async fn async_sign(&self, m: Bytes) -> Result<Self::Signature, Self::Error> {
-            let mut rx = self
-                .receivers
-                .lock()
-                .await
-                .get(&m)
-                .expect("no receiver found for condition")
-                .clone();
-            rx.changed().await.expect("failed to await has_changed");
-
-            rx.borrow_and_update().clone().unwrap()
+                rx.borrow_and_update()
+                    .clone()
+                    .unwrap()
+                    .map_err(|e| DSignerSchemeError::Other(e.into()))
+            }
+            .boxed()
         }
     }
 
@@ -173,7 +201,7 @@ pub(crate) mod tests {
         DecryptionRequest {
             id: U256::ZERO,
             ciphertext: ct,
-            condition,
+            condition: condition.into(),
         }
     }
 
@@ -188,11 +216,18 @@ pub(crate) mod tests {
         let exp_sig2 = (ark_bn254::G1Affine::generator() * ark_bn254::Fr::from(2u64)).into_affine();
 
         // Set up the mock signer and DecryptionSenderAsyncSigner
-        let mock_signer = MockAsyncSigner::new(vec![condition1.clone(), condition2.clone()]);
+        let mock_signer = MockSigner::new(vec![condition1.clone(), condition2.clone()]);
         let cs = IbeIdentityOnBn254G1Suite::new(b"TEST", 1);
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs,
             signer: mock_signer.clone(),
+            algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bn254G1,
+                hash: BlsSignatureHash::Keccak256,
+            }),
+            application_args: ApplicationArgs::Any(ApplicationAnyArgs {
+                dst_suffix: "test".to_owned(),
+            }),
         });
 
         // Spawn two background tasks that request sigs and send it back through a channel
@@ -220,7 +255,7 @@ pub(crate) mod tests {
         });
 
         // Set the response for the second request
-        mock_signer.set_response(&condition2, Ok(exp_sig2));
+        mock_signer.set_response(&condition2, Ok(exp_sig2.ser().unwrap().into()));
 
         // Wait for a signature to be sent through the rx channel
         let sig2_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -235,7 +270,7 @@ pub(crate) mod tests {
         );
 
         // Set the response for the first request
-        mock_signer.set_response(&condition1, Ok(exp_sig1));
+        mock_signer.set_response(&condition1, Ok(exp_sig1.ser().unwrap().into()));
 
         // Wait for a signature to be sent through the rx channel
         let sig1_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -259,11 +294,18 @@ pub(crate) mod tests {
         let exp_sig = ark_bn254::G1Affine::generator();
 
         // Set up the mock signer and DecryptionSenderAsyncSigner
-        let mock_signer = MockAsyncSigner::new(vec![condition.clone()]);
+        let mock_signer = MockSigner::new(vec![condition.clone()]);
         let cs = IbeIdentityOnBn254G1Suite::new(b"TEST", 1);
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs,
             signer: mock_signer.clone(),
+            algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bn254G1,
+                hash: BlsSignatureHash::Keccak256,
+            }),
+            application_args: ApplicationArgs::Any(ApplicationAnyArgs {
+                dst_suffix: "test".to_owned(),
+            }),
         });
 
         // Spawn two background tasks that request sigs and send it back through a channel
@@ -291,7 +333,7 @@ pub(crate) mod tests {
         });
 
         // Set the response only once
-        mock_signer.set_response(&condition, Ok(exp_sig));
+        mock_signer.set_response(&condition, Ok(exp_sig.ser().unwrap().into()));
 
         // Wait for the first signature to be sent through the rx channel
         let sig_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -326,11 +368,18 @@ pub(crate) mod tests {
         let condition = Bytes::from(vec![1, 3, 5, 7]);
 
         // Set up the mock signer and DecryptionSenderAsyncSigner
-        let mock_signer = MockAsyncSigner::new(vec![condition.clone()]);
+        let mock_signer = MockSigner::new(vec![condition.clone()]);
         let cs = IbeIdentityOnBn254G1Suite::new(b"TEST", 1);
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs,
             signer: mock_signer.clone(),
+            algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bn254G1,
+                hash: BlsSignatureHash::Keccak256,
+            }),
+            application_args: ApplicationArgs::Any(ApplicationAnyArgs {
+                dst_suffix: "test".to_owned(),
+            }),
         });
 
         // Spawn two background tasks that request sigs and send it back through a channel
@@ -386,25 +435,32 @@ pub(crate) mod tests {
 
         // Set up the mock signer and DecryptionSenderAsyncSigner
         let sk: Fr = MontFp!("0102030405060708091011121314151617181920");
-        let mock_signer = MockAsyncSigner::new(vec![condition.clone()]);
+        let mock_signer = MockSigner::new(vec![condition.clone()]);
         let cs = IbeIdentityOnBn254G1Suite::new_signer(b"TEST", 1, sk);
         let decryption_sender = Arc::new(DecryptionSenderAsyncSigner {
             cs: cs.clone(),
             signer: mock_signer.clone(),
+            algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bn254G1,
+                hash: BlsSignatureHash::Keccak256,
+            }),
+            application_args: ApplicationArgs::Any(ApplicationAnyArgs {
+                dst_suffix: "test".to_owned(),
+            }),
         });
 
         // Setup the request and response
         let eph_pk = ark_bn254::G2Affine::generator();
         let req = DecryptionRequest {
             id: U256::from(1u64),
-            condition: condition.clone(),
+            condition: condition.clone().into(),
             ciphertext: create_ciphertext(eph_pk),
         };
-        let exp_sig = cs.sign(&condition).unwrap();
+        let exp_sig = cs.decryption_key(cs.h1(condition.as_ref()));
         let exp_preprocessed_key = cs.preprocess_decryption_key(exp_sig, eph_pk);
 
         // Set the response
-        mock_signer.set_response(&condition, Ok(exp_sig));
+        mock_signer.set_response(&condition, Ok(exp_sig.ser().unwrap().into()));
 
         let fut_sig = decryption_sender.async_sign(req.clone());
 

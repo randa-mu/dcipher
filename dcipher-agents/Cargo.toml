@@ -15,10 +15,13 @@ decryption_sender = ["fulfiller", "ibe", "evm"]
 signature_sender = ["fulfiller", "evm"]
 ibe = []
 
+# signing
+bn254 = ["dcipher-signer/bn254"]
+signer = ["dep:dcipher-signer"]
+
 # misc
 evm = ["dep:alloy"]
 fulfiller = ["signer"]
-signer = ["dep:dcipher-signer"]
 rayon = ["dcipher-signer/rayon"]
 
 [dependencies]
@@ -58,3 +61,5 @@ thiserror = { workspace = true }
 [dev-dependencies]
 hex = { workspace = true }
 alloy = { workspace = true, features = ["default", "provider-ws", "provider-anvil-node"] }
+dcipher-signer = { workspace = true, features = ["bn254", "sha2", "sha3"] }
+bytes.workspace = true
