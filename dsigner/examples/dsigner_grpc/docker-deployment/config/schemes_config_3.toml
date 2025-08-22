@@ -2,7 +2,7 @@ node_id = 3
 
 [schemes.test-bls12-381]
 type = "Bls12_381"
-sk = "0x16eff1c711b29ad205b24f1fccbe59c4e4ce14362b09e92f1733c3bbc7683105"
+sk = "0x41937888c69d1bdd425a64e9ad2c0164a02c71a199c096eccaa25f6c2a0099eb"
 n = 3
 t = 2
 nodes_config = "./test-bls12-381_nodes.toml"
