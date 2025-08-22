@@ -61,14 +61,10 @@ tracing-subscriber = { version = "0.3" }
 
 # network
 libp2p = { version = "0.55", features = ["serde"] }
-
-# api / rpc
-tonic = { version = "0.13" }
 tonic-build = { version = "0.13" }
 
 # serde
 prost = { version = "0.13" }
-prost-build = { version = "0.13" }
 prost-types = { version = "0.13" }
 serde = { version = "1.0", features = ["derive"], default-features = false }
 serde_with = "3.14"

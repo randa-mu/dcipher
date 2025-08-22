@@ -72,7 +72,16 @@ jobs:
         working-directory: ./randomness-solidity
         run: npm run build:forge
 
-      # 3. Build and test workspace packages
+      # 3. Compile onlysubs-solidity
+      - name: onlysubs-solidity - Install dependencies
+        working-directory: ./onlysubs-solidity
+        run: npm ci
+
+      - name: onlysubs-solidity - Build Solidity contracts
+        working-directory: ./onlysubs-solidity
+        run: npm run build:forge
+
+      # 4. Build and test workspace packages
       - name: Lint & Test Rust Workspace
         uses: ./.github/actions/rust-test-action
         env:
