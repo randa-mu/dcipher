@@ -14,7 +14,7 @@ use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use dcipher_signer::bls::{AsyncThresholdSigner, BlsPairingSigner, BlsThresholdSigner};
 use dcipher_signer::dsigner::{
     ApplicationAnyArgs, ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
-    BlsSignatureHash, DSignerScheme, SignatureAlgorithm, SignatureRequest,
+    BlsSignatureHash, DSignerScheme, DSignerSchemeSigner, SignatureAlgorithm, SignatureRequest,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

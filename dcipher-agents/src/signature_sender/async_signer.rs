@@ -6,7 +6,7 @@ use crate::signer::AsynchronousSigner;
 use ark_ec::CurveGroup;
 use dcipher_signer::dsigner;
 use dcipher_signer::dsigner::{
-    ApplicationArgs, DSignerScheme, DSignerSchemeError, SignatureAlgorithm,
+    ApplicationArgs, DSignerSchemeError, DSignerSchemeSigner, SignatureAlgorithm,
 };
 use std::marker::PhantomData;
 use utils::serialize::point::PointDeserializeCompressed;
@@ -36,7 +36,7 @@ impl<CG, Signer> SignatureSenderAsyncSigner<CG, Signer> {
 impl<CG, Signer> AsynchronousSigner<SignatureRequest> for SignatureSenderAsyncSigner<CG, Signer>
 where
     CG: CurveGroup<Affine: PointDeserializeCompressed + EvmSerialize>,
-    Signer: DSignerScheme + Send + Sync,
+    Signer: DSignerSchemeSigner + Send + Sync,
 {
     type Error = DSignerSchemeError;
     type Signature = SignedSignatureRequest;

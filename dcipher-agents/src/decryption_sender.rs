@@ -13,7 +13,7 @@ use crate::fulfiller::{Identifier, TransactionFulfiller};
 use crate::ibe_helper::PairingIbeCipherSuite;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
-use dcipher_signer::dsigner::{ApplicationArgs, DSignerScheme, SignatureAlgorithm};
+use dcipher_signer::dsigner::{ApplicationArgs, DSignerSchemeSigner, SignatureAlgorithm};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::marker::PhantomData;
@@ -32,7 +32,7 @@ pub type DecryptionSenderFulfiller<RS, TF> =
 impl<CS, S, TF> DecryptionSenderFulfillerConfig<CS, S, TF>
 where
     CS: PairingIbeCipherSuite,
-    S: DSignerScheme,
+    S: DSignerSchemeSigner,
     TF: TransactionFulfiller<SignedRequest = SignedDecryptionRequest<'static>>,
     DecryptionSenderAsyncSigner<CS, S>:
         AsynchronousSigner<DecryptionRequest, Signature = SignedDecryptionRequest<'static>>,

@@ -7,7 +7,7 @@ use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
 use dcipher_signer::dsigner::{
-    ApplicationArgs, DSignerScheme, DSignerSchemeError, SignatureAlgorithm, SignatureRequest,
+    ApplicationArgs, DSignerSchemeError, DSignerSchemeSigner, SignatureAlgorithm, SignatureRequest,
 };
 use std::borrow::Cow;
 use utils::serialize::point::PointDeserializeCompressed;
@@ -51,7 +51,7 @@ impl<CS, Signer> AsynchronousSigner<DecryptionRequest> for DecryptionSenderAsync
 where
     CS: PairingIbeCipherSuite + Send + Sync,
     CS::IdentityGroup: PointDeserializeCompressed + EvmSerialize,
-    Signer: DSignerScheme + Sync,
+    Signer: DSignerSchemeSigner + Sync,
     DecryptionRequest: TryInto<CS::Ciphertext>,
     <DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,
@@ -112,7 +112,6 @@ pub(crate) mod tests {
     use bytes::Bytes;
     use dcipher_signer::dsigner::{
         ApplicationAnyArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash,
-        SchemeDetails, VerificationParameters,
     };
     use futures_util::FutureExt;
     use futures_util::future::BoxFuture;
@@ -174,11 +173,7 @@ pub(crate) mod tests {
         }
     }
 
-    impl DSignerScheme for MockSigner {
-        fn details(&self) -> SchemeDetails {
-            unimplemented!()
-        }
-
+    impl DSignerSchemeSigner for MockSigner {
         fn async_sign(
             &self,
             req: SignatureRequest,
@@ -198,14 +193,6 @@ pub(crate) mod tests {
                     .map_err(|e| DSignerSchemeError::Other(e.into()))
             }
             .boxed()
-        }
-
-        fn verification_parameters(
-            &self,
-            _alg: &SignatureAlgorithm,
-            _args: &ApplicationArgs,
-        ) -> Result<VerificationParameters, DSignerSchemeError> {
-            unimplemented!()
         }
     }
 

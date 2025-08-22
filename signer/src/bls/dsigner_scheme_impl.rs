@@ -3,8 +3,8 @@
 use crate::bls::filter::BlsFilter;
 use crate::bls::{BlsSignatureRequest, SharedSignatureCache, StoredSignatureRequest};
 use crate::dsigner::{
-    ApplicationArgs, DSignerScheme, DSignerSchemeError, SchemeDetails, SignatureAlgorithm,
-    SignatureRequest, VerificationParameters,
+    ApplicationArgs, DSignerScheme, DSignerSchemeError, DSignerSchemeSigner, SchemeDetails,
+    SignatureAlgorithm, SignatureRequest, VerificationParameters,
 };
 use bytes::Bytes;
 use futures_util::FutureExt;
@@ -106,7 +106,9 @@ impl DSignerScheme for AsyncThresholdSigner {
 
         Ok(VerificationParameters { dst, public_key })
     }
+}
 
+impl DSignerSchemeSigner for AsyncThresholdSigner {
     fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>> {
         async move {
             let SignatureAlgorithm::Bls(alg) = req.alg else {

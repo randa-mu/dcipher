@@ -135,13 +135,17 @@ pub struct SchemeAlgorithm {
 }
 
 /// A dyn-compatible trait that can be used to group various signers of a specific type (e.g., BLS, Frost, ...).
-pub trait DSignerScheme {
+pub trait DSignerSchemeSigner {
+    /// Obtain a byte-encoded signature for the associated signature request.
+    fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>>;
+}
+
+pub trait DSignerScheme: DSignerSchemeSigner {
     /// Obtain the scheme details.
     fn details(&self) -> SchemeDetails;
 
-    /// Obtain a byte-encoded signature for the associated signature request.
-    fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>>;
-
+    /// Output the verification parameters (e.g., public key, dst, hash) for a specific application
+    /// arguments.
     fn verification_parameters(
         &self,
         alg: &SignatureAlgorithm,

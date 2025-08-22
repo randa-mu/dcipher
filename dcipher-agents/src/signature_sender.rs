@@ -10,7 +10,7 @@ use crate::signature_sender::async_signer::SignatureSenderAsyncSigner;
 use crate::signature_sender::contracts::SignatureSender;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
-use dcipher_signer::dsigner::{ApplicationArgs, DSignerScheme, SignatureAlgorithm};
+use dcipher_signer::dsigner::{ApplicationArgs, DSignerSchemeSigner, SignatureAlgorithm};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
@@ -27,7 +27,7 @@ pub type SignatureSenderFulfiller<RS, TF> =
 
 impl<CG, S, TF> SignatureSenderFulfillerConfig<CG, S, TF>
 where
-    S: DSignerScheme,
+    S: DSignerSchemeSigner,
     TF: TransactionFulfiller<SignedRequest = SignedSignatureRequest>,
     SignatureSenderAsyncSigner<CG, S>:
         AsynchronousSigner<SignatureRequest, Signature = SignedSignatureRequest>,

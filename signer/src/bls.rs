@@ -581,7 +581,7 @@ mod tests {
     #[cfg(feature = "bn254")]
     mod bn254 {
         use super::super::*;
-        use crate::dsigner::{ApplicationAnyArgs, ApplicationArgs, DSignerScheme};
+        use crate::dsigner::{ApplicationAnyArgs, ApplicationArgs, DSignerSchemeSigner};
         use ark_bn254::Fr;
         use ark_ec::AffineRepr;
         use ark_ff::MontFp;
