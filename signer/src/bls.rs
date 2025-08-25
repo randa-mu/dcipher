@@ -215,7 +215,6 @@ where
     signer: BLS,
 
     // Threshold parameters
-    #[allow(unused)]
     n: u16,
     t: u16,
     id: u16,
