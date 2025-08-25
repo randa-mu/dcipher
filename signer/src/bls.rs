@@ -46,9 +46,69 @@ type SignatureOrChannel = Either<Bytes, tokio::sync::watch::Sender<Option<Bytes>
 type SharedSignatureCache =
     Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel>>>;
 
-type SharedPartialsCache<BLS> = Arc<
-    std::sync::Mutex<LruCache<StoredSignatureRequest, HashMap<u16, PartialSignature<Group<BLS>>>>>,
+type SharedPartialsCache<BLS, S1, S2> = Arc<
+    std::sync::Mutex<
+        LruCache<StoredSignatureRequest, HashMap<u16, PartialSignature<Group<BLS, S1, S2>>>>,
+    >,
 >;
+
+trait PointSerializer<P>: Copy + Serialize + for<'de> Deserialize<'de>
+where
+    P: AffineRepr,
+{
+    fn ser(p: &P) -> Result<Vec<u8>, utils::serialize::SerializationError>;
+    fn deser(b: &[u8]) -> Result<P, utils::serialize::SerializationError>;
+}
+
+#[derive(Copy, Clone)]
+struct CompressedPointSerializer;
+impl<P> PointSerializer<P> for CompressedPointSerializer
+where
+    P: AffineRepr + PointSerializeCompressed + PointDeserializeCompressed,
+{
+    fn ser(p: &P) -> Result<Vec<u8>, utils::serialize::SerializationError> {
+        PointSerializeCompressed::ser(p)
+    }
+
+    fn deser(b: &[u8]) -> Result<P, utils::serialize::SerializationError> {
+        PointDeserializeCompressed::deser(b)
+    }
+}
+
+impl Serialize for CompressedPointSerializer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_unit_struct("CompressedPointSerializer")
+    }
+}
+
+impl<'de> Deserialize<'de> for CompressedPointSerializer {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = CompressedPointSerializer;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("CompressedPointSerializer")
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(CompressedPointSerializer)
+            }
+        }
+
+        deserializer.deserialize_unit_struct("CompressedPointSerializer", Visitor)
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 struct PartialSignature<G> {
@@ -97,84 +157,137 @@ impl From<BlsSignatureRequest> for SignatureRequest {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
-    serialize = "Group<BLS>: Serialize",
-    deserialize = "Group<BLS>: Deserialize<'de>"
+    serialize = "Group<BLS, S1, S2>: Serialize",
+    deserialize = "Group<BLS, S1, S2>: Deserialize<'de>"
 ))]
-struct PartialSignatureWithMessage<BLS>
+struct PartialSignatureWithMessage<BLS, S1, S2>
 where
     BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>>,
+    S2: PointSerializer<G2Affine<BLS>>,
 {
     m: Vec<u8>,
-    sig: Group<BLS>,
+    sig: Group<BLS, S1, S2>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
-    serialize = "Group<BLS>: Serialize",
-    deserialize = "Group<BLS>: Deserialize<'de>"
+    serialize = "Group<BLS, S1, S2>: Serialize",
+    deserialize = "Group<BLS, S1, S2>: Deserialize<'de>"
 ))]
-struct PartialSignatureWithRequest<BLS>
+struct PartialSignatureWithRequest<BLS, S1, S2>
 where
     BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>> + Copy,
+    S2: PointSerializer<G2Affine<BLS>> + Copy,
 {
-    sig: Group<BLS>,
+    sig: Group<BLS, S1, S2>,
     #[serde(flatten)]
     req: BlsSignatureRequest,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(bound(
-    serialize = "G1Affine<BLS>: PointSerializeCompressed, G2Affine<BLS>: PointSerializeCompressed",
-    deserialize = "G1Affine<BLS>: PointDeserializeCompressed, G2Affine<BLS>: PointDeserializeCompressed"
+    serialize = "S1: Serialize, S2: Serialize",
+    deserialize = "S1: Deserialize<'de>, S2: Deserialize<'de>"
 ))]
-enum Group<BLS>
+enum Group<BLS, S1, S2>
 where
     BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>> + Copy,
+    S2: PointSerializer<G2Affine<BLS>> + Copy,
 {
-    G1Affine(#[serde(with = "utils::serialize::point::base64")] G1Affine<BLS>),
-    G2Affine(#[serde(with = "utils::serialize::point::base64")] G2Affine<BLS>),
+    G1Affine(WithSerialize<G1Affine<BLS>, S1>),
+    G2Affine(WithSerialize<G2Affine<BLS>, S2>),
 }
 
-impl<BLS> Clone for Group<BLS>
+// Wrapper to use custom (de)serialization for points
+#[derive(Debug, Copy, Clone)]
+struct WithSerialize<P, S>(P, std::marker::PhantomData<S>);
+
+impl<P, S> Serialize for WithSerialize<P, S>
+where
+    P: AffineRepr,
+    S: PointSerializer<P>,
+{
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::Serializer,
+    {
+        // TODO ensure base64 if possible
+        serializer.serialize_bytes(&S::ser(&self.0).unwrap())
+    }
+}
+
+impl<'de, P, S> Deserialize<'de> for WithSerialize<P, S>
+where
+    P: AffineRepr,
+    S: PointSerializer<P>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let bytes: &[u8] = serde::Deserialize::deserialize(deserializer)?;
+        let p = S::deser(bytes).map_err(serde::de::Error::custom)?;
+        Ok(WithSerialize(p, std::marker::PhantomData))
+    }
+}
+
+impl<BLS, S1, S2> Clone for Group<BLS, S1, S2>
 where
     BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>>,
+    S2: PointSerializer<G2Affine<BLS>>,
 {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<BLS> Copy for Group<BLS> where BLS: BlsVerifier {}
-
-impl<BLS> Group<BLS>
+impl<BLS, S1, S2> Copy for Group<BLS, S1, S2>
 where
     BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>>,
+    S2: PointSerializer<G2Affine<BLS>>,
+{
+}
+
+impl<BLS, S1, S2> Group<BLS, S1, S2>
+where
+    BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>> + Copy,
+    S2: PointSerializer<G2Affine<BLS>> + Copy,
 {
     fn either(self) -> Either<G1Affine<BLS>, G2Affine<BLS>> {
         match self {
-            Group::G1Affine(a) => Either::Left(a),
-            Group::G2Affine(a) => Either::Right(a),
+            Group::G1Affine(a) => Either::Left(a.0),
+            Group::G2Affine(a) => Either::Right(a.0),
         }
     }
 }
 
-impl<BLS> From<Group<BLS>> for Either<G1Affine<BLS>, G2Affine<BLS>>
+impl<BLS, S1, S2> From<Group<BLS, S1, S2>> for Either<G1Affine<BLS>, G2Affine<BLS>>
 where
     BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>>,
+    S2: PointSerializer<G2Affine<BLS>>,
 {
-    fn from(value: Group<BLS>) -> Self {
+    fn from(value: Group<BLS, S1, S2>) -> Self {
         value.either()
     }
 }
 
-impl<BLS> From<Either<G1Affine<BLS>, G2Affine<BLS>>> for Group<BLS>
+impl<BLS, S1, S2> From<Either<G1Affine<BLS>, G2Affine<BLS>>> for Group<BLS, S1, S2>
 where
     BLS: BlsVerifier,
+    S1: PointSerializer<G1Affine<BLS>>,
+    S2: PointSerializer<G2Affine<BLS>>,
 {
     fn from(value: Either<G1Affine<BLS>, G2Affine<BLS>>) -> Self {
         match value {
-            Either::Left(a) => Group::G1Affine(a),
-            Either::Right(a) => Group::G2Affine(a),
+            Either::Left(a) => Group::G1Affine(WithSerialize(a, std::marker::PhantomData)),
+            Either::Right(a) => Group::G2Affine(WithSerialize(a, std::marker::PhantomData)),
         }
     }
 }
@@ -201,15 +314,17 @@ pub enum BlsThresholdSignerError {
 }
 
 /// Threshold signer that relies on libp2p to exchange partial signatures.
-pub struct BlsThresholdSigner<BLS>
+pub struct BlsThresholdSigner<BLS, S1, S2>
 where
     BLS: BlsSigner,
+    S1: PointSerializer<G1Affine<BLS>>,
+    S2: PointSerializer<G2Affine<BLS>>,
 {
     // Signatures cache
     signatures_cache: SharedSignatureCache,
 
     // Map from messages to partials
-    partials_cache: SharedPartialsCache<BLS>,
+    partials_cache: SharedPartialsCache<BLS, S1, S2>,
 
     // Ciphersuite + Signer
     signer: BLS,
@@ -235,9 +350,11 @@ where
     eager_signing: bool,
 }
 
-impl<BLS> BlsThresholdSigner<BLS>
+impl<BLS, S1, S2> BlsThresholdSigner<BLS, S1, S2>
 where
     BLS: BlsSigner,
+    S1: PointSerializer<G1Affine<BLS>>,
+    S2: PointSerializer<G2Affine<BLS>>,
 {
     /// Create a new threshold signer by specifying the various threshold scheme parameters.
     pub fn new(
@@ -323,11 +440,11 @@ where
     }
 }
 
-impl<BLS> BlsThresholdSigner<BLS>
+impl<BLS, S1, S2> BlsThresholdSigner<BLS, S1, S2>
 where
     BLS: BlsSigner + Clone + Send + Sync + 'static,
-    G1Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
-    G2Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
+    S1: PointSerializer<G1Affine<BLS>> + Send + Sync + 'static,
+    S2: PointSerializer<G2Affine<BLS>> + Send + Sync + 'static,
 {
     fn scheme_details(&self) -> SchemeDetails {
         let collect_supported_algs = |curve| {
@@ -341,14 +458,14 @@ where
         let mut scheme_algs = vec![];
         if let Some(pk_g1) = &self.pk_g1 {
             scheme_algs.push(SchemeAlgorithm {
-                public_key: PointSerializeCompressed::ser(pk_g1).unwrap().into(),
+                public_key: S1::ser(pk_g1).unwrap().into(),
                 algs: collect_supported_algs(<G2<BLS> as NamedCurveGroup>::CURVE_ID.into()), // sig on G2
                 apps: supported_apps.clone(),
             });
         }
         if let Some(pk_g2) = &self.pk_g2 {
             scheme_algs.push(SchemeAlgorithm {
-                public_key: PointSerializeCompressed::ser(pk_g2).unwrap().into(),
+                public_key: S2::ser(pk_g2).unwrap().into(),
                 algs: collect_supported_algs(<G1<BLS> as NamedCurveGroup>::CURVE_ID.into()), // sig on G1
                 apps: supported_apps,
             });
@@ -408,7 +525,7 @@ where
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
         alg: &BlsSignatureAlgorithm,
-    ) -> Result<Group<BLS>, BlsThresholdSignerError> {
+    ) -> Result<Group<BLS, S1, S2>, BlsThresholdSignerError> {
         match (alg.curve, alg.hash) {
             // Sign on G1
             (curve_id, hash_id) if Self::is_curve_g1(curve_id) => {
@@ -419,9 +536,10 @@ where
                     BlsSignatureHash::Keccak256 => self.signer.sign_g1::<sha3::Keccak256>(m, dst),
                 };
 
-                Ok(Group::G1Affine(sig.map_err(|e| {
-                    BlsThresholdSignerError::UnderlyingSigner(e.into())
-                })?))
+                Ok(Group::G1Affine(WithSerialize(
+                    sig.map_err(|e| BlsThresholdSignerError::UnderlyingSigner(e.into()))?,
+                    std::marker::PhantomData,
+                )))
             }
 
             // Sign on G2
@@ -433,9 +551,10 @@ where
                     BlsSignatureHash::Keccak256 => self.signer.sign_g2::<sha3::Keccak256>(m, dst),
                 };
 
-                Ok(Group::G2Affine(sig.map_err(|e| {
-                    BlsThresholdSignerError::UnderlyingSigner(e.into())
-                })?))
+                Ok(Group::G2Affine(WithSerialize(
+                    sig.map_err(|e| BlsThresholdSignerError::UnderlyingSigner(e.into()))?,
+                    std::marker::PhantomData,
+                )))
             }
 
             // Curve is neither G1 nor G2
@@ -448,11 +567,11 @@ where
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
-        sig: Group<BLS>,
+        sig: Group<BLS, S1, S2>,
         party_id: &u16,
         alg: &BlsSignatureAlgorithm,
     ) -> Result<bool, BlsThresholdSignerError> {
-        let pk: Group<BLS> = match &sig {
+        let pk: Group<BLS, S1, S2> = match &sig {
             Group::G1Affine(_) => {
                 let pk = self
                     .pks_g2
@@ -463,7 +582,7 @@ where
                         None
                     })
                     .ok_or(BlsThresholdSignerError::MissingPublicKeyG2(*party_id))?;
-                Ok(Group::G2Affine(pk))
+                Ok(Group::G2Affine(WithSerialize(pk, std::marker::PhantomData)))
             }
             Group::G2Affine(_) => {
                 let pk = self
@@ -475,7 +594,7 @@ where
                         None
                     })
                     .ok_or(BlsThresholdSignerError::MissingPublicKeyG1(*party_id))?;
-                Ok(Group::G1Affine(pk))
+                Ok(Group::G1Affine(WithSerialize(pk, std::marker::PhantomData)))
             }
         }?;
 
@@ -487,13 +606,13 @@ where
                 let valid = match hash {
                     #[cfg(feature = "sha2")]
                     BlsSignatureHash::Sha256 => {
-                        self.signer.verify_g1::<sha2::Sha256>(m, dst, sig, pk)
+                        self.signer.verify_g1::<sha2::Sha256>(m, dst, sig.0, pk.0)
                     }
 
                     #[cfg(feature = "sha3")]
-                    BlsSignatureHash::Keccak256 => {
-                        self.signer.verify_g1::<sha3::Keccak256>(m, dst, sig, pk)
-                    }
+                    BlsSignatureHash::Keccak256 => self
+                        .signer
+                        .verify_g1::<sha3::Keccak256>(m, dst, sig.0, pk.0),
                 };
                 Ok(valid)
             }
@@ -505,13 +624,13 @@ where
                 let valid = match hash {
                     #[cfg(feature = "sha2")]
                     BlsSignatureHash::Sha256 => {
-                        self.signer.verify_g2::<sha2::Sha256>(m, dst, sig, pk)
+                        self.signer.verify_g2::<sha2::Sha256>(m, dst, sig.0, pk.0)
                     }
 
                     #[cfg(feature = "sha3")]
-                    BlsSignatureHash::Keccak256 => {
-                        self.signer.verify_g2::<sha3::Keccak256>(m, dst, sig, pk)
-                    }
+                    BlsSignatureHash::Keccak256 => self
+                        .signer
+                        .verify_g2::<sha3::Keccak256>(m, dst, sig.0, pk.0),
                 };
                 Ok(valid)
             }

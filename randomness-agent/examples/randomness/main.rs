@@ -19,7 +19,7 @@ use dcipher_signer::dsigner::{
     ApplicationArgs, ApplicationRandomnessArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
     BlsSignatureHash, SignatureAlgorithm,
 };
-use randomness_agent::{NotifyTicker, BLS12_381_RANDOMNESS_SCHEME_ID, run_agent};
+use randomness_agent::{BLS12_381_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -163,7 +163,7 @@ where
 
     // Add own pk to the list if required
     if pks_g2.len() == usize::from(args.key_config.n.get() - 1) {
-        let pk = ark_bn254::G2Affine::generator() * sk;
+        let pk = ark_bls12_381::G2Affine::generator() * sk;
         pks_g2.push((args.key_config.node_id.get(), pk.into_affine()));
     }
 
@@ -177,7 +177,7 @@ where
     )
     .run(args.libp2p.libp2p_listen_addr.clone())?;
 
-    let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(sk);
+    let signer = BlsPairingSigner::<ark_bls12_381::Bls12_381>::new(sk);
     let signer = BlsThresholdSigner::new(
         signer,
         args.key_config.n.get(),

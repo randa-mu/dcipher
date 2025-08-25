@@ -1,10 +1,10 @@
 //! Handle internal signing requests and partial signatures received from other nodes.
 
+use super::{G1Affine, G2Affine, PointSerializer};
 use crate::bls::metrics::Metrics;
 use crate::bls::{
-    BlsSignatureRequest, BlsSigner, BlsThresholdSigner, G1, G1Affine, G2, G2Affine, Group,
-    PartialSignature, PartialSignatureWithRequest, StoredSignatureRequest,
-    lagrange_points_interpolate_at,
+    BlsSignatureRequest, BlsSigner, BlsThresholdSigner, G1, G2, Group, PartialSignature,
+    PartialSignatureWithRequest, StoredSignatureRequest, lagrange_points_interpolate_at,
 };
 use crate::dsigner::BlsSignatureAlgorithm;
 use ark_ec::{AffineRepr, CurveGroup};
@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use utils::dst::NamedCurveGroup;
-use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 /// Map either with the same expression
 macro_rules! map_either {
@@ -28,11 +27,11 @@ macro_rules! map_either {
     };
 }
 
-impl<BLS> BlsThresholdSigner<BLS>
+impl<BLS, S1, S2> BlsThresholdSigner<BLS, S1, S2>
 where
     BLS: BlsSigner + Clone + Send + Sync + 'static,
-    G1Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
-    G2Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
+    S1: PointSerializer<G1Affine<BLS>> + Send + Sync + 'static,
+    S2: PointSerializer<G2Affine<BLS>> + Send + Sync + 'static,
 {
     pub(super) async fn recv_new_requests<T>(
         self: Arc<Self>,
@@ -180,8 +179,7 @@ where
                     // side effects, sequential iterator
                     for (sig, stored_req) in izip!(signatures.into_iter(), stored_reqs.into_iter())
                     {
-                        let sig: Bytes = match either::for_both!(sig, sig => PointSerializeCompressed::ser(&sig))
-                        {
+                        let sig: Bytes = match sig.as_ref().either(S1::ser, S2::ser) {
                             Ok(sig) => sig.into(),
                             Err(e) => {
                                 tracing::error!(error = ?e, "Failed to serialize signature to bytes");
@@ -229,7 +227,7 @@ where
     #[allow(clippy::type_complexity)]
     fn collect_partials_into_points(
         alg: &BlsSignatureAlgorithm,
-        partials: &mut HashMap<u16, PartialSignature<Group<BLS>>>,
+        partials: &mut HashMap<u16, PartialSignature<Group<BLS, S1, S2>>>,
     ) -> Either<Vec<(u64, G1<BLS>)>, Vec<(u64, G2<BLS>)>> {
         let points = partials.values();
         if <G1<BLS> as NamedCurveGroup>::CURVE_ID == alg.curve.into() {
@@ -293,7 +291,7 @@ where
                     }
                 };
 
-                let PartialSignatureWithRequest::<BLS> { sig, req } =
+                let PartialSignatureWithRequest::<BLS, S1, S2> { sig, req } =
                     match serde_cbor::from_slice(&partial) {
                         Ok(partial) => partial,
                         Err(e) => {
@@ -381,7 +379,7 @@ where
     fn store_and_process_partial(
         &self,
         stored_req: StoredSignatureRequest,
-        partial: PartialSignature<Group<BLS>>,
+        partial: PartialSignature<Group<BLS, S1, S2>>,
         req: &BlsSignatureRequest,
     ) {
         tracing::info!(msg = ?stored_req.m, party_id = partial.id, "Storing partial signature on message");
@@ -403,8 +401,7 @@ where
             // Aggregate the partials with Lagrange's interpolation
             let points = Self::collect_partials_into_points(&req.alg, partials);
             let sig = map_either!(points, points => lagrange_points_interpolate_at(&points, 0).into_affine());
-            let sig: Bytes = match either::for_both!(sig, sig => PointSerializeCompressed::ser(&sig))
-            {
+            let sig: Bytes = match sig.as_ref().either(S1::ser, S2::ser) {
                 Ok(sig) => sig.into(),
                 Err(e) => {
                     tracing::error!(error = ?e, "Failed to serialize signature to bytes");
