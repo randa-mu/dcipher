@@ -15,7 +15,7 @@ pub enum SignatureAlgorithm {
     PlaceHolder(),
 }
 
-/// Various option used by bls schemes.
+/// Options for BLS schemes
 #[cfg(feature = "bls")]
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlsSignatureAlgorithm {
