@@ -64,6 +64,7 @@ tracing-subscriber = { version = "0.3" }
 libp2p = { version = "0.55", features = ["serde"] }
 
 # api / rpc
+axum = "0.8"
 tonic = { version = "0.13" }
 tonic-build = { version = "0.13" }
 
