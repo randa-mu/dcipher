@@ -32,8 +32,8 @@ pub trait PointDeserializeCompressed: Sized {
     }
 }
 
-#[cfg(any(feature = "bn254", feature = "bls12-381"))]
-mod fq_mod_8_geq_2 {
+#[cfg(feature = "bn254")]
+mod fq_mod_8_eq_2 {
     use crate::serialize::{
         fq::{FqDeserialize, FqSerialize},
         SerializationError,
@@ -62,16 +62,13 @@ mod fq_mod_8_geq_2 {
 
             impl PointSerializeCompressed for Projective<$config> {
                 fn ser(&self) -> Result<Vec<u8>, SerializationError> {
-                    ser_compressed_fq_mod_8_geq_2(&self.into_affine())
+                    self.into_affine().ser()
                 }
             }
 
             impl PointDeserializeCompressed for Projective<$config> {
                 fn deser(v: &[u8]) -> Result<Self, SerializationError> {
-                    if v.len() != $size {
-                        Err(SerializationError::InvalidData)?;
-                    }
-                    Ok(deser_compressed_fq_mod_8_geq_2(v)?.into())
+                    Affine::<$config>::deser(v).map(AffineRepr::into_group)
                 }
             }
         };
@@ -85,16 +82,6 @@ mod fq_mod_8_geq_2 {
 
         gen_ser_compressed_fq_mod_8_geq_2!(ark_bn254::g1::Config, 32);
         gen_ser_compressed_fq_mod_8_geq_2!(ark_bn254::g2::Config, 64);
-    }
-
-    #[cfg(feature = "bls12-381")]
-    mod bls12_381 {
-        use super::*;
-        use crate::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
-        use ark_ec::short_weierstrass::Projective;
-
-        gen_ser_compressed_fq_mod_8_geq_2!(ark_bls12_381::g1::Config, 48);
-        gen_ser_compressed_fq_mod_8_geq_2!(ark_bls12_381::g2::Config, 96);
     }
 
     /// Follow encoding used by gnark as described in
@@ -166,6 +153,74 @@ mod fq_mod_8_geq_2 {
 
         Ok(p)
     }
+}
+
+#[cfg(feature = "bls12-381")]
+mod bls12_381 {
+    use super::*;
+    use crate::serialize::SerializationError;
+    use ark_ec::{
+        short_weierstrass::{Affine, Projective},
+        AffineRepr, CurveGroup,
+    };
+
+    /// Follows encoding used by gnark / zcash as described in
+    /// <https://pkg.go.dev/github.com/consensys/gnark-crypto/ecc/bls12-381#G1Affine.Bytes>:
+    /// Bytes returns binary representation of p will store X coordinate in regular form and a parity bit
+    /// we follow the BLS12-381 style encoding as specified in ZCash and now IETF.
+    /// The most significant bit, when set, indicates that the point is in compressed form. Otherwise,
+    /// the point is in uncompressed form.
+    ///
+    /// The second-most significant bit indicates that the point is at infinity. If this bit is set,
+    /// the remaining bits of the group element's encoding should be set to zero.
+    ///
+    /// The third-most significant bit is set if (and only if) this point is in compressed form,
+    /// and it is not the point at infinity and its y-coordinate is the lexicographically largest,
+    /// of the two associated with the encoded x-coordinate.
+    ///
+    /// 000 -> uncompressed
+    /// 010 -> point at infinity, remaining bits should be 0
+    /// 110 -> compressed point at infinity, remaining bits should be 0
+    /// 100 -> compressed, use smallest lexicographically square root of Y^2   8
+    /// 101 -> compressed, use largest lexicographically square root of Y^2    A
+    /// otherwise, invalid encoding
+    macro_rules! gen_ser_compressed_ark {
+        ($config:ty, $size:expr) => {
+            impl PointSerializeCompressed for Affine<$config> {
+                fn ser(&self) -> Result<Vec<u8>, SerializationError> {
+                    let mut buf = Vec::with_capacity($size);
+                    ark_serialize::CanonicalSerialize::serialize_compressed(self, &mut buf)?;
+                    Ok(buf)
+                }
+            }
+
+            impl PointDeserializeCompressed for Affine<$config> {
+                fn deser(v: &[u8]) -> Result<Self, SerializationError> {
+                    if v.len() != $size {
+                        Err(SerializationError::InvalidData)?;
+                    }
+                    Ok(ark_serialize::CanonicalDeserialize::deserialize_compressed(
+                        v,
+                    )?)
+                }
+            }
+
+            impl PointSerializeCompressed for Projective<$config> {
+                fn ser(&self) -> Result<Vec<u8>, SerializationError> {
+                    self.into_affine().ser()
+                }
+            }
+
+            impl PointDeserializeCompressed for Projective<$config> {
+                fn deser(v: &[u8]) -> Result<Self, SerializationError> {
+                    Affine::<$config>::deser(v).map(AffineRepr::into_group)
+                }
+            }
+        };
+    }
+
+    gen_ser_compressed_ark!(ark_bls12_381::g1::Config, 48);
+    gen_ser_compressed_ark!(ark_bls12_381::g2::Config, 96);
 }
 
 #[cfg(test)]
@@ -266,6 +321,86 @@ mod tests {
         #[rstest]
         #[case("40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
         fn test_serialize_infinity_bn254_g2(#[case] hex_str: &str) {
+            let v = hex::decode(hex_str).unwrap();
+            let p = G2Affine::deser(&v).unwrap();
+
+            assert_eq!(p, G2Affine::zero());
+            assert_eq!(G2Affine::zero().ser().unwrap(), v)
+        }
+    }
+
+    #[cfg(feature = "bls12-381")]
+    mod bls12_381 {
+        use ark_bls12_381::{Fq, Fq2, G1Affine, G2Affine};
+        use ark_ec::AffineRepr;
+        use rstest::*;
+
+        use crate::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
+
+        #[rstest]
+        #[case(
+            "8d358c1941003f30799bb56ce77686cfc5f744d50967d990f8e43bfcbad4de079ea1d9862a4f0db8e61a9918b7825519",
+            "2033077180564551536999477171607878401375230380827222711239573993459466789485584636120800018305671343721381160441113",
+            "1587474023738694561354819370912689335694261845355829155176237881610923941956633300668824511568885714047469217942984"
+        )]
+        #[case(
+            "b247c0cd2d9ad0805beef3c725e12ae9f77141e25d2ccf822c88d5986d2825cfc680d8ff05c1f5cd77fbeb397846ce2d",
+            "2813593473147529468924457930338535075892410823639120822460362212229121473693775109282234793163001245198277534993965",
+            "2943563905086780779266684424209847439717415490548202619608483395838570670320351661448481300195473963052641964450134"
+        )]
+        fn test_serialize_g1(#[case] hex_str: &str, #[case] x: Fq, #[case] y: Fq) {
+            let v = hex::decode(hex_str).unwrap();
+            let expected = G1Affine::new(x, y);
+            let p = G1Affine::deser(&v).unwrap();
+
+            assert_eq!(p, expected);
+            assert_eq!(expected.ser().unwrap(), v);
+        }
+
+        #[rstest]
+        #[case("c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+        fn test_serialize_infinity_g1(#[case] hex_str: &str) {
+            let v = hex::decode(hex_str).unwrap();
+            let p = G1Affine::deser(&v).unwrap();
+
+            assert_eq!(p, G1Affine::zero());
+            assert_eq!(G1Affine::zero().ser().unwrap(), v)
+        }
+
+        #[rstest]
+        #[case(
+            "8c47e5a78d7e1e2fb20e59bf30db05407b870635e03cae47c844b9c45ffe62d7f7f53ea00fba5076d086d89ec8aff0360eb219e132531d7cda8f65c8ebc2783506b18c5a5b9b63d71028f833882c4fbc48fdaf593b28450995a6a4d3a0b4dab7",
+            "2261876381793915445191073560184852490163293543330235380116663006798893947271160560394499202076550239541785714285239",
+            "1890195503819537729457904927223157402583537418911035489895476953648633672956914081436153364050459436637325752266806",
+            "1420853607630576647501206418676885404720511777042347885144987072293639199434895774099679668139610650409532008654307",
+            "810064965271110693387389539734638654941234363675088634358727598018596316999507629952610167632787243279350416401641"
+        )]
+        #[case(
+            "b0c94ad0a715a596cba6d0cc58763436165a99d11c07254dff0a7b41088d04bbbc634e5ea07e381e78eee5607e0e1a5308d2e64e4a5f5871d7a4e710f86fdcdd9160913a305a55c4d2edb94d607aabcc28a9603072350ab8a3cf5625979a76f2",
+            "1358111225918059542086735828999449942817755076352805326854189913742923296244180701933655028097255667607002278426354",
+            "2583647700743467243002944428165788429822194101978337975298221374661051679319908660122240883638917796757058414844499",
+            "1911358698156181913061699570190045538257290156192558007272239989432652339469795113304507569780568442264305797982683",
+            "2707734995167438465250618791316209525189120113387517169971923535335221527332454663125903630654634588036776572953212"
+        )]
+        fn test_serialize_g2(
+            #[case] hex_str: &str,
+            #[case] x0: Fq,
+            #[case] x1: Fq,
+            #[case] y0: Fq,
+            #[case] y1: Fq,
+        ) {
+            let v = hex::decode(hex_str).unwrap();
+
+            let expected = G2Affine::new(Fq2::new(x0, x1), Fq2::new(y0, y1));
+            let p = G2Affine::deser(&v).unwrap();
+
+            assert_eq!(p, expected);
+            assert_eq!(expected.ser().unwrap(), v);
+        }
+
+        #[rstest]
+        #[case("c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
+        fn test_serialize_infinity_g2(#[case] hex_str: &str) {
             let v = hex::decode(hex_str).unwrap();
             let p = G2Affine::deser(&v).unwrap();
 

@@ -33,6 +33,32 @@ impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
     }
 }
 
+impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g2::Config> {
+    fn ser_bytes(&self) -> Bytes {
+        use ark_ff::{BigInteger, PrimeField, Zero};
+
+        let (x, y) = match self.xy() {
+            Some((x, y)) => (x, y),
+            None => (&Zero::zero(), &Zero::zero()),
+        };
+
+        [x.c1, x.c0, y.c1, y.c0]
+            .map(|v| v.into_bigint().to_bytes_be())
+            .concat()
+            .into()
+    }
+}
+
+impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bls12_381::g1::Config> {
+    fn ser_bytes(&self) -> Bytes {
+        use ark_serialize::CanonicalSerialize;
+        let mut buf = Vec::with_capacity(48);
+        self.serialize_compressed(&mut buf)
+            .expect("serialization should not fail");
+        buf.into()
+    }
+}
+
 #[cfg(feature = "blocklock")]
 pub use blocklock::*;
 

@@ -1,0 +1,64 @@
+services:
+  dsigner-1:
+    image: europe-west1-docker.pkg.dev/randamu-prod/candyland/dsigner-grpc
+    build:
+      context: ../../../../
+      dockerfile: ./dsigner/examples/dsigner_grpc/Dockerfile
+    environment:
+      - DSIGNER_NODE_ID=1
+      - DSIGNER_NETWORK_CONFIG=/config/network_config_1.toml
+      - DSIGNER_SCHEMES_CONFIG=/config/schemes_config_1.toml
+    volumes:
+      - "./config:/config"
+    env_file:
+      - common.env
+    ports:
+      - "127.0.0.1:8080:8080"
+    expose:
+      - 9000
+    networks:
+      - proxynet
+
+  dsigner-2:
+    image: europe-west1-docker.pkg.dev/randamu-prod/candyland/dsigner-grpc
+    build:
+      context: ../../../../
+      dockerfile: ./dsigner/examples/dsigner_grpc/Dockerfile
+    environment:
+      - DSIGNER_NODE_ID=2
+      - DSIGNER_NETWORK_CONFIG=/config/network_config_2.toml
+      - DSIGNER_SCHEMES_CONFIG=/config/schemes_config_2.toml
+    volumes:
+      - "./config:/config"
+    env_file:
+      - common.env
+    ports:
+      - "127.0.0.1:8081:8080"
+    expose:
+      - 9000
+    networks:
+      - proxynet
+
+  dsigner-3:
+    image: europe-west1-docker.pkg.dev/randamu-prod/candyland/dsigner-grpc
+    build:
+      context: ../../../../
+      dockerfile: ./dsigner/examples/dsigner_grpc/Dockerfile
+    environment:
+      - DSIGNER_NODE_ID=3
+      - DSIGNER_NETWORK_CONFIG=/config/network_config_3.toml
+      - DSIGNER_SCHEMES_CONFIG=/config/schemes_config_3.toml
+    volumes:
+      - "./config:/config"
+    env_file:
+      - common.env
+    ports:
+      - "127.0.0.1:8082:8080"
+    expose:
+      - 9000
+    networks:
+      - proxynet
+
+networks:
+  proxynet:
+    name: custom_network

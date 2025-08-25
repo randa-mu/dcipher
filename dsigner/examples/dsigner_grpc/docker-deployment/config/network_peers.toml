@@ -1,0 +1,14 @@
+[[peers]]
+id = 1
+peer_id = "12D3KooWMz1xv1nsQ8WXRwdkbyW4GRs9jKo22Qg2GzHzufkHWckp"
+multiaddr = "/dns4/dsigner-1/tcp/9000"
+
+[[peers]]
+id = 2
+peer_id = "12D3KooWQDAzAKWHJZCQzEBHz6vUazTfcQEZJNboWxQQGLVLB6qu"
+multiaddr = "/dns4/dsigner-2/tcp/9000"
+
+[[peers]]
+id = 3
+peer_id = "12D3KooWPAdfwQ4M2vPS96iCPWXJsWd33ehDkSG9LrsXs2sUMj7T"
+multiaddr = "/dns4/dsigner-3/tcp/9000"

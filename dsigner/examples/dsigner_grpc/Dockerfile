@@ -2,6 +2,8 @@
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+RUN apt-get update && apt-get install -y protobuf-compiler
+
 WORKDIR /app
 
 FROM chef AS planner
@@ -16,11 +18,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-RUN cargo build --release -p dsigner
+RUN cargo build --release --example dsigner_grpc --all-features
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libssl3 dnsutils
 WORKDIR /app
-COPY --from=builder /app/target/release/dsigner /usr/local/bin
-ENTRYPOINT ["/usr/local/bin/dsigner"]
+COPY --from=builder /app/target/release/examples/dsigner_grpc /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/dsigner_grpc"]
