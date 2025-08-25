@@ -1,10 +1,11 @@
 //! Provides implementations to execute the Practical Asynchronous Distributed Key Generation (DYX+22)
 //! described in <https://eprint.iacr.org/2021/1591.pdf>.
 
+use crate::InMemoryWriter;
+use crate::config::GroupConfig;
 use crate::transcripts::{
     BroadcastMessages, DirectMessages, EncryptedAdkgTranscript, SerializedBytes,
 };
-use crate::{GroupConfig, InMemoryWriter};
 use adkg::aba::AbaConfig;
 use adkg::adkg::{AbaCrainInput, AdkgOutput, ShareWithPoly};
 use adkg::helpers::PartyId;
@@ -221,22 +222,44 @@ pub async fn adkg_dyx22_bn254_g1_keccak256_rescue(
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<AdkgOutput<<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve>> {
     let scheme = DYX22Bn254G1Keccak256::try_from(scheme_config)?;
-    let adkg_sk =
-        <<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
-            adkg_sk,
-        )?;
+    adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
+}
+
+pub async fn adkg_dyx22_bls12_381_g1_sha256_rescue(
+    id: PartyId,
+    adkg_sk: &str,
+    group_config: &GroupConfig,
+    scheme_config: AdkgSchemeConfig,
+    transcripts: Vec<EncryptedAdkgTranscript>,
+    rng: &mut impl AdkgRng,
+) -> anyhow::Result<AdkgOutput<<DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve>> {
+    let scheme = DYX22Bls12_381G1Sha256::try_from(scheme_config)?;
+    adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
+}
+
+async fn adkg_rescue<S>(
+    id: PartyId,
+    adkg_sk: &str,
+    group_config: &GroupConfig,
+    transcripts: Vec<EncryptedAdkgTranscript>,
+    rng: &mut impl AdkgRng,
+    scheme: S,
+) -> anyhow::Result<AdkgOutput<S::Curve>>
+where
+    S: AdkgScheme,
+    S::Curve: NamedCurveGroup,
+    <S::Curve as Group>::ScalarField: FqDeserialize,
+    S::Hash: NamedDynDigest,
+    S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
+    <S::ACSSConfig as AcssConfig<'static, S::Curve, PartyId>>::Output:
+        Into<ShareWithPoly<S::Curve>>,
+{
+    let adkg_sk = <S::Curve as Group>::ScalarField::deser_base64(adkg_sk)?;
     let adkg_pks = group_config
         .nodes
         .iter()
-        .map(|p| {
-            <DYX22Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
-                &p.public_key_material.adkg_pk,
-            )
-        })
+        .map(|p| S::Curve::deser_compressed_base64(&p.public_key_material.adkg_pk))
         .collect::<Result<Vec<_>, _>>()?;
-    let adkg_pk = adkg_pks[id];
-
-    assert_eq!(scheme.generator_g() * adkg_sk, adkg_pk);
 
     // Deserialize the transcripts
     let transcripts = transcripts.into_iter().map(|t| {

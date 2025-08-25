@@ -2,6 +2,7 @@
 
 mod adkg_dyx22;
 mod cli;
+mod config;
 mod keygen;
 #[cfg(feature = "metrics")]
 mod metrics;
@@ -9,18 +10,18 @@ mod scheme;
 mod transcripts;
 
 use crate::adkg_dyx22::{
-    adkg_dyx22_bls12_381_g1_sha256, adkg_dyx22_bn254_g1_keccak256,
-    adkg_dyx22_bn254_g1_keccak256_rescue,
+    adkg_dyx22_bls12_381_g1_sha256, adkg_dyx22_bls12_381_g1_sha256_rescue,
+    adkg_dyx22_bn254_g1_keccak256, adkg_dyx22_bn254_g1_keccak256_rescue,
 };
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
-use crate::keygen::{PrivateKeyMaterial, PublicKeyMaterial, keygen};
+use crate::config::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
+use crate::keygen::{PrivateKeyMaterial, keygen};
 use crate::scheme::{SupportedAdkgScheme, new_scheme_config};
 use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::adkg::AdkgOutput;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
-use adkg::scheme::bn254::DYX22Bn254G1Keccak256;
-use adkg::scheme::{AdkgScheme, AdkgSchemeConfig};
+use adkg::scheme::AdkgSchemeConfig;
 use anyhow::{Context, anyhow};
 use ark_ec::CurveGroup;
 use ark_std::rand;
@@ -32,11 +33,9 @@ use dcipher_network::transports::replayable::writer;
 use dcipher_network::transports::replayable::writer::TransportWriter;
 use dcipher_network::transports::replayable::writer::TransportWriterSender;
 use itertools::Itertools;
-use libp2p::{Multiaddr, PeerId};
+use libp2p::Multiaddr;
 use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
 use std::fs;
-use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -45,45 +44,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use utils::serialize::fq::FqSerialize;
 use utils::serialize::point::PointSerializeCompressed;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct NodeDetail {
-    id: NonZeroUsize,
-    #[serde(flatten)]
-    public_key_material: PublicKeyMaterial,
-    multiaddr: Multiaddr,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct GroupConfig {
-    n: NonZeroUsize,
-    t: NonZeroUsize,
-    start_time: chrono::DateTime<chrono::Utc>,
-    nodes: Vec<NodeDetail>,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-struct AdkgSecret {
-    adkg_scheme_name: String,
-    genesis_timestamp: i64,
-    sk: String,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-struct AdkgPublic {
-    adkg_scheme_name: String,
-    genesis_timestamp: i64,
-    group_pk: String,
-    node_pks: Vec<AdkgNodePk>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct AdkgNodePk {
-    id: NonZeroUsize,
-    pk: String,
-    peer_id: PeerId,
-    multiaddr: Multiaddr,
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -298,9 +258,9 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
         .parse()
         .context("adkg scheme not supported")?;
     let mut rng = AdkgStdRng::new(OsRng);
-    let output = match scheme_config.adkg_scheme_name.as_str() {
-        <DYX22Bn254G1Keccak256 as AdkgScheme>::NAME => {
-            adkg_dyx22_bn254_g1_keccak256_rescue(
+    match adkg_scheme_name {
+        SupportedAdkgScheme::DYX22Bn254G1Keccak256 => {
+            let output = adkg_dyx22_bn254_g1_keccak256_rescue(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -308,20 +268,39 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
                 transcripts,
                 &mut rng,
             )
-            .await
+            .await;
+
+            process_adkg_output(
+                &priv_out,
+                &pub_out,
+                None,
+                &group_config,
+                adkg_scheme_name.to_string(),
+                output.map(|out| (out, None)),
+            )?;
         }
 
-        _ => Err(anyhow!("Unsupported adkg scheme"))?,
-    };
+        SupportedAdkgScheme::DYX22Bls12_381G1Sha256 => {
+            let output = adkg_dyx22_bls12_381_g1_sha256_rescue(
+                id,
+                &sk.adkg_sk,
+                &group_config,
+                scheme_config,
+                transcripts,
+                &mut rng,
+            )
+            .await;
 
-    process_adkg_output(
-        &priv_out,
-        &pub_out,
-        None,
-        &group_config,
-        adkg_scheme_name,
-        output.map(|out| (out, None)),
-    )?;
+            process_adkg_output(
+                &priv_out,
+                &pub_out,
+                None,
+                &group_config,
+                adkg_scheme_name.to_string(),
+                output.map(|out| (out, None)),
+            )?;
+        }
+    };
 
     Ok(())
 }
