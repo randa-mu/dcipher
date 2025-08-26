@@ -42,11 +42,10 @@ pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
                     .iter()
                     .find(|route_status| route_status.route.request_id == request_id);
 
-                if let Some(route_status) = existing_fulfillment {
-                    if route_status.status == Status::Verified {
+                if let Some(route_status) = existing_fulfillment
+                    && route_status.status == Status::Verified {
                         continue;
                     }
-                }
 
                 let route = Verification {
                     chain_id: state.chain_id,
@@ -64,15 +63,15 @@ pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
 
     // we then filter out all the `request_ids` that have already been verified and return the routes
     // that are outstanding
-    let needs_verification = all_states
+    
+
+    all_states
         .into_iter()
         .filter_map(|s| match s.status {
             Status::Fulfilled => Some(s.route),
             _ => None,
         })
-        .collect();
-
-    needs_verification
+        .collect()
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

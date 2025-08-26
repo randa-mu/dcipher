@@ -40,7 +40,7 @@ pub(crate) fn load_config_file(cli: &CliConfig) -> ConfigFile {
     println!("loading config file {}", cli.config_path);
     match fs::read(tilde(&cli.config_path).into_owned()) {
         Ok(contents) => serde_json::from_slice(&contents)
-            .expect(format!("failed to parse config file at {}", cli.config_path).as_str()),
+            .unwrap_or_else(|_| panic!("failed to parse config file at {}", cli.config_path)),
         Err(err) => panic!(
             "failed to read config file at {}: {:?}",
             cli.config_path,
