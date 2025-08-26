@@ -11,4 +11,13 @@ pub enum SerializationError {
 
     #[error("invalid data encountered during deserialization")]
     InvalidData,
+
+    #[error("ark-serialize error: {0}")]
+    ArkSerialize(String),
+}
+
+impl From<ark_serialize::SerializationError> for SerializationError {
+    fn from(value: ark_serialize::SerializationError) -> Self {
+        Self::ArkSerialize(value.to_string())
+    }
 }
