@@ -21,6 +21,8 @@ pub enum SignatureAlgorithm {
 pub struct BlsSignatureAlgorithm {
     pub curve: BlsSignatureCurve,
     pub hash: BlsSignatureHash,
+    // Whether to output compressed signatures
+    pub compression: bool,
 }
 
 /// Curves supported for BLS signatures

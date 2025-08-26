@@ -48,7 +48,8 @@ where
             alg: self.algorithm,
         };
         let sig = self.signer.async_sign(dsigner_req).await?;
-        let sig_cg = CG::Affine::deser(&sig).map_err(|e| Self::Error::Other(e.into()))?;
+        let sig_cg =
+            CG::Affine::deser_compressed(&sig).map_err(|e| Self::Error::Other(e.into()))?;
 
         Ok(SignedSignatureRequest {
             id: req.id,

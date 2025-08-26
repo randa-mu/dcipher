@@ -16,7 +16,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use utils::dst::NamedCurveGroup;
-use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
+use utils::serialize::point::{
+    PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
+};
 
 /// Map either with the same expression
 macro_rules! map_either {
@@ -31,8 +33,10 @@ macro_rules! map_either {
 impl<BLS> BlsThresholdSigner<BLS>
 where
     BLS: BlsSigner + Clone + Send + Sync + 'static,
-    G1Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
-    G2Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
+    G1Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
+    G2Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
 {
     pub(super) async fn recv_new_requests<T>(
         self: Arc<Self>,
@@ -180,8 +184,7 @@ where
                     // side effects, sequential iterator
                     for (sig, stored_req) in izip!(signatures.into_iter(), stored_reqs.into_iter())
                     {
-                        let sig: Bytes = match either::for_both!(sig, sig => PointSerializeCompressed::ser(&sig))
-                        {
+                        let sig: Bytes = match either::for_both!(sig, sig => sig.ser_compressed()) {
                             Ok(sig) => sig.into(),
                             Err(e) => {
                                 tracing::error!(error = ?e, "Failed to serialize signature to bytes");
@@ -403,7 +406,7 @@ where
             // Aggregate the partials with Lagrange's interpolation
             let points = Self::collect_partials_into_points(&req.alg, partials);
             let sig = map_either!(points, points => lagrange_points_interpolate_at(&points, 0).into_affine());
-            let sig: Bytes = match either::for_both!(sig, sig => PointSerializeCompressed::ser(&sig))
+            let sig: Bytes = match either::for_both!(sig, sig => if req.alg.compression { sig.ser_compressed() } else { sig.ser_uncompressed() })
             {
                 Ok(sig) => sig.into(),
                 Err(e) => {

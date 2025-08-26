@@ -19,7 +19,7 @@ use dcipher_signer::dsigner::{
     ApplicationArgs, ApplicationRandomnessArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
     BlsSignatureHash, SignatureAlgorithm,
 };
-use randomness_agent::{NotifyTicker, BLS12_381_RANDOMNESS_SCHEME_ID, run_agent};
+use randomness_agent::{BLS12_381_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -163,7 +163,7 @@ where
 
     // Add own pk to the list if required
     if pks_g2.len() == usize::from(args.key_config.n.get() - 1) {
-        let pk = ark_bn254::G2Affine::generator() * sk;
+        let pk = ark_bls12_381::G2Affine::generator() * sk;
         pks_g2.push((args.key_config.node_id.get(), pk.into_affine()));
     }
 
@@ -177,7 +177,7 @@ where
     )
     .run(args.libp2p.libp2p_listen_addr.clone())?;
 
-    let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(sk);
+    let signer = BlsPairingSigner::<ark_bls12_381::Bls12_381>::new(sk);
     let signer = BlsThresholdSigner::new(
         signer,
         args.key_config.n.get(),
@@ -209,22 +209,24 @@ where
     }
 
     // Create a ticker-based fulfiller
-    let fulfiller = SignatureSenderFulfillerConfig::<ark_bn254::G1Projective, _, _>::new_fulfiller(
-        signer,
-        SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
-            curve: BlsSignatureCurve::Bn254G1,
-            hash: BlsSignatureHash::Keccak256,
-        }),
-        ApplicationArgs::Randomness(ApplicationRandomnessArgs {
-            chain_id: args
-                .chain
-                .chain_id
-                .expect("chain id must have been set at this point"),
-        }),
-        signature_tx_fulfiller,
-        args.chain.max_tx_per_tick,
-        args.chain.tx_retry_strategy,
-    );
+    let fulfiller =
+        SignatureSenderFulfillerConfig::<ark_bls12_381::G1Projective, _, _>::new_fulfiller(
+            signer,
+            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bls12_381G1,
+                hash: BlsSignatureHash::Sha256,
+                compression: true,
+            }),
+            ApplicationArgs::Randomness(ApplicationRandomnessArgs {
+                chain_id: args
+                    .chain
+                    .chain_id
+                    .expect("chain id must have been set at this point"),
+            }),
+            signature_tx_fulfiller,
+            args.chain.max_tx_per_tick,
+            args.chain.tx_retry_strategy,
+        );
 
     let ticker = NotifyTicker::default();
     let (stopper, channel) = fulfiller.run(ticker.clone());

@@ -92,7 +92,7 @@ where
         // where each point is encoded with the same length.
         let input = [g, p, g_s, p_s, g_r, p_r]
             .iter()
-            .map(|p| p.ser())
+            .map(|p| p.ser_compressed())
             .flatten_ok()
             .collect::<Result<Vec<u8>, _>>()
             .map_err(|_| NizkError)?;

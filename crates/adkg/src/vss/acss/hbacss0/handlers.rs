@@ -281,7 +281,7 @@ where
 
         // Compute and serialize shared key
         let personal_shared_key = enc_shares.derive_shared_key(&self.config.sk);
-        let msg_recovery = match personal_shared_key.ser() {
+        let msg_recovery = match personal_shared_key.ser_compressed() {
             Ok(v) => AcssMessage::ShareRecovery(v),
 
             Err(e) => {
@@ -322,7 +322,7 @@ where
         }
 
         // Try to deserialize the shared key
-        let shared_key = match CG::deser(shared_key) {
+        let shared_key = match CG::deser_compressed(shared_key) {
             Ok(shared_key) => shared_key,
 
             Err(e) => {

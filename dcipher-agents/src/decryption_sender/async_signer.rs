@@ -73,7 +73,7 @@ where
             .await
             .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
 
-        let sig = CS::IdentityGroup::deser(&sig)?;
+        let sig = CS::IdentityGroup::deser_compressed(&sig)?;
         let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
         // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
         let request_id = req.id;
@@ -224,6 +224,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: true,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -255,7 +256,7 @@ pub(crate) mod tests {
         });
 
         // Set the response for the second request
-        mock_signer.set_response(&condition2, Ok(exp_sig2.ser().unwrap().into()));
+        mock_signer.set_response(&condition2, Ok(exp_sig2.ser_compressed().unwrap().into()));
 
         // Wait for a signature to be sent through the rx channel
         let sig2_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -270,7 +271,7 @@ pub(crate) mod tests {
         );
 
         // Set the response for the first request
-        mock_signer.set_response(&condition1, Ok(exp_sig1.ser().unwrap().into()));
+        mock_signer.set_response(&condition1, Ok(exp_sig1.ser_compressed().unwrap().into()));
 
         // Wait for a signature to be sent through the rx channel
         let sig1_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -302,6 +303,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: true,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -333,7 +335,7 @@ pub(crate) mod tests {
         });
 
         // Set the response only once
-        mock_signer.set_response(&condition, Ok(exp_sig.ser().unwrap().into()));
+        mock_signer.set_response(&condition, Ok(exp_sig.ser_compressed().unwrap().into()));
 
         // Wait for the first signature to be sent through the rx channel
         let sig_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -376,6 +378,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: true,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -443,6 +446,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: true,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -460,7 +464,7 @@ pub(crate) mod tests {
         let exp_preprocessed_key = cs.preprocess_decryption_key(exp_sig, eph_pk);
 
         // Set the response
-        mock_signer.set_response(&condition, Ok(exp_sig.ser().unwrap().into()));
+        mock_signer.set_response(&condition, Ok(exp_sig.ser_compressed().unwrap().into()));
 
         let fut_sig = decryption_sender.async_sign(req.clone());
 

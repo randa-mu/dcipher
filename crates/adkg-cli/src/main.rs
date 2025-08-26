@@ -417,7 +417,7 @@ where
     let group_pk = output
         .group_pk
         .unwrap()
-        .ser_base64()
+        .ser_compressed_base64()
         .context("failed to serialize group pk")?;
     let node_pks = output
         .node_pks
@@ -430,7 +430,7 @@ where
                 peer_id: n.public_key_material.peer_id,
                 multiaddr: n.multiaddr.clone(),
                 pk: node_pk
-                    .ser_base64()
+                    .ser_compressed_base64()
                     .context("failed to serialize group pk")?,
             })
         })
