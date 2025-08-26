@@ -1,0 +1,18 @@
+[package]
+name = "serde_keys"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1.0.99"
+
+# crypto
+ark-bn254 = { workspace = true }
+ark-ec = { workspace = true }
+ark-ff = { workspace = true }
+utils.workspace = true
+serde = { version = "1.0.219", features = ["derive"] }
+tracing-subscriber = "0.3.19"
+hex = "0.4.3"
+base64 = "0.22.1"
+libp2p = "0.56.0"

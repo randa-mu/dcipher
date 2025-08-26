@@ -22,6 +22,7 @@ serde = { workspace = true, features = ["derive"] }
 
 # misc
 anyhow = { workspace = true }
+serde_keys = { version = "0.1.0", path = "../crates/serde-keys" }
 
 [dev-dependencies]
 # blockchain

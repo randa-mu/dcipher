@@ -4,7 +4,7 @@ members = [
     "blocklock-agent",
     "crates/adkg",
     "crates/adkg-cli",
-    "crates/network",
+    "crates/network", "crates/serde-keys",
     "crates/utils",
     "dcipher-agents",
     "dsigner",
