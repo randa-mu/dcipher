@@ -46,7 +46,9 @@ impl<'de> Deserialize<'de> for Bn254SecretKey {
         }
 
         let bytes = hex::decode(&hex_str).map_err(D::Error::custom)?;
-        Ok(Bn254SecretKey(ark_bn254::Fr::from_be_bytes_mod_order(&bytes)))
+        Ok(Bn254SecretKey(ark_bn254::Fr::from_be_bytes_mod_order(
+            &bytes,
+        )))
     }
 }
 

@@ -5,11 +5,11 @@ use dcipher_agents::fulfiller::RetryStrategy;
 use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_keys::{Bn254SecretKey, Libp2pKeyWrapper, serde_to_string_from_str};
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
 use std::str::FromStr;
-use serde_keys::{Bn254SecretKey, Libp2pKeyWrapper, serde_to_string_from_str};
 
 /// BlockLock service configuration parameters
 #[derive(Parser, Serialize, Deserialize, Debug)]
