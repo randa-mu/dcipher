@@ -35,4 +35,4 @@ base64 = { workspace = true }
 clap = { workspace = true }
 figment = { workspace = true, features = ["toml"] }
 hex = { workspace = true }
-serde_keys = { version = "0.1.0", path = "../crates/serde-keys" }
+serde_keys.workspace =  true
