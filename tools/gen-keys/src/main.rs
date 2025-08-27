@@ -105,7 +105,7 @@ where
 }
 
 fn encode_libp2p(sk: &Keypair) -> String {
-    BASE64_STANDARD.encode(&sk.to_protobuf_encoding().unwrap())
+    BASE64_STANDARD.encode(sk.to_protobuf_encoding().unwrap())
 }
 
 /// Lagrange interpolation of the polynomial defined by its points, evaluated at point eval_x.
