@@ -2,6 +2,7 @@
 
 use alloy::primitives::Bytes;
 use ark_ec::AffineRepr;
+use utils::serialize::point::PointSerializeUncompressed;
 
 /// Serialize into an EVM Bytes type.
 pub trait EvmSerialize {
@@ -19,33 +20,13 @@ pub trait EvmDeserialize {
 
 impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
     fn ser_bytes(&self) -> Bytes {
-        use ark_bn254::Fq;
-        use ark_ff::{BigInteger, PrimeField, Zero};
-
-        let (x, y) = match self.xy() {
-            Some((x, y)) => (x, y),
-            None => (&Fq::zero(), &Fq::zero()),
-        };
-
-        [x.into_bigint().to_bytes_be(), y.into_bigint().to_bytes_be()]
-            .concat()
-            .into()
+        PointSerializeUncompressed::ser_uncompressed(self).unwrap().into()
     }
 }
 
 impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g2::Config> {
     fn ser_bytes(&self) -> Bytes {
-        use ark_ff::{BigInteger, PrimeField, Zero};
-
-        let (x, y) = match self.xy() {
-            Some((x, y)) => (x, y),
-            None => (&Zero::zero(), &Zero::zero()),
-        };
-
-        [x.c1, x.c0, y.c1, y.c0]
-            .map(|v| v.into_bigint().to_bytes_be())
-            .concat()
-            .into()
+        PointSerializeUncompressed::ser_uncompressed(self).unwrap().into()
     }
 }
 

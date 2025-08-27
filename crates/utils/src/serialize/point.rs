@@ -107,7 +107,6 @@ mod fq_mod_8_eq_2 {
 
         impl PointSerializeUncompressed for Affine<ark_bn254::g1::Config> {
             fn ser_uncompressed(&self) -> Result<Vec<u8>, SerializationError> {
-                // FIXME: duplicate code from dcipher-agents/src/ser
                 use ark_ff::{BigInteger, PrimeField, Zero};
 
                 let (x, y) = match self.xy() {
@@ -124,7 +123,6 @@ mod fq_mod_8_eq_2 {
 
         impl PointSerializeUncompressed for Affine<ark_bn254::g2::Config> {
             fn ser_uncompressed(&self) -> Result<Vec<u8>, SerializationError> {
-                // FIXME: duplicate code from dcipher-agents/src/ser
                 use ark_ff::{BigInteger, PrimeField, Zero};
 
                 let (x, y) = match self.xy() {
