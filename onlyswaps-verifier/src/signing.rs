@@ -247,7 +247,7 @@ mod test {
 
     #[async_trait]
     impl Signer for StubbedSigner {
-        async fn sign(&self, b: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        async fn sign(&self, _: Vec<u8>) -> anyhow::Result<Vec<u8>> {
             Ok(vec![0x1, 0x2, 0x3, 0x4])
         }
     }

@@ -4,6 +4,7 @@ use alloy::primitives::{Address, FixedBytes, U256};
 // this isn't exported from the bindings because it's not used in a func
 // signature, boooo
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct TransferReceipt {
     pub chain_id: U256,
     pub request_id: FixedBytes<32>,

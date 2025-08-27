@@ -35,7 +35,7 @@ impl<'a, P: Provider> CrossChainService<'a, P> {
 }
 
 #[async_trait]
-impl<'a, P: Provider> ChainService for CrossChainService<'a, P> {
+impl<P: Provider> ChainService for CrossChainService<'_, P> {
     async fn fetch_transfer_receipt(
         &self,
         chain_id: u64,

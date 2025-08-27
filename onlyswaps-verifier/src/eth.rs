@@ -37,15 +37,13 @@ pub struct ChainState<ID> {
 }
 
 pub(crate) struct Network<P> {
-    pub chain_id: u64,
-    pub provider: P,
     pub router: RouterInstance<P>,
 }
 
 impl Network<DynProvider> {
     pub async fn create_many(
         private_key: &str,
-        network_configs: &Vec<NetworkConfig>,
+        network_configs: &[NetworkConfig],
     ) -> anyhow::Result<HashMap<u64, Self>> {
         let mut networks = HashMap::new();
         let signer = PrivateKeySigner::from_str(private_key)?;
@@ -73,8 +71,6 @@ impl Network<DynProvider> {
         println!("own addr: {}", own_addr);
         Ok(Self {
             router: RouterInstance::new(config.router_address.parse()?, provider.clone()),
-            chain_id,
-            provider,
         })
     }
 }
