@@ -46,7 +46,7 @@ impl Network<DynProvider> {
     pub async fn create_many(
         private_key: &str,
         network_configs: &Vec<NetworkConfig>,
-    ) -> eyre::Result<HashMap<u64, Self>> {
+    ) -> anyhow::Result<HashMap<u64, Self>> {
         let mut networks = HashMap::new();
         let signer = PrivateKeySigner::from_str(private_key)?;
 
@@ -59,7 +59,7 @@ impl Network<DynProvider> {
         Ok(networks)
     }
 
-    pub async fn new(signer: &PrivateKeySigner, config: &NetworkConfig) -> eyre::Result<Self> {
+    pub async fn new(signer: &PrivateKeySigner, config: &NetworkConfig) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
         let chain_id = config.chain_id;
         let provider = ProviderBuilder::new()
@@ -88,7 +88,7 @@ impl<'a, P: Provider> ChainTransport<'a, P> {
         Self { chain_id, router }
     }
 
-    pub async fn fetch_chain_state(&self) -> eyre::Result<ChainState<RequestId>> {
+    pub async fn fetch_chain_state(&self) -> anyhow::Result<ChainState<RequestId>> {
         let f = self.fetch_fulfilled_transfer_ids();
         let v = self.fetch_verified_transfer_ids();
         let (fulfilled, verified) = try_join(f, v).await?;
@@ -101,14 +101,14 @@ impl<'a, P: Provider> ChainTransport<'a, P> {
     pub async fn fetch_transfer_params(
         &self,
         request_id: FixedBytes<32>,
-    ) -> eyre::Result<TransferParams> {
+    ) -> anyhow::Result<TransferParams> {
         Ok(self.router.getTransferParameters(request_id).call().await?)
     }
 
     pub async fn fetch_transfer_receipt(
         &self,
         request_id: FixedBytes<32>,
-    ) -> eyre::Result<TransferReceipt> {
+    ) -> anyhow::Result<TransferReceipt> {
         let receipt = self.router.getReceipt(request_id).call().await?;
         Ok(TransferReceipt {
             chain_id: U256::from(self.chain_id),
@@ -122,11 +122,11 @@ impl<'a, P: Provider> ChainTransport<'a, P> {
             fulfilled_at: receipt.fulfilledAt,
         })
     }
-    pub async fn fetch_fulfilled_transfer_ids(&self) -> eyre::Result<Vec<FixedBytes<32>>> {
+    pub async fn fetch_fulfilled_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
         Ok(self.router.getFulfilledTransfers().call().await?)
     }
 
-    pub async fn fetch_verified_transfer_ids(&self) -> eyre::Result<Vec<FixedBytes<32>>> {
+    pub async fn fetch_verified_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
         Ok(self.router.getFulfilledSolverRefunds().call().await?)
     }
 }

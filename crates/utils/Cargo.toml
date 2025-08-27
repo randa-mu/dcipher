@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-bn254 = ["dep:ark-bn254", "svdw"]
+bn254 = [ "svdw"]
 bls12-381 = ["dep:ark-bls12-381"]
 svdw = []
 sha3 = ["dep:sha3"]
 
 [dependencies]
-ark-bn254 = { workspace = true, optional = true }
+ark-bn254.workspace = true
 ark-bls12-381 = { workspace = true, optional = true }
 ark-ec.workspace = true
 ark-ff.workspace = true

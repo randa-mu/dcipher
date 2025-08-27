@@ -18,30 +18,30 @@ pub struct TransferReceipt {
 pub fn reconcile_transfer_params(
     src_params: TransferParams,
     dest_receipt: TransferReceipt,
-) -> eyre::Result<TransferParams> {
+) -> anyhow::Result<TransferParams> {
     if dest_receipt.chain_id != src_params.dstChainId {
-        eyre::bail!("funds were sent on the wrong chain")
+        anyhow::bail!("funds were sent on the wrong chain")
     }
 
     // this shouldn't be possible
     if dest_receipt.src_chain_id != src_params.srcChainId {
-        eyre::bail!("funds were sent from the wrong chain")
+        anyhow::bail!("funds were sent from the wrong chain")
     }
 
     if dest_receipt.recipient != src_params.recipient {
-        eyre::bail!("funds were sent to the wrong recipient")
+        anyhow::bail!("funds were sent to the wrong recipient")
     }
 
     // right now this relies on the fact that tokens have the same address
     // on multiple chains which could be a bug
     if dest_receipt.token != src_params.token {
-        eyre::bail!("funds were sent from the wrong token")
+        anyhow::bail!("funds were sent from the wrong token")
     }
 
     // we check exact, so even if solver overpays they don't get their money back
     let expected_output_amount = src_params.amount - src_params.swapFee - src_params.solverFee;
     if dest_receipt.amount_out != expected_output_amount {
-        eyre::bail!(
+        anyhow::bail!(
             "solver did not send the correct funds. expected {}, got {}",
             expected_output_amount,
             dest_receipt.amount_out

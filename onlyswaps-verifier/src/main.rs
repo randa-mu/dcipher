@@ -1,24 +1,29 @@
-mod parsing;
 mod eth;
-mod signing;
+mod parsing;
 mod pending;
+mod signing;
 mod util;
 
 mod config;
 mod cross_chain_service;
 
+use crate::config::{CliConfig, ConfigFile, load_config_file};
+use crate::cross_chain_service::CrossChainService;
+use crate::eth::Network;
+use crate::signing::{DsignerWrapper, OnlySwapsSigner};
 use alloy::hex;
+use anyhow::anyhow;
 use axum::Router;
 use axum::routing::get;
 use clap::Parser;
+use dcipher_signer::BN254SignatureOnG1Signer;
+use dcipher_signer::threshold_signer::ThresholdSigner;
+use signer_config::{SecretKeyConfig, SigningConfig};
 use tokio::net::TcpListener;
-use crate::cross_chain_service::CrossChainService;
-use crate::config::{load_config_file, CliConfig, ConfigFile};
-use crate::eth::Network;
-use crate::signing::{OnlySwapsSigner, Signer};
+use dcipher_network::transports::in_memory::MemoryNetwork;
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> anyhow::Result<()> {
     let cli_config = CliConfig::parse();
     let app = Router::new().route("/health", get(healthcheck_handler));
     let listener = TcpListener::bind(("0.0.0.0", cli_config.port)).await?;
@@ -32,17 +37,33 @@ async fn main() -> eyre::Result<()> {
 
     let chain_service = CrossChainService::new(&networks);
     let pending_verifications = chain_service.fetch_pending_verifications().await?;
-    let onlyswaps_signer = OnlySwapsSigner::new(chain_service, StubbedSigner{});
 
+    let bls_secret_key = SecretKeyConfig::from_path_str("~/.verifier/key.priv")?;
+    let signing_config = SigningConfig::from_path_str(&bls_secret_key, "~/.verifier/nodes.toml")?;
+    let suite = BN254SignatureOnG1Signer::new(
+        bls_secret_key.secret_key.into(),
+        b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec(),
+    );
+
+    let signer = ThresholdSigner::new(
+        suite,
+        bls_secret_key.n.get(),
+        bls_secret_key.t.get(),
+        bls_secret_key.node_id.get(),
+        signing_config.nodes.iter().map(|n| n.bls_pk).collect(),
+    );
+
+    let transport = MemoryNetwork::get_transports(1..=1).pop_front().ok_or(anyhow!("failed to get transport"))?;
+
+    let (_, threshold_signer) = signer.run(transport);
+
+    let dsigner = DsignerWrapper::new(threshold_signer);
+    let onlyswaps_signer = OnlySwapsSigner::new(chain_service, dsigner);
     for verification in pending_verifications {
         let signature = onlyswaps_signer.try_sign(verification).await?;
 
-        println!("{}", hex::encode(signature))
+        println!("signing a pending verification: {}", hex::encode(signature))
     }
-
-
-    // create omnievent magic
-    // listen for bridgereceipt
 
     println!("Listening on port {}", cli_config.port);
     tokio::select! {
@@ -63,17 +84,11 @@ async fn main() -> eyre::Result<()> {
 
         err = axum::serve(listener, app) => {
             eprintln!("axum stopped unexpectedly...");
-            err.map_err(|e| eyre::eyre!(e))
+            err.map_err(|e| anyhow::anyhow!(e))
         }
     }
 }
 
-struct StubbedSigner {}
-impl Signer for StubbedSigner {
-    fn sign(&self, _: Vec<u8>) -> Vec<u8> {
-        vec![0x1, 0x3, 0x5]
-    }
-}
 
 async fn healthcheck_handler() -> &'static str {
     "ok"

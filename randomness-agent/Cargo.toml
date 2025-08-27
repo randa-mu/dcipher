@@ -22,7 +22,7 @@ serde = { workspace = true, features = ["derive"] }
 
 # misc
 anyhow = { workspace = true }
-serde_keys.workspace = true
+serde-keys.workspace = true
 
 [dev-dependencies]
 # blockchain

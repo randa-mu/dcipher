@@ -6,6 +6,7 @@ members = [
     "crates/adkg-cli",
     "crates/network",
     "crates/serde-keys",
+    "crates/signer-config",
     "crates/utils",
     "dcipher-agents",
     "dsigner",
@@ -26,7 +27,7 @@ adkg = { path = "./crates/adkg" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
-serde_keys = { path = "./crates/serde-keys" }
+serde-keys = { path = "./crates/serde-keys" }
 superalloy = { path = "./superalloy" }
 
 # blockchain

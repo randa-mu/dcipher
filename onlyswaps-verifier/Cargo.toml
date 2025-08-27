@@ -5,14 +5,17 @@ edition.workspace = true
 
 [dependencies]
 alloy = { workspace = true, features = ["default", "provider-ws"] }
+anyhow.workspace = true
+ark-serialize = "0.4.2"
+async-trait = "0.1.88"
 axum = "0.8.4"
 clap = { workspace = true, features = ["derive", "env"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "signal"]}
-eyre = "0.6.12"
+dcipher-network = { version = "0.1.0", path = "../crates/network", features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
+dcipher-signer = { version = "0.1.0", path = "../signer" }
 futures.workspace = true
-speculoos = "0.13.0"
-async-trait = "0.1.88"
 serde.workspace = true
 serde_json.workspace = true
-itertools = "0.10.5"
 shellexpand = "3.1.1"
+signer-config = { version = "0.1.0", path = "../crates/signer-config" }
+speculoos = "0.13.0"
+tokio = { workspace = true, features = ["rt-multi-thread", "signal"]}

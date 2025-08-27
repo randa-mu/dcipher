@@ -1,5 +1,5 @@
 [package]
-name = "serde_keys"
+name = "serde-keys"
 version.workspace = true
 edition.workspace = true
 

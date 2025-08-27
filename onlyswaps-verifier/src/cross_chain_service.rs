@@ -4,7 +4,7 @@ use crate::eth::{ChainTransport, Network};
 use crate::pending::{RequestId, Verification, extract_pending_verifications};
 use alloy::providers::Provider;
 use async_trait::async_trait;
-use eyre::eyre;
+use anyhow::anyhow;
 use futures::future::try_join_all;
 use crate::eth::IRouter::TransferParams;
 use crate::parsing::TransferReceipt;
@@ -24,7 +24,7 @@ impl<'a, P: Provider> CrossChainService<'a, P> {
         Self { transports }
     }
 
-    pub async fn fetch_pending_verifications(&self) -> eyre::Result<Vec<Verification<RequestId>>> {
+    pub async fn fetch_pending_verifications(&self) -> anyhow::Result<Vec<Verification<RequestId>>> {
         let futs = self.transports.values().map(|t| t.fetch_chain_state());
 
         let states = try_join_all(futs).await?;
@@ -34,16 +34,16 @@ impl<'a, P: Provider> CrossChainService<'a, P> {
 
 #[async_trait]
 impl<'a, P: Provider> ChainService for CrossChainService<'a, P> {
-    async fn fetch_transfer_receipt(&self, chain_id: u64, request_id: FixedBytes<32>) -> eyre::Result<TransferReceipt> {
+    async fn fetch_transfer_receipt(&self, chain_id: u64, request_id: FixedBytes<32>) -> anyhow::Result<TransferReceipt> {
         let transport = self.transports.get(&chain_id)
-            .ok_or(eyre!("No chain transport for {}", chain_id))?;
+            .ok_or(anyhow!("No chain transport for {}", chain_id))?;
         
         transport.fetch_transfer_receipt(request_id).await
     }
 
-    async fn fetch_transfer_params(&self, chain_id: u64, request_id: FixedBytes<32>) -> eyre::Result<TransferParams> {
+    async fn fetch_transfer_params(&self, chain_id: u64, request_id: FixedBytes<32>) -> anyhow::Result<TransferParams> {
         let transport = self.transports.get(&chain_id)
-            .ok_or(eyre!("No chain transport for {}", chain_id))?;
+            .ok_or(anyhow!("No chain transport for {}", chain_id))?;
         
         transport.fetch_transfer_params(request_id).await
     }

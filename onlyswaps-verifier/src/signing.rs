@@ -4,7 +4,10 @@ use crate::pending::{RequestId, Verification};
 use crate::util::normalise_chain_id;
 use alloy::primitives::FixedBytes;
 use alloy::sol_types::SolValue;
+use ark_serialize::{Compress, CanonicalSerialize};
 use async_trait::async_trait;
+use dcipher_signer::{AsynchronousSigner, BN254SignatureOnG1Signer, BlsSigner};
+use dcipher_signer::threshold_signer::AsyncThresholdSigner;
 
 pub struct OnlySwapsSigner<C, S> {
     chain: C,
@@ -17,15 +20,16 @@ pub trait ChainService {
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> eyre::Result<TransferReceipt>;
+    ) -> anyhow::Result<TransferReceipt>;
     async fn fetch_transfer_params(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> eyre::Result<TransferParams>;
+    ) -> anyhow::Result<TransferParams>;
 }
+#[async_trait]
 pub trait Signer {
-    fn sign(&self, b: Vec<u8>) -> Vec<u8>;
+    async fn sign(&self, b: Vec<u8>) -> anyhow::Result<Vec<u8>>;
 }
 
 impl<C, S> OnlySwapsSigner<C, S> {
@@ -35,7 +39,7 @@ impl<C, S> OnlySwapsSigner<C, S> {
 }
 
 impl<C: ChainService, S: Signer> OnlySwapsSigner<C, S> {
-    pub async fn try_sign(&self, verification_job: Verification<RequestId>) -> eyre::Result<Vec<u8>> {
+    pub async fn try_sign(&self, verification_job: Verification<RequestId>) -> anyhow::Result<Vec<u8>> {
         let transfer_receipt = self
             .chain
             .fetch_transfer_receipt(verification_job.chain_id, verification_job.request_id)
@@ -51,7 +55,8 @@ impl<C: ChainService, S: Signer> OnlySwapsSigner<C, S> {
 
         let valid_transfer_params = reconcile_transfer_params(transfer_params, transfer_receipt)?;
         let m = create_message(valid_transfer_params);
-        Ok(self.signer.sign(m))
+        let signature = self.signer.sign(m).await?;
+        Ok(signature)
     }
 }
 
@@ -71,6 +76,26 @@ pub fn create_message(params: TransferParams) -> Vec<u8> {
         .abi_encode()
 }
 
+pub struct DsignerWrapper<S: BlsSigner> {
+    s: AsyncThresholdSigner<S>
+}
+
+impl<S: BlsSigner> DsignerWrapper<S> {
+    pub fn new(s: AsyncThresholdSigner<S>) -> Self {
+        Self { s } 
+    }
+}
+
+#[async_trait]
+impl Signer for DsignerWrapper<BN254SignatureOnG1Signer> {
+    async fn sign(&self, message: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        let point = self.s.async_sign(message).await?;
+        let mut bytes = Vec::with_capacity(point.serialized_size(Compress::No));
+        point.serialize_with_mode(&mut bytes, Compress::No)?;
+        Ok(bytes)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::eth::IRouter::TransferParams;
@@ -79,7 +104,6 @@ mod test {
     use crate::signing::{ChainService, OnlySwapsSigner, Signer};
     use alloy::primitives::{Address, FixedBytes, U160, U256};
     use async_trait::async_trait;
-    use eyre::eyre;
     use speculoos::assert_that;
 
     #[tokio::test]
@@ -188,9 +212,9 @@ mod test {
             &self,
             _: u64,
             _: FixedBytes<32>,
-        ) -> eyre::Result<TransferReceipt> {
+        ) -> anyhow::Result<TransferReceipt> {
             if let Some(e) = &self.error {
-                return Err(eyre!(e.to_string()));
+                anyhow::bail!(e.to_string());
             }
             Ok(self.receipt.clone())
         }
@@ -199,9 +223,9 @@ mod test {
             &self,
             _: u64,
             _: FixedBytes<32>,
-        ) -> eyre::Result<TransferParams> {
+        ) -> anyhow::Result<TransferParams> {
             if let Some(e) = &self.error {
-                return Err(eyre!(e.to_string()));
+                anyhow::bail!(e.to_string());
             }
             Ok(self.params.clone())
         }
@@ -209,9 +233,10 @@ mod test {
 
     struct StubbedSigner {}
 
+    #[async_trait]
     impl Signer for StubbedSigner {
-        fn sign(&self, b: Vec<u8>) -> Vec<u8> {
-            vec![0x1, 0x2, 0x3, 0x4]
+        async fn sign(&self, b: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+            Ok(vec![0x1, 0x2, 0x3, 0x4])
         }
     }
 }
