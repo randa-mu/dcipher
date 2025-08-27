@@ -20,13 +20,17 @@ pub trait EvmDeserialize {
 
 impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
     fn ser_bytes(&self) -> Bytes {
-        PointSerializeUncompressed::ser_uncompressed(self).unwrap().into()
+        PointSerializeUncompressed::ser_uncompressed(self)
+            .unwrap()
+            .into()
     }
 }
 
 impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g2::Config> {
     fn ser_bytes(&self) -> Bytes {
-        PointSerializeUncompressed::ser_uncompressed(self).unwrap().into()
+        PointSerializeUncompressed::ser_uncompressed(self)
+            .unwrap()
+            .into()
     }
 }
 

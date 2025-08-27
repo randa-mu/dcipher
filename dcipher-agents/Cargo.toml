@@ -17,6 +17,7 @@ ibe = []
 
 # signing
 bn254 = ["dcipher-signer/bn254"]
+bls12-381 = ["dcipher-signer/bls12-381"]
 signer = ["dep:dcipher-signer"]
 
 # misc

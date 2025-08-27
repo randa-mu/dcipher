@@ -125,6 +125,16 @@ where
         let sig = m * self.sk;
         Ok(sig.into_affine())
     }
+
+    fn g1_public_key(&self) -> <Self::E as Pairing>::G1Affine {
+        let pk = <Self::E as Pairing>::G1::generator() * self.sk;
+        pk.into_affine()
+    }
+
+    fn g2_public_key(&self) -> <Self::E as Pairing>::G2Affine {
+        let pk = <Self::E as Pairing>::G2::generator() * self.sk;
+        pk.into_affine()
+    }
 }
 
 #[cfg(test)]

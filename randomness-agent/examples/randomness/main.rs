@@ -6,20 +6,24 @@ use crate::healthcheck::start_api;
 use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
+use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use dcipher_agents::agents::randomness::RandomnessAgent;
 use dcipher_agents::agents::randomness::contracts::RandomnessSender;
 use dcipher_agents::agents::randomness::fulfiller::RandomnessFulfiller;
+use dcipher_agents::fulfiller::ticker::OneshotStopper;
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
 use dcipher_agents::signature_sender::contracts::SignatureSender;
 use dcipher_agents::signature_sender::{SignatureRequest, SignatureSenderFulfillerConfig};
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
-use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
+use dcipher_signer::bls::{BlsPairingSigner, BlsSigner, BlsThresholdSigner};
 use dcipher_signer::dsigner::{
     ApplicationArgs, ApplicationRandomnessArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
     BlsSignatureHash, SignatureAlgorithm,
 };
-use randomness_agent::{BLS12_381_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent};
+use randomness_agent::{
+    BLS12_381_RANDOMNESS_SCHEME_ID, BN254_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent,
+};
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
@@ -27,11 +31,16 @@ use tokio_util::sync::CancellationToken;
 use tracing_subscriber::Layer;
 use tracing_subscriber::prelude::*;
 
+use utils::serialize::point::{
+    PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
+};
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let RandomnessAgentConfig {
         mut config,
-        nodes_config,
+        bn254_nodes_config,
+        bls12_381_nodes_config,
     } = RandomnessAgentConfig::parse()?;
 
     // Set logging options
@@ -69,21 +78,74 @@ async fn main() -> anyhow::Result<()> {
         config.chain.chain_id.replace(chain_id);
     }
 
-    // Create a fulfiller
-    let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
-        &config,
-        &nodes_config.unwrap_or_default(),
-        signature_sender_contract.clone(),
-        randomness_sender_contract,
-    )?;
+    struct ServiceComponents<P, BLS> {
+        ticker: NotifyTicker,
+        libp2p_node: Libp2pNode<u16>,
+        ts_stopper: CancellationToken,
+        stopper: OneshotStopper,
+        agent: RandomnessAgent<BLS, P>,
+    }
 
-    // Create a new randomness agent
-    let mut agent = RandomnessAgent::new(
-        BLS12_381_RANDOMNESS_SCHEME_ID,
-        config.chain.sync_batch_size,
-        channel,
-        signature_sender_contract_ro.clone(),
-    );
+    let mut bn254 = {
+        // Create a fulfiller
+        let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
+            &config,
+            BlsPairingSigner::new_bn254(config.key_config.bn254_key.0),
+            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bn254G1,
+                hash: BlsSignatureHash::Keccak256,
+                compression: false,
+            }),
+            &bn254_nodes_config.unwrap_or_default(),
+            signature_sender_contract.clone(),
+            randomness_sender_contract.clone(),
+        )?;
+
+        // Create a new randomness agent
+        let agent = RandomnessAgent::new(
+            BN254_RANDOMNESS_SCHEME_ID,
+            config.chain.sync_batch_size,
+            channel,
+            signature_sender_contract_ro.clone(),
+        );
+        ServiceComponents {
+            ticker,
+            libp2p_node,
+            ts_stopper,
+            stopper,
+            agent,
+        }
+    };
+    let mut bls12_381 = {
+        // Create a fulfiller
+        let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
+            &config,
+            BlsPairingSigner::new_bls12_381(config.key_config.bls12_381_key.0),
+            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bls12_381G1,
+                hash: BlsSignatureHash::Sha256,
+                compression: false,
+            }),
+            &bls12_381_nodes_config.unwrap_or_default(),
+            signature_sender_contract.clone(),
+            randomness_sender_contract.clone(),
+        )?;
+
+        // Create a new randomness agent
+        let agent = RandomnessAgent::new(
+            BLS12_381_RANDOMNESS_SCHEME_ID,
+            config.chain.sync_batch_size,
+            channel,
+            signature_sender_contract_ro.clone(),
+        );
+        ServiceComponents {
+            ticker,
+            libp2p_node,
+            ts_stopper,
+            stopper,
+            agent,
+        }
+    };
 
     // Setup some signals
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
@@ -106,8 +168,13 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         },
 
-        err = run_agent(&mut agent, ticker, signature_sender_contract_ro) => {
-            eprintln!("agent stopped unexpectedly...");
+        err = run_agent(&mut bn254.agent, bn254.ticker, signature_sender_contract_ro.clone()) => {
+            eprintln!("agent_bn254 stopped unexpectedly...");
+            err // return Result
+        },
+
+        err = run_agent(&mut bls12_381.agent, bls12_381.ticker, signature_sender_contract_ro.clone()) => {
+            eprintln!("agent_bn254 stopped unexpectedly...");
             err // return Result
         },
 
@@ -118,33 +185,43 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Stop the various components
-    if let Err(e) = libp2p_node.stop().await {
+    if let Err(e) = bn254.libp2p_node.stop().await {
         tracing::error!(error = ?e, "Failed to stop libp2p node");
     }
-    ts_stopper.cancel();
-    stopper.stop().await;
+    bn254.ts_stopper.cancel();
+    bn254.stopper.stop().await;
+
+    if let Err(e) = bls12_381.libp2p_node.stop().await {
+        tracing::error!(error = ?e, "Failed to stop libp2p node");
+    }
+    bls12_381.ts_stopper.cancel();
+    bls12_381.stopper.stop().await;
 
     res
 }
 
-fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
+fn create_threshold_fulfiller<'lt_in, 'lt_out, P, BLS>(
     args: &'lt_in RandomnessAgentArgs,
-    nodes_config: &'lt_in NodesConfiguration,
+    signer: BLS,
+    algorithm: SignatureAlgorithm,
+    nodes_config: &'lt_in NodesConfiguration<<BLS::E as Pairing>::G2Affine>,
     signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
     randomness_sender_contract: RandomnessSender::RandomnessSenderInstance<P>,
 ) -> anyhow::Result<(
     NotifyTicker,
     Libp2pNode<u16>,
     CancellationToken,
-    impl Stopper + 'lt_out,
+    OneshotStopper,
     impl RequestChannel<Request = SignatureRequest> + 'lt_out,
 )>
 where
     P: Provider + WalletProvider + Clone + 'static,
+    BLS: BlsSigner + Clone + Send + Sync + 'static,
+    <BLS::E as Pairing>::G1Affine:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
+    <BLS::E as Pairing>::G2Affine:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
 {
-    // Parse key
-    let sk: ark_bls12_381::Fr = args.key_config.bls_key.to_owned().into();
-
     // Get per-nodes config
     let (mut pks_g2, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
         nodes_config
@@ -163,8 +240,8 @@ where
 
     // Add own pk to the list if required
     if pks_g2.len() == usize::from(args.key_config.n.get() - 1) {
-        let pk = ark_bls12_381::G2Affine::generator() * sk;
-        pks_g2.push((args.key_config.node_id.get(), pk.into_affine()));
+        let pk = signer.g2_public_key();
+        pks_g2.push((args.key_config.node_id.get(), pk));
     }
 
     // Create a libp2p transport and start it
@@ -177,8 +254,7 @@ where
     )
     .run(args.libp2p.libp2p_listen_addr.clone())?;
 
-    let signer = BlsPairingSigner::<ark_bls12_381::Bls12_381>::new(sk);
-    let signer = BlsThresholdSigner::new(
+    let signer = BlsThresholdSigner::<BLS>::new(
         signer,
         args.key_config.n.get(),
         args.key_config.t.get(),
@@ -209,24 +285,19 @@ where
     }
 
     // Create a ticker-based fulfiller
-    let fulfiller =
-        SignatureSenderFulfillerConfig::<ark_bls12_381::G1Projective, _, _>::new_fulfiller(
-            signer,
-            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
-                curve: BlsSignatureCurve::Bls12_381G1,
-                hash: BlsSignatureHash::Sha256,
-                compression: true,
-            }),
-            ApplicationArgs::Randomness(ApplicationRandomnessArgs {
-                chain_id: args
-                    .chain
-                    .chain_id
-                    .expect("chain id must have been set at this point"),
-            }),
-            signature_tx_fulfiller,
-            args.chain.max_tx_per_tick,
-            args.chain.tx_retry_strategy,
-        );
+    let fulfiller = SignatureSenderFulfillerConfig::<<BLS::E as Pairing>::G1, _, _>::new_fulfiller(
+        signer,
+        algorithm,
+        ApplicationArgs::Randomness(ApplicationRandomnessArgs {
+            chain_id: args
+                .chain
+                .chain_id
+                .expect("chain id must have been set at this point"),
+        }),
+        signature_tx_fulfiller,
+        args.chain.max_tx_per_tick,
+        args.chain.tx_retry_strategy,
+    );
 
     let ticker = NotifyTicker::default();
     let (stopper, channel) = fulfiller.run(ticker.clone());

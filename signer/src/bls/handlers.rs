@@ -8,7 +8,6 @@ use crate::bls::{
 };
 use crate::dsigner::BlsSignatureAlgorithm;
 use ark_ec::{AffineRepr, CurveGroup};
-use bytes::Bytes;
 use dcipher_network::{ReceivedMessage, TransportSender};
 use futures_util::{Stream, StreamExt};
 use itertools::{Either, izip};
@@ -184,16 +183,8 @@ where
                     // side effects, sequential iterator
                     for (sig, stored_req) in izip!(signatures.into_iter(), stored_reqs.into_iter())
                     {
-                        let sig: Bytes = match either::for_both!(sig, sig => sig.ser_compressed()) {
-                            Ok(sig) => sig.into(),
-                            Err(e) => {
-                                tracing::error!(error = ?e, "Failed to serialize signature to bytes");
-                                continue;
-                            }
-                        };
-
                         if let Some(Either::Right(tx_channel)) =
-                            signatures_cache.put(stored_req, Either::Left(sig.clone()))
+                            signatures_cache.put(stored_req, Either::Left(sig))
                         {
                             // If there previously was a channel stored at the entry, also send signature through it
                             tx_channel.send_replace(Some(sig));
@@ -406,14 +397,6 @@ where
             // Aggregate the partials with Lagrange's interpolation
             let points = Self::collect_partials_into_points(&req.alg, partials);
             let sig = map_either!(points, points => lagrange_points_interpolate_at(&points, 0).into_affine());
-            let sig: Bytes = match either::for_both!(sig, sig => if req.alg.compression { sig.ser_compressed() } else { sig.ser_uncompressed() })
-            {
-                Ok(sig) => sig.into(),
-                Err(e) => {
-                    tracing::error!(error = ?e, "Failed to serialize signature to bytes");
-                    return;
-                }
-            };
 
             // We now have a signature, store it
             let mut signatures_cache = self

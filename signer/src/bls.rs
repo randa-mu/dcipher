@@ -43,10 +43,12 @@ type G2<BLS> = <E<BLS> as Pairing>::G2;
 type G1Affine<BLS> = <G1<BLS> as CurveGroup>::Affine;
 type G2Affine<BLS> = <G2<BLS> as CurveGroup>::Affine;
 
-type SignatureOrChannel = Either<Bytes, tokio::sync::watch::Sender<Option<Bytes>>>;
+type Signature<BLS> = Either<G1Affine<BLS>, G2Affine<BLS>>;
+type SignatureOrChannel<BLS> =
+    Either<Signature<BLS>, tokio::sync::watch::Sender<Option<Signature<BLS>>>>;
 
-type SharedSignatureCache =
-    Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel>>>;
+type SharedSignatureCache<BLS> =
+    Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel<BLS>>>>;
 
 type SharedPartialsCache<BLS> = Arc<
     std::sync::Mutex<LruCache<StoredSignatureRequest, HashMap<u16, PartialSignature<Group<BLS>>>>>,
@@ -208,7 +210,7 @@ where
     BLS: BlsSigner,
 {
     // Signatures cache
-    signatures_cache: SharedSignatureCache,
+    signatures_cache: SharedSignatureCache<BLS>,
 
     // Map from messages to partials
     partials_cache: SharedPartialsCache<BLS>,
@@ -381,7 +383,7 @@ where
     }
 
     /// Runs the threshold signer in a background task and obtain a cancellation token and a registry.
-    pub fn run<T>(self, mut transport: T) -> (CancellationToken, AsyncThresholdSigner)
+    pub fn run<T>(self, mut transport: T) -> (CancellationToken, AsyncThresholdSigner<BLS>)
     where
         T: Transport<Identity = u16>,
     {
@@ -593,6 +595,12 @@ pub trait BlsSigner: BlsVerifier {
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
     ) -> Result<<Self::E as Pairing>::G2Affine, Self::Error>;
+
+    /// Obtain the public key corresponding to the signer's private key on G1.
+    fn g1_public_key(&self) -> <Self::E as Pairing>::G1Affine;
+
+    /// Obtain the public key corresponding to the signer's private key on G2.
+    fn g2_public_key(&self) -> <Self::E as Pairing>::G2Affine;
 }
 
 #[cfg(test)]

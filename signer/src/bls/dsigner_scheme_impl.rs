@@ -2,6 +2,7 @@
 
 use crate::bls::filter::BlsFilter;
 use crate::bls::{BlsSignatureRequest, SharedSignatureCache, StoredSignatureRequest};
+use crate::bls::{BlsVerifier, G1Affine, G2Affine};
 use crate::dsigner::{
     ApplicationArgs, DSignerScheme, DSignerSchemeError, DSignerSchemeSigner, SchemeDetails,
     SignatureAlgorithm, SignatureRequest, VerificationParameters,
@@ -11,18 +12,21 @@ use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use itertools::Either;
 use serde::{Deserialize, Serialize};
+use utils::serialize::point::{
+    PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
+};
 
-pub struct AsyncThresholdSigner {
+pub struct AsyncThresholdSigner<BLS: BlsVerifier> {
     scheme_details: SchemeDetails,
-    signatures_cache: SharedSignatureCache,
+    signatures_cache: SharedSignatureCache<BLS>,
     new_sig_request: tokio::sync::mpsc::UnboundedSender<BlsSignatureRequest>,
     filter: BlsFilter,
 }
 
-impl AsyncThresholdSigner {
+impl<BLS: BlsVerifier> AsyncThresholdSigner<BLS> {
     pub(super) fn new(
         scheme_details: SchemeDetails,
-        signatures_cache: SharedSignatureCache,
+        signatures_cache: SharedSignatureCache<BLS>,
         new_sig_request: tokio::sync::mpsc::UnboundedSender<BlsSignatureRequest>,
         filter: BlsFilter,
     ) -> Self {
@@ -76,7 +80,13 @@ impl From<AsyncThresholdSignerError> for DSignerSchemeError {
     }
 }
 
-impl DSignerScheme for AsyncThresholdSigner {
+impl<BLS: BlsVerifier> DSignerScheme for AsyncThresholdSigner<BLS>
+where
+    G1Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
+    G2Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
+{
     fn details(&self) -> SchemeDetails {
         self.scheme_details.clone()
     }
@@ -108,7 +118,13 @@ impl DSignerScheme for AsyncThresholdSigner {
     }
 }
 
-impl DSignerSchemeSigner for AsyncThresholdSigner {
+impl<BLS: BlsVerifier> DSignerSchemeSigner for AsyncThresholdSigner<BLS>
+where
+    G1Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
+    G2Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
+{
     fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>> {
         async move {
             let SignatureAlgorithm::Bls(alg) = req.alg else {
@@ -174,30 +190,31 @@ impl DSignerSchemeSigner for AsyncThresholdSigner {
             }?;
 
             // If the signature was cached, return immediately
-            match signature_or_receiver {
-                Either::Left(signature) => Ok(signature),
+            let sig: Either<G1Affine<BLS>, G2Affine<BLS>> = match signature_or_receiver {
+                Either::Left(signature) => signature,
                 Either::Right(mut rx) => {
                     // A signature may already be in the channel, borrow it and mark it as seen
                     let signature = rx.borrow_and_update().to_owned();
 
                     if let Some(sig) = signature {
                         // If it contains a signature, simply return
-                        Ok(sig)
+                        sig
                     } else {
                         // Does not yet contain a signature, await for a change and return
                         match rx.changed().await {
-                            Ok(()) => {
-                                let sig = rx
+                            Ok(()) => rx
                                     .borrow_and_update()
                                     .to_owned()
-                                    .expect("watch channel updated but sig is None");
-                                Ok(sig)
-                            }
+                                    .expect("watch channel updated but sig is None"),
                             Err(_) => Err(AsyncThresholdSignerError::WatchSenderDropped)?,
                         }
                     }
                 }
-            }
+            };
+
+            let sig = either::for_both!(sig, sig => if alg.compression { sig.ser_compressed() } else { sig.ser_uncompressed() })
+                .map_err(AsyncThresholdSignerError::PointSerializationError)?;
+            Ok(sig.into())
         }
         .boxed()
     }

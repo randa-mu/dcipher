@@ -12,9 +12,10 @@ use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
 use std::str::FromStr;
+use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-/// Wrapper around ark_bls12_381::Fr that allows deserialization from hex
-pub struct FrWrapper(ark_bls12_381::Fr);
+/// Wrapper around ark_*::Fr that allows deserialization from hex
+pub struct FrWrapper<Fr>(pub Fr);
 
 /// Wrapper around libp2p::identity::Keypair with (de)serialization & cmd line parsing.
 #[derive(Clone, Debug)]
@@ -140,8 +141,10 @@ pub struct ChainArgs {
 #[command(author, version, about, long_about = None)]
 pub struct KeyConfigArgs {
     /// BLS private key for signing
-    #[arg(long, env = "RANDOMNESS_BLS_KEY")]
-    pub bls_key: FrWrapper,
+    #[arg(long, env = "RANDOMNESS_BN254_KEY")]
+    pub bn254_key: FrWrapper<ark_bn254::Fr>,
+    #[arg(long, env = "RANDOMNESS_BLS12_381_KEY")]
+    pub bls12_381_key: FrWrapper<ark_bls12_381::Fr>,
 
     /// Identifier of the node
     #[arg(long, env = "RANDOMNESS_NODE_ID", default_value = "1")]
@@ -178,18 +181,26 @@ pub struct Libp2pArgs {
 }
 
 #[derive(Default, Serialize, Deserialize, Debug)]
-pub struct NodesConfiguration {
-    pub nodes: Vec<NodeConfiguration>,
+#[serde(bound(
+    serialize = "G2: PointSerializeCompressed",
+    deserialize = "G2: PointDeserializeCompressed"
+))]
+pub struct NodesConfiguration<G2> {
+    pub nodes: Vec<NodeConfiguration<G2>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct NodeConfiguration {
+#[serde(bound(
+    serialize = "G2: PointSerializeCompressed",
+    deserialize = "G2: PointDeserializeCompressed"
+))]
+pub struct NodeConfiguration<G2> {
     /// Node identifier used in the threshold scheme
     pub node_id: NonZeroU16,
 
     /// BN254 public key of the node
     #[serde(with = "utils::serialize::point::base64")]
-    pub bls_pk: ark_bls12_381::G2Affine,
+    pub bls_pk: G2,
 
     /// Libp2p peer address
     pub address: libp2p::Multiaddr,
@@ -200,7 +211,8 @@ pub struct NodeConfiguration {
 
 pub struct RandomnessAgentConfig {
     pub config: RandomnessAgentArgs,
-    pub nodes_config: Option<NodesConfiguration>,
+    pub bn254_nodes_config: Option<NodesConfiguration<ark_bn254::G2Affine>>,
+    pub bls12_381_nodes_config: Option<NodesConfiguration<ark_bls12_381::G2Affine>>,
 }
 
 impl RandomnessAgentConfig {
@@ -226,12 +238,18 @@ impl RandomnessAgentConfig {
 
         Ok(Self {
             config: c,
-            nodes_config: nodes_configuration,
+            bn254_nodes_config: nodes_configuration,
+            bls12_381_nodes_config: None, // FIXME
         })
     }
 
-    fn parse_nodes_config(config: &RandomnessAgentArgs) -> anyhow::Result<NodesConfiguration> {
-        let nodes_config: NodesConfiguration = Figment::new()
+    fn parse_nodes_config<G2>(
+        config: &RandomnessAgentArgs,
+    ) -> anyhow::Result<NodesConfiguration<G2>>
+    where
+        G2: PointDeserializeCompressed + PointSerializeCompressed,
+    {
+        let nodes_config: NodesConfiguration<G2> = Figment::new()
             .merge(Toml::file(config.key_config.nodes_config.clone().unwrap()))
             .extract()?;
 
@@ -276,19 +294,19 @@ impl RandomnessAgentConfig {
     }
 }
 
-impl std::fmt::Debug for FrWrapper {
+impl<Fr: std::fmt::Debug> std::fmt::Debug for FrWrapper<Fr> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self.0, f)
     }
 }
 
-impl Clone for FrWrapper {
+impl<Fr: Clone> Clone for FrWrapper<Fr> {
     fn clone(&self) -> Self {
-        FrWrapper(self.0)
+        FrWrapper(self.0.clone())
     }
 }
 
-impl Serialize for FrWrapper {
+impl<Fr: PrimeField> Serialize for FrWrapper<Fr> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -298,7 +316,7 @@ impl Serialize for FrWrapper {
     }
 }
 
-impl<'de> Deserialize<'de> for FrWrapper {
+impl<'de, Fr: PrimeField> Deserialize<'de> for FrWrapper<Fr> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -311,32 +329,23 @@ impl<'de> Deserialize<'de> for FrWrapper {
         }
 
         let bytes = hex::decode(&hex_str).map_err(D::Error::custom)?;
-        Ok(FrWrapper(ark_bls12_381::Fr::from_be_bytes_mod_order(
-            &bytes,
-        )))
+        Ok(FrWrapper(Fr::from_be_bytes_mod_order(&bytes)))
     }
 }
 
-impl FromStr for FrWrapper {
+impl<Fr: PrimeField> FromStr for FrWrapper<Fr> {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         use alloy::hex;
-        use ark_ff::PrimeField;
 
         if &s[0..2] != "0x" {
             Err(anyhow!("invalid hex string"))?
         }
 
         let bytes = hex::decode(&s[2..])?;
-        let s = ark_bls12_381::Fr::from_be_bytes_mod_order(&bytes);
+        let s = Fr::from_be_bytes_mod_order(&bytes);
         Ok(FrWrapper(s))
-    }
-}
-
-impl From<FrWrapper> for ark_bls12_381::Fr {
-    fn from(value: FrWrapper) -> Self {
-        value.0
     }
 }
 
