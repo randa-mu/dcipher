@@ -579,13 +579,13 @@ where
 
                 // Inform the parent thread through the channel once
                 // decide(v)
-                if let Some(sender) = sender.take()
-                    && sender.send(est).is_err()
-                {
-                    error!(
-                        "Node `{}` failed to send decided upon estimate through sender channel: receiver dropped",
-                        self.config.id
-                    );
+                if let Some(sender) = sender.take() {
+                    if sender.send(est).is_err() {
+                        error!(
+                            "Node `{}` failed to send decided upon estimate through sender channel: receiver dropped",
+                            self.config.id
+                        );
+                    }
                 }
             } else {
                 event!(
