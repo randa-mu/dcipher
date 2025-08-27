@@ -4,10 +4,10 @@ use crate::pending::{RequestId, Verification};
 use crate::util::normalise_chain_id;
 use alloy::primitives::FixedBytes;
 use alloy::sol_types::SolValue;
-use ark_serialize::{Compress, CanonicalSerialize};
+use ark_serialize::{CanonicalSerialize, Compress};
 use async_trait::async_trait;
-use dcipher_signer::{AsynchronousSigner, BN254SignatureOnG1Signer, BlsSigner};
 use dcipher_signer::threshold_signer::AsyncThresholdSigner;
+use dcipher_signer::{AsynchronousSigner, BN254SignatureOnG1Signer, BlsSigner};
 
 pub struct OnlySwapsSigner<C, S> {
     chain: C,
@@ -39,7 +39,10 @@ impl<C, S> OnlySwapsSigner<C, S> {
 }
 
 impl<C: ChainService, S: Signer> OnlySwapsSigner<C, S> {
-    pub async fn try_sign(&self, verification_job: Verification<RequestId>) -> anyhow::Result<Vec<u8>> {
+    pub async fn try_sign(
+        &self,
+        verification_job: Verification<RequestId>,
+    ) -> anyhow::Result<Vec<u8>> {
         let transfer_receipt = self
             .chain
             .fetch_transfer_receipt(verification_job.chain_id, verification_job.request_id)
@@ -77,12 +80,12 @@ pub fn create_message(params: TransferParams) -> Vec<u8> {
 }
 
 pub struct DsignerWrapper<S: BlsSigner> {
-    s: AsyncThresholdSigner<S>
+    s: AsyncThresholdSigner<S>,
 }
 
 impl<S: BlsSigner> DsignerWrapper<S> {
     pub fn new(s: AsyncThresholdSigner<S>) -> Self {
-        Self { s } 
+        Self { s }
     }
 }
 
@@ -177,7 +180,8 @@ mod test {
             fulfilled_at: U256::from(6),
         };
 
-        let service = StubbedChainService::error(transfer_receipt, transfer_params, "oh shit".to_string());
+        let service =
+            StubbedChainService::error(transfer_receipt, transfer_params, "oh shit".to_string());
         let onlyswaps = OnlySwapsSigner::new(service, StubbedSigner {});
         let result = onlyswaps
             .try_sign(Verification {
@@ -198,11 +202,19 @@ mod test {
 
     impl StubbedChainService {
         fn new(receipt: TransferReceipt, params: TransferParams) -> Self {
-            Self { receipt, params, error: None }
+            Self {
+                receipt,
+                params,
+                error: None,
+            }
         }
 
         fn error(receipt: TransferReceipt, params: TransferParams, error: String) -> Self {
-            Self { receipt, params, error: Some(error)}
+            Self {
+                receipt,
+                params,
+                error: Some(error),
+            }
         }
     }
 

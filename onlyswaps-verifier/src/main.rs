@@ -16,11 +16,11 @@ use anyhow::anyhow;
 use axum::Router;
 use axum::routing::get;
 use clap::Parser;
+use dcipher_network::transports::in_memory::MemoryNetwork;
 use dcipher_signer::BN254SignatureOnG1Signer;
 use dcipher_signer::threshold_signer::ThresholdSigner;
 use signer_config::{SecretKeyConfig, SigningConfig};
 use tokio::net::TcpListener;
-use dcipher_network::transports::in_memory::MemoryNetwork;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -53,7 +53,9 @@ async fn main() -> anyhow::Result<()> {
         signing_config.nodes.iter().map(|n| n.bls_pk).collect(),
     );
 
-    let transport = MemoryNetwork::get_transports(1..=1).pop_front().ok_or(anyhow!("failed to get transport"))?;
+    let transport = MemoryNetwork::get_transports(1..=1)
+        .pop_front()
+        .ok_or(anyhow!("failed to get transport"))?;
 
     let (_, threshold_signer) = signer.run(transport);
 
@@ -88,7 +90,6 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 }
-
 
 async fn healthcheck_handler() -> &'static str {
     "ok"

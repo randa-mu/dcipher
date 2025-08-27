@@ -1,9 +1,9 @@
+use crate::eth::ChainState;
+use alloy::primitives::FixedBytes;
 use std::collections::HashSet;
 use std::hash::Hash;
-use alloy::primitives::FixedBytes;
-use crate::eth::ChainState;
 
-/// Collects all `ChainState`s, folds them by status, 
+/// Collects all `ChainState`s, folds them by status,
 /// and returns those that still need to be verified.
 ///
 /// - `Verified` takes priority over `Fulfilled`.
@@ -21,7 +21,6 @@ use crate::eth::ChainState;
 pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
     states: Vec<ChainState<ID>>,
 ) -> Vec<Verification<ID>> {
-
     let all_states: Vec<RouteStatus<ID>> = states
         .into_iter()
         .fold(HashSet::<RouteStatus<ID>>::new(), |mut out, state| {
@@ -43,9 +42,10 @@ pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
                     .find(|route_status| route_status.route.request_id == request_id);
 
                 if let Some(route_status) = existing_fulfillment
-                    && route_status.status == Status::Verified {
-                        continue;
-                    }
+                    && route_status.status == Status::Verified
+                {
+                    continue;
+                }
 
                 let route = Verification {
                     chain_id: state.chain_id,
@@ -63,7 +63,6 @@ pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
 
     // we then filter out all the `request_ids` that have already been verified and return the routes
     // that are outstanding
-    
 
     all_states
         .into_iter()
@@ -87,7 +86,6 @@ enum Status {
 }
 pub type RequestId = FixedBytes<32>;
 
-
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Verification<ID> {
     pub chain_id: u64,
@@ -96,10 +94,10 @@ pub struct Verification<ID> {
 
 #[cfg(test)]
 mod test {
+    use crate::eth::ChainState;
     use crate::pending::{Verification, extract_pending_verifications};
     use speculoos::assert_that;
     use speculoos::iter::ContainingIntoIterAssertions;
-    use crate::eth::ChainState;
 
     #[test]
     fn given_fulfilled_and_not_verified_return_it() {

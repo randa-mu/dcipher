@@ -1,7 +1,7 @@
-use std::fs;
 use clap::Parser;
 use serde::Deserialize;
 use shellexpand::tilde;
+use std::fs;
 
 #[derive(Parser, Debug)]
 pub(crate) struct CliConfig {
@@ -21,7 +21,11 @@ pub(crate) struct CliConfig {
     )]
     pub config_path: String,
 
-    #[arg(short = 's', long = "private-key", env = "ONLYSWAPS_VERIFIER_PRIVATE_KEY")]
+    #[arg(
+        short = 's',
+        long = "private-key",
+        env = "ONLYSWAPS_VERIFIER_PRIVATE_KEY"
+    )]
     pub private_key: String,
 }
 #[derive(Deserialize, Debug, Clone)]

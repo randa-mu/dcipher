@@ -78,11 +78,7 @@ impl UnvalidatedSigningConfig {
         }
 
         // Nodes config should contain n - 1 nodes
-        self.nodes = self.nodes
-            .into_iter()
-            .filter(|n| n.node_id != secret_key.node_id)
-            .collect();
-
+        self.nodes.retain(|n| n.node_id != secret_key.node_id);
         self.nodes.sort_by(|a, b| a.node_id.cmp(&b.node_id));
 
         if self.nodes.len() != starting_node_count - 1 {
