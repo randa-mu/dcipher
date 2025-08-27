@@ -2,6 +2,15 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
 
+FROM sol_builder AS sol_onlyswaps
+WORKDIR /app/onlysubs-solidity
+COPY ./onlysubs-solidity/package.json ./
+COPY ./onlysubs-solidity/package-lock.json ./
+RUN npm install
+
+COPY ./onlysubs-solidity ./
+RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
+
 FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
