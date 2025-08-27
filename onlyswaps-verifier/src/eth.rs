@@ -59,7 +59,6 @@ impl Network<DynProvider> {
 
     pub async fn new(signer: &PrivateKeySigner, config: &NetworkConfig) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
-        let chain_id = config.chain_id;
         let provider = ProviderBuilder::new()
             .with_gas_estimation()
             .wallet(EthereumWallet::new(signer.clone()))
