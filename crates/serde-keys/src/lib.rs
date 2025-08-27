@@ -45,7 +45,7 @@ impl<'de> Deserialize<'de> for Bn254SecretKey {
             Err(D::Error::custom("invalid hex string"))?
         }
 
-        let bytes = hex::decode(&hex_str).map_err(D::Error::custom)?;
+        let bytes = hex::decode(&hex_str[2..]).map_err(D::Error::custom)?;
         Ok(Bn254SecretKey(ark_bn254::Fr::from_be_bytes_mod_order(
             &bytes,
         )))
