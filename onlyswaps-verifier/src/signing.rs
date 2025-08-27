@@ -116,7 +116,7 @@ mod test {
         let transfer_params = TransferParams {
             dstChainId: U256::from(destination_chain_id),
             sender: Address::from(U160::from(3)),
-            recipient: Address::from(U160::from(3)),
+            recipient: Address::from(U160::from(5)),
             token: Address::from(U160::from(3)),
             amount: U256::from(10),
             srcChainId: U256::from(2),
