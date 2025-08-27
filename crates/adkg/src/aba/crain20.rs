@@ -580,12 +580,13 @@ where
                 // Inform the parent thread through the channel once
                 // decide(v)
                 if let Some(sender) = sender.take()
-                    && sender.send(est).is_err() {
-                        error!(
-                            "Node `{}` failed to send decided upon estimate through sender channel: receiver dropped",
-                            self.config.id
-                        );
-                    }
+                    && sender.send(est).is_err()
+                {
+                    error!(
+                        "Node `{}` failed to send decided upon estimate through sender channel: receiver dropped",
+                        self.config.id
+                    );
+                }
             } else {
                 event!(
                     Level::DEBUG,

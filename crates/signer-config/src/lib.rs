@@ -43,18 +43,14 @@ impl SecretKeyConfig {
         Self::from_path(PathBuf::from(tilde(&path).as_ref()))
     }
     pub fn from_path(path: PathBuf) -> anyhow::Result<Self> {
-        let c: SecretKeyConfig = Figment::new()
-            .merge(Toml::file(path))
-            .extract()?;
+        let c: SecretKeyConfig = Figment::new().merge(Toml::file(path)).extract()?;
         Ok(c)
     }
 }
 
 impl SigningConfig {
     pub fn from_path(secret_key: &SecretKeyConfig, path: PathBuf) -> anyhow::Result<Self> {
-        let c: UnvalidatedSigningConfig = Figment::new()
-            .merge(Toml::file(path))
-            .extract()?;
+        let c: UnvalidatedSigningConfig = Figment::new().merge(Toml::file(path)).extract()?;
         c.parse(secret_key)
     }
     pub fn from_path_str(
