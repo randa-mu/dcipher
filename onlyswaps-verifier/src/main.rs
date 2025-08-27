@@ -12,6 +12,7 @@ use crate::cross_chain_service::CrossChainService;
 use crate::eth::Network;
 use crate::signing::{DsignerWrapper, OnlySwapsSigner};
 use alloy::hex;
+use alloy::providers::DynProvider;
 use anyhow::anyhow;
 use axum::Router;
 use axum::routing::get;
@@ -35,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
     let config: ConfigFile = load_config_file(&cli_config);
     let networks = Network::create_many(&cli_config.private_key, &config.networks).await?;
 
-    let chain_service = CrossChainService::new(&networks);
+    let chain_service = CrossChainService::<DynProvider>::new(&networks);
     let pending_verifications = chain_service.fetch_pending_verifications().await?;
 
     let bls_secret_key = SecretKeyConfig::from_path_str("~/.verifier/key.priv")?;
