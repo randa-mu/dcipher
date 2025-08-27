@@ -13,7 +13,8 @@ members = [
     "onlyswaps-verifier",
     "randomness-agent",
     "signer",
-    "superalloy"
+    "superalloy",
+    "tools/gen-keys"
 ]
 
 [workspace.package]
@@ -90,6 +91,7 @@ hex = "0.4"
 humantime = "2.2"
 itertools = "0.14"
 rand = "0.8.0"
+strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0"
 
 [patch.crates-io]

@@ -1,5 +1,4 @@
-use alloy::signers::k256::elliptic_curve::rand_core::OsRng;
-use ark_bn254::Fr;
+use ark_ec::pairing::Pairing;
 use ark_ec::{CurveGroup, Group, VariableBaseMSM};
 use ark_ff::{BigInteger, Field, One, PrimeField};
 use ark_poly::univariate::DensePolynomial;
@@ -8,7 +7,15 @@ use ark_std::UniformRand;
 use base64::prelude::*;
 use clap::{Arg, Command};
 use libp2p::identity::Keypair;
+use rand::rngs::OsRng;
+use std::str::FromStr;
+use strum::EnumString;
 use utils::serialize::point::PointSerializeCompressed;
+
+#[derive(Copy, Clone, Debug, EnumString)]
+enum Scheme {
+    Bn254,
+}
 
 fn main() -> anyhow::Result<()> {
     let args = Command::new("gen-keys")
@@ -17,35 +24,60 @@ fn main() -> anyhow::Result<()> {
                 .short('n')
                 .help("Number of nodes")
                 .required(true)
-                .value_parser(clap::value_parser!(u32)),
+                .value_parser(clap::value_parser!(u16)),
         )
         .arg(
             Arg::new("threshold")
                 .short('t')
                 .help("Threshold")
                 .required(true)
-                .value_parser(clap::value_parser!(u32)),
+                .value_parser(clap::value_parser!(u16)),
+        )
+        .arg(
+            Arg::new("scheme")
+                .long("scheme")
+                .help("The scheme to use")
+                .default_value("Bn254")
+                .value_parser(clap::value_parser!(String)),
         )
         .get_matches();
 
-    let n: u32 = *args.get_one("nodes").unwrap();
-    let t: u32 = *args.get_one("threshold").unwrap();
+    let n: u16 = *args.get_one("nodes").unwrap();
+    let t: u16 = *args.get_one("threshold").unwrap();
+    let scheme: Scheme = Scheme::from_str(args.get_one::<String>("scheme").unwrap())?;
 
+    match scheme {
+        Scheme::Bn254 => {
+            println!("Generating bn254 keys:\n");
+            gen_keys::<ark_bn254::Bn254>(n, t)
+        }
+    }
+}
+
+fn gen_keys<E: Pairing>(n: u16, t: u16) -> anyhow::Result<()>
+where
+    E::G1: PointSerializeCompressed,
+    E::G2: PointSerializeCompressed,
+{
     // Build polynomial from coefficients
-    let poly_coeffs = (0..t).map(|_| Fr::rand(&mut OsRng)).collect::<Vec<_>>();
+    let poly_coeffs = (0..t)
+        .map(|_| E::ScalarField::rand(&mut OsRng))
+        .collect::<Vec<_>>();
     let p = DensePolynomial::from_coefficients_slice(&poly_coeffs);
     let sks = (1..=n).map(|i| p.evaluate(&i.into())).collect::<Vec<_>>();
 
     for i in 1..=n {
         let ski = sks[i as usize - 1];
-        let pki = ark_bn254::G2Projective::generator() * ski;
+        let pki_g1 = E::G1::generator() * ski;
+        let pki_g2 = E::G2::generator() * ski;
         let libp2p_ski = ::libp2p::identity::Keypair::generate_ed25519();
 
         println!(
             "node {i}: bls private key    = {}",
             hex::encode(ski.into_bigint().to_bytes_be())
         );
-        println!("node {i}: bls public key     = {}", pki.ser_base64()?);
+        println!("node {i}: bls public key g1  = {}", pki_g1.ser_base64()?);
+        println!("node {i}: bls public key g2  = {}", pki_g2.ser_base64()?);
         println!(
             "node {i}: libp2p private key = {}",
             encode_libp2p(&libp2p_ski)
@@ -60,14 +92,15 @@ fn main() -> anyhow::Result<()> {
 
     let points = (1..=n)
         .zip(sks)
-        .map(|(i, ski)| (i.into(), ark_bn254::G2Projective::generator() * ski))
+        .map(|(i, ski)| (i.into(), E::G2::generator() * ski))
         .collect::<Vec<_>>();
-    let skp = lagrange_points_interpolate_at(&points, 0);
-    assert_eq!(
-        skp.into_affine(),
-        (ark_bn254::G2Projective::generator() * poly_coeffs[0]).into_affine()
-    );
+    let exp_pk_g1 = E::G1::generator() * poly_coeffs[0];
+    let exp_pk_g2 = E::G2::generator() * poly_coeffs[0];
+    let pk_g2 = lagrange_points_interpolate_at(&points, 0);
+    assert_eq!(pk_g2.into_affine(), exp_pk_g2.into_affine());
 
+    println!("group bls public key g1    = {}", exp_pk_g1.ser_base64()?);
+    println!("group bls public key g2    = {}", exp_pk_g2.ser_base64()?);
     Ok(())
 }
 
