@@ -185,6 +185,8 @@ pub struct Libp2pArgs {
     serialize = "G2: PointSerializeCompressed",
     deserialize = "G2: PointDeserializeCompressed"
 ))]
+
+#[derive(Clone)]
 pub struct NodesConfiguration<G2> {
     pub nodes: Vec<NodeConfiguration<G2>>,
 }

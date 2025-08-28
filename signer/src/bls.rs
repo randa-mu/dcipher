@@ -328,7 +328,7 @@ where
 
         iter_all_hash(<G1<BLS> as NamedCurveGroup>::CURVE_ID.into(), false)
             .chain(iter_all_hash(
-                <G2<BLS> as NamedCurveGroup>::CURVE_ID.into(),
+                <G1<BLS> as NamedCurveGroup>::CURVE_ID.into(),
                 true,
             ))
             .chain(iter_all_hash(

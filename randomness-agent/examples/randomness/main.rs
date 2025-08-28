@@ -22,7 +22,7 @@ use dcipher_signer::dsigner::{
     BlsSignatureHash, SignatureAlgorithm,
 };
 use randomness_agent::{
-    BLS12_381_RANDOMNESS_SCHEME_ID, BN254_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent,
+    BLS12_381_RANDOMNESS_SCHEME_ID, BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID, BN254_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent,
 };
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
@@ -126,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
                 hash: BlsSignatureHash::Sha256,
                 compression: false,
             }),
-            &bls12_381_nodes_config.unwrap_or_default(),
+            &bls12_381_nodes_config.clone().unwrap_or_default(),
             signature_sender_contract.clone(),
             randomness_sender_contract.clone(),
         )?;
@@ -134,6 +134,36 @@ async fn main() -> anyhow::Result<()> {
         // Create a new randomness agent
         let agent = RandomnessAgent::new(
             BLS12_381_RANDOMNESS_SCHEME_ID,
+            config.chain.sync_batch_size,
+            channel,
+            signature_sender_contract_ro.clone(),
+        );
+        ServiceComponents {
+            ticker,
+            libp2p_node,
+            ts_stopper,
+            stopper,
+            agent,
+        }
+    };
+    let mut bls12_381_c = {
+        // Create a fulfiller
+        let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
+            &config,
+            BlsPairingSigner::new_bls12_381(config.key_config.bls12_381_key.0),
+            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                curve: BlsSignatureCurve::Bls12_381G1,
+                hash: BlsSignatureHash::Sha256,
+                compression: true,
+            }),
+            &bls12_381_nodes_config.unwrap_or_default(),
+            signature_sender_contract.clone(),
+            randomness_sender_contract.clone(),
+        )?;
+
+        // Create a new randomness agent
+        let agent = RandomnessAgent::new(
+            BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID,
             config.chain.sync_batch_size,
             channel,
             signature_sender_contract_ro.clone(),
@@ -178,6 +208,11 @@ async fn main() -> anyhow::Result<()> {
             err // return Result
         },
 
+        err = run_agent(&mut bls12_381_c.agent, bls12_381_c.ticker, signature_sender_contract_ro.clone()) => {
+            eprintln!("agent_bn254 stopped unexpectedly...");
+            err // return Result
+        },
+
         err = start_api(config.healthcheck_listen_addr, config.healthcheck_port) => {
             eprintln!("healthcheck stopped unexpectedly...");
             err // return Result
@@ -196,6 +231,12 @@ async fn main() -> anyhow::Result<()> {
     }
     bls12_381.ts_stopper.cancel();
     bls12_381.stopper.stop().await;
+
+    if let Err(e) = bls12_381_c.libp2p_node.stop().await {
+        tracing::error!(error = ?e, "Failed to stop libp2p node");
+    }
+    bls12_381_c.ts_stopper.cancel();
+    bls12_381_c.stopper.stop().await;
 
     res
 }
