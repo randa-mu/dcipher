@@ -2,7 +2,6 @@
 
 use alloy::primitives::Bytes;
 use ark_ec::AffineRepr;
-use utils::serialize::point::PointSerializeUncompressed;
 
 /// Serialize into an EVM Bytes type.
 pub trait EvmSerialize {
@@ -16,32 +15,6 @@ pub trait EvmDeserialize {
     fn deser(bytes: &Bytes) -> Result<Self, Self::Error>
     where
         Self: Sized;
-}
-
-impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
-    fn ser_bytes(&self) -> Bytes {
-        PointSerializeUncompressed::ser_uncompressed(self)
-            .unwrap()
-            .into()
-    }
-}
-
-impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g2::Config> {
-    fn ser_bytes(&self) -> Bytes {
-        PointSerializeUncompressed::ser_uncompressed(self)
-            .unwrap()
-            .into()
-    }
-}
-
-impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bls12_381::g1::Config> {
-    fn ser_bytes(&self) -> Bytes {
-        use ark_serialize::CanonicalSerialize;
-        let mut buf = Vec::with_capacity(48);
-        self.serialize_compressed(&mut buf)
-            .expect("serialization should not fail");
-        buf.into()
-    }
 }
 
 #[cfg(feature = "blocklock")]
