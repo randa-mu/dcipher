@@ -1,3 +1,4 @@
+mod matrix;
 pub(crate) mod types;
 
 /// Re-export types required by ADKG trait bounds
