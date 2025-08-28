@@ -22,7 +22,8 @@ use dcipher_signer::dsigner::{
     BlsSignatureHash, SignatureAlgorithm,
 };
 use randomness_agent::{
-    BLS12_381_RANDOMNESS_SCHEME_ID, BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID, BN254_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent,
+    BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID, BLS12_381_RANDOMNESS_SCHEME_ID,
+    BN254_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent,
 };
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
