@@ -1675,9 +1675,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.45"
+version = "4.5.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fc0e74a703892159f5ae7d3aac52c8e6c392f5ae5f359c70b5881d60aaac318"
+checksum = "2c5e4fcf9c21d2e544ca1ee9d8552de13019a42aa7dbf32747fa7aaf1df76e57"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1685,9 +1685,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.44"
+version = "4.5.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3e7f4214277f3c7aa526a59dd3fbe306a370daee1f8b7b8c987069cd8e888a8"
+checksum = "fecb53a0e6fcfb055f686001bc2e2592fa527efaf38dbe81a6a9563562e57d41"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1726,6 +1726,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
 dependencies = [
  "crossbeam-utils",
+]
+
+[[package]]
+name = "config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ark-bn254",
+ "clap",
+ "figment",
+ "libp2p",
+ "serde",
+ "serde-keys",
+ "shellexpand",
+ "utils",
 ]
 
 [[package]]
@@ -2438,6 +2453,7 @@ checksum = "8cb01cd46b0cf372153850f4c6c272d9cbea2da513e07538405148f95bd789f3"
 dependencies = [
  "atomic",
  "serde",
+ "serde_json",
  "toml 0.8.22",
  "uncased",
  "version_check",
@@ -4570,14 +4586,16 @@ dependencies = [
  "async-trait",
  "axum",
  "clap",
+ "config",
  "dcipher-network",
  "dcipher-signer",
+ "figment",
  "futures",
  "serde",
  "serde_json",
  "shellexpand",
- "signer-config",
  "speculoos",
+ "tempfile",
  "tokio",
 ]
 
@@ -6146,20 +6164,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "signer-config"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ark-bn254",
- "figment",
- "libp2p",
- "serde",
- "serde-keys",
- "shellexpand",
- "utils",
-]
-
-[[package]]
 name = "slab"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6587,9 +6591,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tempfile"
-version = "3.20.0"
+version = "3.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8a64e3985349f2441a1a9ef0b853f869006c3855f2cda6862a94d26ebb9d6a1"
+checksum = "15b61f8f20e3a6f7e0649d825294eaf317edce30f82cf6026e7e4cb9222a7d1e"
 dependencies = [
  "fastrand",
  "getrandom 0.3.2",

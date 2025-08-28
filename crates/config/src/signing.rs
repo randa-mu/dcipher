@@ -1,24 +1,24 @@
 use figment::Figment;
-use figment::providers::{Format, Toml};
+use figment::providers::{Format, Json, Toml};
 use serde::{Deserialize, Serialize};
 use serde_keys::Bn254SecretKey;
 use shellexpand::tilde;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SecretKeyConfig {
     pub node_id: NonZeroU16,
     pub secret_key: Bn254SecretKey,
     pub t: NonZeroU16,
     pub n: NonZeroU16,
 }
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SigningConfig {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GroupConfig {
     pub nodes: Vec<NodeConfig>,
 }
-#[derive(Serialize, Deserialize, Debug)]
-struct UnvalidatedSigningConfig {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UnvalidatedGroupConfig {
     pub nodes: Vec<NodeConfig>,
 }
 
@@ -43,14 +43,20 @@ impl SecretKeyConfig {
         Self::from_path(PathBuf::from(tilde(&path).as_ref()))
     }
     pub fn from_path(path: PathBuf) -> anyhow::Result<Self> {
-        let c: SecretKeyConfig = Figment::new().merge(Toml::file(path)).extract()?;
+        let c: SecretKeyConfig = Figment::new()
+            .merge(Toml::file(&path))
+            .merge(Json::file(&path))
+            .extract()?;
         Ok(c)
     }
 }
 
-impl SigningConfig {
+impl GroupConfig {
     pub fn from_path(secret_key: &SecretKeyConfig, path: PathBuf) -> anyhow::Result<Self> {
-        let c: UnvalidatedSigningConfig = Figment::new().merge(Toml::file(path)).extract()?;
+        let c: UnvalidatedGroupConfig = Figment::new()
+            .merge(Toml::file(&path))
+            .merge(Json::file(&path))
+            .extract()?;
         c.parse(secret_key)
     }
     pub fn from_path_str(
@@ -61,8 +67,8 @@ impl SigningConfig {
     }
 }
 
-impl UnvalidatedSigningConfig {
-    fn parse(mut self, secret_key: &SecretKeyConfig) -> anyhow::Result<SigningConfig> {
+impl UnvalidatedGroupConfig {
+    pub fn parse(mut self, secret_key: &SecretKeyConfig) -> anyhow::Result<GroupConfig> {
         let t = secret_key.t.get();
         let n = secret_key.n.get();
         let starting_node_count = self.nodes.len();
@@ -98,6 +104,6 @@ impl UnvalidatedSigningConfig {
         }
 
         // return the config including our modified set of nodes (excluding ours)
-        Ok(SigningConfig { nodes: self.nodes })
+        Ok(GroupConfig { nodes: self.nodes })
     }
 }
