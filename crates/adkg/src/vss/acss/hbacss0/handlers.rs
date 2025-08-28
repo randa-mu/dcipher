@@ -1,15 +1,17 @@
 //! Handlers for the various messages sent during the ACSS protocol.
 
 use super::{
-    AcssMessage, AcssStatus, HbAcss0Instance, Hbacss0Output, ImplicateMessage, StateMachine,
+    AcssMessage, AcssStatus, HbAcss0Instance, Hbacss0Output, ImplicateMessage, PublicPoly,
+    StateMachine,
 };
 use crate::helpers::PartyId;
 use crate::network::broadcast_with_self;
 use crate::rbc::ReliableBroadcastConfig;
+use crate::vss::pedersen::PedersenPartyShare;
 use crate::{
     helpers::lagrange_interpolate_at, nizk::NIZKDleqProof,
     pke::ec_hybrid_chacha20poly1305::EphemeralMultiHybridCiphertext,
-    vss::acss::hbacss0::feld_eval_verify,
+    vss::acss::hbacss0::ped_eval_verify,
 };
 use ark_ec::CurveGroup;
 use dcipher_network::TransportSender;
@@ -42,7 +44,7 @@ where
         // If received 2t + 1 Ok and waiting for oks, change state to Ready
         #[allow(clippy::int_plus_one)]
         if state_machine.nodes_oks.len() >= 2 * self.config.t + 1 {
-            if let AcssStatus::WaitingForOks(share) = state_machine.status {
+            if let AcssStatus::WaitingForOks(shares) = &state_machine.status {
                 info!(
                     "Node `{}` received 2t + 1 Oks, sending Ready to all",
                     self.config.id
@@ -62,7 +64,7 @@ where
                 }
 
                 // Update state
-                state_machine.status = AcssStatus::WaitingForReadys(share);
+                state_machine.status = AcssStatus::WaitingForReadys(shares.to_owned());
             } else {
                 // This prevents nodes in share recovery from sending oks
                 info!(
@@ -78,7 +80,7 @@ where
         &self,
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,
-        public_poly: &[CG],
+        public_polys: &[PublicPoly<CG>],
     ) {
         // Skip messages if not waiting for Ok nor Readys nor in ShareRecovery
         match state_machine.status {
@@ -92,12 +94,12 @@ where
         state_machine.nodes_readys.insert(sender, true);
 
         // Various cases based on current status
-        match state_machine.status {
+        match &state_machine.status {
             // While in share recovery, we simply count readys
             AcssStatus::ShareRecovery => (), // nop
 
             // While waiting for oks, we send ready upon receiving t + 1 readys
-            AcssStatus::WaitingForOks(share) => {
+            AcssStatus::WaitingForOks(shares) => {
                 #[allow(clippy::int_plus_one)]
                 if state_machine.nodes_readys.len() >= self.config.t + 1
                     && !state_machine.nodes_readys.contains_key(&self.config.id)
@@ -122,12 +124,12 @@ where
                     }
 
                     // Update state
-                    state_machine.status = AcssStatus::WaitingForReadys(share);
+                    state_machine.status = AcssStatus::WaitingForReadys(shares.to_owned());
                 }
             }
 
             // While waiting for readys, we complete ACSS given 2t + 1 readys
-            AcssStatus::WaitingForReadys(share) => {
+            AcssStatus::WaitingForReadys(shares) => {
                 #[allow(clippy::int_plus_one)]
                 if state_machine.nodes_readys.len() >= 2 * self.config.t + 1 {
                     info!(
@@ -143,8 +145,8 @@ where
                         );
                         if output
                             .send(Hbacss0Output {
-                                share,
-                                public_poly: public_poly.to_vec(),
+                                shares: shares.to_owned(),
+                                public_polys: public_polys.to_vec(),
                             })
                             .is_err()
                         {
@@ -163,12 +165,12 @@ where
                             "Node `{}` received n Ready, ACSS is Complete",
                             self.config.id
                         );
-                        state_machine.status = AcssStatus::Complete(share);
+                        state_machine.status = AcssStatus::Complete;
                     }
                 }
             }
 
-            AcssStatus::New | AcssStatus::Complete(..) => {
+            AcssStatus::New | AcssStatus::Complete => {
                 unreachable!("unreachable due to preconditions")
             }
         }
@@ -179,7 +181,7 @@ where
         &self,
         msg: &ImplicateMessage,
         enc_shares: &EphemeralMultiHybridCiphertext<CG>,
-        public_poly: &[CG],
+        public_polys: &[PublicPoly<CG>],
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,
     ) where
@@ -190,7 +192,7 @@ where
         match state_machine.status {
             AcssStatus::WaitingForOks(..)
             | AcssStatus::WaitingForReadys(..)
-            | AcssStatus::Complete(..) => (),
+            | AcssStatus::Complete => (),
             _ => return,
         }
 
@@ -254,10 +256,11 @@ where
         }
 
         // We know that the sender gave us a valid shared key, try to decrypt the original ciphertext sent by the dealer.
-        if feld_eval_verify(
+        if ped_eval_verify(
             enc_shares,
-            public_poly,
+            public_polys,
             &self.config.g,
+            &self.config.h,
             sender,
             &shared_key,
             &self.config.pks[sender],
@@ -309,7 +312,7 @@ where
         &self,
         shared_key: &[u8],
         enc_shares: &EphemeralMultiHybridCiphertext<CG>,
-        public_poly: &[CG],
+        public_polys: &[PublicPoly<CG>],
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,
     ) where
@@ -317,7 +320,7 @@ where
         CG::ScalarField: FqDeserialize,
     {
         // Node is not in share recovery mode, ignore messages.
-        if state_machine.status != AcssStatus::ShareRecovery {
+        if !matches!(state_machine.status, AcssStatus::ShareRecovery) {
             return;
         }
 
@@ -337,10 +340,11 @@ where
 
         // We don't verify the source / validity of the shared key.
         // We only need it such that decryption results in a valid dealer's share.
-        let Ok(share) = feld_eval_verify(
+        let Ok(shares) = ped_eval_verify(
             enc_shares,
-            public_poly,
+            public_polys,
             &self.config.g,
+            &self.config.h,
             sender,
             &shared_key,
             &self.config.pks[sender],
@@ -354,19 +358,26 @@ where
         };
 
         // Store the latest recovered share
-        state_machine.shares_recovery.insert(sender, share);
+        state_machine.shares_recovery.insert(sender, shares);
 
         // Do we have enough share (t + 1) for polynomial interpolation?
         #[allow(clippy::int_plus_one)]
         if state_machine.shares_recovery.len() >= self.config.t + 1 {
             // Enough share, interpolate the polynomial
             // ugly non fft interpolation
-            let shares: Vec<(u64, CG::ScalarField)> = state_machine
+            let new_shares = state_machine
                 .shares_recovery
-                .iter()
-                .map(|(k, v)| (k.into(), *v))
+                .drain()
+                .map(|(k, shares)| {
+                    let (points_si, points_ri): (Vec<_>, Vec<_>) = shares
+                        .into_iter()
+                        .map(move |share| ((k.into(), share.si), (k.into(), share.ri)))
+                        .collect();
+                    let si = lagrange_interpolate_at::<CG>(&points_si, self.config.id.into());
+                    let ri = lagrange_interpolate_at::<CG>(&points_ri, self.config.id.into());
+                    PedersenPartyShare { si, ri }
+                })
                 .collect();
-            let new_share = lagrange_interpolate_at::<CG>(&shares, self.config.id.into());
 
             // Note that this is not explicitly described in ACSS / hbACSS0 (https://eprint.iacr.org/2021/159.pdf, Algorithm 1)
             // However, it makes sense to switch to the ready state once
@@ -390,7 +401,7 @@ where
             }
 
             // Update state machine
-            state_machine.status = AcssStatus::WaitingForReadys(new_share);
+            state_machine.status = AcssStatus::WaitingForReadys(new_shares);
         }
     }
 }

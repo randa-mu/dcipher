@@ -11,10 +11,12 @@ use crate::helpers::PartyId;
 use crate::network::{RetryStrategy, broadcast_with_self};
 use crate::nizk::NIZKDleqProof;
 use crate::rbc::ReliableBroadcastConfig;
+use crate::vss::acss::hbacss0::types::PedersenPartyShares;
+use crate::vss::pedersen;
+use crate::vss::pedersen::PedersenPartyShare;
 use crate::{
     pke::ec_hybrid_chacha20poly1305::{self, EphemeralMultiHybridCiphertext},
     rbc::{RbcPredicate, ReliableBroadcast},
-    vss::feldman::{self},
 };
 use ark_ec::CurveGroup;
 use ark_ff::FftField;
@@ -32,10 +34,9 @@ use tokio::select;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
-use types::{AcssBroadcastMessage, AcssStatus, FedVerifyPredicate, StateMachine};
+use types::{AcssBroadcastMessage, AcssStatus, PedVerifyPredicate, StateMachine};
 use utils::dst::{NamedCurveGroup, NamedDynDigest, Rfc9380DstBuilder};
 use utils::serialize::{
-    SerializationError,
     fq::{FqDeserialize, FqSerialize},
     point::{PointDeserializeCompressed, PointSerializeCompressed},
 };
@@ -54,6 +55,7 @@ where
     n: usize,                      // The number of parties taking part in the scheme
     t: usize,                      // The threshold of parties
     g: CG,                         // The generator g to be used
+    h: CG,                         // The generator h to be used
     rbc_config: Arc<RBCConfig>,    // Internal reliable broadcast protocol configuration
     retry_strategy: RetryStrategy, // Retry strategy when sending messages
     nizk_dleq_dst: Vec<u8>,        // Domain separation tag used for NIZK DLEQ proofs
@@ -74,6 +76,7 @@ where
         n: usize,
         t: usize,
         g: CG,
+        h: CG,
         retry_strategy: RetryStrategy,
     ) -> Arc<Self> {
         // Generate a DST in the following format: HBACSS0-v1_%CURVE_NAME%_XMD:%HASH_NAME%_NIZK_DLEQ_
@@ -93,6 +96,7 @@ where
             n,
             t,
             g,
+            h,
             retry_strategy,
             nizk_dleq_dst: dst.into(),
             _h: PhantomData,
@@ -113,19 +117,25 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Hbacss0Output<CG: CurveGroup> {
-    pub share: CG::ScalarField,
-    pub public_poly: Vec<CG>,
+/// Secret used by pedersen commitments.
+pub struct PedersenSecret<F> {
+    pub s: F,
+    pub r: F,
 }
 
-impl<CG: CurveGroup> From<Hbacss0Output<CG>> for ShareWithPoly<CG> {
-    fn from(value: Hbacss0Output<CG>) -> Self {
-        Self {
-            public_poly: value.public_poly,
-            share: value.share,
-        }
-    }
+/// The public polynomial output by the Pedersen-based ACSS.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(bound(
+    serialize = "CG: PointSerializeCompressed",
+    deserialize = "CG: PointDeserializeCompressed"
+))]
+pub struct PublicPoly<CG>(#[serde(with = "utils::serialize::point::base64::vec")] pub Vec<CG>);
+
+/// The output of the Pedersen-based ACSS.
+#[derive(Clone)]
+pub struct Hbacss0Output<CG: CurveGroup> {
+    pub shares: Vec<PedersenPartyShare<CG::ScalarField>>,
+    pub public_polys: Vec<PublicPoly<CG>>,
 }
 
 impl<'a, CG, H, RBCConfig> AcssConfig<'a, CG, PartyId> for HbAcss0Config<CG, H, RBCConfig>
@@ -136,6 +146,7 @@ where
     H: Default + DynDigest + BlockSizeUser + Clone + 'static,
     RBCConfig: for<'lt_rbc> ReliableBroadcastConfig<'lt_rbc, PartyId> + 'a,
 {
+    type Input = Vec<PedersenSecret<CG::ScalarField>>;
     type Output = Hbacss0Output<CG>;
     type Error = Box<AcssError>;
 
@@ -143,7 +154,10 @@ where
         self: &Arc<Self>,
         topic_prefix: String,
         transport: T,
-    ) -> Result<impl Acss<CG, PartyId, Output = Self::Output, Error = Self::Error> + 'a, Self::Error>
+    ) -> Result<
+        impl Acss<CG, PartyId, Input = Self::Input, Output = Self::Output, Error = Self::Error> + 'a,
+        Self::Error,
+    >
     where
         T: TopicBasedTransport<Identity = PartyId>,
     {
@@ -204,11 +218,12 @@ where
     T: Transport<Identity = PartyId>,
 {
     type Error = Box<AcssError>;
+    type Input = Vec<PedersenSecret<CG::ScalarField>>;
     type Output = Hbacss0Output<CG>;
 
     async fn deal<RNG>(
         self,
-        s: &CG::ScalarField,
+        ped_sks: Self::Input,
         cancel: CancellationToken,
         output: oneshot::Sender<Self::Output>,
         rng: &mut RNG,
@@ -219,7 +234,7 @@ where
         let id = self.config.id;
         let res = select! {
             res = self.acss_dealer(
-                s,
+                ped_sks,
                 cancel.child_token(),
                 output,
                 rng
@@ -292,7 +307,7 @@ where
     /// Beginning of the ACSS protocol as the dealer.
     async fn acss_dealer<RNG>(
         mut self,
-        s: &CG::ScalarField,
+        ped_sks: impl IntoIterator<Item = PedersenSecret<CG::ScalarField>>,
         rbc_cancel: CancellationToken,
         output: oneshot::Sender<Hbacss0Output<CG>>,
         rng: &mut RNG,
@@ -303,22 +318,44 @@ where
         CG::ScalarField: FqSerialize + FqDeserialize,
         RNG: RngCore + CryptoRng,
     {
-        // Feldman's Polynomial Commitment of degree t where p(0) = s
+        // Pedersen's Polynomial Commitment of degree t where p(0) = s
         let g = self.config.g;
-        let vss_share = feldman::share(s, &g, self.config.n, self.config.t, rng);
-        let public_poly = vss_share.get_public_poly();
+        let h = self.config.h;
+        let vss_shares: Vec<_> = ped_sks
+            .into_iter()
+            .map(|ped_sk| {
+                pedersen::share(
+                    &ped_sk.s,
+                    &ped_sk.r,
+                    &g,
+                    &h,
+                    self.config.n as u64,
+                    self.config.t as u64,
+                    rng,
+                )
+            })
+            .collect();
+        let public_polys: Vec<_> = vss_shares
+            .iter()
+            .map(|vss_share| vss_share.get_public_poly().to_vec().into())
+            .collect();
 
         // Encrypt and Disperse
         // Each share is encrypted towards the receiving party
         let shares = PartyId::iter_all(self.config.n)
-            .map(|i| -> Result<Vec<u8>, SerializationError> {
-                vss_share
-                    .get_party_secrets(i)
-                    .expect("feldman output less than n shares") // gen n shares, loop n times
-                    .ser()
+            .map(|i| -> Result<Vec<u8>, _> {
+                let shares: Vec<_> = vss_shares
+                    .iter()
+                    .map(|vss_share| {
+                        vss_share
+                            .get_party_secrets(i.into())
+                            .expect("feldman output less than n shares") // gen n shares, loop n times
+                    })
+                    .collect();
+                bson::to_vec(&PedersenPartyShares { shares })
             })
             .collect::<Result<Vec<Vec<u8>>, _>>()
-            .map_err(|e| AcssError::Ser(e, "dealer failed to serialize vss shares"))?; // unexpected error, abort ACSS
+            .map_err(|e| AcssError::BsonSer(e, "dealer failed to serialize vss shares"))?; // unexpected error, abort ACSS
 
         let enc_shares =
             ec_hybrid_chacha20poly1305::encrypt_multi(&shares, &self.config.pks, &g, rng)
@@ -327,7 +364,7 @@ where
         // Disperse encrypted shares and public polynomial through the broadcast channel
         let broadcast = AcssBroadcastMessage {
             enc_shares,
-            public_poly: public_poly.to_vec(),
+            public_polys: public_polys.clone(),
         };
         let m = bson::to_vec(&broadcast)
             .map_err(|e| AcssError::BsonSer(e, "dealer failed to serialize broadcast message"))?; // unexpected error, abort ACSS
@@ -348,10 +385,13 @@ where
         // Continue the execution of the acss protocol as a normal participant.
         let id = self.config.id;
         self.acss_continue(
-            vss_share.get_party_secrets(id).copied(),
+            vss_shares
+                .iter()
+                .map(|vss_share| vss_share.get_party_secrets(id.into()))
+                .collect(),
             output,
             &broadcast.enc_shares,
-            public_poly,
+            public_polys,
             rng,
         )
         .await
@@ -370,12 +410,13 @@ where
         CG::ScalarField: FqSerialize + FqDeserialize,
         RNG: RngCore + CryptoRng,
     {
-        let pred = FedVerifyPredicate {
+        let pred = PedVerifyPredicate {
             expected_broadcaster,
             i: self.config.id,
             sk: self.config.sk,
             pk: self.config.pks[self.config.id],
             g: self.config.g,
+            h: self.config.h,
         };
 
         // Get message from RBC, or abort
@@ -405,30 +446,31 @@ where
         // Decrypt and validate share
         let enc_shares = &m.enc_shares;
         let shared_key = enc_shares.derive_shared_key(&self.config.sk);
-        let public_poly = &m.public_poly;
+        let public_polys = m.public_polys;
 
         // If the share is valid, the nodes enters the reconstruction process
         // otherwise, the node enters the recovery process
-        let share = feld_eval_verify(
+        let share = ped_eval_verify(
             enc_shares,
-            public_poly,
+            public_polys.iter(),
             &self.config.g,
+            &self.config.h,
             self.config.id,
             &shared_key,
             &self.config.pks[self.config.id],
         )
         .ok();
-        self.acss_continue(share, output, &m.enc_shares, public_poly, rng)
+        self.acss_continue(share, output, &m.enc_shares, public_polys, rng)
             .await
     }
 
     /// Execute the agreement / implication / share recovery part of the protocol.
     async fn acss_continue<RNG>(
         self,
-        share: Option<CG::ScalarField>,
+        shares: Option<Vec<PedersenPartyShare<CG::ScalarField>>>,
         output: oneshot::Sender<Hbacss0Output<CG>>,
         enc_shares: &EphemeralMultiHybridCiphertext<CG>,
-        public_poly: &[CG],
+        public_polys: Vec<PublicPoly<CG>>,
         rng: &mut RNG,
     ) -> Result<(), Box<AcssError>>
     where
@@ -458,14 +500,14 @@ where
 
         // If the share is valid, prepare Ok message
         // otherwise, the node prepares an implicate message and enters the recovery process
-        if let Some(share) = share {
+        if let Some(shares) = shares {
             info!(
-                "Node `{}` received a valid share. Starting ACSS protocol.",
+                "Node `{}` received valid shares. Starting ACSS protocol.",
                 config.id
             );
 
             // Update state
-            state_machine.status = AcssStatus::WaitingForOks(share);
+            state_machine.status = AcssStatus::WaitingForOks(shares);
 
             // Share is valid, send Ok to all other nodes
             if let Err(e) =
@@ -540,7 +582,7 @@ where
 
                 AcssMessage::Ready => {
                     hbacss0
-                        .ready_handler(sender, &mut state_machine, public_poly)
+                        .ready_handler(sender, &mut state_machine, &public_polys)
                         .await
                 }
 
@@ -549,7 +591,7 @@ where
                         .implicate_handler(
                             &ski,
                             enc_shares,
-                            public_poly,
+                            &public_polys,
                             sender,
                             &mut state_machine,
                         )
@@ -561,7 +603,7 @@ where
                         .recovery_handler(
                             &shared_key,
                             enc_shares,
-                            public_poly,
+                            &public_polys,
                             sender,
                             &mut state_machine,
                         )
@@ -570,16 +612,41 @@ where
             }
 
             // Exit if the ACSS is complete.
-            if let AcssStatus::Complete(_) = state_machine.status {
+            if let AcssStatus::Complete = state_machine.status {
                 return Ok(());
             }
         }
     }
 }
 
+impl<CG: CurveGroup> From<Hbacss0Output<CG>> for ShareWithPoly<CG> {
+    fn from(value: Hbacss0Output<CG>) -> Self {
+        Self {
+            public_polys: value.public_polys,
+            shares: value.shares,
+        }
+    }
+}
+
+impl<CG> PublicPoly<CG> {
+    pub fn to_vec(self) -> Vec<CG> {
+        self.0
+    }
+
+    pub fn as_vec(&self) -> &Vec<CG> {
+        &self.0
+    }
+}
+
+impl<CG> From<Vec<CG>> for PublicPoly<CG> {
+    fn from(v: Vec<CG>) -> Self {
+        Self(v)
+    }
+}
+
 /// Predicate used to determine the validity of the share within the RBC protocol.
 #[async_trait]
-impl<CG> RbcPredicate for FedVerifyPredicate<CG>
+impl<CG> RbcPredicate for PedVerifyPredicate<CG>
 where
     CG: CurveGroup + PointSerializeCompressed,
     CG::ScalarField: FqDeserialize,
@@ -604,11 +671,12 @@ where
         // Decrypt and validate share
         let enc_shares = &m.enc_shares;
         let shared_key = enc_shares.derive_shared_key(&self.sk);
-        let public_poly = &m.public_poly;
-        feld_eval_verify(
+        let public_poly = &m.public_polys;
+        ped_eval_verify(
             enc_shares,
             public_poly,
             &self.g,
+            &self.h,
             self.i,
             &shared_key,
             &self.pk,
@@ -618,14 +686,15 @@ where
 }
 
 /// Verify that a hybrid encryption ciphertext can be decrypted and is a valid Feldman share for party i.
-fn feld_eval_verify<CG>(
+fn ped_eval_verify<'a, CG>(
     ct: &EphemeralMultiHybridCiphertext<CG>,
-    public_poly: &[CG],
+    public_polys: impl IntoIterator<Item = &'a PublicPoly<CG>, IntoIter: ExactSizeIterator>,
     g: &CG,
+    h: &CG,
     i: PartyId,
     shared_key: &CG,
     recipient_pk: &CG,
-) -> Result<CG::ScalarField, ()>
+) -> Result<Vec<PedersenPartyShare<CG::ScalarField>>, ()>
 where
     CG: CurveGroup + PointSerializeCompressed,
     CG::ScalarField: FqDeserialize,
@@ -634,12 +703,37 @@ where
     // Try to decrypt the ciphertext and deserialize it, or return Err(())
     let pt = ct
         .decrypt_one_with_shared_key(i.as_index(), shared_key, recipient_pk)
-        .map_err(|_| ())?;
-    let share = CG::ScalarField::deser(&pt).map_err(|_| ())?;
+        .map_err(|_| {
+            warn!("Failed to decrypt pedersen party shares");
+        })?;
 
-    // Try to verify the share, or return Err(())
-    if feldman::eval_verify(public_poly, i, &share, g).is_ok() {
-        Ok(share)
+    let PedersenPartyShares::<CG::ScalarField> { shares } = bson::from_slice(&pt).map_err(|e| {
+        warn!(error = ?e, "Failed to deserialize pedersen party shares");
+    })?;
+
+    let public_polys = public_polys.into_iter();
+    if public_polys.len() != shares.len() {
+        warn!(
+            expected_len = public_polys.len(),
+            len = shares.len(),
+            "Attempting to verify pedersen shares with invalid length"
+        );
+        Err(())?
+    }
+
+    // Try to verify the shares, or return Err(())
+    if public_polys.zip(shares.iter()).all(|(public_poly, share)| {
+        pedersen::eval_verify(
+            &public_poly.to_owned().to_vec(),
+            i.into(),
+            &share.si,
+            &share.ri,
+            g,
+            h,
+        )
+        .is_ok()
+    }) {
+        Ok(shares)
     } else {
         Err(())
     }
@@ -683,7 +777,7 @@ mod tests {
     use crate::helpers::PartyId;
     use crate::rbc::r4::Rbc4RoundsConfig;
     use crate::vss::acss::AcssConfig;
-    use crate::vss::acss::hbacss0::{APPNAME, HbAcss0Config, NIZK_DLEQ_SUFFIX};
+    use crate::vss::acss::hbacss0::{APPNAME, HbAcss0Config, NIZK_DLEQ_SUFFIX, PedersenSecret};
     use crate::{
         helpers::{lagrange_interpolate_at, u64_from_usize},
         network::RetryStrategy,
@@ -701,6 +795,7 @@ mod tests {
     use tokio::task;
     use tokio::task::JoinSet;
     use tokio_util::sync::CancellationToken;
+    use utils::hash_to_curve::HashToCurve;
 
     type G = <Bn254 as Pairing>::G1;
     type ScalarField = <<Bn254 as Pairing>::G1 as Group>::ScalarField;
@@ -714,8 +809,10 @@ mod tests {
         let t = 2;
         let n = 3 * t + 1;
         let g = G::generator();
+        let h = ark_bn254::G1Projective::hash_to_curve(b"PEDERSEN_H", b"TEST_DST_PEDERSEN_H");
 
         let s = ScalarField::rand(&mut rand::thread_rng());
+        let r = ScalarField::rand(&mut rand::thread_rng());
         let mut sks: VecDeque<ScalarField> = (1..=n)
             .map(|_| ScalarField::rand(&mut rand::thread_rng()))
             .collect();
@@ -748,6 +845,7 @@ mod tests {
                 n,
                 t,
                 g,
+                h,
                 RetryStrategy::None,
             );
 
@@ -759,7 +857,13 @@ mod tests {
                     let acss = acss_config
                         .new_instance_with_prefix("hbacss0".to_owned(), Arc::new(transport))
                         .expect("failed to create acss instance");
-                    acss.deal(&s, cancellation_token, sender, &mut OsRng).await
+                    acss.deal(
+                        vec![PedersenSecret { s, r }],
+                        cancellation_token,
+                        sender,
+                        &mut OsRng,
+                    )
+                    .await
                 });
 
                 let share = receiver.await.expect("acss thread dropped oneshot sender");
@@ -785,6 +889,7 @@ mod tests {
                 n,
                 t,
                 g,
+                h,
                 RetryStrategy::None,
             );
 
@@ -814,7 +919,7 @@ mod tests {
             assert!(res.is_ok());
             let (i, out) = res.unwrap();
 
-            shares.push((i, out.share));
+            shares.push((i, out.shares[0].si));
         }
 
         let s = lagrange_interpolate_at::<G>(&shares[0..=t], 0);
@@ -838,6 +943,7 @@ mod tests {
             Arc::new(rbc_config),
             n,
             t,
+            ark_bn254::G1Projective::zero(),
             ark_bn254::G1Projective::zero(),
             RetryStrategy::None,
         );
