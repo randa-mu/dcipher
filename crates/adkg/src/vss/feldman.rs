@@ -1,7 +1,6 @@
 //! Implementation of Feldman's VSS using arkworks.
-use crate::helpers::{PartyId, u64_from_usize};
+use crate::helpers::{PartyId, eval_poly, u64_from_usize};
 use ark_ec::CurveGroup;
-use ark_ff::PrimeField;
 use ark_poly::{DenseUVPolynomial, Polynomial, univariate::DensePolynomial};
 use ark_std::UniformRand;
 use rand::RngCore;
@@ -82,8 +81,7 @@ pub fn eval_verify<CG: CurveGroup>(
     // Two ways to evaluate the polynomial,
     //   1. We use Horner's method to evaluate it in n scalar multiplications
     //   2. We first compute the nth powers, and then compute a multi-scalar multiplication
-    // todo optimization: verify whether Horner's method is faster than the MSM with criterion benchmark.
-    let expected = eval_poly_horner(v, &u64::from(i).into())?;
+    let expected = eval_poly(&u64::from(i).into(), v);
     if expected == *g * si {
         Ok(())
     } else {
@@ -99,44 +97,6 @@ pub fn share<CG: CurveGroup>(
     rng: &mut impl RngCore,
 ) -> FeldmanVssShare<CG> {
     FeldmanVssShare(poly_rand_coeffs_commit(s, t, n, g, rng))
-}
-
-/// Evaluate a polynomial formed by EC points using Horner's method.
-fn eval_poly_horner<CG: CurveGroup>(
-    public_poly: &[CG],
-    x: &CG::ScalarField,
-) -> Result<CG, FeldmanError> {
-    // Start from the last coefficient
-    let mut result = *public_poly.last().expect("cannot have zero polynomial");
-
-    // Process coefficients in reverse order with Horner's method, skipping the first one
-    for coeff in public_poly.iter().rev().skip(1) {
-        result = result * x + coeff;
-    }
-
-    Ok(result)
-}
-
-/// Evaluate a polynomial formed by EC points using a MSM.
-#[allow(unused)]
-fn eval_poly_msm<CG: CurveGroup>(
-    public_poly: &[CG],
-    x: &CG::ScalarField,
-) -> Result<CG, FeldmanError> {
-    let nth_powers = nth_powers(x, public_poly.len());
-    CG::msm(&CG::normalize_batch(public_poly), &nth_powers).or(Err(FeldmanError))
-}
-
-/// Compute the nth power of a scalar, i.e., (s^0, s^1, ..., s^{n-1}).
-fn nth_powers<F: PrimeField>(s: &F, n: usize) -> Vec<F> {
-    let mut powers = vec![];
-    let mut current_power = F::ONE;
-    for _ in 0..n {
-        powers.push(current_power);
-        current_power *= s;
-    }
-
-    powers
 }
 
 #[cfg(test)]
