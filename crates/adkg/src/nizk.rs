@@ -21,10 +21,10 @@ pub struct NizkError;
     deserialize = "CG::ScalarField: FqDeserialize"
 ))]
 pub struct NIZKDleqProof<CG: CurveGroup, H> {
-    #[serde(with = "utils::serialize::fq::base64")]
+    #[serde(with = "utils::serialize::fq::base64_or_bytes")]
     pub c: CG::ScalarField,
 
-    #[serde(with = "utils::serialize::fq::base64")]
+    #[serde(with = "utils::serialize::fq::base64_or_bytes")]
     pub z: CG::ScalarField,
 
     _h: PhantomData<fn(H) -> H>,
