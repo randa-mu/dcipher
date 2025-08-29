@@ -2,7 +2,7 @@ use crate::eth::IRouter::TransferParams;
 use crate::parsing::{TransferReceipt, reconcile_transfer_params};
 use crate::pending::{RequestId, Verification};
 use crate::util::normalise_chain_id;
-use alloy::primitives::FixedBytes;
+use alloy::primitives::{Address, FixedBytes};
 use alloy::sol_types::SolValue;
 use ark_serialize::{CanonicalSerialize, Compress};
 use async_trait::async_trait;
@@ -26,6 +26,12 @@ pub trait ChainService {
         chain_id: u64,
         request_id: FixedBytes<32>,
     ) -> anyhow::Result<TransferParams>;
+
+    async fn submit_verification(
+        &self,
+        chain_id: u64,
+        verified_swap: VerifiedSwap,
+    ) -> anyhow::Result<()>;
 }
 #[async_trait]
 pub trait Signer {
@@ -38,11 +44,17 @@ impl<C, S> OnlySwapsSigner<C, S> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct VerifiedSwap {
+    pub request_id: FixedBytes<32>,
+    pub solver: Address,
+    pub signature: Vec<u8>,
+}
 impl<C: ChainService, S: Signer> OnlySwapsSigner<C, S> {
     pub async fn try_sign(
         &self,
-        verification_job: Verification<RequestId>,
-    ) -> anyhow::Result<Vec<u8>> {
+        verification_job: &Verification<RequestId>,
+    ) -> anyhow::Result<VerifiedSwap> {
         let transfer_receipt = self
             .chain
             .fetch_transfer_receipt(verification_job.chain_id, verification_job.request_id)
@@ -56,10 +68,16 @@ impl<C: ChainService, S: Signer> OnlySwapsSigner<C, S> {
             )
             .await?;
 
+        let solver = transfer_receipt.solver;
         let valid_transfer_params = reconcile_transfer_params(transfer_params, transfer_receipt)?;
         let m = create_message(valid_transfer_params);
         let signature = self.signer.sign(m).await?;
-        Ok(signature)
+
+        Ok(VerifiedSwap {
+            request_id: verification_job.request_id,
+            signature,
+            solver,
+        })
     }
 }
 
@@ -104,7 +122,7 @@ mod test {
     use crate::eth::IRouter::TransferParams;
     use crate::parsing::TransferReceipt;
     use crate::pending::Verification;
-    use crate::signing::{ChainService, OnlySwapsSigner, Signer};
+    use crate::signing::{ChainService, OnlySwapsSigner, Signer, VerifiedSwap};
     use alloy::primitives::{Address, FixedBytes, U160, U256};
     use async_trait::async_trait;
     use speculoos::assert_that;
@@ -138,11 +156,17 @@ mod test {
             fulfilled_at: U256::from(8),
         };
 
-        let service = StubbedChainService::new(transfer_receipt, transfer_params);
-        let onlyswaps = OnlySwapsSigner::new(service, StubbedSigner {});
+        let verified_swap = VerifiedSwap {
+            request_id,
+            signature: vec![0x1, 0x2, 0x3, 0x4],
+            solver: Address::from(U160::from(4)),
+        };
+
+        let service = StubbedChainService::new(transfer_receipt, transfer_params, verified_swap);
+        let onlyswaps = OnlySwapsSigner::new(&service, StubbedSigner {});
 
         onlyswaps
-            .try_sign(Verification {
+            .try_sign(&Verification {
                 chain_id: 1,
                 request_id,
             })
@@ -180,11 +204,21 @@ mod test {
             fulfilled_at: U256::from(6),
         };
 
-        let service =
-            StubbedChainService::error(transfer_receipt, transfer_params, "oh shit".to_string());
-        let onlyswaps = OnlySwapsSigner::new(service, StubbedSigner {});
+        let verified_swap = VerifiedSwap {
+            request_id,
+            signature: vec![0x1, 0x2, 0x3, 0x4],
+            solver: Address::from(U160::from(4)),
+        };
+
+        let service = StubbedChainService::error(
+            transfer_receipt,
+            transfer_params,
+            verified_swap,
+            "oh shit".to_string(),
+        );
+        let onlyswaps = OnlySwapsSigner::new(&service, StubbedSigner {});
         let result = onlyswaps
-            .try_sign(Verification {
+            .try_sign(&Verification {
                 chain_id: 1,
                 request_id,
             })
@@ -197,22 +231,30 @@ mod test {
     struct StubbedChainService {
         receipt: TransferReceipt,
         params: TransferParams,
+        swap: VerifiedSwap,
         error: Option<String>,
     }
 
     impl StubbedChainService {
-        fn new(receipt: TransferReceipt, params: TransferParams) -> Self {
+        fn new(receipt: TransferReceipt, params: TransferParams, swap: VerifiedSwap) -> Self {
             Self {
                 receipt,
                 params,
+                swap,
                 error: None,
             }
         }
 
-        fn error(receipt: TransferReceipt, params: TransferParams, error: String) -> Self {
+        fn error(
+            receipt: TransferReceipt,
+            params: TransferParams,
+            swap: VerifiedSwap,
+            error: String,
+        ) -> Self {
             Self {
                 receipt,
                 params,
+                swap,
                 error: Some(error),
             }
         }
@@ -240,6 +282,10 @@ mod test {
                 anyhow::bail!(e.to_string());
             }
             Ok(self.params.clone())
+        }
+
+        async fn submit_verification(&self, _: u64, _: VerifiedSwap) -> anyhow::Result<()> {
+            Ok(())
         }
     }
 

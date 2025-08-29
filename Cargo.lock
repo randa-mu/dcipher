@@ -4592,8 +4592,6 @@ dependencies = [
  "figment",
  "futures",
  "serde",
- "serde_json",
- "shellexpand",
  "speculoos",
  "tempfile",
  "tokio",

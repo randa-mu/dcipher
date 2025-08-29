@@ -3,7 +3,7 @@ use crate::eth::IRouter::TransferParams;
 use crate::eth::Router::RouterInstance;
 use crate::parsing::TransferReceipt;
 use crate::pending::{RequestId, Verification, extract_pending_verifications};
-use crate::signing::ChainService;
+use crate::signing::{ChainService, VerifiedSwap};
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, FixedBytes, U256};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
@@ -70,7 +70,7 @@ impl NetworkBus<DynProvider> {
 }
 
 #[async_trait]
-impl<P: Provider> ChainService for NetworkBus<P> {
+impl<'a, P: Provider> ChainService for &'a NetworkBus<P> {
     async fn fetch_transfer_receipt(
         &self,
         chain_id: u64,
@@ -95,6 +95,19 @@ impl<P: Provider> ChainService for NetworkBus<P> {
             .ok_or(anyhow!("No chain transport for {}", chain_id))?;
 
         transport.fetch_transfer_params(request_id).await
+    }
+
+    async fn submit_verification(
+        &self,
+        chain_id: u64,
+        verified_swap: VerifiedSwap,
+    ) -> anyhow::Result<()> {
+        let transport = self
+            .networks
+            .get(&chain_id)
+            .ok_or(anyhow!("No chain transport for {}", chain_id))?;
+
+        transport.submit_verified_swap(verified_swap).await
     }
 }
 
@@ -158,5 +171,21 @@ impl<P: Provider> Network<P> {
 
     pub async fn fetch_verified_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
         Ok(self.router.getFulfilledSolverRefunds().call().await?)
+    }
+
+    pub async fn submit_verified_swap(&self, verified_swap: VerifiedSwap) -> anyhow::Result<()> {
+        let tx = self
+            .router
+            .rebalanceSolver(
+                verified_swap.solver,
+                verified_swap.request_id,
+                verified_swap.signature.into(),
+            )
+            .send()
+            .await?;
+
+        let tx_hash = tx.watch().await?;
+        println!("verified swap: {}", tx_hash);
+        Ok(())
     }
 }
