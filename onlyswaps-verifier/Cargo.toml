@@ -6,16 +6,24 @@ edition.workspace = true
 [dependencies]
 alloy = { workspace = true, features = ["default", "provider-ws"] }
 anyhow.workspace = true
+ark-bn254.workspace = true
+ark-ec.workspace = true
+ark-ff.workspace = true
 ark-serialize = "0.4.2"
 async-trait = "0.1.88"
 axum = "0.8.4"
+base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 config = { version = "0.1.0", path = "../crates/config" }
 dcipher-network = { version = "0.1.0", path = "../crates/network", features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
 dcipher-signer = { version = "0.1.0", path = "../signer" }
-figment = { workspace = true, features = ["json", "toml"]}
+figment = { workspace = true, features = ["json", "toml"] }
 futures.workspace = true
+libp2p.workspace = true
 serde.workspace = true
+serde-keys.workspace = true
+serde_with = { workspace = true, features = ["base64"] }
 speculoos = "0.13.0"
 tempfile = "3.21.0"
-tokio = { workspace = true, features = ["rt-multi-thread", "signal"]}
+tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
+utils.workspace = true

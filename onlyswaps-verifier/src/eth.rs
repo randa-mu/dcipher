@@ -44,6 +44,7 @@ pub(crate) struct NetworkBus<P> {
 
 pub(crate) struct Network<P> {
     chain_id: u64,
+    should_write: bool,
     router: RouterInstance<P>,
 }
 
@@ -126,6 +127,7 @@ impl Network<DynProvider> {
         println!("own addr: {}", own_addr);
         Ok(Self {
             chain_id: config.chain_id,
+            should_write: config.should_write,
             router: RouterInstance::new(Address(config.router_address), provider.clone()),
         })
     }
@@ -174,6 +176,10 @@ impl<P: Provider> Network<P> {
     }
 
     pub async fn submit_verified_swap(&self, verified_swap: VerifiedSwap) -> anyhow::Result<()> {
+        // nodes can be configured not to write the signature to save gas
+        if !self.should_write {
+            return Ok(());
+        }
         let tx = self
             .router
             .rebalanceSolver(

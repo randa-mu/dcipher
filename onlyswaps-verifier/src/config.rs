@@ -4,7 +4,9 @@ use config::shared::SharedConfig;
 use config::signing::{GroupConfig, SecretKeyConfig, UnvalidatedGroupConfig};
 use figment::Figment;
 use figment::providers::{Format, Json, Toml};
+use libp2p::Multiaddr;
 use serde::Deserialize;
+use serde_with::{base64::Base64, serde_as};
 use std::path::Path;
 
 #[derive(Parser, Debug)]
@@ -13,7 +15,7 @@ pub(crate) struct CliConfig {
         short = 'c',
         long = "config",
         env = "ONLYSWAPS_VERIFIER_CONFIG",
-        default_value = "~/.verifier/networks.json"
+        default_value = "~/.verifier/config.json"
     )]
     pub config_path: String,
 }
@@ -21,14 +23,24 @@ pub(crate) struct CliConfig {
 pub(crate) struct ConfigFile {
     pub agent: SharedConfig,
     pub networks: Vec<NetworkConfig>,
+    pub libp2p: Libp2pConfig,
     pub secret_key: SecretKeyConfig,
     pub group: UnvalidatedGroupConfig,
+}
+
+#[serde_as]
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct Libp2pConfig {
+    #[serde_as(as = "Base64")]
+    pub secret_key: Vec<u8>,
+    pub multiaddr: Multiaddr,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AppConfig {
     pub agent: SharedConfig,
     pub networks: Vec<NetworkConfig>,
+    pub libp2p: Libp2pConfig,
     pub secret_key: SecretKeyConfig,
     pub group: GroupConfig,
 }
@@ -40,6 +52,7 @@ impl TryFrom<ConfigFile> for AppConfig {
         Ok(Self {
             agent: file.agent,
             networks: file.networks,
+            libp2p: file.libp2p,
             group: file.group.parse(&file.secret_key)?,
             secret_key: file.secret_key,
         })
@@ -52,6 +65,7 @@ pub(crate) struct NetworkConfig {
     pub rpc_url: String,
     pub router_address: FixedBytes<20>,
     pub private_key: FixedBytes<32>,
+    pub should_write: bool,
 }
 
 pub(crate) fn load_app_config(cli: &CliConfig) -> anyhow::Result<AppConfig> {
@@ -89,12 +103,18 @@ mod tests {
         rpc_url = "ws://localhost:31337"
         router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
         private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+        should_write = false
 
         [[networks]]
         chain_id = 1338
         rpc_url = "ws://localhost:1338"
         router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
         private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+        should_write = false
+
+        [libp2p]
+        secret_key = "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0"
+        multiaddr = "/ip4/127.0.0.1/tcp/8881"
 
         [secret_key]
         node_id = 1
@@ -134,14 +154,20 @@ mod tests {
             "chain_id": 31337,
             "rpc_url": "ws://localhost:31337",
             "router_address": "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd",
-            "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+            "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2",
+            "should_write": false
           }, {
             "chain_id": 1338,
             "rpc_url": "ws://localhost:1338",
             "router_address": "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd",
-            "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+            "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2",
+            "should_write": false
           }],
 
+          "libp2p": {
+            "secret_key": "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0",
+            "multiaddr": "/ip4/127.0.0.1/tcp/8881"
+          },
           "secret_key": {
             "node_id": 1,
             "secret_key": "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d",

@@ -4582,19 +4582,27 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "anyhow",
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.4.2",
  "ark-serialize 0.4.2",
  "async-trait",
  "axum",
+ "base64 0.22.1",
  "clap",
  "config",
  "dcipher-network",
  "dcipher-signer",
  "figment",
  "futures",
+ "libp2p",
  "serde",
+ "serde-keys",
+ "serde_with",
  "speculoos",
  "tempfile",
  "tokio",
+ "utils",
 ]
 
 [[package]]

@@ -1,13 +1,14 @@
 use crate::config::AppConfig;
 use crate::signing::{ChainService, DsignerWrapper, OnlySwapsSigner};
 use anyhow::anyhow;
-use dcipher_network::transports::in_memory::MemoryNetwork;
+use dcipher_network::transports::libp2p::Libp2pNodeConfig;
 use dcipher_signer::BN254SignatureOnG1Signer;
 use dcipher_signer::threshold_signer::ThresholdSigner;
 
 pub(crate) fn create_bn254_signer<C: ChainService>(
     config: &AppConfig,
     network_bus: C,
+    libp2p_node: Libp2pNodeConfig<u16>,
 ) -> anyhow::Result<OnlySwapsSigner<C, DsignerWrapper<BN254SignatureOnG1Signer>>> {
     let bls_secret_key = &config.secret_key;
     let suite = BN254SignatureOnG1Signer::new(
@@ -23,10 +24,10 @@ pub(crate) fn create_bn254_signer<C: ChainService>(
         config.group.nodes.iter().map(|n| n.bls_pk).collect(),
     );
 
-    let transport = MemoryNetwork::get_transports(1..=1)
-        .pop_front()
-        .ok_or(anyhow!("failed to get transport"))?;
-
+    let transport = libp2p_node
+        .run(config.libp2p.multiaddr.clone())?
+        .get_transport()
+        .ok_or(anyhow!("failed to get libp2p transport"))?;
     let (_, threshold_signer) = signer.run(transport);
     let dsigner = DsignerWrapper::new(threshold_signer);
 
