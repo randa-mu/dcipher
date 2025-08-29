@@ -198,11 +198,8 @@ mod test {
             fulfilled_at: U256::from(6),
         };
 
-        let service = StubbedChainService::error(
-            transfer_receipt,
-            transfer_params,
-            "oh shit".to_string(),
-        );
+        let service =
+            StubbedChainService::error(transfer_receipt, transfer_params, "oh shit".to_string());
         let onlyswaps = OnlySwapsSigner::new(&service, StubbedSigner {});
         let result = onlyswaps
             .try_sign(&Verification {
@@ -230,11 +227,7 @@ mod test {
             }
         }
 
-        fn error(
-            receipt: TransferReceipt,
-            params: TransferParams,
-            error: String,
-        ) -> Self {
+        fn error(receipt: TransferReceipt, params: TransferParams, error: String) -> Self {
             Self {
                 receipt,
                 params,
