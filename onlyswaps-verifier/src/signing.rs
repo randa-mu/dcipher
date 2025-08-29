@@ -156,13 +156,7 @@ mod test {
             fulfilled_at: U256::from(8),
         };
 
-        let verified_swap = VerifiedSwap {
-            request_id,
-            signature: vec![0x1, 0x2, 0x3, 0x4],
-            solver: Address::from(U160::from(4)),
-        };
-
-        let service = StubbedChainService::new(transfer_receipt, transfer_params, verified_swap);
+        let service = StubbedChainService::new(transfer_receipt, transfer_params);
         let onlyswaps = OnlySwapsSigner::new(&service, StubbedSigner {});
 
         onlyswaps
@@ -204,16 +198,9 @@ mod test {
             fulfilled_at: U256::from(6),
         };
 
-        let verified_swap = VerifiedSwap {
-            request_id,
-            signature: vec![0x1, 0x2, 0x3, 0x4],
-            solver: Address::from(U160::from(4)),
-        };
-
         let service = StubbedChainService::error(
             transfer_receipt,
             transfer_params,
-            verified_swap,
             "oh shit".to_string(),
         );
         let onlyswaps = OnlySwapsSigner::new(&service, StubbedSigner {});
@@ -231,16 +218,14 @@ mod test {
     struct StubbedChainService {
         receipt: TransferReceipt,
         params: TransferParams,
-        swap: VerifiedSwap,
         error: Option<String>,
     }
 
     impl StubbedChainService {
-        fn new(receipt: TransferReceipt, params: TransferParams, swap: VerifiedSwap) -> Self {
+        fn new(receipt: TransferReceipt, params: TransferParams) -> Self {
             Self {
                 receipt,
                 params,
-                swap,
                 error: None,
             }
         }
@@ -248,20 +233,18 @@ mod test {
         fn error(
             receipt: TransferReceipt,
             params: TransferParams,
-            swap: VerifiedSwap,
             error: String,
         ) -> Self {
             Self {
                 receipt,
                 params,
-                swap,
                 error: Some(error),
             }
         }
     }
 
     #[async_trait]
-    impl ChainService for StubbedChainService {
+    impl ChainService for &StubbedChainService {
         async fn fetch_transfer_receipt(
             &self,
             _: u64,
