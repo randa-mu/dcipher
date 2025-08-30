@@ -98,9 +98,12 @@ mod fq_mod_8_eq_2 {
     mod bn254 {
         use super::*;
         use crate::serialize::point::{
-            PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
+            PointDeserializeCompressed, PointDeserializeUncompressed, PointSerializeCompressed,
+            PointSerializeUncompressed,
         };
+        use ark_bn254::{Fq, Fq2};
         use ark_ec::short_weierstrass::Projective;
+        use ark_ff::PrimeField;
 
         gen_ser_compressed_fq_mod_8_geq_2!(ark_bn254::g1::Config, 32);
         gen_ser_compressed_fq_mod_8_geq_2!(ark_bn254::g2::Config, 64);
@@ -134,6 +137,37 @@ mod fq_mod_8_eq_2 {
                     .map(|v| v.into_bigint().to_bytes_be())
                     .concat()
                     .into())
+            }
+        }
+
+        impl PointDeserializeUncompressed for Affine<ark_bn254::g1::Config> {
+            fn deser_uncompressed(v: &[u8]) -> Result<Self, SerializationError> {
+                if v.len() != 64 {
+                    Err(SerializationError::InvalidData)?;
+                }
+
+                let x = Fq::from_be_bytes_mod_order(&v[0..32]);
+                let y = Fq::from_be_bytes_mod_order(&v[32..64]);
+
+                Ok(ark_bn254::G1Affine::new(x, y))
+            }
+        }
+
+        impl PointDeserializeUncompressed for Affine<ark_bn254::g2::Config> {
+            fn deser_uncompressed(v: &[u8]) -> Result<Self, SerializationError> {
+                if v.len() != 128 {
+                    Err(SerializationError::InvalidData)?;
+                }
+
+                let x_c1 = Fq::from_be_bytes_mod_order(&v[0..32]);
+                let x_c0 = Fq::from_be_bytes_mod_order(&v[32..64]);
+                let y_c1 = Fq::from_be_bytes_mod_order(&v[64..96]);
+                let y_c0 = Fq::from_be_bytes_mod_order(&v[96..128]);
+
+                Ok(ark_bn254::G2Affine::new(
+                    Fq2::new(x_c0, x_c1),
+                    Fq2::new(y_c0, y_c1),
+                ))
             }
         }
     }
