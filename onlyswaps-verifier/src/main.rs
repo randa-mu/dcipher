@@ -30,7 +30,10 @@ async fn main() -> anyhow::Result<()> {
     let pending_verifications = network_bus.fetch_pending_verifications().await?;
     println!("pending verifications fetched");
     for verification in pending_verifications {
-        println!("processing pending verifications");
+        println!(
+            "processing pending verification: {}",
+            verification.request_id
+        );
         let verified_swap = signer.try_sign(&verification).await?;
         println!("message signed");
         (&network_bus)

@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use crate::eth::IRouter::TransferParams;
+use crate::eth::IRouter::SwapRequestParameters;
 use crate::eth::Router::RouterInstance;
 use crate::parsing::TransferReceipt;
 use crate::pending::{RequestId, Verification, extract_pending_verifications};
@@ -89,7 +89,7 @@ impl<P: Provider> ChainService for &NetworkBus<P> {
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferParams> {
+    ) -> anyhow::Result<SwapRequestParameters> {
         let transport = self
             .networks
             .get(&chain_id)
@@ -146,15 +146,19 @@ impl<P: Provider> Network<P> {
     pub async fn fetch_transfer_params(
         &self,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferParams> {
-        Ok(self.router.getTransferParameters(request_id).call().await?)
+    ) -> anyhow::Result<SwapRequestParameters> {
+        Ok(self
+            .router
+            .getSwapRequestParameters(request_id)
+            .call()
+            .await?)
     }
 
     pub async fn fetch_transfer_receipt(
         &self,
         request_id: FixedBytes<32>,
     ) -> anyhow::Result<TransferReceipt> {
-        let receipt = self.router.getReceipt(request_id).call().await?;
+        let receipt = self.router.getSwapRequestReceipt(request_id).call().await?;
         Ok(TransferReceipt {
             chain_id: U256::from(self.chain_id),
             request_id: receipt.requestId,

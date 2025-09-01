@@ -1,4 +1,4 @@
-use crate::eth::IRouter::TransferParams;
+use crate::eth::IRouter::SwapRequestParameters;
 use crate::parsing::{TransferReceipt, reconcile_transfer_params};
 use crate::pending::{RequestId, Verification};
 use crate::util::normalise_chain_id;
@@ -25,7 +25,7 @@ pub trait ChainService {
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferParams>;
+    ) -> anyhow::Result<SwapRequestParameters>;
 
     async fn submit_verification(
         &self,
@@ -81,15 +81,16 @@ impl<C: ChainService, S: Signer> OnlySwapsSigner<C, S> {
     }
 }
 
-pub fn create_message(params: TransferParams) -> Vec<u8> {
+pub fn create_message(params: SwapRequestParameters) -> Vec<u8> {
     (
         params.sender,
         params.recipient,
-        params.token,
-        params.amount,
+        params.tokenIn,
+        params.tokenOut,
+        params.amountOut,
         params.srcChainId,
         params.dstChainId,
-        params.swapFee,
+        params.verificationFee,
         params.solverFee,
         params.nonce,
         params.executed,
@@ -110,7 +111,9 @@ impl<S: BlsSigner> DsignerWrapper<S> {
 #[async_trait]
 impl Signer for DsignerWrapper<BN254SignatureOnG1Signer> {
     async fn sign(&self, message: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        println!("about to sign");
         let point = self.s.async_sign(message).await?;
+        println!("signed");
         let mut bytes = Vec::with_capacity(point.serialized_size(Compress::No));
         point.serialize_with_mode(&mut bytes, Compress::No)?;
         Ok(bytes)
@@ -119,7 +122,7 @@ impl Signer for DsignerWrapper<BN254SignatureOnG1Signer> {
 
 #[cfg(test)]
 mod test {
-    use crate::eth::IRouter::TransferParams;
+    use crate::eth::IRouter::SwapRequestParameters;
     use crate::parsing::TransferReceipt;
     use crate::pending::Verification;
     use crate::signing::{ChainService, OnlySwapsSigner, Signer, VerifiedSwap};
@@ -131,17 +134,19 @@ mod test {
     async fn matching_receipt_and_params_create_valid_signature() {
         let destination_chain_id = 1;
         let request_id = FixedBytes::from(U256::from(1));
-        let transfer_params = TransferParams {
+        let transfer_params = SwapRequestParameters {
             dstChainId: U256::from(destination_chain_id),
             sender: Address::from(U160::from(3)),
             recipient: Address::from(U160::from(5)),
-            token: Address::from(U160::from(3)),
-            amount: U256::from(10),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(3)),
+            amountOut: U256::from(10),
             srcChainId: U256::from(2),
-            swapFee: U256::from(3),
+            verificationFee: U256::from(3),
             solverFee: U256::from(2),
             nonce: U256::from(1),
             executed: true,
+            requestedAt: U256::from(123456),
         };
 
         let transfer_receipt = TransferReceipt {
@@ -152,7 +157,7 @@ mod test {
             fulfilled: true,
             solver: Address::from(U160::from(4)),
             recipient: Address::from(U160::from(5)),
-            amount_out: U256::from(5), // amount - swapFee - solverFee
+            amount_out: U256::from(10),
             fulfilled_at: U256::from(8),
         };
 
@@ -172,17 +177,19 @@ mod test {
     async fn contract_errors_propagate() {
         let destination_chain_id = 1;
         let request_id = FixedBytes::from(U256::from(1));
-        let transfer_params = TransferParams {
+        let transfer_params = SwapRequestParameters {
             dstChainId: U256::from(destination_chain_id),
             sender: Address::from(U160::from(3)),
             recipient: Address::from(U160::from(3)),
-            token: Address::from(U160::from(3)),
-            amount: U256::from(10),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(3)),
+            amountOut: U256::from(10),
             srcChainId: U256::from(2),
-            swapFee: U256::from(3),
+            verificationFee: U256::from(3),
             solverFee: U256::from(2),
             nonce: U256::from(1),
             executed: true,
+            requestedAt: U256::from(123456),
         };
 
         let transfer_receipt = TransferReceipt {
@@ -214,12 +221,12 @@ mod test {
 
     struct StubbedChainService {
         receipt: TransferReceipt,
-        params: TransferParams,
+        params: SwapRequestParameters,
         error: Option<String>,
     }
 
     impl StubbedChainService {
-        fn new(receipt: TransferReceipt, params: TransferParams) -> Self {
+        fn new(receipt: TransferReceipt, params: SwapRequestParameters) -> Self {
             Self {
                 receipt,
                 params,
@@ -227,7 +234,7 @@ mod test {
             }
         }
 
-        fn error(receipt: TransferReceipt, params: TransferParams, error: String) -> Self {
+        fn error(receipt: TransferReceipt, params: SwapRequestParameters, error: String) -> Self {
             Self {
                 receipt,
                 params,
@@ -253,7 +260,7 @@ mod test {
             &self,
             _: u64,
             _: FixedBytes<32>,
-        ) -> anyhow::Result<TransferParams> {
+        ) -> anyhow::Result<SwapRequestParameters> {
             if let Some(e) = &self.error {
                 anyhow::bail!(e.to_string());
             }
