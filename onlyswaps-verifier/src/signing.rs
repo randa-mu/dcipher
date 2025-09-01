@@ -253,7 +253,7 @@ mod test {
     }
 
     #[async_trait]
-    impl ChainService for &StubbedChainService {
+    impl ChainService for StubbedChainService {
         async fn fetch_transfer_receipt(
             &self,
             _: u64,
