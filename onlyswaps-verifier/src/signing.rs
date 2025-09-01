@@ -8,6 +8,7 @@ use ark_serialize::{CanonicalSerialize, Compress};
 use async_trait::async_trait;
 use dcipher_signer::threshold_signer::AsyncThresholdSigner;
 use dcipher_signer::{AsynchronousSigner, BN254SignatureOnG1Signer, BlsSigner};
+use std::ops::Deref;
 
 pub struct OnlySwapsSigner<C, S> {
     chain: C,
@@ -38,8 +39,11 @@ pub trait Signer {
     async fn sign(&self, b: Vec<u8>) -> anyhow::Result<Vec<u8>>;
 }
 
-impl<C, S> OnlySwapsSigner<C, S> {
-    pub fn new(chain: C, signer: S) -> Self {
+impl<R, C, S> OnlySwapsSigner<R, S>
+where
+    R: Deref<Target = C>,
+{
+    pub fn new(chain: R, signer: S) -> Self {
         Self { chain, signer }
     }
 }
@@ -50,7 +54,12 @@ pub struct VerifiedSwap {
     pub solver: Address,
     pub signature: Vec<u8>,
 }
-impl<C: ChainService, S: Signer> OnlySwapsSigner<C, S> {
+impl<R, C, S> OnlySwapsSigner<R, S>
+where
+    C: ChainService,
+    S: Signer,
+    R: Deref<Target = C>,
+{
     pub async fn try_sign(
         &self,
         verification_job: &Verification<RequestId>,

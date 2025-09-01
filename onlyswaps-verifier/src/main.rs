@@ -17,30 +17,45 @@ use crate::threshold::create_bn254_signer;
 use crate::transport::create_libp2p_transport;
 use anyhow::anyhow;
 use clap::Parser;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::sleep;
 
+const REFRESH_INTERVAL: Duration = Duration::from_secs(5);
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app_config = load_app_config(&CliConfig::parse())?;
-    let network_bus = NetworkBus::create(&app_config.networks).await?;
+    let network_bus = Arc::new(NetworkBus::create(&app_config.networks).await?);
     let transport = create_libp2p_transport(&app_config)?;
     println!("libp2p transport created");
-    let signer = create_bn254_signer(&app_config, &network_bus, transport)?;
+    let signer = create_bn254_signer(&app_config, Arc::clone(&network_bus), transport)?;
     println!("threshold signer created");
 
-    let pending_verifications = network_bus.fetch_pending_verifications().await?;
-    println!("pending verifications fetched");
-    for verification in pending_verifications {
-        println!(
-            "processing pending verification: {}",
-            verification.request_id
-        );
-        let verified_swap = signer.try_sign(&verification).await?;
-        println!("message signed");
-        (&network_bus)
-            .submit_verification(verification.chain_id, verified_swap)
-            .await?;
-        println!("completed a swap on chain {}", verification.chain_id);
-    }
+    tokio::task::spawn(async move {
+        loop {
+            let pending_verifications = network_bus
+                .clone()
+                .fetch_pending_verifications()
+                .await
+                .unwrap();
+            for verification in pending_verifications {
+                println!(
+                    "processing pending verification: {}",
+                    verification.request_id
+                );
+                let verified_swap = signer.try_sign(&verification).await.unwrap();
+                println!("message signed");
+                network_bus
+                    .clone()
+                    .as_ref()
+                    .submit_verification(verification.chain_id, verified_swap)
+                    .await
+                    .unwrap();
+                println!("completed a swap on chain {}", verification.chain_id);
+            }
+            sleep(REFRESH_INTERVAL).await;
+        }
+    });
 
     let signals = SignalManager::new(
         app_config.agent.healthcheck_listen_addr,

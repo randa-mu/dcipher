@@ -71,7 +71,7 @@ impl NetworkBus<DynProvider> {
 }
 
 #[async_trait]
-impl<P: Provider> ChainService for &NetworkBus<P> {
+impl<P: Provider> ChainService for NetworkBus<P> {
     async fn fetch_transfer_receipt(
         &self,
         chain_id: u64,

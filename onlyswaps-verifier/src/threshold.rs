@@ -4,12 +4,13 @@ use anyhow::anyhow;
 use dcipher_network::transports::libp2p::Libp2pNodeConfig;
 use dcipher_signer::BN254SignatureOnG1Signer;
 use dcipher_signer::threshold_signer::ThresholdSigner;
+use std::ops::Deref;
 
-pub(crate) fn create_bn254_signer<C: ChainService>(
+pub(crate) fn create_bn254_signer<C: ChainService, D: Deref<Target = C>>(
     config: &AppConfig,
-    network_bus: C,
+    network_bus: D,
     libp2p_node: Libp2pNodeConfig<u16>,
-) -> anyhow::Result<OnlySwapsSigner<C, DsignerWrapper<BN254SignatureOnG1Signer>>> {
+) -> anyhow::Result<OnlySwapsSigner<D, DsignerWrapper<BN254SignatureOnG1Signer>>> {
     let bls_secret_key = &config.secret_key;
     let suite = BN254SignatureOnG1Signer::new(
         bls_secret_key.secret_key.clone().into(),
