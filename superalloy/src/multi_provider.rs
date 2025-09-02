@@ -106,7 +106,7 @@ mod tests {
     async fn test_watch_block_numbers() {
         let rpc_providers = [
             "wss://mainnet.gateway.tenderly.co",
-            "https://eth.llamarpc.com",
+            "https://rpc.poolz.finance/eth",
         ];
 
         let mut multi = MultiProvider::empty();
