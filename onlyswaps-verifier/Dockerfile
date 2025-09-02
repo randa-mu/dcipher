@@ -8,12 +8,12 @@ ENV PATH="/root/.foundry/bin:${PATH}"
 RUN foundryup
 
 FROM sol_builder AS sol_onlyswaps
-WORKDIR /app/onlysubs-solidity
-COPY ./onlysubs-solidity/package.json ./
-COPY ./onlysubs-solidity/package-lock.json ./
+WORKDIR /app/onlyswaps-solidity
+COPY ./onlyswaps-solidity/package.json ./
+COPY ./onlyswaps-solidity/package-lock.json ./
 RUN npm install
 
-COPY ./onlysubs-solidity ./
+COPY ./onlyswaps-solidity ./
 RUN npm run build
 
 # Base image for rust
@@ -33,7 +33,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-COPY --from=sol_onlyswaps /app/onlysubs-solidity/out ./onlysubs-solidity/out
+COPY --from=sol_onlyswaps /app/onlyswaps-solidity/out ./onlyswaps-solidity/out
 RUN cargo build --release -p onlyswaps-verifier
 
 # We do not need the Rust toolchain to run the binary!

@@ -7,6 +7,6 @@
 [submodule "dcipher-proto"]
 	path = dcipher-proto
 	url = ../dcipher-proto.git
-[submodule "onlysubs-solidity"]
-	path = onlysubs-solidity
-	url = https://github.com/randa-mu/onlysubs-solidity
+[submodule "onlyswaps-solidity"]
+	path = onlyswaps-solidity
+	url = https://github.com/randa-mu/onlyswaps-solidity

@@ -72,13 +72,13 @@ jobs:
         working-directory: ./randomness-solidity
         run: npm run build:forge
 
-      # 3. Compile onlysubs-solidity
-      - name: onlysubs-solidity - Install dependencies
-        working-directory: ./onlysubs-solidity
+      # 3. Compile onlyswaps-solidity
+      - name: onlyswaps-solidity - Install dependencies
+        working-directory: ./onlyswaps-solidity
         run: npm ci
 
-      - name: onlysubs-solidity - Build Solidity contracts
-        working-directory: ./onlysubs-solidity
+      - name: onlyswaps-solidity - Build Solidity contracts
+        working-directory: ./onlyswaps-solidity
         run: npm run build:forge
 
       # 4. Build and test workspace packages

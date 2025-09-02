@@ -7,25 +7,26 @@ use std::num::NonZeroU16;
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SecretKeyConfig {
-    pub node_id: NonZeroU16,
+pub struct CommitteeConfig {
+    pub member_id: NonZeroU16,
     pub secret_key: Bn254SecretKey,
     pub t: NonZeroU16,
     pub n: NonZeroU16,
+    pub members: Vec<MemberConfig>,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GroupConfig {
-    pub nodes: Vec<NodeConfig>,
-}
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct UnvalidatedGroupConfig {
-    pub nodes: Vec<NodeConfig>,
+pub struct UnvalidatedCommitteeConfig {
+    pub member_id: NonZeroU16,
+    pub secret_key: Bn254SecretKey,
+    pub t: NonZeroU16,
+    pub n: NonZeroU16,
+    pub members: Vec<MemberConfig>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct NodeConfig {
+pub struct MemberConfig {
     /// Node identifier used in the threshold scheme
-    pub node_id: NonZeroU16,
+    pub member_id: NonZeroU16,
 
     /// BN254 public key of the node
     #[serde(with = "utils::serialize::point::base64")]
@@ -38,40 +39,24 @@ pub struct NodeConfig {
     pub peer_id: libp2p::PeerId,
 }
 
-impl SecretKeyConfig {
+impl CommitteeConfig {
+    pub fn from_path(path: PathBuf) -> anyhow::Result<Self> {
+        let c: UnvalidatedCommitteeConfig = Figment::new()
+            .merge(Toml::file(&path))
+            .merge(Json::file(&path))
+            .extract()?;
+        c.parse()
+    }
     pub fn from_path_str(path: impl AsRef<str>) -> anyhow::Result<Self> {
         Self::from_path(PathBuf::from(tilde(&path).as_ref()))
     }
-    pub fn from_path(path: PathBuf) -> anyhow::Result<Self> {
-        let c: SecretKeyConfig = Figment::new()
-            .merge(Toml::file(&path))
-            .merge(Json::file(&path))
-            .extract()?;
-        Ok(c)
-    }
 }
 
-impl GroupConfig {
-    pub fn from_path(secret_key: &SecretKeyConfig, path: PathBuf) -> anyhow::Result<Self> {
-        let c: UnvalidatedGroupConfig = Figment::new()
-            .merge(Toml::file(&path))
-            .merge(Json::file(&path))
-            .extract()?;
-        c.parse(secret_key)
-    }
-    pub fn from_path_str(
-        secret_key: &SecretKeyConfig,
-        path: impl AsRef<str>,
-    ) -> anyhow::Result<Self> {
-        Self::from_path(secret_key, PathBuf::from(tilde(&path).as_ref()))
-    }
-}
-
-impl UnvalidatedGroupConfig {
-    pub fn parse(mut self, secret_key: &SecretKeyConfig) -> anyhow::Result<GroupConfig> {
-        let t = secret_key.t.get();
-        let n = secret_key.n.get();
-        let starting_node_count = self.nodes.len();
+impl UnvalidatedCommitteeConfig {
+    pub fn parse(mut self) -> anyhow::Result<CommitteeConfig> {
+        let starting_node_count = self.members.len();
+        let n = self.n.get();
+        let t = self.t.get();
         if n == 0_u16 || starting_node_count == 0 {
             anyhow::bail!("nodes cannot be empty");
         }
@@ -80,30 +65,36 @@ impl UnvalidatedGroupConfig {
         }
 
         // Nodes config should contain n - 1 nodes
-        self.nodes.retain(|n| n.node_id != secret_key.node_id);
-        self.nodes.sort_by(|a, b| a.node_id.cmp(&b.node_id));
+        self.members.retain(|m| m.member_id != self.member_id);
+        self.members.sort_by(|a, b| a.member_id.cmp(&b.member_id));
 
-        if self.nodes.len() != starting_node_count - 1 {
+        if self.members.len() != starting_node_count - 1 {
             anyhow::bail!("nodes config excluding own should have n - 1 nodes")
         }
 
         // Verify that each node's index is valid
         if !self
-            .nodes
+            .members
             .iter()
-            .all(|n| n.node_id.get() <= starting_node_count as u16)
+            .all(|n| n.member_id.get() <= starting_node_count as u16)
         {
             anyhow::bail!("node with index greater than n")
         }
 
         // Verify that each node's index is unique
-        let mut unique_ids: Vec<_> = self.nodes.iter().map(|n| n.node_id).collect();
+        let mut unique_ids: Vec<_> = self.members.iter().map(|n| n.member_id).collect();
         unique_ids.dedup(); // vec is already sorted, can simply dedup
         if unique_ids.len() != starting_node_count - 1 {
             anyhow::bail!("nodes config contains duplicated nodes")
         }
 
         // return the config including our modified set of nodes (excluding ours)
-        Ok(GroupConfig { nodes: self.nodes })
+        Ok(CommitteeConfig {
+            member_id: self.member_id,
+            secret_key: self.secret_key,
+            n: self.n,
+            t: self.t,
+            members: self.members,
+        })
     }
 }

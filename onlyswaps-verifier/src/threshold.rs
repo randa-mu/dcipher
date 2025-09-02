@@ -11,18 +11,18 @@ pub(crate) fn create_bn254_signer<C: ChainService, D: Deref<Target = C>>(
     network_bus: D,
     libp2p_node: Libp2pNodeConfig<u16>,
 ) -> anyhow::Result<OnlySwapsSigner<D, DsignerWrapper<BN254SignatureOnG1Signer>>> {
-    let bls_secret_key = &config.secret_key;
+    let bls_secret_key = &config.committee.secret_key;
     let suite = BN254SignatureOnG1Signer::new(
-        bls_secret_key.secret_key.clone().into(),
+        bls_secret_key.clone().into(),
         b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec(),
     );
 
     let signer = ThresholdSigner::new(
         suite,
-        bls_secret_key.n.get(),
-        bls_secret_key.t.get(),
-        bls_secret_key.node_id.get(),
-        config.group.nodes.iter().map(|n| n.bls_pk).collect(),
+        config.committee.n.get(),
+        config.committee.t.get(),
+        config.committee.member_id.get(),
+        config.committee.members.iter().map(|n| n.bls_pk).collect(),
     );
 
     let transport = libp2p_node

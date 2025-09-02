@@ -20,7 +20,7 @@ sol!(
     #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
     #[sol(rpc)]
     Router,
-    "../onlysubs-solidity/out/Router.sol/Router.json"
+    "../onlyswaps-solidity/out/Router.sol/Router.json"
 );
 
 sol!(
@@ -28,7 +28,7 @@ sol!(
     #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
     #[sol(rpc)]
     ERC20FaucetToken,
-    "../onlysubs-solidity/out/ERC20FaucetToken.sol/ERC20FaucetToken.json"
+    "../onlyswaps-solidity/out/ERC20.sol/ERC20.json"
 );
 
 #[derive(Debug, PartialEq, Eq, Hash)]

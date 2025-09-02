@@ -5,15 +5,15 @@ use libp2p::identity::Keypair;
 pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp2pNodeConfig<u16>> {
     let key = Keypair::from_protobuf_encoding(config.libp2p.secret_key.as_slice())?;
     let (addrs, peer_ids, node_ids) = config
-        .group
-        .nodes
+        .committee
+        .members
         .iter()
-        .map(|node| (node.address.clone(), node.peer_id, node.node_id.get()))
+        .map(|node| (node.address.clone(), node.peer_id, node.member_id.get()))
         .collect();
 
     Ok(Libp2pNodeConfig::new(
         key,
-        config.secret_key.node_id.get(),
+        config.committee.member_id.get(),
         addrs,
         peer_ids,
         node_ids,
@@ -29,7 +29,7 @@ mod test {
     use base64::Engine;
     use base64::engine::general_purpose::STANDARD;
     use config::shared::SharedConfig;
-    use config::signing::{GroupConfig, NodeConfig, SecretKeyConfig};
+    use config::signing::{CommitteeConfig, MemberConfig};
     use libp2p::PeerId;
     use serde_keys::Bn254SecretKey;
     use std::num::NonZeroU16;
@@ -53,15 +53,13 @@ mod test {
                 secret_key: STANDARD.decode("CAESQMbvGFHfIUOQv29mlUTngwhFk6zHdhwOaXUL4SEfVdEu8FgoWAuQzZ4ixgscoH2sCdszAqkLB3tI34LOivHd+WM=")?,
                 multiaddr: "/ip4/127.0.0.1/tcp/8080".parse()?,
             },
-            secret_key: SecretKeyConfig {
-                node_id: NonZeroU16::new(1).unwrap(),
+            committee: CommitteeConfig {
+                member_id: NonZeroU16::new(1).unwrap(),
                 secret_key: Bn254SecretKey::from_str("0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d")?,
                 t: NonZeroU16::new(1).unwrap(),
                 n: NonZeroU16::new(1).unwrap(),
-            },
-            group: GroupConfig {
-                nodes: vec![NodeConfig {
-                    node_id: NonZeroU16::new(1).unwrap(),
+                members: vec![MemberConfig {
+                    member_id: NonZeroU16::new(1).unwrap(),
                     address: "/ip4/127.0.0.1/tcp/8080".parse()?,
                     peer_id: PeerId::random(),
                     bls_pk: G2Affine::default(),

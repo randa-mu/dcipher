@@ -1,7 +1,7 @@
 use alloy::primitives::FixedBytes;
 use clap::Parser;
 use config::shared::SharedConfig;
-use config::signing::{GroupConfig, SecretKeyConfig, UnvalidatedGroupConfig};
+use config::signing::{CommitteeConfig, UnvalidatedCommitteeConfig};
 use figment::Figment;
 use figment::providers::{Format, Json, Toml};
 use libp2p::Multiaddr;
@@ -24,8 +24,7 @@ pub(crate) struct ConfigFile {
     pub agent: SharedConfig,
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
-    pub secret_key: SecretKeyConfig,
-    pub group: UnvalidatedGroupConfig,
+    pub committee: UnvalidatedCommitteeConfig,
 }
 
 #[serde_as]
@@ -41,8 +40,7 @@ pub(crate) struct AppConfig {
     pub agent: SharedConfig,
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
-    pub secret_key: SecretKeyConfig,
-    pub group: GroupConfig,
+    pub committee: CommitteeConfig,
 }
 
 impl TryFrom<ConfigFile> for AppConfig {
@@ -53,8 +51,7 @@ impl TryFrom<ConfigFile> for AppConfig {
             agent: file.agent,
             networks: file.networks,
             libp2p: file.libp2p,
-            group: file.group.parse(&file.secret_key)?,
-            secret_key: file.secret_key,
+            committee: file.committee.parse()?,
         })
     }
 }
@@ -116,15 +113,14 @@ mod tests {
         secret_key = "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0"
         multiaddr = "/ip4/127.0.0.1/tcp/8881"
 
-        [secret_key]
-        node_id = 1
+        [committee]
+        member_id = 1
         secret_key = "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d"
         t = 1
         n = 1
 
-        [group]
-        [[group.nodes]]
-        node_id = 1
+        [[committee.members]]
+        member_id = 1
         bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg=="
         address = "/ip4/127.0.0.1/tcp/8080"
         peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
@@ -168,15 +164,14 @@ mod tests {
             "secret_key": "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0",
             "multiaddr": "/ip4/127.0.0.1/tcp/8881"
           },
-          "secret_key": {
-            "node_id": 1,
+
+          "committee": {
+            "member_id": 1,
             "secret_key": "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d",
             "t": 1,
-            "n": 1
-          },
-          "group": {
-            "nodes": [{
-              "node_id": 1,
+            "n": 1,
+            "members": [{
+              "member_id": 1,
               "bls_pk": "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg==",
               "address": "/ip4/127.0.0.1/tcp/8080",
               "peer_id": "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
