@@ -50,19 +50,19 @@ An annotated, sample TOML configuration can be found below.
         # `committee.nodes` should contain as many entries as `n` above, and should contain one for your own node.
         # `address` and `peer_id` aren't bound to the public key, so different dcipher nodes can connect via different routes.
         # `member_id`s should be monotonically increasing from 1-n and unique, though can be out of order in this list.
-        [[committee.nodes]]
+        [[committee.members]]
         member_id = 1
         bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg==" # BLS BN254 public key in standard base64 encoding
         address = "/ip4/127.0.0.1/tcp/8080"                                                                 # a libp2p multiaddr 
         peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"                                    # a Peer ID as per the [libp2p spec](https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#peer-ids)
 
-        [[committee.nodes]]
+        [[committee.members]]
         member_id = 2
         bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/2fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg=="
         address = "/ip4/127.0.0.1/tcp/8081"
         peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8c"
 
-        [[committee.nodes]]
+        [[committee.members]]
         member_id = 3
         bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/3fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg=="
         address = "/ip4/127.0.0.1/tcp/8082"
