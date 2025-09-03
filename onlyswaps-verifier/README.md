@@ -37,10 +37,8 @@ An annotated, sample TOML configuration can be found below.
         secret_key = "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0" # secret_key should be base-64 encoded in the protobuf format specified in the [libp2p spec](https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#keys)
         multiaddr = "/ip4/127.0.0.1/tcp/8881"                                                                                                      # dns and other multiaddr protocols are supported as you'd expect
 
-        # `secret_key` contains everything related to the BLS BN254 keyshare. You ought to have run a DKG protocol (or shamir-secret-sharing) to retrieve the `secret_key` here.
-        [secret_key]
-
-        # `group` 
+        # `committee` contains everything related to the BLS BN254 keyshare and associated group of dcipher operators. 
+        # You ought to have run a DKG protocol (or shamir-secret-sharing) to retrieve the `secret_key` here.
         [committee]
         member_id = 1                                                                     # your index in the `committee.nodes` vector.
         secret_key = "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d" # your BLS BN254 secret key share encoded as `0x` prefixed hex

@@ -79,7 +79,7 @@ jobs:
 
       - name: onlyswaps-solidity - Build Solidity contracts
         working-directory: ./onlyswaps-solidity
-        run: npm run build:forge
+        run: npm run build
 
       # 4. Build and test workspace packages
       - name: Lint & Test Rust Workspace

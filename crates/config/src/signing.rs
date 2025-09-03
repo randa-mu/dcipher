@@ -54,29 +54,29 @@ impl CommitteeConfig {
 
 impl UnvalidatedCommitteeConfig {
     pub fn parse(mut self) -> anyhow::Result<CommitteeConfig> {
-        let starting_node_count = self.members.len();
-        let n = self.n.get();
-        let t = self.t.get();
-        if n == 0_u16 || starting_node_count == 0 {
-            anyhow::bail!("nodes cannot be empty");
+        let member_count = self.members.len();
+        let n = self.n.get() as usize;
+        let t = self.t.get() as usize;
+        if member_count == 0 || n == 0 || t == 0 {
+            anyhow::bail!("a committee must have members and a non-zero threshold");
         }
-        if t > starting_node_count as u16 {
-            anyhow::bail!("t cannot be greater than n");
+        if t > n {
+            anyhow::bail!("threshold cannot be larger than the committee size");
         }
 
         // Nodes config should contain n - 1 nodes
         self.members.retain(|m| m.member_id != self.member_id);
         self.members.sort_by(|a, b| a.member_id.cmp(&b.member_id));
-
-        if self.members.len() != starting_node_count - 1 {
-            anyhow::bail!("nodes config excluding own should have n - 1 nodes")
+        let member_count_without_self = self.members.len();
+        if member_count_without_self != n - 1 {
+            anyhow::bail!("your ID must appear exactly once on the committee")
         }
 
         // Verify that each node's index is valid
         if !self
             .members
             .iter()
-            .all(|n| n.member_id.get() <= starting_node_count as u16)
+            .all(|n| n.member_id.get() <= member_count as u16)
         {
             anyhow::bail!("node with index greater than n")
         }
@@ -84,8 +84,8 @@ impl UnvalidatedCommitteeConfig {
         // Verify that each node's index is unique
         let mut unique_ids: Vec<_> = self.members.iter().map(|n| n.member_id).collect();
         unique_ids.dedup(); // vec is already sorted, can simply dedup
-        if unique_ids.len() != starting_node_count - 1 {
-            anyhow::bail!("nodes config contains duplicated nodes")
+        if unique_ids.len() != member_count_without_self {
+            anyhow::bail!("committee cannot contain duplicate members")
         }
 
         // return the config including our modified set of nodes (excluding ours)
