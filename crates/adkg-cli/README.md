@@ -17,7 +17,7 @@ app_name = "dcipher"
 curve_id = "Bn254G1"
 hash_id = "Keccak256"
 adkg_version = "v0.1"
-adkg_scheme_name = "DYX22-Bn254G1-Keccak256"
+adkg_scheme_name = "DXK23-Bn254G1-Keccak256"
 generator_g = "qB3/U8RDVn4aF2tUTlmeDQbV0PvHJ8IB0QL/k1Z+5WI="
 generator_h = "gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE="
 ```
@@ -27,7 +27,7 @@ The `new-scheme` command can be used to obtain a scheme specification as follows
 adkg-cli new-scheme --app-name dcipher --scheme-out scheme.toml
 ```
 
-By default, we use the `DYX22-Bn254G1-Keccak256` scheme.
+By default, we use the `DXK23-Bn254G1-Keccak256` scheme.
 This represents the aforementioned ADKG, using the bn254 curve on group G1.
 In this configuration, the long-term public keys use a deterministic generator, `H`, obtained by hashing `ADKG_GENERATOR_G` with the DST `ADKG-%adkg_version%-%app_name%_BN254G1_XMD:KECCAK-256_SVDW_RO_GENERATORS_` using [rfc9380](https://datatracker.ietf.org/doc/html/rfc9380).
 The public key after the ADKG, however, are output with respect to the standard generator of bn254, the point `(1, 2)`.
@@ -57,6 +57,7 @@ Once the public key material of each of the participant has been gather, a group
 ```toml
 n = 7
 t = 2
+t_reconstruction = 4
 start_time = "2025-07-24T16:25:30Z"
 
 [[nodes]]
@@ -80,7 +81,8 @@ adkg_pk = "7dpgwvtWiLAw/TweCrzBeRuWahRbxqMwACwiiulYkfA="
 peer_id = "12D3KooWGjQdQ6B3LazUw2EVbhakN3P5931e1UV76vJUNoV73Dd4"
 ```
 
-This file contains the group configuration, which includes the number of parties (`n`), a threshold (`t`), and an agreed upon starting time, alongside a list of nodes.
+This file contains the group configuration, which includes the number of parties (`n`), a threshold (`t`), a reconstruction threshold, and an agreed upon starting time, alongside a list of nodes.
+The reconstruction threshold represents the number of signatures required to obtain a group signature.
 
 Note that we use the malicious threshold here, i.e., the maximum number of parties that may be malicious.
 The reconstruction threshold, i.e., the number of partials required to obtain a threshold signature, is obtained by adding one.
