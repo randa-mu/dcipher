@@ -2,11 +2,13 @@ use crate::aba::AbaConfig;
 use crate::aba::crain20::{AbaInput, CoinKeys};
 use crate::aba::multi_aba::MultiAba;
 use crate::helpers::{PartyId, SessionId, eval_poly};
-use crate::nizk::NIZKDleqProof;
+use crate::pok::PokProof;
 use crate::rbc::multi_rbc::MultiRbc;
 use crate::rbc::{RbcPredicate, ReliableBroadcastConfig};
 use crate::vss::acss::AcssConfig;
+use crate::vss::acss::hbacss0::PublicPoly;
 use crate::vss::acss::multi_acss::MultiAcss;
+use crate::vss::pedersen::PedersenPartyShare;
 use ark_ec::CurveGroup;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -14,13 +16,13 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Notify;
 use tracing::warn;
+use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 /// Input to Tyler Crain's ABA
 pub type AbaCrainInput<CG> = AbaInput<LazyCoinKeys<CG>>;
 
 /// Structure to evaluate ABA CoinKeys upon calling Into<CoinKeys>
-#[derive(Debug)]
 pub struct LazyCoinKeys<CG: CurveGroup> {
     n: usize,
     t: usize,
@@ -28,15 +30,16 @@ pub struct LazyCoinKeys<CG: CurveGroup> {
 }
 
 /// ACSS output required by ADKG.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ShareWithPoly<CG: CurveGroup> {
-    pub share: CG::ScalarField,
-    pub public_poly: Vec<CG>,
+    pub shares: Vec<PedersenPartyShare<CG::ScalarField>>,
+    pub public_polys: Vec<PublicPoly<CG>>,
 }
 
 /// Predicate used by reliable broadcasts.
 #[derive(Clone)]
 pub(super) struct NotifyPredicate<S> {
+    pub min_size: usize,
     pub expected_sender: PartyId,
     pub completed_acss: Arc<NotifyMap<S>>,
 }
@@ -50,23 +53,38 @@ pub(super) struct CompletedAcssSessions {
 /// Messages sent during the ADKG protocol.
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(bound(
-    serialize = "AdkgPublicKeyMessage<CG, H>: Serialize",
-    deserialize = "AdkgPublicKeyMessage<CG, H>: Deserialize<'de>"
+    serialize = "CG: PointSerializeCompressed, CG::ScalarField: FqSerialize",
+    deserialize = "CG: PointDeserializeCompressed, CG::ScalarField: FqDeserialize",
 ))]
 pub(super) enum AdkgMessage<CG: CurveGroup, H> {
-    PublicKey(AdkgPublicKeyMessage<CG, H>),
+    RandEx(AdkgRandExMessage<CG::ScalarField>),
+    Key(AdkgKeyMessage<CG, H>),
 }
 
-/// Helper struct to serialize the ADKG public key message.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(bound(serialize = "F: FqSerialize", deserialize = "F: FqDeserialize"))]
+pub(super) struct AdkgRandExMessage<F> {
+    #[serde(with = "utils::serialize::fq::base64_or_bytes")]
+    pub z_j: F,
+
+    #[serde(with = "utils::serialize::fq::base64_or_bytes")]
+    pub z_hat_j: F,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(bound(
-    serialize = "CG: PointSerializeCompressed, NIZKDleqProof<CG, H>: Serialize",
-    deserialize = "CG: PointDeserializeCompressed, NIZKDleqProof<CG, H>: for<'d> Deserialize<'d>"
+    serialize = "PokProof<CG, H>: Serialize, CG: PointSerializeCompressed",
+    deserialize = "PokProof<CG, H>: Deserialize<'de>, CG: PointDeserializeCompressed"
 ))]
-pub(super) struct AdkgPublicKeyMessage<CG: CurveGroup, H> {
+pub(super) struct AdkgKeyMessage<CG: CurveGroup, H> {
+    pub z_j_proof: PokProof<CG, H>,
+    pub z_hat_j_proof: PokProof<CG, H>,
+
     #[serde(with = "utils::serialize::point::base64")]
-    pub pk_j: CG,
-    pub pi_j: NIZKDleqProof<CG, H>,
+    pub g_z_j: CG,
+
+    #[serde(with = "utils::serialize::point::base64")]
+    pub h_z_hat_j: CG,
 }
 
 pub(super) struct SharedState<CG, RBCConfig, ACSSConfig, ABAConfig>
@@ -104,12 +122,17 @@ impl<CG: CurveGroup> From<LazyCoinKeys<CG>> for CoinKeys<CG> {
         // Obtain the combined public polynomial as p_j = \sum_{k \in rbc_parties} p_k(x)
         // which is the sum of the public polynomial output by each ACSS specified in the j-th RBC
         let public_poly: Vec<CG> = (0..=val.t)
-            .map(|i| val.outputs.iter().map(|(_, out)| out.public_poly[i]).sum())
+            .map(|i| {
+                val.outputs
+                    .iter()
+                    .map(|(_, out)| out.public_polys[0].as_vec()[i])
+                    .sum()
+            })
             .collect();
 
         // Our own secret share, the sum of our ACSS shares
         // u_{i,j} = \sum_{k \in rbc_parties} s_{k,j} =
-        let u_i_j: CG::ScalarField = val.outputs.iter().map(|(_, out)| out.share).sum();
+        let u_i_j: CG::ScalarField = val.outputs.iter().map(|(_, out)| out.shares[0].si).sum();
 
         // Obtain commitments to the secret shares of the other parties
         // (g^{u_{1,j}}, ... g^{u_{n,j}}) = (g^p*(1), ..., g^p*(n))
@@ -148,8 +171,11 @@ impl<S: Send + Sync> RbcPredicate for NotifyPredicate<S> {
         };
 
         loop {
-            // Check whether the completed ACSSs is a superset of the parties in the message
-            if self.completed_acss.is_superset(&rbc_parties.v) {
+            // Check that we have at least min_size parties, and that the completed ACSSs is a superset
+            // of the parties in the message
+            if rbc_parties.v.len() >= self.min_size
+                && self.completed_acss.is_superset(&rbc_parties.v)
+            {
                 // true, accept the proposal
                 return true;
             }
