@@ -81,7 +81,6 @@ impl<'de> Deserialize<'de> for Libp2pKeyWrapper {
     {
         use serde::de::Error;
 
-
         let s = String::deserialize(deserializer)?;
         s.parse::<Libp2pKeyWrapper>().map_err(D::Error::custom)
     }
