@@ -1,4 +1,4 @@
-use crate::adkg::matrix::BerklekampWelchError::QDivE;
+use crate::adkg::randex::BerklekampWelchError::QDivE;
 use crate::helpers::{nth_powers, u64_from_usize};
 use ark_ff::{Field, Zero};
 use ark_poly::DenseUVPolynomial;
