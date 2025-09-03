@@ -6,9 +6,9 @@ use figment::Figment;
 use figment::providers::{Format, Json, Toml};
 use libp2p::Multiaddr;
 use serde::Deserialize;
+use serde_keys::Libp2pKeyWrapper;
 use serde_with::serde_as;
 use std::path::Path;
-use serde_keys::Libp2pKeyWrapper;
 
 #[derive(Parser, Debug)]
 pub(crate) struct CliConfig {

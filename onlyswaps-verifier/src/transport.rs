@@ -1,9 +1,8 @@
 use crate::config::AppConfig;
 use dcipher_network::transports::libp2p::Libp2pNodeConfig;
-use libp2p::identity::Keypair;
 
 pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp2pNodeConfig<u16>> {
-    let key = Keypair::from_protobuf_encoding(config.libp2p.secret_key.as_slice())?;
+    let key = config.libp2p.secret_key.clone();
     let (addrs, peer_ids, node_ids) = config
         .committee
         .members
@@ -12,7 +11,7 @@ pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp
         .collect();
 
     Ok(Libp2pNodeConfig::new(
-        key,
+        key.into(),
         config.committee.member_id.get(),
         addrs,
         peer_ids,
@@ -26,8 +25,6 @@ mod test {
     use crate::transport::create_libp2p_transport;
     use alloy::primitives::{FixedBytes, U160, U256};
     use ark_bn254::g2::G2Affine;
-    use base64::Engine;
-    use base64::engine::general_purpose::STANDARD;
     use config::shared::SharedConfig;
     use config::signing::{CommitteeConfig, MemberConfig};
     use libp2p::PeerId;
@@ -50,7 +47,7 @@ mod test {
                 should_write: false,
             }],
             libp2p: Libp2pConfig {
-                secret_key: STANDARD.decode("CAESQMbvGFHfIUOQv29mlUTngwhFk6zHdhwOaXUL4SEfVdEu8FgoWAuQzZ4ixgscoH2sCdszAqkLB3tI34LOivHd+WM=")?,
+                secret_key: "CAESQMbvGFHfIUOQv29mlUTngwhFk6zHdhwOaXUL4SEfVdEu8FgoWAuQzZ4ixgscoH2sCdszAqkLB3tI34LOivHd+WM=".into(),
                 multiaddr: "/ip4/127.0.0.1/tcp/8080".parse()?,
             },
             committee: CommitteeConfig {
