@@ -4,7 +4,7 @@ onlyswaps-verifier is an agent for verifying crosschain swap fulfilments by solv
 It listens across a configurable set of EVM blockchains, verifies solvers' reported fulfillments on destination chains against swap requests on source chains, and cooperatively creates threshold signatures to unlock reimbursements and earned fees for honest solvers.
 
 ## CLI flags
-- **--config-file <path-to-some-file**
+- **--config-file <path-to-some-file>**
 A TOML or JSON file containing the rest of the configuration parameters required to connect to EVM blockchains and dcipher nodes. See [Configuration](#configuration).
  
 ## Configuration

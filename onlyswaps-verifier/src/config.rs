@@ -6,8 +6,9 @@ use figment::Figment;
 use figment::providers::{Format, Json, Toml};
 use libp2p::Multiaddr;
 use serde::Deserialize;
-use serde_with::{base64::Base64, serde_as};
+use serde_with::serde_as;
 use std::path::Path;
+use serde_keys::Libp2pKeyWrapper;
 
 #[derive(Parser, Debug)]
 pub(crate) struct CliConfig {
@@ -30,8 +31,7 @@ pub(crate) struct ConfigFile {
 #[serde_as]
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Libp2pConfig {
-    #[serde_as(as = "Base64")]
-    pub secret_key: Vec<u8>,
+    pub secret_key: Libp2pKeyWrapper,
     pub multiaddr: Multiaddr,
 }
 
