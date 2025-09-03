@@ -19,7 +19,6 @@ use anyhow::anyhow;
 use clap::Parser;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::sleep;
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(5);
 #[tokio::main]
@@ -33,11 +32,11 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::task::spawn(async move {
         loop {
+            tokio::time::interval(REFRESH_INTERVAL).tick().await;
             let pending_verifications = network_bus
-                .clone()
                 .fetch_pending_verifications()
                 .await
-                .unwrap();
+                .unwrap_or_default();
             for verification in pending_verifications {
                 println!(
                     "processing pending verification: {}",
@@ -45,15 +44,15 @@ async fn main() -> anyhow::Result<()> {
                 );
                 let verified_swap = signer.try_sign(&verification).await.unwrap();
                 println!("message signed");
-                network_bus
-                    .clone()
+                match network_bus
                     .as_ref()
                     .submit_verification(verification.chain_id, verified_swap)
                     .await
-                    .unwrap();
-                println!("completed a swap on chain {}", verification.chain_id);
+                {
+                    Ok(_) => println!("completed a swap on chain {}", verification.chain_id),
+                    Err(e) => eprintln!("error submitting verification: {}", e),
+                }
             }
-            sleep(REFRESH_INTERVAL).await;
         }
     });
 

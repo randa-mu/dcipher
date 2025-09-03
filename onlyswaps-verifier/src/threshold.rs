@@ -14,7 +14,7 @@ pub(crate) fn create_bn254_signer<C: ChainService, D: Deref<Target = C>>(
     let bls_secret_key = &config.committee.secret_key;
     let suite = BN254SignatureOnG1Signer::new(
         bls_secret_key.clone().into(),
-        b"BN254G1_XMD:KECCAK-256_SVDW_RO_H1_".to_vec(),
+        b"dcipher-onlyswaps-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_".to_vec(),
     );
 
     let signer = ThresholdSigner::new(

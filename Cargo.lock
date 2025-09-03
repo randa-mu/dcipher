@@ -4583,8 +4583,6 @@ dependencies = [
  "alloy",
  "anyhow",
  "ark-bn254",
- "ark-ec",
- "ark-ff 0.4.2",
  "ark-serialize 0.4.2",
  "async-trait",
  "axum",
@@ -4602,7 +4600,6 @@ dependencies = [
  "speculoos",
  "tempfile",
  "tokio",
- "utils",
 ]
 
 [[package]]

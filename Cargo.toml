@@ -24,6 +24,7 @@ edition = "2024"
 [workspace.dependencies]
 # workspace crates
 adkg = { path = "./crates/adkg" }
+config = { path = "./crates/config" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
