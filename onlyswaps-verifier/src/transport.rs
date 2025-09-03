@@ -38,6 +38,8 @@ mod test {
             agent: SharedConfig {
                 healthcheck_listen_addr: "0.0.0.0".parse()?,
                 healthcheck_port: 8080,
+                log_level: "debug".to_string(),
+                log_json: true,
             },
             networks: vec![NetworkConfig {
                 chain_id: 1,

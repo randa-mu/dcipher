@@ -2080,6 +2080,7 @@ dependencies = [
  "ark-std 0.4.0",
  "dcipher-network",
  "futures-util",
+ "hex",
  "itertools 0.14.0",
  "lru 0.14.0",
  "prometheus",
@@ -4606,7 +4607,6 @@ dependencies = [
  "ark-serialize 0.4.2",
  "async-trait",
  "axum",
- "base64 0.22.1",
  "clap",
  "config",
  "dcipher-network",
@@ -4620,6 +4620,8 @@ dependencies = [
  "speculoos",
  "tempfile",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
