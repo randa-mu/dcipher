@@ -1,9 +1,98 @@
 use crate::adkg::randex::BerklekampWelchError::QDivE;
-use crate::helpers::{nth_powers, u64_from_usize};
+use crate::adkg::types::AdkgRandExMessage;
+use crate::helpers::{PartyId, lagrange_interpolate_at, nth_powers, u64_from_usize};
+use crate::vss::pedersen;
+use ark_ec::CurveGroup;
 use ark_ff::{Field, Zero};
-use ark_poly::DenseUVPolynomial;
 use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
+use ark_poly::{DenseUVPolynomial, Polynomial};
 use nalgebra::{DMatrix, Dyn, OMatrix, RowDVector};
+
+/// Attempts a round of OEC with the given messages.
+pub fn oec_round<CG>(
+    randex_messages: impl IntoIterator<Item = (PartyId, AdkgRandExMessage<CG::ScalarField>)>,
+    t: usize,
+    ped_commit: &CG,
+    ped_g: &CG,
+    ped_h: &CG,
+) -> Option<(CG::ScalarField, CG::ScalarField)>
+where
+    CG: CurveGroup,
+{
+    let (points_z_i, points_z_hat_i): (Vec<_>, Vec<_>) = randex_messages
+        .into_iter()
+        .map(|(j, randex)| ((j.into(), randex.z_j), (j.into(), randex.z_hat_j)))
+        .unzip();
+    let msg_count = points_z_i.len();
+
+    let e = {
+        if msg_count == t + 1 {
+            // We can either attempt to recover the shares with exactly t + 1 shares (assuming no errors),
+            Some(0)
+        } else if msg_count >= 2 * t + 2 {
+            // Or do error correction with 2t + 1 + e shares (e > 0, number of allowed errors)
+            Some(msg_count - 2 * t - 1)
+        } else {
+            tracing::debug!(
+                msg_count,
+                "Not enough messages to attempt online-error correction round"
+            );
+            None?
+        }
+    }?;
+
+    let (z_i, z_hat_i) = if e == 0 {
+        // No errors are tolerated, do a lagrange interpolation
+        let z_i = lagrange_interpolate_at::<CG>(&points_z_i, 0);
+        let z_hat_i = lagrange_interpolate_at::<CG>(&points_z_hat_i, 0);
+        Some((z_i, z_hat_i))
+    } else {
+        tracing::info!(
+            max_errors = e,
+            msg_count,
+            "Attempting share recovery with error correction"
+        );
+
+        // Do error correction on points_z_i and points_z_hat_i
+        let rs_decode = |points: &[(u64, CG::ScalarField)]| {
+            let poly_z = match berlekamp_welch(points, t, e) {
+                Ok(poly_z) => poly_z,
+                Err(err) => {
+                    // Failed to decode polynomial, likely more than e errors.
+                    tracing::error!(
+                        error = ?err,
+                        points_len = points.len(),
+                        t,
+                        min_errors = e,
+                        "Failed to decode polynomial, likely due to too many errors"
+                    );
+                    None?
+                }
+            };
+
+            // Get our share by evaluating the corrected polynomial at 0
+            Some(poly_z.evaluate(&0u64.into()))
+        };
+
+        let z_i = rs_decode(&points_z_i)?;
+        let z_hat_i = rs_decode(&points_z_hat_i)?;
+        Some((z_i, z_hat_i))
+    }?;
+
+    // Verify the validity of z_i, z_hat_i by trying to open the expected commitment to (z_i, z_hat_i_points).
+    // We verify correctness through the pedersen commitment, instead of verifying that less than 2t + 1 fragments
+    // were corrupted.
+    if pedersen::commit::open(&z_i, &z_hat_i, ped_commit, ped_g, ped_h) {
+        Some((z_i, z_hat_i))
+    } else {
+        // Got at least min_errors > max_errors
+        tracing::warn!(
+            min_errors = e,
+            "Got randex messages with too many invalid shares"
+        );
+        None
+    }
+}
 
 /// During the randomness extraction phase, we use a Vandermonde matrix to obtain a secret-shared polynomial
 /// $z(x) = z_0 + z_1 x + ... + z_\ell x^\ell$ of degree \ell (i.e., the reconstruction threshold).
