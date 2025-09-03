@@ -28,7 +28,7 @@ mod test {
     use config::shared::SharedConfig;
     use config::signing::{CommitteeConfig, MemberConfig};
     use libp2p::PeerId;
-    use serde_keys::Bn254SecretKey;
+    use serde_keys::{Bn254SecretKey, Libp2pKeyWrapper};
     use std::num::NonZeroU16;
     use std::str::FromStr;
 
@@ -47,12 +47,16 @@ mod test {
                 should_write: false,
             }],
             libp2p: Libp2pConfig {
-                secret_key: "CAESQMbvGFHfIUOQv29mlUTngwhFk6zHdhwOaXUL4SEfVdEu8FgoWAuQzZ4ixgscoH2sCdszAqkLB3tI34LOivHd+WM=".into(),
+                secret_key: Libp2pKeyWrapper::from_str(
+                    "CAESQMbvGFHfIUOQv29mlUTngwhFk6zHdhwOaXUL4SEfVdEu8FgoWAuQzZ4ixgscoH2sCdszAqkLB3tI34LOivHd+WM=",
+                )?,
                 multiaddr: "/ip4/127.0.0.1/tcp/8080".parse()?,
             },
             committee: CommitteeConfig {
                 member_id: NonZeroU16::new(1).unwrap(),
-                secret_key: Bn254SecretKey::from_str("0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d")?,
+                secret_key: Bn254SecretKey::from_str(
+                    "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d",
+                )?,
                 t: NonZeroU16::new(1).unwrap(),
                 n: NonZeroU16::new(1).unwrap(),
                 members: vec![MemberConfig {
@@ -60,7 +64,7 @@ mod test {
                     address: "/ip4/127.0.0.1/tcp/8080".parse()?,
                     peer_id: PeerId::random(),
                     bls_pk: G2Affine::default(),
-                }]
+                }],
             },
         };
 
