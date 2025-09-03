@@ -186,7 +186,7 @@ where
     H: Default + DynDigest + BlockSizeUser + Clone + 'static,
     RBCConfig: ReliableBroadcastConfig<'static, PartyId>,
     ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Vec<PedersenSecret<CG::ScalarField>>>,
-    ACSSConfig::Output: Sized + Clone + Into<ShareWithPoly<CG>>,
+    ACSSConfig::Output: Into<ShareWithPoly<CG>>,
     ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<CG>>,
 {
     pub async fn start<T>(
