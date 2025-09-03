@@ -15,6 +15,7 @@ pub struct NodeDetail {
 pub struct GroupConfig {
     pub n: NonZeroUsize,
     pub t: NonZeroUsize,
+    pub t_reconstruction: NonZeroUsize,
     pub start_time: chrono::DateTime<chrono::Utc>,
     pub nodes: Vec<NodeDetail>,
 }
