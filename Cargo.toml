@@ -105,3 +105,4 @@ thiserror = "2.0"
 [patch.crates-io]
 # Use custom patch to fix arkworks' FieldHasher
 ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher" }
+libp2p = { git = "https://github.com/azixus/rust-libp2p", branch = "fix/floodsub-msg-size"}

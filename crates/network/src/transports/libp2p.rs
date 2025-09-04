@@ -31,6 +31,7 @@ use tokio_util::sync::CancellationToken;
 
 const LIBP2P_MAIN_TOPIC: &str = "main";
 const DEFAULT_REDIAL_INTERVAL: Duration = Duration::from_secs(2 * 60); // 2mins
+const FLOODSUB_MAX_MESSAGE_LEN: usize = 8192;
 
 /// Holds configuration parameters and obtain a [`Libp2pNode`] by running
 /// [`Self::run`](Libp2pNodeConfig::run).
@@ -311,7 +312,8 @@ impl<ID: PartyIdentifier> Behaviour<ID> {
 
         Self {
             allowed_peers,
-            floodsub: floodsub::Floodsub::new(local_peer_id),
+            floodsub: floodsub::Floodsub::new(local_peer_id)
+                .with_max_message_len(FLOODSUB_MAX_MESSAGE_LEN),
             point_to_point,
             ping: ping::Behaviour::default(),
             periodic_dial: PeriodicDialBehaviour::new(redial_interval, peers),
