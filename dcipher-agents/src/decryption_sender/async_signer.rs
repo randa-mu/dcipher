@@ -3,14 +3,13 @@
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
 use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
-use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
 use dcipher_signer::dsigner::{
     ApplicationArgs, DSignerSchemeError, DSignerSchemeSigner, SignatureAlgorithm, SignatureRequest,
 };
 use std::borrow::Cow;
-use utils::serialize::point::PointDeserializeCompressed;
+use utils::serialize::point::{PointDeserializeCompressed, PointSerializeUncompressed};
 
 pub struct DecryptionSenderAsyncSigner<CS, Signer> {
     cs: CS,
@@ -50,7 +49,7 @@ pub enum DecryptionSenderAsyncSignerError {
 impl<CS, Signer> AsynchronousSigner<DecryptionRequest> for DecryptionSenderAsyncSigner<CS, Signer>
 where
     CS: PairingIbeCipherSuite + Send + Sync,
-    CS::IdentityGroup: PointDeserializeCompressed + EvmSerialize,
+    CS::IdentityGroup: PointDeserializeCompressed + PointSerializeUncompressed,
     Signer: DSignerSchemeSigner + Sync,
     DecryptionRequest: TryInto<CS::Ciphertext>,
     <DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
@@ -74,7 +73,7 @@ where
             .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
 
         let sig = CS::IdentityGroup::deser_compressed(&sig)?;
-        let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
+        let sig_bytes = Cow::Owned(sig.ser_uncompressed()?.into());
         // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
         let request_id = req.id;
         let ct: CS::Ciphertext = match req.try_into() {
@@ -102,7 +101,6 @@ pub(crate) mod tests {
     use super::*;
     use crate::decryption_sender::DecryptionRequest;
     use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
-    use crate::ser::EvmSerialize;
     use crate::ser::tests::bn254::encode_ciphertext;
     use crate::signer::AsynchronousSigner;
     use alloy::primitives::U256;
@@ -267,7 +265,7 @@ pub(crate) mod tests {
         assert!(sig2.is_ok(), "Second signature should succeed");
         assert_eq!(
             sig2.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig2)
+            exp_sig2.ser_uncompressed().unwrap(),
         );
 
         // Set the response for the first request
@@ -282,7 +280,7 @@ pub(crate) mod tests {
         assert!(sig1.is_ok(), "First signature should succeed");
         assert_eq!(
             sig1.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig1)
+            exp_sig1.ser_uncompressed().unwrap(),
         );
     }
 
@@ -346,7 +344,7 @@ pub(crate) mod tests {
         assert!(sig.is_ok(), "sig should be ok");
         assert_eq!(
             sig.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig)
+            exp_sig.ser_uncompressed().unwrap(),
         );
 
         // Wait for a second signature to be sent through the rx channel
@@ -358,7 +356,7 @@ pub(crate) mod tests {
         assert!(sig.is_ok(), "sig should be ok");
         assert_eq!(
             sig.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig)
+            exp_sig.ser_uncompressed().unwrap(),
         );
     }
 
@@ -476,7 +474,7 @@ pub(crate) mod tests {
         assert_eq!(signed_req.id, req.id);
         assert_eq!(
             signed_req.signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig)
+            exp_sig.ser_uncompressed().unwrap(),
         );
         assert_eq!(signed_req.decryption_key.as_ref(), exp_preprocessed_key);
     }

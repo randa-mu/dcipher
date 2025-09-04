@@ -7,7 +7,6 @@ use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::pairing::Pairing;
-use ark_ec::{AffineRepr, CurveGroup};
 use dcipher_agents::agents::randomness::RandomnessAgent;
 use dcipher_agents::agents::randomness::contracts::RandomnessSender;
 use dcipher_agents::agents::randomness::fulfiller::RandomnessFulfiller;

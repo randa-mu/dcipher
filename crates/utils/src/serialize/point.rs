@@ -353,9 +353,13 @@ mod tests {
     mod bn254 {
         use ark_bn254::{Fq, Fq2, G1Affine, G2Affine};
         use ark_ec::AffineRepr;
+        use ark_ff::{Fp, PrimeField};
         use rstest::*;
 
-        use crate::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
+        use crate::serialize::point::{
+            PointDeserializeCompressed, PointDeserializeUncompressed, PointSerializeCompressed,
+            PointSerializeUncompressed,
+        };
 
         #[rstest]
         #[case(
@@ -450,6 +454,42 @@ mod tests {
 
             assert_eq!(p, G2Affine::zero());
             assert_eq!(G2Affine::zero().ser_compressed().unwrap(), v)
+        }
+
+        #[test]
+        fn ark_serialize_bn254_g1_uncompressed() {
+            let bytes_encoding = hex::decode("043864e59644fbf5c3c5360d584aef2d97d489184d90cc10c2bff113803650e9296aa6398a0793d763e7196aa34c2513887400698d2c2aa6d817920c1937a8af").unwrap();
+            let p = ark_bn254::G1Affine::new(
+                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
+                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
+            );
+            assert_eq!(p.ser_uncompressed().unwrap(), bytes_encoding);
+            assert_eq!(
+                ark_bn254::G1Affine::deser_uncompressed(&bytes_encoding).unwrap(),
+                p
+            );
+
+            let bytes_encoding = hex::decode("13283ef9a6033433f275974e17308058b9af6f2661ebb20e169b3ec20e696a5a06d7e95e2ac8bcbbf7ee22fb64c60e6572869d57cc636bbb517d686a0fea4ace").unwrap();
+            let p = ark_bn254::G1Affine::new(
+                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
+                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
+            );
+            assert_eq!(p.ser_uncompressed().unwrap(), bytes_encoding);
+            assert_eq!(
+                ark_bn254::G1Affine::deser_uncompressed(&bytes_encoding).unwrap(),
+                p
+            );
+
+            let bytes_encoding = hex::decode("00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002").unwrap();
+            let p = ark_bn254::G1Affine::new(
+                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
+                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
+            );
+            assert_eq!(p.ser_uncompressed().unwrap(), bytes_encoding);
+            assert_eq!(
+                ark_bn254::G1Affine::deser_uncompressed(&bytes_encoding).unwrap(),
+                p
+            );
         }
     }
 
