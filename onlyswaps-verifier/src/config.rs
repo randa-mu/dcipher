@@ -110,7 +110,7 @@ mod tests {
         should_write = false
 
         [libp2p]
-        secret_key = "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0"
+        secret_key = "CAESQBUpjjiWNdGyX0Ffj7TccV+JUsnoFJXE71lgmsCAGqyzsnUME7bynuS2cDA7Wom8s/PhDjJRfrj+SxO9+mdtClk="
         multiaddr = "/ip4/127.0.0.1/tcp/8881"
 
         [committee]
@@ -161,7 +161,7 @@ mod tests {
           }],
 
           "libp2p": {
-            "secret_key": "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0",
+            "secret_key": "CAESQBUpjjiWNdGyX0Ffj7TccV+JUsnoFJXE71lgmsCAGqyzsnUME7bynuS2cDA7Wom8s/PhDjJRfrj+SxO9+mdtClk=",
             "multiaddr": "/ip4/127.0.0.1/tcp/8881"
           },
 
