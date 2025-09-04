@@ -117,10 +117,7 @@ mod fq_mod_8_eq_2 {
                     _ => (&Zero::zero(), &Zero::zero()),
                 };
 
-                Ok([x, y]
-                    .map(|v| v.into_bigint().to_bytes_be())
-                    .concat()
-                    .into())
+                Ok([x, y].map(|v| v.into_bigint().to_bytes_be()).concat())
             }
         }
 
@@ -135,8 +132,7 @@ mod fq_mod_8_eq_2 {
 
                 Ok([x.c1, x.c0, y.c1, y.c0]
                     .map(|v| v.into_bigint().to_bytes_be())
-                    .concat()
-                    .into())
+                    .concat())
             }
         }
 

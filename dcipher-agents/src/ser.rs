@@ -1,17 +1,15 @@
 //! Helper traits used to serialize and deserialize various types into EVM bytes.
 
-use alloy::primitives::Bytes;
-use ark_ec::AffineRepr;
-
 #[cfg(feature = "blocklock")]
 pub use blocklock::*;
 
 #[cfg(feature = "blocklock")]
 mod blocklock {
-    use super::*;
     use crate::agents::blocklock::contracts::TypesLib;
     use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
+    use alloy::primitives::Bytes;
     use alloy::sol_types::SolType;
+    use ark_ec::AffineRepr;
 
     #[derive(thiserror::Error, Debug)]
     pub enum IbeIdentityOnBn254G1CiphertextError {
@@ -61,8 +59,9 @@ pub(crate) mod tests {
         use super::super::*;
         use crate::agents::blocklock::contracts::{BLS, TypesLib};
         use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
-        use alloy::primitives::U256;
+        use alloy::primitives::{Bytes, U256};
         use alloy::sol_types::SolValue;
+        use ark_ec::AffineRepr;
         use ark_ff::{BigInteger, PrimeField};
 
         pub(crate) fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {

@@ -404,7 +404,7 @@ where
                 .lock()
                 .expect("a thread panicked with the mutex");
             if let Some(Either::Right(tx_channel)) =
-                signatures_cache.put(stored_req, Either::Left(sig.clone()))
+                signatures_cache.put(stored_req, Either::Left(sig))
             {
                 // If there previously was a channel stored at the entry, also send signature through it
                 tx_channel.send_replace(Some(sig));
