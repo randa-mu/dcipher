@@ -1,5 +1,5 @@
 # adkg-cli
-CLI tool used to prepare and execute asynchronous distributed key generation ceremonies using the ADKG described in [Practical Asynchronous Distributed Key Generation](https://eprint.iacr.org/2021/1591.pdf) by Das et al.
+CLI tool used to prepare and execute asynchronous distributed key generation ceremonies using the high-threshold ADKG described in [Practical Asynchronous High-threshold Distributed Key Generation and Distributed Polynomial Sampling](https://www.usenix.org/system/files/usenixsecurity23-das.pdf) by Das et al.
 
 A ceremony is a three steps process: creation of a scheme specification, long-term key generation, and the execution of the ADKG.
 
