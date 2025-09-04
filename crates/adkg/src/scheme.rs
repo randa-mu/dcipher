@@ -324,7 +324,7 @@ pub mod bls12_381 {
             let app_name = format!("ADKG-{ADKG_VERSION}-{}", self.app_name)
                 .as_bytes()
                 .to_owned();
-            get_generator_g_svdw::<_, Self::Hash>(app_name)
+            get_generator_g_sswu::<_, Self::Hash>(app_name)
         }
 
         fn new_adkg(
@@ -459,7 +459,7 @@ pub mod bls12_381 {
         }
     }
 
-    fn get_generator_g_svdw<CG, H>(app_name: Vec<u8>) -> CG
+    fn get_generator_g_sswu<CG, H>(app_name: Vec<u8>) -> CG
     where
         CG: NamedCurveGroup + HashToCurve,
         H: Default + NamedDynDigest + BlockSizeUser + Clone,
@@ -468,7 +468,7 @@ pub mod bls12_381 {
             .with_application_name(app_name)
             .with_curve::<CG>()
             .with_hash::<H>()
-            .with_mapping(MapId::SVDW)
+            .with_mapping(MapId::SSWU)
             .with_encoding(EncodingType::Uniform)
             .with_suffix(b"GENERATORS".to_vec())
             .build()
