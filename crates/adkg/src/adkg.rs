@@ -1210,7 +1210,7 @@ mod tests {
         let h = ark_bls12_381::G1Projective::generator();
 
         run_adkg_test::<_, sha3::Sha3_256>(t, t, n, g, h, SEED).await;
-        run_adkg_test::<_, sha3::Sha3_256>(2*t, t, n, g, h, SEED).await;
+        run_adkg_test::<_, sha3::Sha3_256>(2 * t, t, n, g, h, SEED).await;
     }
 
     async fn run_adkg_test<CG, H>(
