@@ -18,6 +18,9 @@ RUN npm run build
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+RUN apt-get update \
+ && apt-get install -y protobuf-compiler \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 

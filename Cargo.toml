@@ -29,6 +29,7 @@ config = { path = "./crates/config" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
+omnievent = { path = "./omnievent" }
 serde-keys = { path = "./crates/serde-keys" }
 superalloy = { path = "./superalloy" }
 
@@ -94,4 +95,4 @@ thiserror = "2.0"
 
 [patch.crates-io]
 # Use custom patch to fix arkworks' FieldHasher
-ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}
+ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher" }

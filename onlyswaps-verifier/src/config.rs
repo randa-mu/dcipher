@@ -1,4 +1,4 @@
-use alloy::primitives::FixedBytes;
+use crate::config_network::NetworkConfig;
 use clap::Parser;
 use config::shared::SharedConfig;
 use config::signing::{CommitteeConfig, UnvalidatedCommitteeConfig};
@@ -56,17 +56,8 @@ impl TryFrom<ConfigFile> for AppConfig {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub(crate) struct NetworkConfig {
-    pub chain_id: u64,
-    pub rpc_url: String,
-    pub router_address: FixedBytes<20>,
-    pub private_key: FixedBytes<32>,
-    pub should_write: bool,
-}
-
 pub(crate) fn load_app_config(cli: &CliConfig) -> anyhow::Result<AppConfig> {
-    tracing::debug!(
+    tracing::info!(
         config_path = cli.config_path.as_str(),
         "loading config file"
     );

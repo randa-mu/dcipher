@@ -21,6 +21,7 @@ impl SignalManager {
         let listener = TcpListener::bind((ip_addr, port)).await?;
         let healthcheck = Router::new().route("/health", get(|| async { "ok" }));
 
+        tracing::info!(port = port, "Healthcheck server created");
         Ok(Self {
             healthcheck,
             sigterm: tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?,
@@ -30,6 +31,7 @@ impl SignalManager {
     }
 
     pub async fn next(mut self) -> SignalEvent {
+        tracing::info!("Healthcheck server started");
         tokio::select! {
             _ = self.sigterm.recv() => SignalEvent::SigTerm,
             _ = self.sigint.recv()  => SignalEvent::SigInt,

@@ -21,7 +21,8 @@ pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp
 
 #[cfg(test)]
 mod test {
-    use crate::config::{AppConfig, Libp2pConfig, NetworkConfig};
+    use crate::config::{AppConfig, Libp2pConfig};
+    use crate::config_network::NetworkConfig;
     use crate::transport::create_libp2p_transport;
     use alloy::primitives::{FixedBytes, U160, U256};
     use ark_bn254::g2::G2Affine;
@@ -31,6 +32,7 @@ mod test {
     use serde_keys::{Bn254SecretKey, Libp2pKeyWrapper};
     use std::num::NonZeroU16;
     use std::str::FromStr;
+    use std::time::Duration;
 
     #[test]
     fn test_builds_with_valid_config() -> anyhow::Result<()> {
@@ -47,6 +49,7 @@ mod test {
                 router_address: FixedBytes::from(U160::from(1)),
                 private_key: FixedBytes::from(U256::from(1)),
                 should_write: false,
+                request_timeout: Duration::from_secs(1),
             }],
             libp2p: Libp2pConfig {
                 secret_key: Libp2pKeyWrapper::from_str(
