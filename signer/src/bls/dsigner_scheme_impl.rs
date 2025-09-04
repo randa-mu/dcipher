@@ -125,7 +125,10 @@ where
     G2Affine<BLS>:
         PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
 {
-    fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>> {
+    fn async_sign(
+        &self,
+        req: SignatureRequest,
+    ) -> BoxFuture<'_, Result<Bytes, DSignerSchemeError>> {
         async move {
             let SignatureAlgorithm::Bls(alg) = req.alg else {
                 Err(AsyncThresholdSignerError::AlgorithmNotSupported)?

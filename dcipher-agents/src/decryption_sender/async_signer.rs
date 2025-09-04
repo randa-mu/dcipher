@@ -177,7 +177,7 @@ pub(crate) mod tests {
         fn async_sign(
             &self,
             req: SignatureRequest,
-        ) -> BoxFuture<Result<Bytes, DSignerSchemeError>> {
+        ) -> BoxFuture<'_, Result<Bytes, DSignerSchemeError>> {
             let receivers = self.receivers.clone().lock_owned();
             async move {
                 let mut rx = receivers
