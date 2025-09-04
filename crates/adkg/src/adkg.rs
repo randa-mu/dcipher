@@ -1200,7 +1200,6 @@ mod tests {
     async fn adkg_test_bls12_381() {
         // Static configuration and long term keys
         let t = 2;
-        let t_reconstruction = 2 * t;
         let n = 3 * t + 1;
 
         const SEED: &[u8] = b"ADKG_BLS12381_TEST_SEED";
@@ -1210,8 +1209,8 @@ mod tests {
         let g = get_generator_g::<_, sha3::Sha3_256>();
         let h = ark_bls12_381::G1Projective::generator();
 
-        run_adkg_test::<_, sha3::Sha3_256>(t_reconstruction, t, n, g, h, SEED).await;
-        run_adkg_test::<_, sha3::Sha3_256>(t_reconstruction, 2 * t, n, g, h, SEED).await;
+        run_adkg_test::<_, sha3::Sha3_256>(t, t, n, g, h, SEED).await;
+        run_adkg_test::<_, sha3::Sha3_256>(2*t, t, n, g, h, SEED).await;
     }
 
     async fn run_adkg_test<CG, H>(
