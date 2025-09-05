@@ -24,17 +24,21 @@ pub enum AcssMessage {
     Ok,
     Ready,
     Implicate(ImplicateMessage),
-    ShareRecovery(#[serde_as(as = "utils::Base64OrBytes")] Vec<u8>),
+    ShareRecovery(ShareRecoveryMessage),
+}
+
+#[serde_with::serde_as]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct ShareRecoveryMessage {
+    pub v: Vec<u8>,
 }
 
 /// Message used to implicate the dealer upon receiving an invalid share.
 #[serde_with::serde_as]
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct ImplicateMessage {
-    #[serde_as(as = "utils::Base64OrBytes")]
     pub pi: Vec<u8>, // serialized dleq proof
-    #[serde_as(as = "utils::Base64OrBytes")]
-    pub k: Vec<u8>, // serialized shared key between the dealer and the receiving party
+    pub k: Vec<u8>,  // serialized shared key between the dealer and the receiving party
 }
 
 /// Various errors returned by the ACSS protocol.

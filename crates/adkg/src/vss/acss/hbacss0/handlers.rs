@@ -7,6 +7,7 @@ use super::{
 use crate::helpers::PartyId;
 use crate::network::broadcast_with_self;
 use crate::rbc::ReliableBroadcastConfig;
+use crate::vss::acss::hbacss0::types::ShareRecoveryMessage;
 use crate::vss::pedersen::PedersenPartyShare;
 use crate::{
     helpers::lagrange_interpolate_at, nizk::NIZKDleqProof,
@@ -284,8 +285,8 @@ where
 
         // Compute and serialize shared key
         let personal_shared_key = enc_shares.derive_shared_key(&self.config.sk);
-        let msg_recovery = match personal_shared_key.ser_compressed() {
-            Ok(v) => AcssMessage::ShareRecovery(v),
+        let msg_recovery = match personal_shared_key.ser() {
+            Ok(v) => AcssMessage::ShareRecovery(ShareRecoveryMessage { v }),
 
             Err(e) => {
                 // Failed to serialize shared key, log and ignore.
@@ -325,7 +326,7 @@ where
         }
 
         // Try to deserialize the shared key
-        let shared_key = match CG::deser_compressed(shared_key) {
+        let shared_key = match CG::deser(shared_key) {
             Ok(shared_key) => shared_key,
 
             Err(e) => {
@@ -363,21 +364,42 @@ where
         // Do we have enough share (t + 1) for polynomial interpolation?
         #[allow(clippy::int_plus_one)]
         if state_machine.shares_recovery.len() >= self.config.t + 1 {
-            // Enough share, interpolate the polynomial
-            // ugly non fft interpolation
-            let new_shares = state_machine
-                .shares_recovery
-                .drain()
-                .map(|(k, shares)| {
-                    let (points_si, points_ri): (Vec<_>, Vec<_>) = shares
-                        .into_iter()
-                        .map(move |share| ((k.into(), share.si), (k.into(), share.ri)))
-                        .collect();
-                    let si = lagrange_interpolate_at::<CG>(&points_si, self.config.id.into());
-                    let ri = lagrange_interpolate_at::<CG>(&points_ri, self.config.id.into());
-                    PedersenPartyShare { si, ri }
+            // Enough valid shares, interpolate the polynomial
+            let n = state_machine.shares_recovery.len();
+            let mut points_peds: Vec<(Vec<_>, Vec<_>)> = vec![];
+            for (&k, shares) in state_machine.shares_recovery.iter() {
+                for (share_idx, share) in shares.iter().enumerate() {
+                    if points_peds.len() <= share_idx {
+                        points_peds.push((Vec::with_capacity(n), Vec::with_capacity(n)));
+                    }
+
+                    points_peds[share_idx].0.push((k.into(), share.si));
+                    points_peds[share_idx].1.push((k.into(), share.ri));
+                }
+            }
+
+            let Some(new_shares) = points_peds
+                .into_iter()
+                .map(|(points_si, points_ri)| {
+                    // Make sure the vector contains at least t + 1 points
+                    // This is not necessarily the case due to sending vectors - not fixed length
+                    // arrays.
+                    if points_si.len() < self.config.t + 1 {
+                        None
+                    } else {
+                        let si = lagrange_interpolate_at::<CG>(&points_si, self.config.id.into());
+                        let ri = lagrange_interpolate_at::<CG>(&points_ri, self.config.id.into());
+                        Some(PedersenPartyShare { si, ri })
+                    }
                 })
-                .collect();
+                .collect()
+            else {
+                warn!(
+                    "Node `{}` failed to recover shares: some shares were missing",
+                    self.config.id
+                );
+                return;
+            };
 
             // Note that this is not explicitly described in ACSS / hbACSS0 (https://eprint.iacr.org/2021/159.pdf, Algorithm 1)
             // However, it makes sense to switch to the ready state once
