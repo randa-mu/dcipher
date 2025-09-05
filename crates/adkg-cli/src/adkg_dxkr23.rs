@@ -37,7 +37,7 @@ use utils::serialize::fq::FqDeserialize;
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 #[allow(clippy::too_many_arguments)]
-pub async fn adkg_dxk23_bn254_g1_keccak256<TBT>(
+pub async fn adkg_dxkr23_bn254_g1_keccak256<TBT>(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
@@ -69,7 +69,7 @@ where
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    adkg_dxk23(
+    adkg_dxkr23(
         id,
         sk,
         pks,
@@ -85,7 +85,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn adkg_dxk23_bls12_381_g1_sha256<TBT>(
+pub async fn adkg_dxkr23_bls12_381_g1_sha256<TBT>(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
@@ -117,7 +117,7 @@ where
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    adkg_dxk23(
+    adkg_dxkr23(
         id,
         sk,
         pks,
@@ -133,7 +133,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn adkg_dxk23<S, TBT>(
+async fn adkg_dxkr23<S, TBT>(
     id: PartyId,
     sk: <<S::Curve as CurveGroup>::Affine as AffineRepr>::ScalarField,
     pks: Vec<S::Curve>,
@@ -223,7 +223,7 @@ where
     Ok(res??)
 }
 
-pub async fn adkg_dxk23_bn254_g1_keccak256_rescue(
+pub async fn adkg_dxkr23_bn254_g1_keccak256_rescue(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
@@ -235,7 +235,7 @@ pub async fn adkg_dxk23_bn254_g1_keccak256_rescue(
     adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
 }
 
-pub async fn adkg_dxk23_bls12_381_g1_sha256_rescue(
+pub async fn adkg_dxkr23_bls12_381_g1_sha256_rescue(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
