@@ -575,7 +575,6 @@ mod tests {
         DecryptionRequested, DecryptionSenderInstance,
     };
     use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
-    use crate::ser::EvmSerialize;
     use alloy::consensus::constants::ETH_TO_WEI;
     use alloy::hex;
     use alloy::network::{Ethereum, TransactionBuilder};
@@ -596,6 +595,7 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Mutex;
     use std::time::Duration;
+    use utils::serialize::point::PointSerializeUncompressed;
 
     const SK: ark_bn254::Fr =
         MontFp!("3742516928081212610066329633174215531795997236046512785163691679786522890575");
@@ -1227,7 +1227,7 @@ mod tests {
             .fulfillDecryptionRequest(
                 U256::from(1),
                 Bytes::from(b"decryption key"),
-                EvmSerialize::ser_bytes(&signature),
+                signature.ser_uncompressed().unwrap().into(),
             )
             .send()
             .await
@@ -1338,7 +1338,7 @@ mod tests {
             .fulfillDecryptionRequest(
                 U256::from(1),
                 Bytes::from(b"decryption key"),
-                EvmSerialize::ser_bytes(&signature),
+                signature.ser_uncompressed().unwrap().into(),
             )
             .send()
             .await

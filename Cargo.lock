@@ -2015,9 +2015,11 @@ name = "dcipher-agents"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "ark-bls12-381",
  "ark-bn254",
  "ark-ec",
  "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
  "ark-std 0.4.0",
  "bytes",
  "dcipher-signer",
@@ -5257,6 +5259,7 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "anyhow",
+ "ark-bls12-381",
  "ark-bn254",
  "ark-ec",
  "ark-ff 0.4.2",

@@ -189,9 +189,15 @@ where
 {
     let mut out_buf = [0; N];
 
-    let shared_key = shared_key.ser().map_err(|_| HybridEncryptionError)?;
-    let sender_eph_pk = sender_eph_pk.ser().map_err(|_| HybridEncryptionError)?;
-    let recipient_pk = recipient_pk.ser().map_err(|_| HybridEncryptionError)?;
+    let shared_key = shared_key
+        .ser_compressed()
+        .map_err(|_| HybridEncryptionError)?;
+    let sender_eph_pk = sender_eph_pk
+        .ser_compressed()
+        .map_err(|_| HybridEncryptionError)?;
+    let recipient_pk = recipient_pk
+        .ser_compressed()
+        .map_err(|_| HybridEncryptionError)?;
 
     // Derive a shared key using a DST as the salt, the shared key, and both the ephemeral pk and recipient pk
     // to prevent malleability attack

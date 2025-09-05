@@ -8,7 +8,7 @@ where
 {
     use serde::ser::Error;
 
-    s.serialize_str(&p.ser_base64().map_err(S::Error::custom)?)
+    s.serialize_str(&p.ser_compressed_base64().map_err(S::Error::custom)?)
 }
 
 pub fn deserialize<'de, D, A: PointDeserializeCompressed>(deserializer: D) -> Result<A, D::Error>
@@ -18,7 +18,7 @@ where
     use serde::de::Error;
 
     let base64_str = String::deserialize(deserializer)?;
-    PointDeserializeCompressed::deser_base64(&base64_str).map_err(D::Error::custom)
+    PointDeserializeCompressed::deser_compressed_base64(&base64_str).map_err(D::Error::custom)
 }
 
 pub mod array {
@@ -39,7 +39,7 @@ pub mod array {
 
         let mut seq = s.serialize_tuple(N)?;
         for p in ps {
-            seq.serialize_element(&p.ser_base64().map_err(S::Error::custom)?)?;
+            seq.serialize_element(&p.ser_compressed_base64().map_err(S::Error::custom)?)?;
         }
         seq.end()
     }
@@ -75,7 +75,7 @@ pub mod array {
                     let value = seq
                         .next_element::<String>()?
                         .ok_or_else(|| Error::invalid_length(i, &self))?;
-                    let element = A::deser_base64(&value).map_err(Error::custom)?;
+                    let element = A::deser_compressed_base64(&value).map_err(Error::custom)?;
                     arr.push(element);
                 }
 
@@ -107,7 +107,7 @@ pub mod vec {
 
         let mut seq = s.serialize_tuple(ps.len())?;
         for p in ps {
-            seq.serialize_element(&p.ser_base64().map_err(S::Error::custom)?)?;
+            seq.serialize_element(&p.ser_compressed_base64().map_err(S::Error::custom)?)?;
         }
         seq.end()
     }
@@ -140,7 +140,7 @@ pub mod vec {
                 let mut points = Vec::new();
 
                 while let Some(base64_str) = seq.next_element()? {
-                    let p = A::deser_base64(base64_str).map_err(Error::custom)?;
+                    let p = A::deser_compressed_base64(base64_str).map_err(Error::custom)?;
                     points.push(p)
                 }
 

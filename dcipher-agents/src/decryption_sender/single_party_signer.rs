@@ -3,15 +3,18 @@
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
 use crate::ibe_helper::{IbeCiphertext, PairingIbeSigner};
-use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
 use std::borrow::Cow;
+
+use utils::serialize::point::PointSerializeUncompressed;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StandaloneSignerError {
     #[error("failed to parse decryption requests")]
     ParseDecryptionRequest(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("failed to serialize")]
+    SerializationError(#[from] utils::serialize::SerializationError),
 }
 
 #[derive(Clone)]
@@ -32,7 +35,7 @@ where
     for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
     for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,
-    CS::IdentityGroup: EvmSerialize,
+    CS::IdentityGroup: PointSerializeUncompressed,
 {
     fn process_request(
         &self,
@@ -41,7 +44,7 @@ where
         // Generate a signature (also a decryption key in this context) for each condition
         let identity = self.0.h1(&req.condition);
         let sig = self.0.decryption_key(identity);
-        let sig_bytes = Cow::<'_, Bytes>::Owned(EvmSerialize::ser_bytes(&sig));
+        let sig_bytes = Cow::<'_, Bytes>::Owned(sig.ser_uncompressed()?.into());
         // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
         let ct: CS::Ciphertext = match req.try_into() {
             Ok(ct) => ct,
@@ -68,7 +71,7 @@ where
     for<'a> &'a DecryptionRequest: TryInto<CS::Ciphertext>,
     for<'a> <&'a DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
         std::error::Error + Send + Sync + 'static,
-    CS::IdentityGroup: EvmSerialize,
+    CS::IdentityGroup: PointSerializeUncompressed,
 {
     type Error = StandaloneSignerError;
     type Signature = SignedDecryptionRequest<'static>;

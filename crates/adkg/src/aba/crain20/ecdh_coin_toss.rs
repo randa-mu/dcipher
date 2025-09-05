@@ -110,7 +110,7 @@ where
         let g_tilde_0 = lagrange_points_interpolate_at(&points[..t], 0);
 
         // Serialize the resulting point
-        let ser = match g_tilde_0.ser() {
+        let ser = match g_tilde_0.ser_compressed() {
             Ok(ser) => ser,
             Err(_) => {
                 good = false;

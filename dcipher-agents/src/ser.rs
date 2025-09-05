@@ -1,47 +1,15 @@
 //! Helper traits used to serialize and deserialize various types into EVM bytes.
 
-use alloy::primitives::Bytes;
-use ark_ec::AffineRepr;
-
-/// Serialize into an EVM Bytes type.
-pub trait EvmSerialize {
-    fn ser_bytes(&self) -> Bytes;
-}
-
-/// Deserialize from an EVM Bytes type.
-pub trait EvmDeserialize {
-    type Error: std::error::Error + Send + Sync + 'static;
-
-    fn deser(bytes: &Bytes) -> Result<Self, Self::Error>
-    where
-        Self: Sized;
-}
-
-impl EvmSerialize for ark_ec::short_weierstrass::Affine<ark_bn254::g1::Config> {
-    fn ser_bytes(&self) -> Bytes {
-        use ark_bn254::Fq;
-        use ark_ff::{BigInteger, PrimeField, Zero};
-
-        let (x, y) = match self.xy() {
-            Some((x, y)) => (x, y),
-            None => (&Fq::zero(), &Fq::zero()),
-        };
-
-        [x.into_bigint().to_bytes_be(), y.into_bigint().to_bytes_be()]
-            .concat()
-            .into()
-    }
-}
-
 #[cfg(feature = "blocklock")]
 pub use blocklock::*;
 
 #[cfg(feature = "blocklock")]
 mod blocklock {
-    use super::*;
     use crate::agents::blocklock::contracts::TypesLib;
     use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
+    use alloy::primitives::Bytes;
     use alloy::sol_types::SolType;
+    use ark_ec::AffineRepr;
 
     #[derive(thiserror::Error, Debug)]
     pub enum IbeIdentityOnBn254G1CiphertextError {
@@ -52,10 +20,8 @@ mod blocklock {
         InvalidEphemeralPk,
     }
 
-    impl EvmDeserialize for IbeIdentityOnBn254G1Ciphertext {
-        type Error = IbeIdentityOnBn254G1CiphertextError;
-
-        fn deser(bytes: &Bytes) -> Result<Self, Self::Error> {
+    impl IbeIdentityOnBn254G1Ciphertext {
+        pub fn deser(bytes: &Bytes) -> Result<Self, IbeIdentityOnBn254G1CiphertextError> {
             use ark_ff::PrimeField;
 
             let ciphertext = TypesLib::Ciphertext::abi_decode(bytes)?;
@@ -78,7 +44,7 @@ mod blocklock {
                 || !eph_pk.is_in_correct_subgroup_assuming_on_curve()
                 || eph_pk.is_zero()
             {
-                Err(Self::Error::InvalidEphemeralPk)?
+                Err(IbeIdentityOnBn254G1CiphertextError::InvalidEphemeralPk)?
             }
 
             Ok(Self::new(eph_pk))
@@ -93,33 +59,10 @@ pub(crate) mod tests {
         use super::super::*;
         use crate::agents::blocklock::contracts::{BLS, TypesLib};
         use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
-        use alloy::primitives::U256;
+        use alloy::primitives::{Bytes, U256};
         use alloy::sol_types::SolValue;
-        use ark_ff::{BigInteger, Fp, PrimeField};
-
-        #[test]
-        fn ark_bn254_g1_serialize() {
-            let bytes_encoding = hex::decode("043864e59644fbf5c3c5360d584aef2d97d489184d90cc10c2bff113803650e9296aa6398a0793d763e7196aa34c2513887400698d2c2aa6d817920c1937a8af").unwrap();
-            let p = ark_bn254::g1::G1Affine::new(
-                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
-                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
-            );
-            assert_eq!(EvmSerialize::ser_bytes(&p).as_ref(), bytes_encoding);
-
-            let bytes_encoding = hex::decode("13283ef9a6033433f275974e17308058b9af6f2661ebb20e169b3ec20e696a5a06d7e95e2ac8bcbbf7ee22fb64c60e6572869d57cc636bbb517d686a0fea4ace").unwrap();
-            let p = ark_bn254::g1::G1Affine::new(
-                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
-                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
-            );
-            assert_eq!(EvmSerialize::ser_bytes(&p).as_ref(), bytes_encoding);
-
-            let bytes_encoding = hex::decode("00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002").unwrap();
-            let p = ark_bn254::g1::G1Affine::new(
-                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
-                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
-            );
-            assert_eq!(EvmSerialize::ser_bytes(&p).as_ref(), bytes_encoding);
-        }
+        use ark_ec::AffineRepr;
+        use ark_ff::{BigInteger, PrimeField};
 
         pub(crate) fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {
             let x0 = U256::from_be_bytes::<32>(x0.try_into().unwrap());
@@ -156,7 +99,7 @@ pub(crate) mod tests {
                     .unwrap();
             let bytes = encode_ciphertext(&x0_bytes, &x1_bytes, &y0_bytes, &y1_bytes);
 
-            let ibe_ct: IbeIdentityOnBn254G1Ciphertext = EvmDeserialize::deser(&bytes).unwrap();
+            let ibe_ct = IbeIdentityOnBn254G1Ciphertext::deser(&bytes).unwrap();
             let eph_pk = ibe_ct.ephemeral_pk();
             let (x, y) = eph_pk.xy().unwrap();
             assert_eq!(x.c0.into_bigint().to_bytes_be(), x0_bytes);
@@ -179,11 +122,11 @@ pub(crate) mod tests {
                     .unwrap();
             let bytes = encode_ciphertext(&x0_bytes, &x1_bytes, &y0_bytes, &y1_bytes);
 
-            let ibe_ct: Result<IbeIdentityOnBn254G1Ciphertext, _> = EvmDeserialize::deser(&bytes);
-            matches!(
+            let ibe_ct = IbeIdentityOnBn254G1Ciphertext::deser(&bytes);
+            assert!(matches!(
                 ibe_ct,
                 Err(IbeIdentityOnBn254G1CiphertextError::InvalidEphemeralPk)
-            );
+            ));
 
             // Eph pk point at infinity
             let x0_bytes =
@@ -200,11 +143,11 @@ pub(crate) mod tests {
                     .unwrap();
             let bytes = encode_ciphertext(&x0_bytes, &x1_bytes, &y0_bytes, &y1_bytes);
 
-            let ibe_ct: Result<IbeIdentityOnBn254G1Ciphertext, _> = EvmDeserialize::deser(&bytes);
-            matches!(
+            let ibe_ct = IbeIdentityOnBn254G1Ciphertext::deser(&bytes);
+            assert!(matches!(
                 ibe_ct,
                 Err(IbeIdentityOnBn254G1CiphertextError::InvalidEphemeralPk)
-            );
+            ));
         }
     }
 }

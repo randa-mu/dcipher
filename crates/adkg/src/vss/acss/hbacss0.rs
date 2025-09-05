@@ -654,7 +654,7 @@ impl ImplicateMessage {
         let pi = bson::to_vec(pi)
             .map_err(|e| Box::new(AcssError::BsonSer(e, "failed to serialize pi")))?;
         let k = k
-            .ser()
+            .ser_compressed()
             .map_err(|e| Box::new(AcssError::Ser(e, "failed to deserialize k")))?;
 
         Ok(Self { pi, k })
@@ -673,7 +673,8 @@ impl ImplicateMessage {
     where
         CG: CurveGroup + PointDeserializeCompressed,
     {
-        CG::deser(&self.k).map_err(|e| AcssError::Ser(e, "failed to deserialize k").into())
+        CG::deser_compressed(&self.k)
+            .map_err(|e| AcssError::Ser(e, "failed to deserialize k").into())
     }
 }
 

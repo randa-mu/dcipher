@@ -7,7 +7,7 @@ use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
-use blocklock_agent::{BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
+use blocklock_agent::{BN254_BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
 use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSavedState};
 use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
 use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
@@ -83,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
     let saved_state: BlocklockAgentSavedState =
         serde_json::from_slice(&saved_state).unwrap_or_default();
     let mut agent = BlocklockAgent::from_state(
-        BLOCKLOCK_SCHEME_ID,
+        BN254_BLOCKLOCK_SCHEME_ID,
         config.chain.sync_batch_size,
         channel,
         decryption_sender_contract_ro.clone(),
@@ -239,6 +239,7 @@ where
         SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
             curve: BlsSignatureCurve::Bn254G1,
             hash: BlsSignatureHash::Keccak256,
+            compression: true,
         }),
         ApplicationArgs::Blocklock(ApplicationBlocklockArgs {
             chain_id: args

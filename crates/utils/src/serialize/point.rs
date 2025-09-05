@@ -13,22 +13,42 @@ use super::SerializationError;
 use ::base64::prelude::*;
 
 pub trait PointSerializeCompressed {
-    fn ser(&self) -> Result<Vec<u8>, SerializationError>;
+    fn ser_compressed(&self) -> Result<Vec<u8>, SerializationError>;
 
-    fn ser_base64(&self) -> Result<String, SerializationError> {
-        Ok(BASE64_STANDARD.encode(&self.ser()?))
+    fn ser_compressed_base64(&self) -> Result<String, SerializationError> {
+        Ok(BASE64_STANDARD.encode(&self.ser_compressed()?))
     }
 }
 
 pub trait PointDeserializeCompressed: Sized {
-    fn deser(v: &[u8]) -> Result<Self, SerializationError>;
+    fn deser_compressed(v: &[u8]) -> Result<Self, SerializationError>;
 
-    fn deser_base64(base64_str: &str) -> Result<Self, SerializationError>
+    fn deser_compressed_base64(base64_str: &str) -> Result<Self, SerializationError>
     where
         Self: std::marker::Sized,
     {
         let buf = BASE64_STANDARD.decode(base64_str)?;
-        Self::deser(&buf)
+        Self::deser_compressed(&buf)
+    }
+}
+
+pub trait PointSerializeUncompressed {
+    fn ser_uncompressed(&self) -> Result<Vec<u8>, SerializationError>;
+
+    fn ser_uncompressed_base64(&self) -> Result<String, SerializationError> {
+        Ok(BASE64_STANDARD.encode(&self.ser_uncompressed()?))
+    }
+}
+
+pub trait PointDeserializeUncompressed: Sized {
+    fn deser_uncompressed(v: &[u8]) -> Result<Self, SerializationError>;
+
+    fn deser_uncompressed_base64(base64_str: &str) -> Result<Self, SerializationError>
+    where
+        Self: std::marker::Sized,
+    {
+        let buf = BASE64_STANDARD.decode(base64_str)?;
+        Self::deser_uncompressed(&buf)
     }
 }
 
@@ -46,13 +66,13 @@ mod fq_mod_8_eq_2 {
     macro_rules! gen_ser_compressed_fq_mod_8_geq_2 {
         ($config:ty, $size:expr) => {
             impl PointSerializeCompressed for Affine<$config> {
-                fn ser(&self) -> Result<Vec<u8>, SerializationError> {
+                fn ser_compressed(&self) -> Result<Vec<u8>, SerializationError> {
                     ser_compressed_fq_mod_8_geq_2(self)
                 }
             }
 
             impl PointDeserializeCompressed for Affine<$config> {
-                fn deser(v: &[u8]) -> Result<Self, SerializationError> {
+                fn deser_compressed(v: &[u8]) -> Result<Self, SerializationError> {
                     if v.len() != $size {
                         Err(SerializationError::InvalidData)?;
                     }
@@ -61,14 +81,14 @@ mod fq_mod_8_eq_2 {
             }
 
             impl PointSerializeCompressed for Projective<$config> {
-                fn ser(&self) -> Result<Vec<u8>, SerializationError> {
-                    self.into_affine().ser()
+                fn ser_compressed(&self) -> Result<Vec<u8>, SerializationError> {
+                    self.into_affine().ser_compressed()
                 }
             }
 
             impl PointDeserializeCompressed for Projective<$config> {
-                fn deser(v: &[u8]) -> Result<Self, SerializationError> {
-                    Affine::<$config>::deser(v).map(AffineRepr::into_group)
+                fn deser_compressed(v: &[u8]) -> Result<Self, SerializationError> {
+                    Affine::<$config>::deser_compressed(v).map(AffineRepr::into_group)
                 }
             }
         };
@@ -77,11 +97,75 @@ mod fq_mod_8_eq_2 {
     #[cfg(feature = "bn254")]
     mod bn254 {
         use super::*;
-        use crate::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
+        use crate::serialize::point::{
+            PointDeserializeCompressed, PointDeserializeUncompressed, PointSerializeCompressed,
+            PointSerializeUncompressed,
+        };
+        use ark_bn254::{Fq, Fq2};
         use ark_ec::short_weierstrass::Projective;
+        use ark_ff::PrimeField;
 
         gen_ser_compressed_fq_mod_8_geq_2!(ark_bn254::g1::Config, 32);
         gen_ser_compressed_fq_mod_8_geq_2!(ark_bn254::g2::Config, 64);
+
+        impl PointSerializeUncompressed for Affine<ark_bn254::g1::Config> {
+            fn ser_uncompressed(&self) -> Result<Vec<u8>, SerializationError> {
+                use ark_ff::{BigInteger, PrimeField, Zero};
+
+                let (x, y) = match self.xy() {
+                    Some((x, y)) => (x, y),
+                    _ => (&Zero::zero(), &Zero::zero()),
+                };
+
+                Ok([x, y].map(|v| v.into_bigint().to_bytes_be()).concat())
+            }
+        }
+
+        impl PointSerializeUncompressed for Affine<ark_bn254::g2::Config> {
+            fn ser_uncompressed(&self) -> Result<Vec<u8>, SerializationError> {
+                use ark_ff::{BigInteger, PrimeField, Zero};
+
+                let (x, y) = match self.xy() {
+                    Some((x, y)) => (x, y),
+                    _ => (&Zero::zero(), &Zero::zero()),
+                };
+
+                Ok([x.c1, x.c0, y.c1, y.c0]
+                    .map(|v| v.into_bigint().to_bytes_be())
+                    .concat())
+            }
+        }
+
+        impl PointDeserializeUncompressed for Affine<ark_bn254::g1::Config> {
+            fn deser_uncompressed(v: &[u8]) -> Result<Self, SerializationError> {
+                if v.len() != 64 {
+                    Err(SerializationError::InvalidData)?;
+                }
+
+                let x = Fq::from_be_bytes_mod_order(&v[0..32]);
+                let y = Fq::from_be_bytes_mod_order(&v[32..64]);
+
+                Ok(ark_bn254::G1Affine::new(x, y))
+            }
+        }
+
+        impl PointDeserializeUncompressed for Affine<ark_bn254::g2::Config> {
+            fn deser_uncompressed(v: &[u8]) -> Result<Self, SerializationError> {
+                if v.len() != 128 {
+                    Err(SerializationError::InvalidData)?;
+                }
+
+                let x_c1 = Fq::from_be_bytes_mod_order(&v[0..32]);
+                let x_c0 = Fq::from_be_bytes_mod_order(&v[32..64]);
+                let y_c1 = Fq::from_be_bytes_mod_order(&v[64..96]);
+                let y_c0 = Fq::from_be_bytes_mod_order(&v[96..128]);
+
+                Ok(ark_bn254::G2Affine::new(
+                    Fq2::new(x_c0, x_c1),
+                    Fq2::new(y_c0, y_c1),
+                ))
+            }
+        }
     }
 
     /// Follow encoding used by gnark as described in
@@ -187,7 +271,7 @@ mod bls12_381 {
     macro_rules! gen_ser_compressed_ark {
         ($config:ty, $size:expr) => {
             impl PointSerializeCompressed for Affine<$config> {
-                fn ser(&self) -> Result<Vec<u8>, SerializationError> {
+                fn ser_compressed(&self) -> Result<Vec<u8>, SerializationError> {
                     let mut buf = Vec::with_capacity($size);
                     ark_serialize::CanonicalSerialize::serialize_compressed(self, &mut buf)?;
                     Ok(buf)
@@ -195,7 +279,7 @@ mod bls12_381 {
             }
 
             impl PointDeserializeCompressed for Affine<$config> {
-                fn deser(v: &[u8]) -> Result<Self, SerializationError> {
+                fn deser_compressed(v: &[u8]) -> Result<Self, SerializationError> {
                     if v.len() != $size {
                         Err(SerializationError::InvalidData)?;
                     }
@@ -206,14 +290,14 @@ mod bls12_381 {
             }
 
             impl PointSerializeCompressed for Projective<$config> {
-                fn ser(&self) -> Result<Vec<u8>, SerializationError> {
-                    self.into_affine().ser()
+                fn ser_compressed(&self) -> Result<Vec<u8>, SerializationError> {
+                    self.into_affine().ser_compressed()
                 }
             }
 
             impl PointDeserializeCompressed for Projective<$config> {
-                fn deser(v: &[u8]) -> Result<Self, SerializationError> {
-                    Affine::<$config>::deser(v).map(AffineRepr::into_group)
+                fn deser_compressed(v: &[u8]) -> Result<Self, SerializationError> {
+                    Affine::<$config>::deser_compressed(v).map(AffineRepr::into_group)
                 }
             }
         };
@@ -221,6 +305,42 @@ mod bls12_381 {
 
     gen_ser_compressed_ark!(ark_bls12_381::g1::Config, 48);
     gen_ser_compressed_ark!(ark_bls12_381::g2::Config, 96);
+
+    macro_rules! gen_ser_uncompressed_ark {
+        ($config:ty, $size:expr) => {
+            impl PointSerializeUncompressed for Affine<$config> {
+                fn ser_uncompressed(&self) -> Result<Vec<u8>, SerializationError> {
+                    let mut buf = Vec::with_capacity($size);
+                    ark_serialize::CanonicalSerialize::serialize_uncompressed(self, &mut buf)?;
+                    Ok(buf)
+                }
+            }
+
+            impl PointDeserializeUncompressed for Affine<$config> {
+                fn deser_uncompressed(v: &[u8]) -> Result<Self, SerializationError> {
+                    if v.len() != $size {
+                        Err(SerializationError::InvalidData)?;
+                    }
+                    Ok(ark_serialize::CanonicalDeserialize::deserialize_uncompressed(v)?)
+                }
+            }
+
+            impl PointSerializeUncompressed for Projective<$config> {
+                fn ser_uncompressed(&self) -> Result<Vec<u8>, SerializationError> {
+                    self.into_affine().ser_uncompressed()
+                }
+            }
+
+            impl PointDeserializeUncompressed for Projective<$config> {
+                fn deser_uncompressed(v: &[u8]) -> Result<Self, SerializationError> {
+                    Affine::<$config>::deser_uncompressed(v).map(AffineRepr::into_group)
+                }
+            }
+        };
+    }
+
+    gen_ser_uncompressed_ark!(ark_bls12_381::g1::Config, 96);
+    gen_ser_uncompressed_ark!(ark_bls12_381::g2::Config, 192);
 }
 
 #[cfg(test)]
@@ -229,9 +349,13 @@ mod tests {
     mod bn254 {
         use ark_bn254::{Fq, Fq2, G1Affine, G2Affine};
         use ark_ec::AffineRepr;
+        use ark_ff::{Fp, PrimeField};
         use rstest::*;
 
-        use crate::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
+        use crate::serialize::point::{
+            PointDeserializeCompressed, PointDeserializeUncompressed, PointSerializeCompressed,
+            PointSerializeUncompressed,
+        };
 
         #[rstest]
         #[case(
@@ -257,20 +381,20 @@ mod tests {
         fn test_serialize_bn254_g1(#[case] hex_str: &str, #[case] x: Fq, #[case] y: Fq) {
             let v = hex::decode(hex_str).unwrap();
             let expected = G1Affine::new(x, y);
-            let p = G1Affine::deser(&v).unwrap();
+            let p = G1Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, expected);
-            assert_eq!(expected.ser().unwrap(), v);
+            assert_eq!(expected.ser_compressed().unwrap(), v);
         }
 
         #[rstest]
         #[case("4000000000000000000000000000000000000000000000000000000000000000")]
         fn test_serialize_infinity_bn254_g1(#[case] hex_str: &str) {
             let v = hex::decode(hex_str).unwrap();
-            let p = G1Affine::deser(&v).unwrap();
+            let p = G1Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, G1Affine::zero());
-            assert_eq!(G1Affine::zero().ser().unwrap(), v)
+            assert_eq!(G1Affine::zero().ser_compressed().unwrap(), v)
         }
 
         #[rstest]
@@ -312,20 +436,56 @@ mod tests {
             let v = hex::decode(hex_str).unwrap();
 
             let expected = G2Affine::new(Fq2::new(x0, x1), Fq2::new(y0, y1));
-            let p = G2Affine::deser(&v).unwrap();
+            let p = G2Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, expected);
-            assert_eq!(expected.ser().unwrap(), v);
+            assert_eq!(expected.ser_compressed().unwrap(), v);
         }
 
         #[rstest]
         #[case("40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
         fn test_serialize_infinity_bn254_g2(#[case] hex_str: &str) {
             let v = hex::decode(hex_str).unwrap();
-            let p = G2Affine::deser(&v).unwrap();
+            let p = G2Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, G2Affine::zero());
-            assert_eq!(G2Affine::zero().ser().unwrap(), v)
+            assert_eq!(G2Affine::zero().ser_compressed().unwrap(), v)
+        }
+
+        #[test]
+        fn ark_serialize_bn254_g1_uncompressed() {
+            let bytes_encoding = hex::decode("043864e59644fbf5c3c5360d584aef2d97d489184d90cc10c2bff113803650e9296aa6398a0793d763e7196aa34c2513887400698d2c2aa6d817920c1937a8af").unwrap();
+            let p = ark_bn254::G1Affine::new(
+                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
+                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
+            );
+            assert_eq!(p.ser_uncompressed().unwrap(), bytes_encoding);
+            assert_eq!(
+                ark_bn254::G1Affine::deser_uncompressed(&bytes_encoding).unwrap(),
+                p
+            );
+
+            let bytes_encoding = hex::decode("13283ef9a6033433f275974e17308058b9af6f2661ebb20e169b3ec20e696a5a06d7e95e2ac8bcbbf7ee22fb64c60e6572869d57cc636bbb517d686a0fea4ace").unwrap();
+            let p = ark_bn254::G1Affine::new(
+                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
+                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
+            );
+            assert_eq!(p.ser_uncompressed().unwrap(), bytes_encoding);
+            assert_eq!(
+                ark_bn254::G1Affine::deser_uncompressed(&bytes_encoding).unwrap(),
+                p
+            );
+
+            let bytes_encoding = hex::decode("00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002").unwrap();
+            let p = ark_bn254::G1Affine::new(
+                Fp::from_be_bytes_mod_order(&bytes_encoding[0..32]),
+                Fp::from_be_bytes_mod_order(&bytes_encoding[32..64]),
+            );
+            assert_eq!(p.ser_uncompressed().unwrap(), bytes_encoding);
+            assert_eq!(
+                ark_bn254::G1Affine::deser_uncompressed(&bytes_encoding).unwrap(),
+                p
+            );
         }
     }
 
@@ -351,20 +511,20 @@ mod tests {
         fn test_serialize_g1(#[case] hex_str: &str, #[case] x: Fq, #[case] y: Fq) {
             let v = hex::decode(hex_str).unwrap();
             let expected = G1Affine::new(x, y);
-            let p = G1Affine::deser(&v).unwrap();
+            let p = G1Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, expected);
-            assert_eq!(expected.ser().unwrap(), v);
+            assert_eq!(expected.ser_compressed().unwrap(), v);
         }
 
         #[rstest]
         #[case("c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
         fn test_serialize_infinity_g1(#[case] hex_str: &str) {
             let v = hex::decode(hex_str).unwrap();
-            let p = G1Affine::deser(&v).unwrap();
+            let p = G1Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, G1Affine::zero());
-            assert_eq!(G1Affine::zero().ser().unwrap(), v)
+            assert_eq!(G1Affine::zero().ser_compressed().unwrap(), v)
         }
 
         #[rstest]
@@ -392,20 +552,20 @@ mod tests {
             let v = hex::decode(hex_str).unwrap();
 
             let expected = G2Affine::new(Fq2::new(x0, x1), Fq2::new(y0, y1));
-            let p = G2Affine::deser(&v).unwrap();
+            let p = G2Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, expected);
-            assert_eq!(expected.ser().unwrap(), v);
+            assert_eq!(expected.ser_compressed().unwrap(), v);
         }
 
         #[rstest]
         #[case("c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
         fn test_serialize_infinity_g2(#[case] hex_str: &str) {
             let v = hex::decode(hex_str).unwrap();
-            let p = G2Affine::deser(&v).unwrap();
+            let p = G2Affine::deser_compressed(&v).unwrap();
 
             assert_eq!(p, G2Affine::zero());
-            assert_eq!(G2Affine::zero().ser().unwrap(), v)
+            assert_eq!(G2Affine::zero().ser_compressed().unwrap(), v)
         }
     }
 }
