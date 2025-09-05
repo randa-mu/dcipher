@@ -157,7 +157,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     let transports = get_libp2p_transports(id, &sk, listen_address, &group_config).await?;
 
     match adkg_scheme {
-        SupportedAdkgScheme::DXK23Bn254G1Keccak256 => {
+        SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
             let output = adkg_dxk23_bn254_g1_keccak256(
                 id,
                 &sk.adkg_sk,
@@ -181,7 +181,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
             )?;
         }
 
-        SupportedAdkgScheme::DXK23Bls12_381G1Sha256 => {
+        SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
             let output = adkg_dxk23_bls12_381_g1_sha256(
                 id,
                 &sk.adkg_sk,
@@ -259,7 +259,7 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
         .context("adkg scheme not supported")?;
     let mut rng = AdkgStdRng::new(OsRng);
     match adkg_scheme_name {
-        SupportedAdkgScheme::DXK23Bn254G1Keccak256 => {
+        SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
             let output = adkg_dxk23_bn254_g1_keccak256_rescue(
                 id,
                 &sk.adkg_sk,
@@ -280,7 +280,7 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
             )?;
         }
 
-        SupportedAdkgScheme::DXK23Bls12_381G1Sha256 => {
+        SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
             let output = adkg_dxk23_bls12_381_g1_sha256_rescue(
                 id,
                 &sk.adkg_sk,

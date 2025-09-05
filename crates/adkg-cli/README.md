@@ -17,7 +17,7 @@ app_name = "dcipher"
 curve_id = "Bn254G1"
 hash_id = "Keccak256"
 adkg_version = "v0.1"
-adkg_scheme_name = "DXK23-Bn254G1-Keccak256"
+adkg_scheme_name = "DXKR23-Bn254G1-Keccak256"
 generator_g = "qB3/U8RDVn4aF2tUTlmeDQbV0PvHJ8IB0QL/k1Z+5WI="
 generator_h = "gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE="
 ```
@@ -27,7 +27,7 @@ The `new-scheme` command can be used to obtain a scheme specification as follows
 adkg-cli new-scheme --app-name dcipher --scheme-out scheme.toml
 ```
 
-By default, we use the `DXK23-Bn254G1-Keccak256` scheme.
+By default, we use the `DXKR23-Bn254G1-Keccak256` scheme.
 This represents the aforementioned ADKG, using the bn254 curve on group G1.
 In this configuration, the long-term public keys use a deterministic generator, `H`, obtained by hashing `ADKG_GENERATOR_G` with the DST `ADKG-%adkg_version%-%app_name%_BN254G1_XMD:KECCAK-256_SVDW_RO_GENERATORS_` using [rfc9380](https://datatracker.ietf.org/doc/html/rfc9380).
 The public key after the ADKG, however, are output with respect to the standard generator of bn254, the point `(1, 2)`.
