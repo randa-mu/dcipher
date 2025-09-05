@@ -14,6 +14,8 @@ An annotated, sample TOML configuration can be found below.
        [agent]
         healthcheck_listen_addr = "0.0.0.0" 
         healthcheck_port = 9999
+        log_level = "debug"     # debug, info, trace, error
+        log_json = true         # whether the logs should be structured as JSON or plaintext
 
         # `networks` details all the configuration relating to connecting to blockchains. Each can be configured independently.
         # Presently all networks must be supported, and skipping verifications for one route (chain -> chain) may cause errors.

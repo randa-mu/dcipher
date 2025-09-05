@@ -66,7 +66,10 @@ pub(crate) struct NetworkConfig {
 }
 
 pub(crate) fn load_app_config(cli: &CliConfig) -> anyhow::Result<AppConfig> {
-    println!("loading config file {}", cli.config_path);
+    tracing::debug!(
+        config_path = cli.config_path.as_str(),
+        "loading config file"
+    );
 
     let path = Path::new(&cli.config_path);
     let config_file = match path.extension().and_then(|s| s.to_str()) {
@@ -94,6 +97,8 @@ mod tests {
         [agent]
         healthcheck_listen_addr = "0.0.0.0"
         healthcheck_port = 9999
+        log_level = "debug"
+        log_json = true
 
         [[networks]]
         chain_id = 31337
@@ -143,7 +148,9 @@ mod tests {
         {
           "agent": {
             "healthcheck_listen_addr": "0.0.0.0",
-            "healthcheck_port": 9999
+            "healthcheck_port": 9999,
+            "log_level": "debug",
+            "log_json": true
           },
 
           "networks": [{

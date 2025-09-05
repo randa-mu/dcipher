@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
+use utils::display::LogBytes;
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 type SignatureGroup<BLS> = <BLS as BlsVerifier>::SignatureGroup;
@@ -210,7 +211,10 @@ where
                             };
 
                             if partials_map.contains_key(&self.id) {
-                                tracing::debug!(msg = ?m, "Received message signing request, but message was already signed");
+                                tracing::debug!(
+                                    msg = %LogBytes(&m),
+                                    "Received message signing request, but message was already signed"
+                                );
                                 false
                             } else {
                                 true
@@ -239,12 +243,12 @@ where
                 #[cfg(not(feature = "rayon"))]
                 let iter = messages.into_iter();
                 let (partials, messages): (Vec<_>, Vec<_>) = iter.filter_map(|message| {
-                    tracing::info!(msg = ?message, "Received new message to sign");
+                    tracing::info!(msg = %LogBytes(&message), "Received new message to sign");
 
                     match self.signer.sign(&message) {
                         Ok(sig) => Some((sig, message)),
                         Err(e) => {
-                            tracing::error!(error = ?e, msg = ?message, "Failed to sign message.");
+                            tracing::error!(error = ?e, msg = %LogBytes(&message), "Failed to sign message.");
                             None
                         }
                     }
@@ -258,7 +262,7 @@ where
 
                     // We filter with a sequential iterator here due to side effects
                     partials.iter().zip(messages.iter()).filter_map(|(partial_sig, m)| {
-                        tracing::info!(msg = ?m, party_id = self.id, "Storing partial signature on message");
+                        tracing::info!(msg = %LogBytes(&m), party_id = self.id, "Storing partial signature on message");
                         let partials = partials_cache.get_or_insert_mut(m.clone(), HashMap::default);
                         partials.insert(
                             self.id,
@@ -454,7 +458,7 @@ where
         message: Vec<u8>,
         partial: PartialSignature<SignatureGroup<BLS>>,
     ) {
-        tracing::info!(msg = ?message, party_id = partial.id, "Storing partial signature on message");
+        tracing::info!(msg = %LogBytes(&message), party_id = partial.id, "Storing partial signature on message");
         let mut partials_cache = self
             .partials_cache
             .lock()
