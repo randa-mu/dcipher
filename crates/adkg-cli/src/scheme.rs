@@ -57,7 +57,9 @@ impl FromStr for SupportedAdkgScheme {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::NAME => Ok(Self::DXKR23Bn254G1Keccak256),
-            <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::NAME => Ok(Self::DXKR23Bls12_381G1Sha256),
+            <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::NAME => {
+                Ok(Self::DXKR23Bls12_381G1Sha256)
+            }
             _ => Err(UnsupportedAdkgScheme),
         }
     }

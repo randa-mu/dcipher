@@ -1,6 +1,6 @@
 //! CLI tool to start ADKG ceremonies
 
-mod adkg_dxk23;
+mod adkg_dxkr23;
 mod cli;
 mod config;
 mod keygen;
@@ -9,9 +9,9 @@ mod metrics;
 mod scheme;
 mod transcripts;
 
-use crate::adkg_dxk23::{
-    adkg_dxk23_bls12_381_g1_sha256, adkg_dxk23_bls12_381_g1_sha256_rescue,
-    adkg_dxk23_bn254_g1_keccak256, adkg_dxk23_bn254_g1_keccak256_rescue,
+use crate::adkg_dxkr23::{
+    adkg_dxkr23_bls12_381_g1_sha256, adkg_dxkr23_bls12_381_g1_sha256_rescue,
+    adkg_dxkr23_bn254_g1_keccak256, adkg_dxkr23_bn254_g1_keccak256_rescue,
 };
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::config::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
@@ -158,7 +158,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
 
     match adkg_scheme {
         SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
-            let output = adkg_dxk23_bn254_g1_keccak256(
+            let output = adkg_dxkr23_bn254_g1_keccak256(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -182,7 +182,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
         }
 
         SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
-            let output = adkg_dxk23_bls12_381_g1_sha256(
+            let output = adkg_dxkr23_bls12_381_g1_sha256(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -260,7 +260,7 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
     let mut rng = AdkgStdRng::new(OsRng);
     match adkg_scheme_name {
         SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
-            let output = adkg_dxk23_bn254_g1_keccak256_rescue(
+            let output = adkg_dxkr23_bn254_g1_keccak256_rescue(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -281,7 +281,7 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
         }
 
         SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
-            let output = adkg_dxk23_bls12_381_g1_sha256_rescue(
+            let output = adkg_dxkr23_bls12_381_g1_sha256_rescue(
                 id,
                 &sk.adkg_sk,
                 &group_config,
