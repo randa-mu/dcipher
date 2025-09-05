@@ -4,6 +4,7 @@ members = [
     "blocklock-agent",
     "crates/adkg",
     "crates/adkg-cli",
+    "crates/config",
     "crates/network",
     "crates/serde-keys",
     "crates/utils",
@@ -24,10 +25,11 @@ edition = "2024"
 [workspace.dependencies]
 # workspace crates
 adkg = { path = "./crates/adkg" }
+config = { path = "./crates/config" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
-serde_keys = { path = "./crates/serde-keys" }
+serde-keys = { path = "./crates/serde-keys" }
 superalloy = { path = "./superalloy" }
 
 # blockchain
@@ -62,14 +64,10 @@ tracing-subscriber = { version = "0.3" }
 
 # network
 libp2p = { version = "0.55", features = ["serde"] }
-
-# api / rpc
-tonic = { version = "0.13" }
 tonic-build = { version = "0.13" }
 
 # serde
 prost = { version = "0.13" }
-prost-build = { version = "0.13" }
 prost-types = { version = "0.13" }
 serde = { version = "1.0", features = ["derive"], default-features = false }
 serde_with = "3.14"

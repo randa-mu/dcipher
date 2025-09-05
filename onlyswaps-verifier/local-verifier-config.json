@@ -1,0 +1,33 @@
+{
+  "agent": {
+    "healthcheck_listen_addr": "0.0.0.0",
+    "healthcheck_port": 9999
+  },
+
+  "networks": [{
+    "chain_id": 31337,
+    "rpc_url": "ws://localhost:31337",
+    "router_address": "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd",
+    "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+  }, {
+    "chain_id": 1338,
+    "rpc_url": "ws://localhost:1338",
+    "router_address": "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd",
+    "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+  }],
+
+  "secret_key": {
+    "node_id": 1,
+    "secret_key": "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d",
+    "t": 1,
+    "n": 1
+  },
+  "group": {
+    "nodes": [{
+      "node_id": 1,
+      "bls_pk": "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg==",
+      "address": "/ip4/127.0.0.1/tcp/8080",
+      "peer_id": "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
+    }]
+  }
+}

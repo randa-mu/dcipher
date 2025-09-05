@@ -4,6 +4,23 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+alloy = { workspace = true, features = ["default", "provider-ws"] }
+anyhow.workspace = true
+ark-bn254.workspace = true
+ark-serialize = "0.4.2"
+async-trait.workspace = true
 axum = "0.8.4"
+base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "signal"]}
+config.workspace = true
+dcipher-network = { workspace = true, features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
+dcipher-signer.workspace = true
+figment = { workspace = true, features = ["json", "toml"] }
+futures.workspace = true
+libp2p.workspace = true
+serde.workspace = true
+serde-keys.workspace = true
+serde_with = { workspace = true, features = ["base64"] }
+speculoos = "0.13.0"
+tempfile = "3.21.0"
+tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }

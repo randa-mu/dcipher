@@ -74,6 +74,18 @@ impl From<Bn254SecretKey> for ark_bn254::Fr {
     }
 }
 
+impl<'de> Deserialize<'de> for Libp2pKeyWrapper {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let s = String::deserialize(deserializer)?;
+        s.parse::<Libp2pKeyWrapper>().map_err(D::Error::custom)
+    }
+}
+
 impl FromStr for Libp2pKeyWrapper {
     type Err = anyhow::Error;
 
