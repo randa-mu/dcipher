@@ -257,6 +257,27 @@ where
     result
 }
 
+/// Evaluate a polynomial formed by EC points using a MSM.
+#[allow(unused)]
+pub fn eval_poly_msm<CG: CurveGroup>(public_poly: &[CG], x: &CG::ScalarField) -> CG {
+    let nth_powers = nth_powers(x, public_poly.len());
+    CG::msm(&CG::normalize_batch(public_poly), &nth_powers)
+        .expect("nth_powers always has the same length as public_poly")
+}
+
+/// Compute the nth power of a scalar, i.e., (s^0, s^1, ..., s^{n-1}).
+#[allow(unused)]
+pub fn nth_powers<F: Field>(s: &F, n: usize) -> Vec<F> {
+    let mut powers = vec![];
+    let mut current_power = F::ONE;
+    for _ in 0..n {
+        powers.push(current_power);
+        current_power *= s;
+    }
+
+    powers
+}
+
 /// Lagrange interpolation of the polynomial defined by its points, evaluated at point eval_x.
 pub fn lagrange_interpolate_at<CG: CurveGroup>(
     points: &[(u64, CG::ScalarField)],

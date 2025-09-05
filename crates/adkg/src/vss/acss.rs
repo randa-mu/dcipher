@@ -14,7 +14,8 @@ use tokio_util::sync::CancellationToken;
 /// Note that when executing parallel instances, the transports must have a domain separation,
 /// i.e., only send / receive messages for this specific instance.
 pub trait AcssConfig<'a, CG: CurveGroup, ID>: Send + Sync + 'static {
-    type Output: Clone + Sized + Send + Sync;
+    type Input: Sized + Send + Sync;
+    type Output: Sized + Send + Sync;
     type Error: std::error::Error + Send + Sync + 'static;
 
     fn new_instance<T>(
@@ -31,7 +32,10 @@ pub trait AcssConfig<'a, CG: CurveGroup, ID>: Send + Sync + 'static {
         self: &Arc<Self>,
         topic_prefix: String,
         transport: T,
-    ) -> Result<impl Acss<CG, ID, Output = Self::Output, Error = Self::Error> + 'a, Self::Error>
+    ) -> Result<
+        impl Acss<CG, ID, Input = Self::Input, Output = Self::Output, Error = Self::Error> + 'a,
+        Self::Error,
+    >
     where
         T: TopicBasedTransport<Identity = ID>;
 }
@@ -41,12 +45,13 @@ where
     CG: CurveGroup,
 {
     type Error: std::error::Error + Send + Sync + 'static;
+    type Input;
     type Output;
 
     /// Start the reliable broadcast by sending a proposal for message m.
     fn deal<RNG>(
         self,
-        s: &CG::ScalarField,
+        s: Self::Input,
         cancel: CancellationToken,
         output: oneshot::Sender<Self::Output>,
         rng: &mut RNG,

@@ -82,6 +82,32 @@ where
     }
 }
 
+/// Uses [`Base64OrBytes`](crate::Base64OrBytes) to serialize the field element
+pub mod base64_or_bytes {
+    use super::*;
+    use crate::Base64OrBytes;
+    use serde_with::{DeserializeAs, SerializeAs};
+
+    pub fn serialize<S, A: FqSerialize>(p: &A, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::Error;
+
+        Base64OrBytes::serialize_as(&p.ser().map_err(S::Error::custom)?, s)
+    }
+
+    pub fn deserialize<'de, D, A: FqDeserialize>(deserializer: D) -> Result<A, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let bytes: Vec<u8> = Base64OrBytes::deserialize_as(deserializer)?;
+        A::deser(&bytes).map_err(D::Error::custom)
+    }
+}
+
 pub mod base64 {
     use super::{FqDeserialize, FqSerialize};
     use serde::{Deserialize, Deserializer, Serializer};

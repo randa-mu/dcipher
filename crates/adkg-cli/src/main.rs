@@ -1,6 +1,6 @@
 //! CLI tool to start ADKG ceremonies
 
-mod adkg_dyx22;
+mod adkg_dxkr23;
 mod cli;
 mod config;
 mod keygen;
@@ -9,9 +9,9 @@ mod metrics;
 mod scheme;
 mod transcripts;
 
-use crate::adkg_dyx22::{
-    adkg_dyx22_bls12_381_g1_sha256, adkg_dyx22_bls12_381_g1_sha256_rescue,
-    adkg_dyx22_bn254_g1_keccak256, adkg_dyx22_bn254_g1_keccak256_rescue,
+use crate::adkg_dxkr23::{
+    adkg_dxkr23_bls12_381_g1_sha256, adkg_dxkr23_bls12_381_g1_sha256_rescue,
+    adkg_dxkr23_bn254_g1_keccak256, adkg_dxkr23_bn254_g1_keccak256_rescue,
 };
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::config::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
@@ -157,8 +157,8 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     let transports = get_libp2p_transports(id, &sk, listen_address, &group_config).await?;
 
     match adkg_scheme {
-        SupportedAdkgScheme::DYX22Bn254G1Keccak256 => {
-            let output = adkg_dyx22_bn254_g1_keccak256(
+        SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
+            let output = adkg_dxkr23_bn254_g1_keccak256(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -181,8 +181,8 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
             )?;
         }
 
-        SupportedAdkgScheme::DYX22Bls12_381G1Sha256 => {
-            let output = adkg_dyx22_bls12_381_g1_sha256(
+        SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
+            let output = adkg_dxkr23_bls12_381_g1_sha256(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -259,8 +259,8 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
         .context("adkg scheme not supported")?;
     let mut rng = AdkgStdRng::new(OsRng);
     match adkg_scheme_name {
-        SupportedAdkgScheme::DYX22Bn254G1Keccak256 => {
-            let output = adkg_dyx22_bn254_g1_keccak256_rescue(
+        SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
+            let output = adkg_dxkr23_bn254_g1_keccak256_rescue(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -280,8 +280,8 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
             )?;
         }
 
-        SupportedAdkgScheme::DYX22Bls12_381G1Sha256 => {
-            let output = adkg_dyx22_bls12_381_g1_sha256_rescue(
+        SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
+            let output = adkg_dxkr23_bls12_381_g1_sha256_rescue(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -533,6 +533,10 @@ impl FromStr for GroupConfig {
 
         if group_config.n < group_config.t {
             Err(anyhow!("n cannot be smaller than t"))?;
+        }
+
+        if group_config.t_reconstruction < group_config.t {
+            Err(anyhow!("reconstruction threshold cannot be smaller than t"))?;
         }
 
         if group_config.nodes.len() != group_config.n.get() {
