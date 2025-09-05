@@ -11,7 +11,7 @@ use crate::helpers::PartyId;
 use crate::network::{RetryStrategy, broadcast_with_self};
 use crate::nizk::NIZKDleqProof;
 use crate::rbc::ReliableBroadcastConfig;
-use crate::vss::acss::hbacss0::types::PedersenPartyShares;
+use crate::vss::acss::hbacss0::types::{PedersenPartyShares, ShareRecoveryMessage};
 use crate::vss::pedersen;
 use crate::vss::pedersen::PedersenPartyShare;
 use crate::{
@@ -598,7 +598,7 @@ where
                         .await
                 }
 
-                AcssMessage::ShareRecovery(shared_key) => {
+                AcssMessage::ShareRecovery(ShareRecoveryMessage { v: shared_key }) => {
                     hbacss0
                         .recovery_handler(
                             &shared_key,
