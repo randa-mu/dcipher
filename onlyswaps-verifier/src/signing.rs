@@ -99,10 +99,7 @@ pub fn create_message(params: SwapRequestParameters) -> Vec<u8> {
         params.amountOut,
         params.srcChainId,
         params.dstChainId,
-        params.verificationFee,
-        params.solverFee,
         params.nonce,
-        params.executed,
     )
         .abi_encode()
 }
