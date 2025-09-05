@@ -471,6 +471,62 @@ where
             .await
     }
 
+    async fn key_derivation<T>(
+        &mut self,
+        ped_commits: &[CG],
+        key_messages: impl IntoIterator<Item = (PartyId, AdkgKeyMessage<CG, H>)>,
+        adkg_receiver: &mut T::ReceiveMessageStream,
+    ) -> Result<(CG, Vec<CG>), AdkgError>
+    where
+        T: Transport<Identity = PartyId>,
+    {
+        let mut key_messages = key_messages.into_iter();
+        let mut valid_keys = BTreeMap::new();
+        loop {
+            // Attempt to drain key_messages first
+            let (sender, msg) = match key_messages.next() {
+                Some(sender_msg) => sender_msg,
+                None => {
+                    // Otherwise, recv new message
+                    let (sender, AdkgMessage::Key(msg)) =
+                        self.recv_next_adkg_msg::<T>(adkg_receiver).await?
+                    else {
+                        // recv errors are unrecoverable
+                        continue; // ignore other types of messages
+                    };
+
+                    (sender, msg)
+                }
+            };
+
+            // Ignore message if invalid
+            if !self.is_key_msg_valid(ped_commits, &sender, &msg) {
+                warn!(?sender, "Ignoring invalid ADKG KEY message");
+                continue;
+            }
+
+            valid_keys.insert(sender, msg.g_z_j);
+
+            #[allow(clippy::int_plus_one)]
+            if valid_keys.len() >= self.t_reconstruction + 1 {
+                // More keys than the reconstruction threshold, we can interpolate the rest
+                let g_z_i_points: Vec<_> = valid_keys
+                    .iter()
+                    .map(|(j, g_z_j)| (j.into(), *g_z_j))
+                    .collect();
+                let g_z_0 = lagrange_points_interpolate_at(&g_z_i_points, 0);
+
+                let missing_keys: Vec<_> = PartyId::iter_all(self.n)
+                    .filter(|j| !valid_keys.contains_key(j))
+                    .map(|j| (j, lagrange_points_interpolate_at(&g_z_i_points, j.into())))
+                    .collect();
+
+                valid_keys.extend(missing_keys);
+                return Ok((g_z_0, valid_keys.into_values().collect()));
+            }
+        }
+    }
+
     async fn randex_phase<T>(
         &mut self,
         shares_per_acss: usize,
@@ -607,62 +663,6 @@ where
                     // Unrecoverable
                     return Err(AdkgError::RandEx);
                 }
-            }
-        }
-    }
-
-    async fn key_derivation<T>(
-        &mut self,
-        ped_commits: &[CG],
-        key_messages: impl IntoIterator<Item = (PartyId, AdkgKeyMessage<CG, H>)>,
-        adkg_receiver: &mut T::ReceiveMessageStream,
-    ) -> Result<(CG, Vec<CG>), AdkgError>
-    where
-        T: Transport<Identity = PartyId>,
-    {
-        let mut key_messages = key_messages.into_iter();
-        let mut valid_keys = BTreeMap::new();
-        loop {
-            // Attempt to drain key_messages first
-            let (sender, msg) = match key_messages.next() {
-                Some(sender_msg) => sender_msg,
-                None => {
-                    // Otherwise, recv new message
-                    let (sender, AdkgMessage::Key(msg)) =
-                        self.recv_next_adkg_msg::<T>(adkg_receiver).await?
-                    else {
-                        // recv errors are unrecoverable
-                        continue; // ignore other types of messages
-                    };
-
-                    (sender, msg)
-                }
-            };
-
-            // Ignore message if invalid
-            if !self.is_key_msg_valid(ped_commits, &sender, &msg) {
-                warn!(?sender, "Ignoring invalid ADKG KEY message");
-                continue;
-            }
-
-            valid_keys.insert(sender, msg.g_z_j);
-
-            #[allow(clippy::int_plus_one)]
-            if valid_keys.len() >= self.t_reconstruction + 1 {
-                // More keys than the reconstruction threshold, we can interpolate the rest
-                let g_z_i_points: Vec<_> = valid_keys
-                    .iter()
-                    .map(|(j, g_z_j)| (j.into(), *g_z_j))
-                    .collect();
-                let g_z_0 = lagrange_points_interpolate_at(&g_z_i_points, 0);
-
-                let missing_keys: Vec<_> = PartyId::iter_all(self.n)
-                    .filter(|j| !valid_keys.contains_key(j))
-                    .map(|j| (j, lagrange_points_interpolate_at(&g_z_i_points, j.into())))
-                    .collect();
-
-                valid_keys.extend(missing_keys);
-                return Ok((g_z_0, valid_keys.into_values().collect()));
             }
         }
     }
