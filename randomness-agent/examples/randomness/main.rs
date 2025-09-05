@@ -86,6 +86,7 @@ async fn main() -> anyhow::Result<()> {
         agent: RandomnessAgent<BLS, P>,
     }
 
+    // BN254 agent using uncompressed points
     let mut bn254 = {
         // Create a fulfiller
         let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
@@ -116,6 +117,8 @@ async fn main() -> anyhow::Result<()> {
             agent,
         }
     };
+
+    // BLS12-381 agent using uncompressed points
     let mut bls12_381 = {
         // Create a fulfiller
         let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
@@ -146,6 +149,8 @@ async fn main() -> anyhow::Result<()> {
             agent,
         }
     };
+
+    // BLS12-381 agent using compressed points
     let mut bls12_381_c = {
         // Create a fulfiller
         let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
@@ -199,17 +204,17 @@ async fn main() -> anyhow::Result<()> {
         },
 
         err = run_agent(&mut bn254.agent, bn254.ticker, signature_sender_contract_ro.clone()) => {
-            eprintln!("agent_bn254 stopped unexpectedly...");
+            eprintln!("bn254 agent stopped unexpectedly...");
             err // return Result
         },
 
         err = run_agent(&mut bls12_381.agent, bls12_381.ticker, signature_sender_contract_ro.clone()) => {
-            eprintln!("agent_bn254 stopped unexpectedly...");
+            eprintln!("bls12_381 agent stopped unexpectedly...");
             err // return Result
         },
 
         err = run_agent(&mut bls12_381_c.agent, bls12_381_c.ticker, signature_sender_contract_ro.clone()) => {
-            eprintln!("agent_bn254 stopped unexpectedly...");
+            eprintln!("bls12_381_c agent stopped unexpectedly...");
             err // return Result
         },
 
@@ -221,19 +226,19 @@ async fn main() -> anyhow::Result<()> {
 
     // Stop the various components
     if let Err(e) = bn254.libp2p_node.stop().await {
-        tracing::error!(error = ?e, "Failed to stop libp2p node");
+        tracing::error!(error = ?e, "Failed to stop bn254 libp2p node");
     }
     bn254.ts_stopper.cancel();
     bn254.stopper.stop().await;
 
     if let Err(e) = bls12_381.libp2p_node.stop().await {
-        tracing::error!(error = ?e, "Failed to stop libp2p node");
+        tracing::error!(error = ?e, "Failed to stop bls12_381 libp2p node");
     }
     bls12_381.ts_stopper.cancel();
     bls12_381.stopper.stop().await;
 
     if let Err(e) = bls12_381_c.libp2p_node.stop().await {
-        tracing::error!(error = ?e, "Failed to stop libp2p node");
+        tracing::error!(error = ?e, "Failed to stop bls12_381_c libp2p node");
     }
     bls12_381_c.ts_stopper.cancel();
     bls12_381_c.stopper.stop().await;
