@@ -15,9 +15,9 @@ use adkg::pke::ec_hybrid_chacha20poly1305::{
     HybridCiphertext, MultiHybridCiphertext, NONCE_LENGTH,
 };
 use adkg::rand::AdkgRng;
-use adkg::scheme::bls12_381::DXK23Bls12_381G1Sha256;
-use adkg::scheme::bn254::DXK23Bn254G1Keccak256;
-use adkg::scheme::{AdkgSchemeConfig, DXK23AdkgScheme};
+use adkg::scheme::bls12_381::DXKR23Bls12_381G1Sha256;
+use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
+use adkg::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
 use adkg::vss::acss::AcssConfig;
 use anyhow::{Context, anyhow};
 use ark_ec::{AffineRepr, CurveGroup, Group};
@@ -48,22 +48,22 @@ pub async fn adkg_dxk23_bn254_g1_keccak256<TBT>(
     writer: Option<InMemoryWriter>,
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(
-    AdkgOutput<<DXK23Bn254G1Keccak256 as DXK23AdkgScheme>::Curve>,
+    AdkgOutput<<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve>,
     Option<EncryptedAdkgTranscript>,
 )>
 where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let scheme = DXK23Bn254G1Keccak256::try_from(scheme_config)?;
+    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config)?;
     let sk =
-        <<DXK23Bn254G1Keccak256 as DXK23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
+        <<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
             adkg_sk,
         )?;
     let pks = group_config
         .nodes
         .iter()
         .map(|p| {
-            <DXK23Bn254G1Keccak256 as DXK23AdkgScheme>::Curve::deser_base64(
+            <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve::deser_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
@@ -96,22 +96,22 @@ pub async fn adkg_dxk23_bls12_381_g1_sha256<TBT>(
     writer: Option<InMemoryWriter>,
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(
-    AdkgOutput<<DXK23Bls12_381G1Sha256 as DXK23AdkgScheme>::Curve>,
+    AdkgOutput<<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve>,
     Option<EncryptedAdkgTranscript>,
 )>
 where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let scheme = DXK23Bls12_381G1Sha256::try_from(scheme_config)?;
+    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config)?;
     let sk =
-        <<DXK23Bls12_381G1Sha256 as DXK23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
+        <<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
             adkg_sk,
         )?;
     let pks = group_config
         .nodes
         .iter()
         .map(|p| {
-            <DXK23Bls12_381G1Sha256 as DXK23AdkgScheme>::Curve::deser_base64(
+            <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve::deser_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
@@ -146,7 +146,7 @@ async fn adkg_dxk23<S, TBT>(
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(AdkgOutput<S::Curve>, Option<EncryptedAdkgTranscript>)>
 where
-    S: DXK23AdkgScheme,
+    S: DXKR23AdkgScheme,
     S::Curve: NamedCurveGroup,
     S::Hash: NamedDynDigest,
     S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
@@ -230,8 +230,8 @@ pub async fn adkg_dxk23_bn254_g1_keccak256_rescue(
     scheme_config: AdkgSchemeConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<<DXK23Bn254G1Keccak256 as DXK23AdkgScheme>::Curve>> {
-    let scheme = DXK23Bn254G1Keccak256::try_from(scheme_config)?;
+) -> anyhow::Result<AdkgOutput<<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve>> {
+    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config)?;
     adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
 }
 
@@ -242,8 +242,8 @@ pub async fn adkg_dxk23_bls12_381_g1_sha256_rescue(
     scheme_config: AdkgSchemeConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<<DXK23Bls12_381G1Sha256 as DXK23AdkgScheme>::Curve>> {
-    let scheme = DXK23Bls12_381G1Sha256::try_from(scheme_config)?;
+) -> anyhow::Result<AdkgOutput<<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve>> {
+    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config)?;
     adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
 }
 
@@ -256,7 +256,7 @@ async fn adkg_rescue<S>(
     scheme: S,
 ) -> anyhow::Result<AdkgOutput<S::Curve>>
 where
-    S: DXK23AdkgScheme,
+    S: DXKR23AdkgScheme,
     S::Curve: NamedCurveGroup,
     <S::Curve as Group>::ScalarField: FqDeserialize,
     S::Hash: NamedDynDigest,
@@ -273,7 +273,7 @@ where
 
     // Deserialize the transcripts
     let transcripts = transcripts.into_iter().map(|t| {
-        serde_json::from_slice::<DXK23Transcript>(&t).context("failed to deserialize transcripts")
+        serde_json::from_slice::<DXKR23Transcript>(&t).context("failed to deserialize transcripts")
     });
 
     // Decrypt the transcripts
@@ -354,7 +354,7 @@ struct ChaCha20BroadcastCiphertext {
 /// Authenticity of the transcript is obtained by relying on hybrid encryption w/ static public keys.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
-struct DXK23Transcript {
+struct DXKR23Transcript {
     /// identifier of the party who created the transcript
     id: PartyId,
 
@@ -456,7 +456,7 @@ where
         .context("failed to encrypt direct messages")?;
 
     // Serialize the encrypted transcript w/ json for readability
-    let transcript = serde_json::to_vec(&DXK23Transcript {
+    let transcript = serde_json::to_vec(&DXKR23Transcript {
         id,
         broadcasts_key_ct: enc_broadcast_key,
         broadcasts_nonce: broadcasts_nonce.into(),
@@ -471,7 +471,7 @@ fn decrypt_transcript<CG>(
     receiver_id: PartyId,
     adkg_sk: &CG::ScalarField, // the secret sk such that g * sk == pks[id]
     adkg_pks: &[CG],
-    transcript_ct: DXK23Transcript,
+    transcript_ct: DXKR23Transcript,
 ) -> anyhow::Result<TranscriptData>
 where
     CG: CurveGroup + PointSerializeCompressed,

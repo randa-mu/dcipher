@@ -32,7 +32,7 @@ pub struct AdkgSchemeConfig {
     generator_h: String,
 }
 
-pub trait DXK23AdkgScheme: Send + Sync + 'static
+pub trait DXKR23AdkgScheme: Send + Sync + 'static
 where
     <Self::Curve as Group>::ScalarField: FqSerialize + FqDeserialize,
 {
@@ -116,7 +116,7 @@ pub mod bn254 {
     use crate::network::RetryStrategy;
     use crate::rbc::r4::Rbc4RoundsConfig;
     use crate::scheme::{ADKG_VERSION, SchemeError};
-    use crate::scheme::{AdkgSchemeConfig, DXK23AdkgScheme};
+    use crate::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
     use crate::vss::acss::hbacss0::HbAcss0Config;
     use ark_ec::Group;
     use digest::core_api::BlockSizeUser;
@@ -125,12 +125,12 @@ pub mod bn254 {
     use utils::hash_to_curve::HashToCurve;
     use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-    pub struct DXK23Bn254G1Keccak256 {
+    pub struct DXKR23Bn254G1Keccak256 {
         app_name: String,
         generator_h: ark_bn254::G1Projective,
     }
 
-    impl DXK23Bn254G1Keccak256 {
+    impl DXKR23Bn254G1Keccak256 {
         pub fn new(app_name: String, generator_h: ark_bn254::G1Projective) -> Self {
             Self {
                 app_name,
@@ -139,8 +139,8 @@ pub mod bn254 {
         }
     }
 
-    impl DXK23AdkgScheme for DXK23Bn254G1Keccak256 {
-        const NAME: &'static str = "DXK23-Bn254G1-Keccak256";
+    impl DXKR23AdkgScheme for DXKR23Bn254G1Keccak256 {
+        const NAME: &'static str = "DXKR23-Bn254G1-Keccak256";
 
         type Error = SchemeError;
         type Curve = ark_bn254::G1Projective;
@@ -221,11 +221,11 @@ pub mod bn254 {
         }
     }
 
-    impl TryFrom<AdkgSchemeConfig> for DXK23Bn254G1Keccak256 {
+    impl TryFrom<AdkgSchemeConfig> for DXKR23Bn254G1Keccak256 {
         type Error = SchemeError;
 
         fn try_from(value: AdkgSchemeConfig) -> Result<Self, Self::Error> {
-            if value.adkg_scheme_name != <Self as DXK23AdkgScheme>::NAME {
+            if value.adkg_scheme_name != <Self as DXKR23AdkgScheme>::NAME {
                 Err(Self::Error::UnsupportedScheme)?
             }
 
@@ -233,16 +233,16 @@ pub mod bn254 {
                 Err(Self::Error::UnsupportedAdkgVersion)?
             }
 
-            if value.curve_id != <<Self as DXK23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
+            if value.curve_id != <<Self as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
                 Err(Self::Error::BadCurveId)?
             }
 
-            if value.hash_id != <<Self as DXK23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
+            if value.hash_id != <<Self as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
                 Err(Self::Error::BadHashId)?
             }
 
-            let generator_g = <Self as DXK23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
-            let generator_h = <Self as DXK23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
+            let generator_g = <Self as DXKR23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
+            let generator_h = <Self as DXKR23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
             let scheme = Self::new(value.app_name, generator_h);
 
             // Make sure that the generator corresponds to the dynamically computed generator
@@ -254,8 +254,8 @@ pub mod bn254 {
         }
     }
 
-    impl From<DXK23Bn254G1Keccak256> for AdkgSchemeConfig {
-        fn from(value: DXK23Bn254G1Keccak256) -> Self {
+    impl From<DXKR23Bn254G1Keccak256> for AdkgSchemeConfig {
+        fn from(value: DXKR23Bn254G1Keccak256) -> Self {
             let generator_g = value
                 .generator_g()
                 .ser_base64()
@@ -267,13 +267,13 @@ pub mod bn254 {
             Self {
                 app_name: value.app_name,
                 adkg_version: ADKG_VERSION.to_owned(),
-                adkg_scheme_name: <DXK23Bn254G1Keccak256 as DXK23AdkgScheme>::NAME.to_owned(),
+                adkg_scheme_name: <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::NAME.to_owned(),
                 generator_g,
                 generator_h,
                 curve_id:
-                    <<DXK23Bn254G1Keccak256 as DXK23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
+                    <<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
                 hash_id:
-                    <<DXK23Bn254G1Keccak256 as DXK23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
+                    <<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
             }
         }
     }
@@ -306,7 +306,7 @@ pub mod bls12_381 {
     use crate::network::RetryStrategy;
     use crate::rbc::r4::Rbc4RoundsConfig;
     use crate::scheme::{ADKG_VERSION, SchemeError};
-    use crate::scheme::{AdkgSchemeConfig, DXK23AdkgScheme};
+    use crate::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
     use crate::vss::acss::hbacss0::HbAcss0Config;
     use ark_ec::Group;
     use digest::core_api::BlockSizeUser;
@@ -315,12 +315,12 @@ pub mod bls12_381 {
     use utils::hash_to_curve::HashToCurve;
     use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-    pub struct DXK23Bls12_381G1Sha256 {
+    pub struct DXKR23Bls12_381G1Sha256 {
         app_name: String,
         generator_h: ark_bls12_381::G1Projective,
     }
 
-    impl DXK23Bls12_381G1Sha256 {
+    impl DXKR23Bls12_381G1Sha256 {
         pub fn new(app_name: String, generator_h: ark_bls12_381::G1Projective) -> Self {
             Self {
                 app_name,
@@ -329,8 +329,8 @@ pub mod bls12_381 {
         }
     }
 
-    impl DXK23AdkgScheme for DXK23Bls12_381G1Sha256 {
-        const NAME: &'static str = "DXK23-Bls12_381G1-Sha256";
+    impl DXKR23AdkgScheme for DXKR23Bls12_381G1Sha256 {
+        const NAME: &'static str = "DXKR23-Bls12_381G1-Sha256";
 
         type Error = SchemeError;
         type Curve = ark_bls12_381::G1Projective;
@@ -411,11 +411,11 @@ pub mod bls12_381 {
         }
     }
 
-    impl TryFrom<AdkgSchemeConfig> for DXK23Bls12_381G1Sha256 {
+    impl TryFrom<AdkgSchemeConfig> for DXKR23Bls12_381G1Sha256 {
         type Error = SchemeError;
 
         fn try_from(value: AdkgSchemeConfig) -> Result<Self, Self::Error> {
-            if value.adkg_scheme_name != <Self as DXK23AdkgScheme>::NAME {
+            if value.adkg_scheme_name != <Self as DXKR23AdkgScheme>::NAME {
                 Err(Self::Error::UnsupportedScheme)?
             }
 
@@ -423,16 +423,16 @@ pub mod bls12_381 {
                 Err(Self::Error::UnsupportedAdkgVersion)?
             }
 
-            if value.curve_id != <<Self as DXK23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
+            if value.curve_id != <<Self as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
                 Err(Self::Error::BadCurveId)?
             }
 
-            if value.hash_id != <<Self as DXK23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
+            if value.hash_id != <<Self as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
                 Err(Self::Error::BadHashId)?
             }
 
-            let generator_g = <Self as DXK23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
-            let generator_h = <Self as DXK23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
+            let generator_g = <Self as DXKR23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
+            let generator_h = <Self as DXKR23AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
             let scheme = Self::new(value.app_name, generator_h);
 
             // Make sure that the generator corresponds to the dynamically computed generator
@@ -444,8 +444,8 @@ pub mod bls12_381 {
         }
     }
 
-    impl From<DXK23Bls12_381G1Sha256> for AdkgSchemeConfig {
-        fn from(value: DXK23Bls12_381G1Sha256) -> Self {
+    impl From<DXKR23Bls12_381G1Sha256> for AdkgSchemeConfig {
+        fn from(value: DXKR23Bls12_381G1Sha256) -> Self {
             let generator_g = value
                 .generator_g()
                 .ser_base64()
@@ -457,12 +457,12 @@ pub mod bls12_381 {
             Self {
                 app_name: value.app_name,
                 adkg_version: ADKG_VERSION.to_owned(),
-                adkg_scheme_name: <DXK23Bls12_381G1Sha256 as DXK23AdkgScheme>::NAME.to_owned(),
+                adkg_scheme_name: <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::NAME.to_owned(),
                 generator_g,
                 generator_h,
                 curve_id:
-                    <<DXK23Bls12_381G1Sha256 as DXK23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
-                hash_id: <<DXK23Bls12_381G1Sha256 as DXK23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
+                    <<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
+                hash_id: <<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
             }
         }
     }

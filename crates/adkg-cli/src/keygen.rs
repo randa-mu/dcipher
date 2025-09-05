@@ -1,6 +1,6 @@
-use adkg::scheme::bls12_381::DXK23Bls12_381G1Sha256;
-use adkg::scheme::bn254::DXK23Bn254G1Keccak256;
-use adkg::scheme::{AdkgSchemeConfig, DXK23AdkgScheme};
+use adkg::scheme::bls12_381::DXKR23Bls12_381G1Sha256;
+use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
+use adkg::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
 use anyhow::anyhow;
 use libp2p::{PeerId, identity};
 use rand::thread_rng;
@@ -27,8 +27,8 @@ pub fn keygen(
     let libp2p_sk = identity::Keypair::generate_ed25519();
     let peer_id = PeerId::from(libp2p_sk.public());
     match scheme_config.adkg_scheme_name.as_str() {
-        DXK23Bn254G1Keccak256::NAME => {
-            let scheme = DXK23Bn254G1Keccak256::try_from(scheme_config)?;
+        DXKR23Bn254G1Keccak256::NAME => {
+            let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config)?;
             let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
             let sk = PrivateKeyMaterial {
                 adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
@@ -43,8 +43,8 @@ pub fn keygen(
             Ok((sk, pk))
         }
 
-        DXK23Bls12_381G1Sha256::NAME => {
-            let scheme = DXK23Bls12_381G1Sha256::try_from(scheme_config)?;
+        DXKR23Bls12_381G1Sha256::NAME => {
+            let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config)?;
             let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
             let sk = PrivateKeyMaterial {
                 adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
