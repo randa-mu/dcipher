@@ -57,10 +57,7 @@ impl TryFrom<ConfigFile> for AppConfig {
 }
 
 pub(crate) fn load_app_config(cli: &CliConfig) -> anyhow::Result<AppConfig> {
-    tracing::info!(
-        config_path = cli.config_path.as_str(),
-        "loading config file"
-    );
+    println!("Loading app config from {}", &cli.config_path);
 
     let path = Path::new(&cli.config_path);
     let config_file = match path.extension().and_then(|s| s.to_str()) {
