@@ -116,17 +116,17 @@ pub struct EventFieldData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub(crate) struct ParsedRegisterNewEventRequest {
+pub struct ParsedRegisterNewEventRequest {
     /// Chain ID
-    pub(crate) chain_id: u64,
+    pub chain_id: u64,
     /// Ethereum contract address (20 bytes) - what contract we're watching
-    pub(crate) address: Address,
+    pub address: Address,
     /// Event name - what event we're watching for
-    pub(crate) event_name: String,
+    pub event_name: String,
     /// Event parameters - the structure of the event
-    pub(crate) fields: Vec<ParsedEventField>,
+    pub fields: Vec<ParsedEventField>,
     /// Block safety level - how we want to handle block finality
-    pub(crate) block_safety: BlockSafety,
+    pub block_safety: BlockSafety,
 }
 
 /// An event that has been registered with OmniEvent.
@@ -307,7 +307,7 @@ impl From<EventOccurrence> for proto_types::EventOccurrence {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum ParseRegisterNewEventRequestError {
+pub enum ParseRegisterNewEventRequestError {
     #[error("failed to parse address")]
     TryFromAddress(#[source] <Address as TryFrom<&'static [u8]>>::Error),
 

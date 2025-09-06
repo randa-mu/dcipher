@@ -8,11 +8,10 @@ use ark_serialize::{CanonicalSerialize, Compress};
 use async_trait::async_trait;
 use dcipher_signer::threshold_signer::AsyncThresholdSigner;
 use dcipher_signer::{AsynchronousSigner, BN254SignatureOnG1Signer, BlsSigner};
-use std::ops::Deref;
 
-pub struct OnlySwapsSigner<C, S> {
-    chain: C,
-    signer: S,
+pub struct OnlySwapsSigner<'a, C, S> {
+    chain: &'a C,
+    signer: &'a S,
 }
 
 #[async_trait]
@@ -31,21 +30,8 @@ pub trait ChainService {
     async fn submit_verification(
         &self,
         chain_id: u64,
-        verified_swap: VerifiedSwap,
+        verified_swap: &VerifiedSwap,
     ) -> anyhow::Result<()>;
-}
-#[async_trait]
-pub trait Signer {
-    async fn sign(&self, b: Vec<u8>) -> anyhow::Result<Vec<u8>>;
-}
-
-impl<R, C, S> OnlySwapsSigner<R, S>
-where
-    R: Deref<Target = C>,
-{
-    pub fn new(chain: R, signer: S) -> Self {
-        Self { chain, signer }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -54,13 +40,24 @@ pub struct VerifiedSwap {
     pub solver: Address,
     pub signature: Vec<u8>,
 }
-impl<R, C, S> OnlySwapsSigner<R, S>
+
+#[async_trait]
+pub trait Signer {
+    async fn sign(&self, b: Vec<u8>) -> anyhow::Result<Vec<u8>>;
+}
+
+impl<'a, C, S> OnlySwapsSigner<'a, C, S> {
+    pub fn new(chain: &'a C, signer: &'a S) -> Self {
+        Self { chain, signer }
+    }
+}
+
+impl<C, S> OnlySwapsSigner<'_, C, S>
 where
     C: ChainService,
     S: Signer,
-    R: Deref<Target = C>,
 {
-    pub async fn try_sign(
+    pub async fn evaluate_and_send(
         &self,
         verification_job: &Verification<RequestId>,
     ) -> anyhow::Result<VerifiedSwap> {
@@ -79,14 +76,21 @@ where
 
         let solver = transfer_receipt.solver;
         let valid_transfer_params = reconcile_transfer_params(transfer_params, transfer_receipt)?;
+        let src_chain_id = normalise_chain_id(valid_transfer_params.srcChainId);
         let m = create_message(valid_transfer_params);
-        let signature = self.signer.sign(m).await?;
 
-        Ok(VerifiedSwap {
+        let signature = self.signer.sign(m).await?;
+        let verified_swap = VerifiedSwap {
             request_id: verification_job.request_id,
             signature,
             solver,
-        })
+        };
+
+        self.chain
+            .submit_verification(src_chain_id, &verified_swap)
+            .await?;
+
+        Ok(verified_swap)
     }
 }
 
@@ -117,9 +121,7 @@ impl<S: BlsSigner> DsignerWrapper<S> {
 #[async_trait]
 impl Signer for DsignerWrapper<BN254SignatureOnG1Signer> {
     async fn sign(&self, message: Vec<u8>) -> anyhow::Result<Vec<u8>> {
-        println!("about to sign");
         let point = self.s.async_sign(message).await?;
-        println!("signed");
         let mut bytes = Vec::with_capacity(point.serialized_size(Compress::No));
         point.serialize_with_mode(&mut bytes, Compress::No)?;
         Ok(bytes)
@@ -168,10 +170,10 @@ mod test {
         };
 
         let service = StubbedChainService::new(transfer_receipt, transfer_params);
-        let onlyswaps = OnlySwapsSigner::new(&service, StubbedSigner {});
+        let onlyswaps = OnlySwapsSigner::new(&service, &StubbedSigner {});
 
         onlyswaps
-            .try_sign(&Verification {
+            .evaluate_and_send(&Verification {
                 chain_id: 1,
                 request_id,
             })
@@ -213,9 +215,10 @@ mod test {
 
         let service =
             StubbedChainService::error(transfer_receipt, transfer_params, "oh shit".to_string());
-        let onlyswaps = OnlySwapsSigner::new(&service, StubbedSigner {});
+        let stub_signer = StubbedSigner {};
+        let onlyswaps = OnlySwapsSigner::new(&service, &stub_signer);
         let result = onlyswaps
-            .try_sign(&Verification {
+            .evaluate_and_send(&Verification {
                 chain_id: 1,
                 request_id,
             })
@@ -273,7 +276,7 @@ mod test {
             Ok(self.params.clone())
         }
 
-        async fn submit_verification(&self, _: u64, _: VerifiedSwap) -> anyhow::Result<()> {
+        async fn submit_verification(&self, _: u64, _: &VerifiedSwap) -> anyhow::Result<()> {
             Ok(())
         }
     }

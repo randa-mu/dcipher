@@ -72,7 +72,7 @@ where
 }
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum CreateStreamError {
+pub enum CreateStreamError {
     #[error("failed to create event")]
     FailedToCreateEvent(#[from] NewRegisteredEventSpecError),
 

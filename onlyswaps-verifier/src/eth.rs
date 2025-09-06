@@ -1,11 +1,11 @@
-use crate::config::NetworkConfig;
+use crate::config_network::NetworkConfig;
 use crate::eth::IRouter::SwapRequestParameters;
 use crate::eth::Router::RouterInstance;
 use crate::parsing::TransferReceipt;
 use crate::pending::{RequestId, Verification, extract_pending_verifications};
 use crate::signing::{ChainService, VerifiedSwap};
 use alloy::network::EthereumWallet;
-use alloy::primitives::{Address, FixedBytes, U256};
+use alloy::primitives::{Address, Bytes, FixedBytes, U256};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use alloy::sol;
@@ -14,6 +14,7 @@ use async_trait::async_trait;
 use futures::future::{try_join, try_join_all};
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::time::Duration;
 
 sol!(
     #[allow(clippy::too_many_arguments)]
@@ -45,6 +46,7 @@ pub(crate) struct NetworkBus<P> {
 pub(crate) struct Network<P> {
     chain_id: u64,
     should_write: bool,
+    request_timeout: Duration,
     router: RouterInstance<P>,
 }
 
@@ -57,7 +59,6 @@ impl NetworkBus<DynProvider> {
             networks.insert(config.chain_id, network);
         }
 
-        println!("{} chain(s) have been configured", network_configs.len());
         Ok(Self { networks })
     }
 
@@ -101,7 +102,7 @@ impl<P: Provider> ChainService for NetworkBus<P> {
     async fn submit_verification(
         &self,
         chain_id: u64,
-        verified_swap: VerifiedSwap,
+        verified_swap: &VerifiedSwap,
     ) -> anyhow::Result<()> {
         let transport = self
             .networks
@@ -124,10 +125,15 @@ impl Network<DynProvider> {
             .await?
             .erased();
 
-        println!("own addr: {}", own_addr);
+        tracing::info!(
+            chain_id = config.chain_id,
+            addr = own_addr.to_string(),
+            "configured chain"
+        );
         Ok(Self {
             chain_id: config.chain_id,
             should_write: config.should_write,
+            request_timeout: config.request_timeout,
             router: RouterInstance::new(Address(config.router_address), provider.clone()),
         })
     }
@@ -179,23 +185,31 @@ impl<P: Provider> Network<P> {
         Ok(self.router.getFulfilledSolverRefunds().call().await?)
     }
 
-    pub async fn submit_verified_swap(&self, verified_swap: VerifiedSwap) -> anyhow::Result<()> {
+    pub async fn submit_verified_swap(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
         // nodes can be configured not to write the signature to save gas
         if !self.should_write {
             return Ok(());
         }
+
+        match tokio::time::timeout(self.request_timeout, self.rebalance(verified_swap)).await {
+            Ok(Ok(_)) => Ok(()),
+            Ok(Err(e)) => anyhow::bail!("error submitting swap: {:?}", e),
+            Err(_) => anyhow::bail!("request timed out"),
+        }
+    }
+
+    async fn rebalance(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
         let tx = self
             .router
             .rebalanceSolver(
                 verified_swap.solver,
                 verified_swap.request_id,
-                verified_swap.signature.into(),
+                Bytes::from(verified_swap.signature.clone()),
             )
             .send()
             .await?;
-
         let tx_hash = tx.watch().await?;
-        println!("verified swap: {}", tx_hash);
+        tracing::info!(tx_hash = tx_hash.to_string(), "verified swap");
         Ok(())
     }
 }

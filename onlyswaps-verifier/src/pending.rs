@@ -1,5 +1,8 @@
 use crate::eth::ChainState;
+use crate::util::normalise_chain_id;
 use alloy::primitives::FixedBytes;
+use anyhow::anyhow;
+use omnievent::types::EventFieldData;
 use std::collections::HashSet;
 use std::hash::Hash;
 
@@ -90,6 +93,37 @@ pub type RequestId = FixedBytes<32>;
 pub struct Verification<ID> {
     pub chain_id: u64,
     pub request_id: ID,
+}
+
+impl TryFrom<Vec<EventFieldData>> for Verification<FixedBytes<32>> {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Vec<EventFieldData>) -> anyhow::Result<Self> {
+        if value.len() != 3 {
+            anyhow::bail!("not enough fields in event")
+        }
+
+        let (request_id, request_id_len) = value[0]
+            .data
+            .as_fixed_bytes()
+            .ok_or(anyhow!("received event with invalid `requestId`"))?;
+        if request_id_len != 32 {
+            anyhow::bail!(
+                "`requestId` had wrong length; expected 32 got {}",
+                request_id.len()
+            );
+        }
+
+        let (dest_chain_id, _) = value[2]
+            .data
+            .as_uint()
+            .ok_or(anyhow!("received event with invalid `dest_chain_id`"))?;
+
+        Ok(Verification {
+            chain_id: normalise_chain_id(dest_chain_id),
+            request_id: FixedBytes(request_id.try_into()?),
+        })
+    }
 }
 
 #[cfg(test)]
