@@ -7,17 +7,17 @@ mod util;
 mod config;
 mod config_network;
 mod events;
+mod healthcheck_server;
 mod monitoring;
-mod signals;
 mod threshold;
 mod transport;
 
-use crate::config::{CliConfig, load_app_config};
+use crate::config::{AppConfig, CliConfig, load_app_config};
 use crate::eth::NetworkBus;
 use crate::events::{EventManagement, create_omnievent_management};
+use crate::healthcheck_server::HealthcheckServer;
 use crate::monitoring::init_monitoring;
 use crate::pending::{RequestId, Verification};
-use crate::signals::{SignalEvent, SignalManager};
 use crate::signing::OnlySwapsSigner;
 use crate::threshold::create_bn254_signer;
 use crate::transport::create_libp2p_transport;
@@ -26,20 +26,52 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // load config files and set up all the plumbing
+    // load config files and set up all the agent plumbing
     let app_config = load_app_config(&CliConfig::parse())?;
+    let healthcheck_server = HealthcheckServer::new(
+        app_config.agent.healthcheck_listen_addr,
+        app_config.agent.healthcheck_port,
+    )
+    .await?;
     init_monitoring(&app_config)?;
 
-    let network_bus = NetworkBus::create(&app_config.networks).await?;
-    let transport = create_libp2p_transport(&app_config)?;
-    tracing::info!(
-        multiaddr = app_config.libp2p.multiaddr.to_string(),
-        "libp2p transport created"
-    );
+    // listen for OS signals or any of the tasks closing and shut down either gracefully
+    // or noisily with errors
+    let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+    tokio::select! {
+        _ = sigterm.recv() =>
+            Ok(()),
 
-    let dsigner = create_bn254_signer(&app_config, transport)?;
+        _ = sigint.recv() =>
+            Ok(()),
+
+        _ = tokio::signal::ctrl_c() =>
+            Ok(()),
+
+        res = healthcheck_server.start() =>  {
+           match res {
+                Ok(()) => anyhow::bail!("healthcheck stopped unexpectedly with an error"),
+                Err(e) => anyhow::bail!("healthcheck stopped unexpectedly: {}", e),
+           }
+        }
+
+        res = run_onlyswaps(&app_config) => {
+           match res {
+                Ok(()) => anyhow::bail!("swap loop stopped unexpectedly with an error"),
+                Err(e) => anyhow::bail!("swap loop stopped unexpectedly: {}", e),
+           }
+        }
+    }
+}
+
+async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
+    let network_bus = NetworkBus::create(&app_config.networks).await?;
+    let transport = create_libp2p_transport(app_config)?;
+    let dsigner = create_bn254_signer(app_config, transport)?;
     let signer = OnlySwapsSigner::new(&network_bus, &dsigner);
     tracing::info!(
+        multiaddr = app_config.libp2p.multiaddr.to_string(),
         n = app_config.committee.n,
         t = app_config.committee.t,
         "threshold signer created"
@@ -69,7 +101,6 @@ async fn main() -> anyhow::Result<()> {
     // but also fetch any outstanding verifications that existed before our node started so we
     // can verify them too (and maybe help an existing running node to aggregate a signature, as we
     // may have been offline for other partials).
-    let tx = tx.clone();
     let network_bus = NetworkBus::create(&app_config.networks).await?;
     let pending_verifications = network_bus
         .fetch_pending_verifications()
@@ -79,53 +110,32 @@ async fn main() -> anyhow::Result<()> {
         tx.send(verification)?;
     }
 
-    // start listening for app signals so we can gracefully shutdown while processing
-    // pending verifications
-    let signals = SignalManager::new(
-        app_config.agent.healthcheck_listen_addr,
-        app_config.agent.healthcheck_port,
-    )
-    .await?;
-    let shutdown = signals.next();
-    tokio::pin!(shutdown);
-
     // loop over all the futures, be that incoming verification events or OS shutdown signals.
     // the swap evaluation has a timeout to stop a broken RPC or malformed request
     // blocking the world forever
-    loop {
-        tokio::select! {
-            next_verification = rx_verifications.recv() => {
-                if let Some(verification) = next_verification {
-                    tracing::info!(
-                        chain_id = verification.chain_id,
-                        request_id = verification.request_id.to_string(),
-                        "attempting verification"
-                    );
-                    match signer.evaluate_and_send(&verification).await {
-                        Err(e) => {
-                            tracing::error!(
-                                chain_id = verification.chain_id,
-                                request_id = verification.request_id.to_string(),
-                                error = e.to_string(),
-                                "verification returned an error"
-                            );
-                        }
-                        Ok(_) => {
-                            tracing::info!(
-                                chain_id = verification.chain_id,
-                                request_id = verification.request_id.to_string(),
-                                "verification completed successfully"
-                            );
-                        }
-                    }
-                }
+    while let Some(verification) = rx_verifications.recv().await {
+        tracing::info!(
+            chain_id = verification.chain_id,
+            request_id = verification.request_id.to_string(),
+            "attempting verification"
+        );
+        match signer.evaluate_and_send(&verification).await {
+            Err(e) => {
+                tracing::error!(
+                    chain_id = verification.chain_id,
+                    request_id = verification.request_id.to_string(),
+                    error = e.to_string(),
+                    "verification returned an error"
+                );
             }
-            shutdown_signal = &mut shutdown => {
-                match shutdown_signal {
-                    SignalEvent::SigTerm | SignalEvent::SigInt | SignalEvent::CtrlC => anyhow::bail!("finished"),
-                    SignalEvent::HealthcheckServerFailed => anyhow::bail!("axum stopped unexpectedly"),
-                }
+            Ok(_) => {
+                tracing::info!(
+                    chain_id = verification.chain_id,
+                    request_id = verification.request_id.to_string(),
+                    "verification completed successfully"
+                );
             }
         }
     }
+    Ok(())
 }
