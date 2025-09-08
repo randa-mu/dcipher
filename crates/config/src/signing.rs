@@ -63,14 +63,12 @@ impl UnvalidatedCommitteeConfig {
         if t > n {
             anyhow::bail!("threshold cannot be larger than the committee size");
         }
-
-        // Nodes config should contain n - 1 nodes
-        self.members.retain(|m| m.member_id != self.member_id);
-        self.members.sort_by(|a, b| a.member_id.cmp(&b.member_id));
-        let member_count_without_self = self.members.len();
-        if member_count_without_self != n - 1 {
-            anyhow::bail!("your ID must appear exactly once on the committee")
+        if member_count != n {
+            anyhow::bail!("the n must match the number of members of the committee")
         }
+
+        // sort them to simplify things in threshold-land
+        self.members.sort_by(|a, b| a.member_id.cmp(&b.member_id));
 
         // Verify that each node's index is valid
         if !self
@@ -84,7 +82,7 @@ impl UnvalidatedCommitteeConfig {
         // Verify that each node's index is unique
         let mut unique_ids: Vec<_> = self.members.iter().map(|n| n.member_id).collect();
         unique_ids.dedup(); // vec is already sorted, can simply dedup
-        if unique_ids.len() != member_count_without_self {
+        if unique_ids.len() != n {
             anyhow::bail!("committee cannot contain duplicate members")
         }
 
