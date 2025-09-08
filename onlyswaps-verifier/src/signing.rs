@@ -70,6 +70,7 @@ where
             .chain
             .fetch_transfer_receipt(verification_job.chain_id, verification_job.request_id)
             .await?;
+        tracing::trace!("transfer receipt received from dest chain");
 
         let transfer_params = self
             .chain
@@ -78,11 +79,13 @@ where
                 verification_job.request_id,
             )
             .await?;
+        tracing::trace!("transfer params received from src chain");
 
         let solver = transfer_receipt.solver;
         let valid_transfer_params = reconcile_transfer_params(transfer_params, transfer_receipt)?;
         let src_chain_id = normalise_chain_id(valid_transfer_params.srcChainId);
         let m = create_message(valid_transfer_params);
+        tracing::trace!("message for signing created");
 
         let signature = self.signer.sign(m, src_chain_id).await?;
         let verified_swap = VerifiedSwap {
@@ -90,10 +93,12 @@ where
             signature,
             solver,
         };
+        tracing::trace!("signing complete");
 
         self.chain
             .submit_verification(src_chain_id, &verified_swap)
             .await?;
+        tracing::trace!("verification submitted successfully");
 
         Ok(verified_swap)
     }

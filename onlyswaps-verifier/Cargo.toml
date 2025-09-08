@@ -13,7 +13,7 @@ axum = "0.8.4"
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
 dcipher-network = { workspace = true, features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
-dcipher-signer = { workspace = true, features = ["bn254", "sha3" ] }
+dcipher-signer = { workspace = true, features = ["rayon", "bn254", "sha3"] }
 figment = { workspace = true, features = ["json", "toml"] }
 futures.workspace = true
 humantime-serde = "1.1.1"
