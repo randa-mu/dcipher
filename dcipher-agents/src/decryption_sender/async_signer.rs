@@ -3,14 +3,13 @@
 
 use crate::decryption_sender::{DecryptionRequest, SignedDecryptionRequest};
 use crate::ibe_helper::{IbeCiphertext, PairingIbeCipherSuite};
-use crate::ser::EvmSerialize;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::Bytes;
 use dcipher_signer::dsigner::{
     ApplicationArgs, DSignerSchemeError, DSignerSchemeSigner, SignatureAlgorithm, SignatureRequest,
 };
 use std::borrow::Cow;
-use utils::serialize::point::PointDeserializeCompressed;
+use utils::serialize::point::{PointDeserializeCompressed, PointSerializeUncompressed};
 
 pub struct DecryptionSenderAsyncSigner<CS, Signer> {
     cs: CS,
@@ -50,7 +49,7 @@ pub enum DecryptionSenderAsyncSignerError {
 impl<CS, Signer> AsynchronousSigner<DecryptionRequest> for DecryptionSenderAsyncSigner<CS, Signer>
 where
     CS: PairingIbeCipherSuite + Send + Sync,
-    CS::IdentityGroup: PointDeserializeCompressed + EvmSerialize,
+    CS::IdentityGroup: PointDeserializeCompressed + PointSerializeUncompressed,
     Signer: DSignerSchemeSigner + Sync,
     DecryptionRequest: TryInto<CS::Ciphertext>,
     <DecryptionRequest as TryInto<CS::Ciphertext>>::Error:
@@ -73,8 +72,8 @@ where
             .await
             .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
 
-        let sig = CS::IdentityGroup::deser(&sig)?;
-        let sig_bytes = Cow::Owned(EvmSerialize::ser_bytes(&sig));
+        let sig = CS::IdentityGroup::deser_compressed(&sig)?;
+        let sig_bytes = Cow::Owned(sig.ser_uncompressed()?.into());
         // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
         let request_id = req.id;
         let ct: CS::Ciphertext = match req.try_into() {
@@ -102,7 +101,6 @@ pub(crate) mod tests {
     use super::*;
     use crate::decryption_sender::DecryptionRequest;
     use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
-    use crate::ser::EvmSerialize;
     use crate::ser::tests::bn254::encode_ciphertext;
     use crate::signer::AsynchronousSigner;
     use alloy::primitives::U256;
@@ -177,7 +175,7 @@ pub(crate) mod tests {
         fn async_sign(
             &self,
             req: SignatureRequest,
-        ) -> BoxFuture<Result<Bytes, DSignerSchemeError>> {
+        ) -> BoxFuture<'_, Result<Bytes, DSignerSchemeError>> {
             let receivers = self.receivers.clone().lock_owned();
             async move {
                 let mut rx = receivers
@@ -224,6 +222,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: false,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -255,7 +254,7 @@ pub(crate) mod tests {
         });
 
         // Set the response for the second request
-        mock_signer.set_response(&condition2, Ok(exp_sig2.ser().unwrap().into()));
+        mock_signer.set_response(&condition2, Ok(exp_sig2.ser_compressed().unwrap().into()));
 
         // Wait for a signature to be sent through the rx channel
         let sig2_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -266,11 +265,11 @@ pub(crate) mod tests {
         assert!(sig2.is_ok(), "Second signature should succeed");
         assert_eq!(
             sig2.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig2)
+            exp_sig2.ser_uncompressed().unwrap(),
         );
 
         // Set the response for the first request
-        mock_signer.set_response(&condition1, Ok(exp_sig1.ser().unwrap().into()));
+        mock_signer.set_response(&condition1, Ok(exp_sig1.ser_compressed().unwrap().into()));
 
         // Wait for a signature to be sent through the rx channel
         let sig1_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -281,7 +280,7 @@ pub(crate) mod tests {
         assert!(sig1.is_ok(), "First signature should succeed");
         assert_eq!(
             sig1.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig1)
+            exp_sig1.ser_uncompressed().unwrap(),
         );
     }
 
@@ -302,6 +301,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: false,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -333,7 +333,7 @@ pub(crate) mod tests {
         });
 
         // Set the response only once
-        mock_signer.set_response(&condition, Ok(exp_sig.ser().unwrap().into()));
+        mock_signer.set_response(&condition, Ok(exp_sig.ser_compressed().unwrap().into()));
 
         // Wait for the first signature to be sent through the rx channel
         let sig_result = tokio::time::timeout(global_timeout, rx.recv())
@@ -344,7 +344,7 @@ pub(crate) mod tests {
         assert!(sig.is_ok(), "sig should be ok");
         assert_eq!(
             sig.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig)
+            exp_sig.ser_uncompressed().unwrap(),
         );
 
         // Wait for a second signature to be sent through the rx channel
@@ -356,7 +356,7 @@ pub(crate) mod tests {
         assert!(sig.is_ok(), "sig should be ok");
         assert_eq!(
             sig.unwrap().signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig)
+            exp_sig.ser_uncompressed().unwrap(),
         );
     }
 
@@ -376,6 +376,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: false,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -443,6 +444,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: false,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -460,7 +462,7 @@ pub(crate) mod tests {
         let exp_preprocessed_key = cs.preprocess_decryption_key(exp_sig, eph_pk);
 
         // Set the response
-        mock_signer.set_response(&condition, Ok(exp_sig.ser().unwrap().into()));
+        mock_signer.set_response(&condition, Ok(exp_sig.ser_compressed().unwrap().into()));
 
         let fut_sig = decryption_sender.async_sign(req.clone());
 
@@ -472,7 +474,7 @@ pub(crate) mod tests {
         assert_eq!(signed_req.id, req.id);
         assert_eq!(
             signed_req.signature.into_owned(),
-            EvmSerialize::ser_bytes(&exp_sig)
+            exp_sig.ser_uncompressed().unwrap(),
         );
         assert_eq!(signed_req.decryption_key.as_ref(), exp_preprocessed_key);
     }

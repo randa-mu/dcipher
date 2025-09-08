@@ -35,7 +35,9 @@ pub fn keygen(
             };
 
             let pk = PublicKeyMaterial {
-                adkg_pk: adkg_pk.ser_base64().expect("failed to serialize adkg pk"),
+                adkg_pk: adkg_pk
+                    .ser_compressed_base64()
+                    .expect("failed to serialize adkg pk"),
                 peer_id,
             };
 

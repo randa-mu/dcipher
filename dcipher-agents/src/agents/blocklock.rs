@@ -3,7 +3,7 @@
 use crate::agents::BlockNumber;
 use crate::decryption_sender::DecryptionRequest;
 use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
-use crate::ser::{EvmDeserialize, IbeIdentityOnBn254G1CiphertextError};
+use crate::ser::IbeIdentityOnBn254G1CiphertextError;
 use alloy::primitives::U256;
 use alloy::sol_types::SolValue;
 
@@ -86,7 +86,7 @@ impl TryFrom<&DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
     type Error = IbeIdentityOnBn254G1CiphertextError;
 
     fn try_from(value: &DecryptionRequest) -> Result<Self, Self::Error> {
-        EvmDeserialize::deser(&value.ciphertext)
+        IbeIdentityOnBn254G1Ciphertext::deser(&value.ciphertext)
     }
 }
 
@@ -94,6 +94,6 @@ impl TryFrom<DecryptionRequest> for IbeIdentityOnBn254G1Ciphertext {
     type Error = IbeIdentityOnBn254G1CiphertextError;
 
     fn try_from(value: DecryptionRequest) -> Result<Self, Self::Error> {
-        EvmDeserialize::deser(&value.ciphertext)
+        IbeIdentityOnBn254G1Ciphertext::deser(&value.ciphertext)
     }
 }

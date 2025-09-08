@@ -44,7 +44,7 @@ struct PublicKey(String);
 
 // Application state
 struct AppState {
-    async_signer: AsyncThresholdSigner,
+    async_signer: AsyncThresholdSigner<BlsPairingSigner<ark_bn254::Bn254>>,
     alg: SignatureAlgorithm,
     args: ApplicationArgs,
     dst: String,
@@ -94,9 +94,13 @@ async fn sign_handler(
 fn get_signer(
     config: &Args,
     nodes_config: &NodesConfiguration,
-) -> anyhow::Result<(Libp2pNode<u16>, CancellationToken, AsyncThresholdSigner)> {
+) -> anyhow::Result<(
+    Libp2pNode<u16>,
+    CancellationToken,
+    AsyncThresholdSigner<BlsPairingSigner<ark_bn254::Bn254>>,
+)> {
     // Parse key
-    let sk: ark_bn254::Fr = config.key_config.bls_key.to_owned().into();
+    let sk: ark_bn254::Fr = config.key_config.bls_key.to_owned().0;
 
     // Get per-nodes config
     let (mut pks, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = nodes_config
@@ -179,6 +183,7 @@ async fn main() -> anyhow::Result<()> {
     let alg = SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
         curve: BlsSignatureCurve::Bn254G1,
         hash: BlsSignatureHash::Keccak256,
+        compression: false,
     });
     let args = ApplicationArgs::Any(ApplicationAnyArgs {
         dst_suffix: config.key_config.dst_suffix,
@@ -187,8 +192,9 @@ async fn main() -> anyhow::Result<()> {
     let params = async_signer
         .verification_parameters(&alg, &args)
         .context("failed to obtain dsigner verification parameters")?;
-    let group_pk: ark_bn254::G2Affine = PointDeserializeCompressed::deser(&params.public_key)
-        .context("failed to deserialize dsigner public key")?;
+    let group_pk: ark_bn254::G2Affine =
+        PointDeserializeCompressed::deser_compressed(&params.public_key)
+            .context("failed to deserialize dsigner public key")?;
 
     // Convert group pk to string
     let (&x, &y) = group_pk.xy().context("dsigner public key at infinity")?;

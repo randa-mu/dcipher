@@ -6,8 +6,8 @@ edition.workspace = true
 [dependencies]
 # blockchain
 alloy = { workspace = true, features = ["default", "provider-ws"] }
-dcipher-agents = { workspace = true, features = ["randomness", "bn254"] }
-dcipher-signer = { workspace = true, features = ["bn254", "sha3"] }
+dcipher-agents = { workspace = true, features = ["randomness", "bn254", "bls12-381"] }
+dcipher-signer = { workspace = true, features = ["bn254", "bls12-381", "sha2", "sha3"] }
 
 # async
 futures = { workspace = true }
@@ -23,6 +23,7 @@ serde = { workspace = true, features = ["derive"] }
 
 # misc
 anyhow = { workspace = true }
+ark-bls12-381.workspace = true
 serde-keys.workspace = true
 
 [dev-dependencies]

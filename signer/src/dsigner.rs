@@ -21,6 +21,8 @@ pub enum SignatureAlgorithm {
 pub struct BlsSignatureAlgorithm {
     pub curve: BlsSignatureCurve,
     pub hash: BlsSignatureHash,
+    // Whether to output compressed signatures
+    pub compression: bool,
 }
 
 /// Curves supported for BLS signatures
@@ -145,7 +147,8 @@ pub struct SchemeAlgorithm {
 /// A dyn-compatible trait that can be used to group various signers of a specific type (e.g., BLS, Frost, ...).
 pub trait DSignerSchemeSigner {
     /// Obtain a byte-encoded signature for the associated signature request.
-    fn async_sign(&self, req: SignatureRequest) -> BoxFuture<Result<Bytes, DSignerSchemeError>>;
+    fn async_sign(&self, req: SignatureRequest)
+    -> BoxFuture<'_, Result<Bytes, DSignerSchemeError>>;
 }
 
 pub trait DSignerScheme: DSignerSchemeSigner {

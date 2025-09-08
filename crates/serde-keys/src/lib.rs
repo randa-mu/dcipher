@@ -4,26 +4,26 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-/// Wrapper around ark_bn254::Fr that allows deserialization from hex
-pub struct Bn254SecretKey(ark_bn254::Fr);
+/// Wrapper around ark_*::Fr that allows deserialization from hex
+pub struct SecretKey<Fr>(pub Fr);
 
 /// Wrapper around libp2p::identity::Keypair with (de)serialization & cmd line parsing.
 #[derive(Clone, Debug)]
 pub struct Libp2pKeyWrapper(::libp2p::identity::Keypair);
 
-impl std::fmt::Debug for Bn254SecretKey {
+impl<Fr: std::fmt::Debug> std::fmt::Debug for SecretKey<Fr> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self.0, f)
     }
 }
 
-impl Clone for Bn254SecretKey {
+impl<Fr: Clone> Clone for SecretKey<Fr> {
     fn clone(&self) -> Self {
-        Bn254SecretKey(self.0)
+        SecretKey(self.0.clone())
     }
 }
 
-impl Serialize for Bn254SecretKey {
+impl<Fr: PrimeField> Serialize for SecretKey<Fr> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -33,7 +33,7 @@ impl Serialize for Bn254SecretKey {
     }
 }
 
-impl<'de> Deserialize<'de> for Bn254SecretKey {
+impl<'de, Fr: PrimeField> Deserialize<'de> for SecretKey<Fr> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -46,33 +46,25 @@ impl<'de> Deserialize<'de> for Bn254SecretKey {
         }
 
         let bytes = hex::decode(&hex_str[2..]).map_err(D::Error::custom)?;
-        Ok(Bn254SecretKey(ark_bn254::Fr::from_be_bytes_mod_order(
-            &bytes,
-        )))
+        Ok(SecretKey(Fr::from_be_bytes_mod_order(&bytes)))
     }
 }
 
-impl FromStr for Bn254SecretKey {
+impl<Fr: PrimeField> FromStr for SecretKey<Fr> {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use ark_ff::PrimeField;
-
         if &s[0..2] != "0x" {
             Err(anyhow!("invalid hex string"))?
         }
 
         let bytes = hex::decode(&s[2..])?;
-        let s = ark_bn254::Fr::from_be_bytes_mod_order(&bytes);
-        Ok(Bn254SecretKey(s))
+        let s = Fr::from_be_bytes_mod_order(&bytes);
+        Ok(SecretKey(s))
     }
 }
 
-impl From<Bn254SecretKey> for ark_bn254::Fr {
-    fn from(value: Bn254SecretKey) -> Self {
-        value.0
-    }
-}
+pub type Bn254SecretKey = SecretKey<ark_bn254::Fr>;
 
 impl<'de> Deserialize<'de> for Libp2pKeyWrapper {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

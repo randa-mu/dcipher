@@ -119,12 +119,12 @@ pub fn create_message(params: SwapRequestParameters) -> Vec<u8> {
 }
 
 pub struct DsignerWrapper<S: BlsSigner> {
-    s: AsyncThresholdSigner,
+    s: AsyncThresholdSigner<S>,
     _s: PhantomData<S>, // todo: remove it if signer is never required
 }
 
 impl<S: BlsSigner> DsignerWrapper<S> {
-    pub fn new(s: AsyncThresholdSigner) -> Self {
+    pub fn new(s: AsyncThresholdSigner<S>) -> Self {
         Self { s, _s: PhantomData }
     }
 }
@@ -140,10 +140,11 @@ impl Signer for DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>> {
             alg: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
+                compression: false,
             }),
         };
         let point = self.s.async_sign(sig_request).await?;
-        let point = ark_bn254::G1Affine::deser(&point)?;
+        let point = ark_bn254::G1Affine::deser_compressed(&point)?;
 
         let mut bytes = Vec::with_capacity(point.serialized_size(Compress::No));
         point.serialize_with_mode(&mut bytes, Compress::No)?;

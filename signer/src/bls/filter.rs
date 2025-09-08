@@ -95,7 +95,7 @@ pub(super) fn get_rfc9380_application_dst(
             )
         }
         ApplicationArgs::Any(args) => {
-            // dcipher-anyapp-v01-%curve_name%_%expand%_%hash_name%_%mapping%_%encoding%_%custom_suffix%_
+            // dcipher-anyapp-v01-%curve_name%_%expand%:%hash_name%_%mapping%_%encoding%_%custom_suffix%_
             (
                 "dcipher-anyapp-v01".to_owned(),
                 b'-',

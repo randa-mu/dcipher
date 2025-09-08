@@ -5,10 +5,11 @@ use dcipher_agents::fulfiller::RetryStrategy;
 use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
 use serde::{Deserialize, Serialize};
-use serde_keys::{Bn254SecretKey, Libp2pKeyWrapper, serde_to_string_from_str};
+use serde_keys::{Libp2pKeyWrapper, SecretKey, serde_to_string_from_str};
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
+use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -130,8 +131,10 @@ pub struct ChainArgs {
 #[command(author, version, about, long_about = None)]
 pub struct KeyConfigArgs {
     /// BLS private key for signing
-    #[arg(long, env = "RANDOMNESS_BLS_KEY")]
-    pub bls_key: Bn254SecretKey,
+    #[arg(long, env = "RANDOMNESS_BN254_KEY")]
+    pub bn254_key: SecretKey<ark_bn254::Fr>,
+    #[arg(long, env = "RANDOMNESS_BLS12_381_KEY")]
+    pub bls12_381_key: SecretKey<ark_bls12_381::Fr>,
 
     /// Identifier of the node
     #[arg(long, env = "RANDOMNESS_NODE_ID", default_value = "1")]
@@ -168,18 +171,27 @@ pub struct Libp2pArgs {
 }
 
 #[derive(Default, Serialize, Deserialize, Debug)]
-pub struct NodesConfiguration {
-    pub nodes: Vec<NodeConfiguration>,
+#[serde(bound(
+    serialize = "G2: PointSerializeCompressed",
+    deserialize = "G2: PointDeserializeCompressed"
+))]
+#[derive(Clone)]
+pub struct NodesConfiguration<G2> {
+    pub nodes: Vec<NodeConfiguration<G2>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct NodeConfiguration {
+#[serde(bound(
+    serialize = "G2: PointSerializeCompressed",
+    deserialize = "G2: PointDeserializeCompressed"
+))]
+pub struct NodeConfiguration<G2> {
     /// Node identifier used in the threshold scheme
     pub node_id: NonZeroU16,
 
     /// BN254 public key of the node
     #[serde(with = "utils::serialize::point::base64")]
-    pub bls_pk: ark_bn254::G2Affine,
+    pub bls_pk: G2,
 
     /// Libp2p peer address
     pub address: libp2p::Multiaddr,
@@ -190,7 +202,8 @@ pub struct NodeConfiguration {
 
 pub struct RandomnessAgentConfig {
     pub config: RandomnessAgentArgs,
-    pub nodes_config: Option<NodesConfiguration>,
+    pub bn254_nodes_config: Option<NodesConfiguration<ark_bn254::G2Affine>>,
+    pub bls12_381_nodes_config: Option<NodesConfiguration<ark_bls12_381::G2Affine>>,
 }
 
 impl RandomnessAgentConfig {
@@ -208,20 +221,29 @@ impl RandomnessAgentConfig {
             Err(anyhow!("nodes configuration required when t > 1"))?
         }
 
-        let nodes_configuration = if c.key_config.t.get() == 1 {
+        let bn254_nodes_config = if c.key_config.t.get() == 1 {
             None
         } else {
             Some(Self::parse_nodes_config(&c)?)
         };
 
+        // FIXME: to make BLS12 work with multiple nodes, implement the parsing logic
+        let bls12_381_nodes_config = None;
+
         Ok(Self {
             config: c,
-            nodes_config: nodes_configuration,
+            bn254_nodes_config,
+            bls12_381_nodes_config,
         })
     }
 
-    fn parse_nodes_config(config: &RandomnessAgentArgs) -> anyhow::Result<NodesConfiguration> {
-        let nodes_config: NodesConfiguration = Figment::new()
+    fn parse_nodes_config<G2>(
+        config: &RandomnessAgentArgs,
+    ) -> anyhow::Result<NodesConfiguration<G2>>
+    where
+        G2: PointDeserializeCompressed + PointSerializeCompressed,
+    {
+        let nodes_config: NodesConfiguration<G2> = Figment::new()
             .merge(Toml::file(config.key_config.nodes_config.clone().unwrap()))
             .extract()?;
 

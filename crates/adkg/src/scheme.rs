@@ -219,8 +219,10 @@ pub mod bn254 {
                 Err(Self::Error::BadHashId)?
             }
 
-            let generator_g = <Self as AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
-            let generator_h = <Self as AdkgScheme>::Curve::deser_base64(&value.generator_g)?;
+            let generator_g =
+                <Self as AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
+            let generator_h =
+                <Self as AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
             let scheme = Self::new(value.app_name, generator_h);
 
             // Make sure that the generator corresponds to the dynamically computed generator
@@ -236,11 +238,11 @@ pub mod bn254 {
         fn from(value: DYX20Bn254G1Keccak256) -> Self {
             let generator_g = value
                 .generator_g()
-                .ser_base64()
+                .ser_compressed_base64()
                 .expect("failed to serialize point to base64");
             let generator_h = value
                 .generator_h
-                .ser_base64()
+                .ser_compressed_base64()
                 .expect("failed to serialize point to base64");
             Self {
                 app_name: value.app_name,

@@ -1,6 +1,5 @@
 //! [`AsynchronousSigner`] for signature requests.
 
-use crate::ser::EvmSerialize;
 use crate::signature_sender::{SignatureRequest, SignedSignatureRequest};
 use crate::signer::AsynchronousSigner;
 use ark_ec::CurveGroup;
@@ -35,7 +34,7 @@ impl<CG, Signer> SignatureSenderAsyncSigner<CG, Signer> {
 
 impl<CG, Signer> AsynchronousSigner<SignatureRequest> for SignatureSenderAsyncSigner<CG, Signer>
 where
-    CG: CurveGroup<Affine: PointDeserializeCompressed + EvmSerialize>,
+    CG: CurveGroup<Affine: PointDeserializeCompressed>,
     Signer: DSignerSchemeSigner + Send + Sync,
 {
     type Error = DSignerSchemeError;
@@ -48,11 +47,10 @@ where
             alg: self.algorithm,
         };
         let sig = self.signer.async_sign(dsigner_req).await?;
-        let sig_cg = CG::Affine::deser(&sig).map_err(|e| Self::Error::Other(e.into()))?;
 
         Ok(SignedSignatureRequest {
             id: req.id,
-            signature: EvmSerialize::ser_bytes(&sig_cg),
+            signature: sig.into(),
         })
     }
 }

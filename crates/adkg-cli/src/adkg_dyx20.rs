@@ -53,7 +53,7 @@ where
         .nodes
         .iter()
         .map(|p| {
-            <DYX20Bn254G1Keccak256 as AdkgScheme>::Curve::deser_base64(
+            <DYX20Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
@@ -138,7 +138,7 @@ pub async fn adkg_dyx20_bn254_g1_keccak256_rescue(
         .nodes
         .iter()
         .map(|p| {
-            <DYX20Bn254G1Keccak256 as AdkgScheme>::Curve::deser_base64(
+            <DYX20Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })

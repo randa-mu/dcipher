@@ -12,8 +12,10 @@ use futures_util::StreamExt;
 use std::future::Future;
 use std::sync::Arc;
 
-/// Scheme ID of the randomness scheme
-pub const RANDOMNESS_SCHEME_ID: &str = "BN254";
+/// Scheme ID of the randomness schemes
+pub const BN254_RANDOMNESS_SCHEME_ID: &str = "BN254";
+pub const BLS12_381_RANDOMNESS_SCHEME_ID: &str = "BLS12381";
+pub const BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID: &str = "BLS12381Compressed";
 
 /// Ticker using tokio's Notify
 #[derive(Clone, Default)]

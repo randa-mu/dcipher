@@ -32,7 +32,9 @@ use strum::VariantArray;
 use tokio_util::sync::CancellationToken;
 use utils::dst::NamedCurveGroup;
 use utils::hash_to_curve::CustomHashToCurve;
-use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
+use utils::serialize::point::{
+    PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
+};
 
 // Bunch of type alias to simplify access to BlsVerifier's associated types
 type E<BLS> = <BLS as BlsVerifier>::E;
@@ -41,10 +43,12 @@ type G2<BLS> = <E<BLS> as Pairing>::G2;
 type G1Affine<BLS> = <G1<BLS> as CurveGroup>::Affine;
 type G2Affine<BLS> = <G2<BLS> as CurveGroup>::Affine;
 
-type SignatureOrChannel = Either<Bytes, tokio::sync::watch::Sender<Option<Bytes>>>;
+type Signature<BLS> = Either<G1Affine<BLS>, G2Affine<BLS>>;
+type SignatureOrChannel<BLS> =
+    Either<Signature<BLS>, tokio::sync::watch::Sender<Option<Signature<BLS>>>>;
 
-type SharedSignatureCache =
-    Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel>>>;
+type SharedSignatureCache<BLS> =
+    Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel<BLS>>>>;
 
 type SharedPartialsCache<BLS> = Arc<
     std::sync::Mutex<LruCache<StoredSignatureRequest, HashMap<u16, PartialSignature<Group<BLS>>>>>,
@@ -206,7 +210,7 @@ where
     BLS: BlsSigner,
 {
     // Signatures cache
-    signatures_cache: SharedSignatureCache,
+    signatures_cache: SharedSignatureCache<BLS>,
 
     // Map from messages to partials
     partials_cache: SharedPartialsCache<BLS>,
@@ -311,22 +315,39 @@ where
 
     /// Compute all possible supported algorithms for this curve
     fn supported_bls_algorithms() -> impl Iterator<Item = BlsSignatureAlgorithm> {
-        let iter_all_hash = |curve| {
+        let iter_all_hash = |curve, compression| {
             BlsSignatureHash::VARIANTS
                 .iter()
-                .map(move |&hash| BlsSignatureAlgorithm { hash, curve })
+                .map(move |&hash| BlsSignatureAlgorithm {
+                    hash,
+                    curve,
+                    compression,
+                })
         };
 
-        iter_all_hash(<G1<BLS> as NamedCurveGroup>::CURVE_ID.into())
-            .chain(iter_all_hash(<G2<BLS> as NamedCurveGroup>::CURVE_ID.into()))
+        iter_all_hash(<G1<BLS> as NamedCurveGroup>::CURVE_ID.into(), false)
+            .chain(iter_all_hash(
+                <G1<BLS> as NamedCurveGroup>::CURVE_ID.into(),
+                true,
+            ))
+            .chain(iter_all_hash(
+                <G2<BLS> as NamedCurveGroup>::CURVE_ID.into(),
+                false,
+            ))
+            .chain(iter_all_hash(
+                <G2<BLS> as NamedCurveGroup>::CURVE_ID.into(),
+                true,
+            ))
     }
 }
 
 impl<BLS> BlsThresholdSigner<BLS>
 where
     BLS: BlsSigner + Clone + Send + Sync + 'static,
-    G1Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
-    G2Affine<BLS>: PointSerializeCompressed + PointDeserializeCompressed,
+    G1Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
+    G2Affine<BLS>:
+        PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
 {
     fn scheme_details(&self) -> SchemeDetails {
         let collect_supported_algs = |curve| {
@@ -340,14 +361,14 @@ where
         let mut scheme_algs = vec![];
         if let Some(pk_g1) = &self.pk_g1 {
             scheme_algs.push(SchemeAlgorithm {
-                public_key: PointSerializeCompressed::ser(pk_g1).unwrap().into(),
+                public_key: pk_g1.ser_compressed().unwrap().into(),
                 algs: collect_supported_algs(<G2<BLS> as NamedCurveGroup>::CURVE_ID.into()), // sig on G2
                 apps: supported_apps.clone(),
             });
         }
         if let Some(pk_g2) = &self.pk_g2 {
             scheme_algs.push(SchemeAlgorithm {
-                public_key: PointSerializeCompressed::ser(pk_g2).unwrap().into(),
+                public_key: pk_g2.ser_compressed().unwrap().into(),
                 algs: collect_supported_algs(<G1<BLS> as NamedCurveGroup>::CURVE_ID.into()), // sig on G1
                 apps: supported_apps,
             });
@@ -361,7 +382,7 @@ where
     }
 
     /// Runs the threshold signer in a background task and obtain a cancellation token and a registry.
-    pub fn run<T>(self, mut transport: T) -> (CancellationToken, AsyncThresholdSigner)
+    pub fn run<T>(self, mut transport: T) -> (CancellationToken, AsyncThresholdSigner<BLS>)
     where
         T: Transport<Identity = u16>,
     {
@@ -573,6 +594,12 @@ pub trait BlsSigner: BlsVerifier {
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
     ) -> Result<<Self::E as Pairing>::G2Affine, Self::Error>;
+
+    /// Obtain the public key corresponding to the signer's private key on G1.
+    fn g1_public_key(&self) -> <Self::E as Pairing>::G1Affine;
+
+    /// Obtain the public key corresponding to the signer's private key on G2.
+    fn g2_public_key(&self) -> <Self::E as Pairing>::G2Affine;
 }
 
 #[cfg(test)]
@@ -644,6 +671,7 @@ mod tests {
                 alg: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                     curve: BlsSignatureCurve::Bn254G2,
                     hash: BlsSignatureHash::Keccak256,
+                    compression: false,
                 }),
             };
             let fut_sig1 = ch1.async_sign(req.clone());

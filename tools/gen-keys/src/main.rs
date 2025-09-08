@@ -76,8 +76,14 @@ where
             "node {i}: bls private key    = {}",
             hex::encode(ski.into_bigint().to_bytes_be())
         );
-        println!("node {i}: bls public key g1  = {}", pki_g1.ser_base64()?);
-        println!("node {i}: bls public key g2  = {}", pki_g2.ser_base64()?);
+        println!(
+            "node {i}: bls public key g1  = {}",
+            pki_g1.ser_compressed_base64()?
+        );
+        println!(
+            "node {i}: bls public key g2  = {}",
+            pki_g2.ser_compressed_base64()?
+        );
         println!(
             "node {i}: libp2p private key = {}",
             encode_libp2p(&libp2p_ski)
@@ -99,8 +105,14 @@ where
     let pk_g2 = lagrange_points_interpolate_at(&points, 0);
     assert_eq!(pk_g2.into_affine(), exp_pk_g2.into_affine());
 
-    println!("group bls public key g1    = {}", exp_pk_g1.ser_base64()?);
-    println!("group bls public key g2    = {}", exp_pk_g2.ser_base64()?);
+    println!(
+        "group bls public key g1    = {}",
+        exp_pk_g1.ser_compressed_base64()?
+    );
+    println!(
+        "group bls public key g2    = {}",
+        exp_pk_g2.ser_compressed_base64()?
+    );
     Ok(())
 }
 

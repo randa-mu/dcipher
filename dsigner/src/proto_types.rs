@@ -142,13 +142,7 @@ pub mod dsigner {
                     Ok(Self::Bls(dcipher_signer::dsigner::BlsSignatureAlgorithm {
                         curve: dcipher_signer::dsigner::BlsSignatureCurve::Bn254G1,
                         hash: dcipher_signer::dsigner::BlsSignatureHash::Keccak256,
-                    }))
-                }
-
-                SignatureAlgorithm::Bn254SigOnG1Sha256 => {
-                    Ok(Self::Bls(dcipher_signer::dsigner::BlsSignatureAlgorithm {
-                        curve: dcipher_signer::dsigner::BlsSignatureCurve::Bn254G1,
-                        hash: dcipher_signer::dsigner::BlsSignatureHash::Sha256,
+                        compression: false,
                     }))
                 }
 
@@ -156,13 +150,15 @@ pub mod dsigner {
                     Ok(Self::Bls(dcipher_signer::dsigner::BlsSignatureAlgorithm {
                         curve: dcipher_signer::dsigner::BlsSignatureCurve::Bls12_381G1,
                         hash: dcipher_signer::dsigner::BlsSignatureHash::Sha256,
+                        compression: false,
                     }))
                 }
 
-                SignatureAlgorithm::Bls12381SigOnG2Sha256 => {
+                SignatureAlgorithm::Bls12381SigOnG1Sha256Compressed => {
                     Ok(Self::Bls(dcipher_signer::dsigner::BlsSignatureAlgorithm {
-                        curve: dcipher_signer::dsigner::BlsSignatureCurve::Bls12_381G2,
+                        curve: dcipher_signer::dsigner::BlsSignatureCurve::Bls12_381G1,
                         hash: dcipher_signer::dsigner::BlsSignatureHash::Sha256,
+                        compression: true,
                     }))
                 }
             }
@@ -176,29 +172,25 @@ pub mod dsigner {
                     dcipher_signer::dsigner::BlsSignatureAlgorithm {
                         curve: dcipher_signer::dsigner::BlsSignatureCurve::Bn254G1,
                         hash: dcipher_signer::dsigner::BlsSignatureHash::Keccak256,
+                        compression: false,
                     },
                 ) => Self::Bn254SigOnG1Keccak256,
 
                 dcipher_signer::dsigner::SignatureAlgorithm::Bls(
                     dcipher_signer::dsigner::BlsSignatureAlgorithm {
-                        curve: dcipher_signer::dsigner::BlsSignatureCurve::Bn254G1,
-                        hash: dcipher_signer::dsigner::BlsSignatureHash::Sha256,
-                    },
-                ) => Self::Bn254SigOnG1Sha256,
-
-                dcipher_signer::dsigner::SignatureAlgorithm::Bls(
-                    dcipher_signer::dsigner::BlsSignatureAlgorithm {
                         curve: dcipher_signer::dsigner::BlsSignatureCurve::Bls12_381G1,
                         hash: dcipher_signer::dsigner::BlsSignatureHash::Sha256,
+                        compression: false,
                     },
                 ) => Self::Bls12381SigOnG1Sha256,
 
                 dcipher_signer::dsigner::SignatureAlgorithm::Bls(
                     dcipher_signer::dsigner::BlsSignatureAlgorithm {
-                        curve: dcipher_signer::dsigner::BlsSignatureCurve::Bls12_381G2,
+                        curve: dcipher_signer::dsigner::BlsSignatureCurve::Bls12_381G1,
                         hash: dcipher_signer::dsigner::BlsSignatureHash::Sha256,
+                        compression: true,
                     },
-                ) => Self::Bls12381SigOnG2Sha256,
+                ) => Self::Bls12381SigOnG1Sha256Compressed,
 
                 _ => Self::Unknown,
             }

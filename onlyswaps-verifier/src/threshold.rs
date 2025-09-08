@@ -10,7 +10,7 @@ pub(crate) fn create_bn254_signer(
     libp2p_node: Libp2pNodeConfig<u16>,
 ) -> anyhow::Result<DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>>> {
     let bls_secret_key = &config.committee.secret_key;
-    let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(bls_secret_key.clone().into());
+    let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(bls_secret_key.clone().0);
 
     let signer = BlsThresholdSigner::new(
         signer,
