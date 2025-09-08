@@ -68,7 +68,6 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
-    tokio::time::sleep(Duration::from_secs(20)).await;
     let network_bus = NetworkBus::create(&app_config.networks).await?;
     let transport = create_libp2p_transport(app_config)?;
     let dsigner = create_bn254_signer(app_config, transport)?;
