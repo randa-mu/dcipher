@@ -10,7 +10,6 @@ use dcipher_signer::dsigner::{
     ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash,
     DSignerSchemeSigner, OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 pub struct OnlySwapsSigner<C, S> {
@@ -123,12 +122,11 @@ pub fn create_message(params: SwapRequestParameters, solver: &Address) -> Vec<u8
 
 pub struct DsignerWrapper<S: BlsSigner> {
     s: AsyncThresholdSigner<S>,
-    _s: PhantomData<S>, // todo: remove it if signer is never required
 }
 
 impl<S: BlsSigner> DsignerWrapper<S> {
     pub fn new(s: AsyncThresholdSigner<S>) -> Self {
-        Self { s, _s: PhantomData }
+        Self { s }
     }
 }
 
