@@ -69,7 +69,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     let network_bus = NetworkBus::create(&app_config.networks).await?;
     let transport = create_libp2p_transport(app_config)?;
     let dsigner = create_bn254_signer(app_config, transport)?;
-    let signer = OnlySwapsSigner::new(&network_bus, &dsigner);
+    let signer = OnlySwapsSigner::new(network_bus, dsigner);
     tracing::info!(
         multiaddr = app_config.libp2p.multiaddr.to_string(),
         n = app_config.committee.n,
@@ -78,8 +78,9 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     );
 
     // all contract events and load-on-start state are ingested via a channel and
-    // we serialise writing back to the contracts to simplify things like nonce management,
-    // profitability calculations, etc
+    // they are serialised out of the channel into the signer. This is actually asyncified once
+    // popped off the channel so that different nodes don't get stuck signing different
+    // messages when e.g. in catchup
     let (tx, mut rx_verifications) =
         tokio::sync::mpsc::unbounded_channel::<Verification<RequestId>>();
 
@@ -119,23 +120,26 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
             request_id = verification.request_id.to_string(),
             "attempting verification"
         );
-        match signer.evaluate_and_send(&verification).await {
-            Err(e) => {
-                tracing::error!(
-                    chain_id = verification.chain_id,
-                    request_id = verification.request_id.to_string(),
-                    error = e.to_string(),
-                    "verification returned an error"
-                );
+        let signer = signer.clone();
+        tokio::spawn(async move {
+            match signer.evaluate_and_send(&verification).await {
+                Err(e) => {
+                    tracing::error!(
+                        chain_id = verification.chain_id,
+                        request_id = verification.request_id.to_string(),
+                        error = e.to_string(),
+                        "verification returned an error"
+                    );
+                }
+                Ok(_) => {
+                    tracing::info!(
+                        chain_id = verification.chain_id,
+                        request_id = verification.request_id.to_string(),
+                        "verification completed successfully"
+                    );
+                }
             }
-            Ok(_) => {
-                tracing::info!(
-                    chain_id = verification.chain_id,
-                    request_id = verification.request_id.to_string(),
-                    "verification completed successfully"
-                );
-            }
-        }
+        });
     }
     Ok(())
 }

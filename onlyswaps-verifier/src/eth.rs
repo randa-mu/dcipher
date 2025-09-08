@@ -208,8 +208,14 @@ impl<P: Provider> Network<P> {
             )
             .send()
             .await?;
-        let tx_hash = tx.watch().await?;
+
+        let tx_hash = tx
+            .with_required_confirmations(1)
+            .with_timeout(Some(self.request_timeout))
+            .watch()
+            .await?;
         tracing::info!(tx_hash = tx_hash.to_string(), "verified swap");
+
         Ok(())
     }
 }
