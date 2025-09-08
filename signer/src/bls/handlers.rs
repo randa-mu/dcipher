@@ -379,7 +379,7 @@ where
         partial: PartialSignature<Group<BLS>>,
         req: &BlsSignatureRequest,
     ) {
-        tracing::info!(msg = %LogBytes(stored_req.m), party_id = partial.id, "Storing partial signature on message");
+        tracing::info!(msg = %LogBytes(&stored_req.m), party_id = partial.id, "Storing partial signature on message");
         let mut partials_cache = self
             .partials_cache
             .lock()
