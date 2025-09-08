@@ -23,8 +23,6 @@ use crate::threshold::create_bn254_signer;
 use crate::transport::create_libp2p_transport;
 use clap::Parser;
 use futures::StreamExt;
-use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -71,7 +69,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     let network_bus = NetworkBus::create(&app_config.networks).await?;
     let transport = create_libp2p_transport(app_config)?;
     let dsigner = create_bn254_signer(app_config, transport)?;
-    let signer = Arc::new(OnlySwapsSigner::new(network_bus, dsigner));
+    let signer = OnlySwapsSigner::new(network_bus, dsigner);
     tracing::info!(
         multiaddr = app_config.libp2p.multiaddr.to_string(),
         n = app_config.committee.n,

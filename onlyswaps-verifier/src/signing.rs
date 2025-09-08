@@ -156,6 +156,18 @@ impl Signer for DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>> {
     }
 }
 
+impl<C, S> Clone for OnlySwapsSigner<C, S>
+where C: ChainService,
+      S: Signer {
+    fn clone(&self) -> Self {
+        Self {
+            chain: self.chain.clone(),
+            signer: self.signer.clone(),
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod test {
     use crate::eth::IRouter::SwapRequestParameters;
