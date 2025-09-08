@@ -8,8 +8,8 @@ use ark_serialize::{CanonicalSerialize, Compress};
 use async_trait::async_trait;
 use dcipher_signer::bls::{AsyncThresholdSigner, BlsPairingSigner, BlsSigner};
 use dcipher_signer::dsigner::{
-    ApplicationAnyArgs, ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
-    BlsSignatureHash, DSignerSchemeSigner, SignatureAlgorithm, SignatureRequest,
+    ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash,
+    DSignerSchemeSigner, OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
 use std::marker::PhantomData;
 use utils::serialize::point::PointDeserializeCompressed;
@@ -48,7 +48,7 @@ pub struct VerifiedSwap {
 
 #[async_trait]
 pub trait Signer {
-    async fn sign(&self, b: Vec<u8>) -> anyhow::Result<Vec<u8>>;
+    async fn sign(&self, b: Vec<u8>, chain_id: u64) -> anyhow::Result<Vec<u8>>;
 }
 
 impl<'a, C, S> OnlySwapsSigner<'a, C, S> {
@@ -84,7 +84,7 @@ where
         let src_chain_id = normalise_chain_id(valid_transfer_params.srcChainId);
         let m = create_message(valid_transfer_params);
 
-        let signature = self.signer.sign(m).await?;
+        let signature = self.signer.sign(m, src_chain_id).await?;
         let verified_swap = VerifiedSwap {
             request_id: verification_job.request_id,
             signature,
@@ -126,14 +126,12 @@ impl<S: BlsSigner> DsignerWrapper<S> {
 
 #[async_trait]
 impl Signer for DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>> {
-    async fn sign(&self, message: Vec<u8>) -> anyhow::Result<Vec<u8>> {
-        // TODO: Create an application type for verifier that uses the following dst:
-        //  dcipher-onlyswaps-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_
+    async fn sign(&self, message: Vec<u8>, chain_id: u64) -> anyhow::Result<Vec<u8>> {
+        // Sign a message using a dst in the following format:
+        //  swap-v1-BN254G1_XMD:KECCAK-256_SVDW_RO_0x0000000000000000000000000000000000000000000000000000000000014a34_
         let sig_request = SignatureRequest {
             m: message.into(),
-            args: ApplicationArgs::Any(ApplicationAnyArgs {
-                dst_suffix: "fixme".to_owned(),
-            }),
+            args: ApplicationArgs::OnlySwapsVerifier(OnlySwapsVerifierArgs { chain_id }),
             alg: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
@@ -305,7 +303,7 @@ mod test {
 
     #[async_trait]
     impl Signer for StubbedSigner {
-        async fn sign(&self, _: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        async fn sign(&self, _: Vec<u8>, _: u64) -> anyhow::Result<Vec<u8>> {
             Ok(vec![0x1, 0x2, 0x3, 0x4])
         }
     }

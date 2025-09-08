@@ -56,6 +56,7 @@ pub enum BlsSignatureHash {
 pub enum Application {
     Blocklock,
     Randomness,
+    OnlySwapsVerifier,
     Any,
 }
 
@@ -65,6 +66,7 @@ pub enum Application {
 pub enum ApplicationArgs {
     Blocklock(ApplicationBlocklockArgs),
     Randomness(ApplicationRandomnessArgs),
+    OnlySwapsVerifier(OnlySwapsVerifierArgs),
     Any(ApplicationAnyArgs),
 }
 
@@ -77,6 +79,12 @@ pub struct ApplicationBlocklockArgs {
 /// Randomness requires chain-specific signatures.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ApplicationRandomnessArgs {
+    pub chain_id: u64,
+}
+
+/// Onlyswaps requires chain-specific signatures.
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct OnlySwapsVerifierArgs {
     pub chain_id: u64,
 }
 
@@ -158,6 +166,7 @@ impl ApplicationArgs {
         match self {
             ApplicationArgs::Blocklock(_) => Application::Blocklock,
             ApplicationArgs::Randomness(_) => Application::Randomness,
+            ApplicationArgs::OnlySwapsVerifier(_) => Application::OnlySwapsVerifier,
             ApplicationArgs::Any(_) => Application::Any,
         }
     }
