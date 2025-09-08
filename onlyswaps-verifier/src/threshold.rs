@@ -2,25 +2,28 @@ use crate::config::AppConfig;
 use crate::signing::DsignerWrapper;
 use anyhow::anyhow;
 use dcipher_network::transports::libp2p::Libp2pNodeConfig;
-use dcipher_signer::BN254SignatureOnG1Signer;
-use dcipher_signer::threshold_signer::ThresholdSigner;
+use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
+use std::collections::HashMap;
 
 pub(crate) fn create_bn254_signer(
     config: &AppConfig,
     libp2p_node: Libp2pNodeConfig<u16>,
-) -> anyhow::Result<DsignerWrapper<BN254SignatureOnG1Signer>> {
+) -> anyhow::Result<DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>>> {
     let bls_secret_key = &config.committee.secret_key;
-    let suite = BN254SignatureOnG1Signer::new(
-        bls_secret_key.clone().into(),
-        b"dcipher-onlyswaps-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_".to_vec(),
-    );
+    let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(bls_secret_key.clone().into());
 
-    let signer = ThresholdSigner::new(
-        suite,
+    let signer = BlsThresholdSigner::new(
+        signer,
         config.committee.n.get(),
         config.committee.t.get(),
         config.committee.member_id.get(),
-        config.committee.members.iter().map(|n| n.bls_pk).collect(),
+        HashMap::default(), // no keys on g1
+        config
+            .committee
+            .members
+            .iter()
+            .map(|n| (n.member_id.get(), n.bls_pk))
+            .collect(),
     );
 
     let transport = libp2p_node

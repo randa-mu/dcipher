@@ -13,7 +13,7 @@ axum = "0.8.4"
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
 dcipher-network = { workspace = true, features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
-dcipher-signer = { workspace = true, features = ["rayon"] }
+dcipher-signer = { workspace = true, features = ["rayon", "bn254", "sha3"] }
 figment = { workspace = true, features = ["json", "toml"] }
 futures.workspace = true
 humantime-serde = "1.1.1"
@@ -29,3 +29,4 @@ tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["json", "env-filter"] }
 serde_json.workspace = true
+utils.workspace = true
