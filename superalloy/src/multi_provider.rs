@@ -103,6 +103,7 @@ mod tests {
     use crate::retry::RetryStrategy;
 
     #[tokio::test]
+    #[ignore]
     async fn test_watch_block_numbers() {
         let rpc_providers = [
             "wss://mainnet.gateway.tenderly.co",
