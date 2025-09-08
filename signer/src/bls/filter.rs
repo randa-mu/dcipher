@@ -71,7 +71,7 @@ pub(super) fn get_rfc9380_application_dst(
 
     let (app_name, app_name_sep, suffix) = match app_args {
         ApplicationArgs::Blocklock(args) => {
-            // BLOCKLOCK_%curve_name%_%expand%_%hash_name%_%mapping%_%encoding%_H1_0x%chain_id%_
+            // BLOCKLOCK_%curve_name%_%expand%:%hash_name%_%mapping%_%encoding%_H1_0x%chain_id%_
             (
                 "BLOCKLOCK".to_owned(),
                 b'_',
@@ -79,15 +79,23 @@ pub(super) fn get_rfc9380_application_dst(
             )
         }
         ApplicationArgs::Randomness(args) => {
-            // dcipher-randomness-v01-%curve_name%_%expand%_%hash_name%_%mapping%_%encoding%_0x%chain_id%_
+            // dcipher-randomness-v01-%curve_name%:%expand%_%hash_name%_%mapping%_%encoding%_0x%chain_id%_
             (
                 "dcipher-randomness-v01".to_owned(),
                 b'-',
                 format!("0x{:064x}", args.chain_id),
             )
         }
+        ApplicationArgs::OnlySwapsVerifier(args) => {
+            // swap-v1-BN254G1_XMD:KECCAK-256_SVDW_RO_0x0000000000000000000000000000000000000000000000000000000000014a34_
+            (
+                "swap-v1".to_owned(),
+                b'-',
+                format!("0x{:064x}", args.chain_id),
+            )
+        }
         ApplicationArgs::Any(args) => {
-            // dcipher-anyapp-v01-%curve_name%_%expand%_%hash_name%_%mapping%_%encoding%_%custom_suffix%_
+            // dcipher-anyapp-v01-%curve_name%_%expand%:%hash_name%_%mapping%_%encoding%_%custom_suffix%_
             (
                 "dcipher-anyapp-v01".to_owned(),
                 b'-',

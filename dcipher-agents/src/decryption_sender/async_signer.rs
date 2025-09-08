@@ -301,7 +301,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
-                compression: true,
+                compression: false,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -376,7 +376,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
-                compression: true,
+                compression: false,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),
@@ -444,7 +444,7 @@ pub(crate) mod tests {
             algorithm: SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
-                compression: true,
+                compression: false,
             }),
             application_args: ApplicationArgs::Any(ApplicationAnyArgs {
                 dst_suffix: "test".to_owned(),

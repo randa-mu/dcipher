@@ -300,7 +300,7 @@ where
     )
     .run(args.libp2p.libp2p_listen_addr.clone())?;
 
-    let signer = BlsThresholdSigner::<BLS>::new(
+    let signer = BlsThresholdSigner::new(
         signer,
         args.key_config.n.get(),
         args.key_config.t.get(),

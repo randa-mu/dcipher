@@ -191,7 +191,7 @@ pub enum BlsThresholdSignerError {
     #[error("missing partial public key of party {0} on curve g1")]
     MissingPublicKeyG1(u16),
 
-    #[error("missing partial public key of party {0} on curve g1")]
+    #[error("missing partial public key of party {0} on curve g2")]
     MissingPublicKeyG2(u16),
 
     #[error("unsupported hash function: {0:?} does not support {1:?}")]
@@ -219,7 +219,6 @@ where
     signer: BLS,
 
     // Threshold parameters
-    #[allow(unused)]
     n: u16,
     t: u16,
     id: u16,

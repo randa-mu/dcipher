@@ -13,13 +13,13 @@ pub struct InMemoryDatabaseEntry {
 }
 
 #[derive(Default)]
-struct InMemoryDatabaseInternal(HashMap<EventId, InMemoryDatabaseEntry>);
+pub struct InMemoryDatabaseInternal(HashMap<EventId, InMemoryDatabaseEntry>);
 
 #[derive(Clone, Default)]
-pub(crate) struct InMemoryDatabase(Arc<tokio::sync::RwLock<InMemoryDatabaseInternal>>);
+pub struct InMemoryDatabase(Arc<tokio::sync::RwLock<InMemoryDatabaseInternal>>);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
-pub(crate) enum InMemoryDatabaseError {
+pub enum InMemoryDatabaseError {
     #[error("cannot find an event with given id")]
     UnknownEvent,
 }

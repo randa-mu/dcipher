@@ -31,7 +31,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 libp2p = { workspace = true }
 
 # api / rpc
-axum = "0.8"
+axum.workspace = true
 tonic.workspace = true
 tower-http = { version = "0.6", features = ["trace"] }
 
@@ -48,6 +48,7 @@ bytes.workspace = true
 clap = { workspace = true }
 figment = { workspace = true, features = ["toml", "env"] }
 hex = { workspace = true }
+serde-keys.workspace =  true
 thiserror.workspace = true
 
 [dev-dependencies]

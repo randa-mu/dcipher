@@ -63,7 +63,7 @@ pub struct EventManager<MP, DB> {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum EventManagerError {
+pub enum EventManagerError {
     #[error("not ready to register events")]
     NotReady,
 
@@ -148,7 +148,7 @@ where
         listener_res.or(bg_res)
     }
 
-    pub(crate) async fn register_ethereum_event(
+    pub async fn register_ethereum_event(
         &self,
         req: ParsedRegisterNewEventRequest,
     ) -> Result<EventId, EventManagerError> {
@@ -162,7 +162,7 @@ where
             .await
     }
 
-    pub(crate) async fn get_ethereum_event_stream(
+    pub async fn get_ethereum_event_stream(
         &self,
         event_id: EventId,
     ) -> Result<BroadcastStream<EventOccurrence>, EventManagerError> {
@@ -206,7 +206,7 @@ where
         Ok(BroadcastStream::new(stream))
     }
 
-    pub(crate) async fn get_ethereum_multi_event_stream(
+    pub async fn get_ethereum_multi_event_stream(
         &self,
         event_ids: impl IntoIterator<Item = EventId>,
     ) -> Result<SelectAll<BroadcastStream<EventOccurrence>>, EventManagerError> {

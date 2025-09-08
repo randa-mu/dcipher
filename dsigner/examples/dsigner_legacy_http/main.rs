@@ -100,7 +100,7 @@ fn get_signer(
     AsyncThresholdSigner<BlsPairingSigner<ark_bn254::Bn254>>,
 )> {
     // Parse key
-    let sk: ark_bn254::Fr = config.key_config.bls_key.to_owned().into();
+    let sk: ark_bn254::Fr = config.key_config.bls_key.to_owned().0;
 
     // Get per-nodes config
     let (mut pks, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = nodes_config

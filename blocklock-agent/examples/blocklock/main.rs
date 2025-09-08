@@ -160,7 +160,7 @@ where
     P: Provider + WalletProvider + Clone + 'static,
 {
     // Parse key
-    let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().into();
+    let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().0;
 
     // Get per-nodes config
     let (mut pks_g2, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
@@ -239,7 +239,7 @@ where
         SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
             curve: BlsSignatureCurve::Bn254G1,
             hash: BlsSignatureHash::Keccak256,
-            compression: true,
+            compression: false,
         }),
         ApplicationArgs::Blocklock(ApplicationBlocklockArgs {
             chain_id: args
