@@ -12,11 +12,12 @@ use dcipher_signer::dsigner::{
     DSignerSchemeSigner, OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
 use std::marker::PhantomData;
+use std::sync::Arc;
 use utils::serialize::point::PointDeserializeCompressed;
 
-pub struct OnlySwapsSigner<'a, C, S> {
-    chain: &'a C,
-    signer: &'a S,
+pub struct OnlySwapsSigner<C, S> {
+    chain: Arc<C>,
+    signer: Arc<S>,
 }
 
 #[async_trait]
@@ -51,16 +52,19 @@ pub trait Signer {
     async fn sign(&self, b: Vec<u8>, chain_id: u64) -> anyhow::Result<Vec<u8>>;
 }
 
-impl<'a, C, S> OnlySwapsSigner<'a, C, S> {
-    pub fn new(chain: &'a C, signer: &'a S) -> Self {
-        Self { chain, signer }
+impl<C, S> OnlySwapsSigner<C, S> {
+    pub fn new(chain: impl Into<Arc<C>>, signer: impl Into<Arc<S>>) -> Self {
+        Self {
+            chain: chain.into(),
+            signer: signer.into(),
+        }
     }
 }
 
-impl<C, S> OnlySwapsSigner<'_, C, S>
+impl<C, S> OnlySwapsSigner<C, S>
 where
-    C: ChainService,
-    S: Signer,
+    C: ChainService + Send + Sync,
+    S: Signer + Send + Sync,
 {
     pub async fn evaluate_and_send(
         &self,
@@ -84,7 +88,7 @@ where
         let solver = transfer_receipt.solver;
         let valid_transfer_params = reconcile_transfer_params(transfer_params, transfer_receipt)?;
         let src_chain_id = normalise_chain_id(valid_transfer_params.srcChainId);
-        let m = create_message(valid_transfer_params);
+        let m = create_message(valid_transfer_params, &solver);
         tracing::trace!("message for signing created");
 
         let signature = self.signer.sign(m, src_chain_id).await?;
@@ -104,8 +108,9 @@ where
     }
 }
 
-pub fn create_message(params: SwapRequestParameters) -> Vec<u8> {
+pub fn create_message(params: SwapRequestParameters, solver: &Address) -> Vec<u8> {
     (
+        solver,
         params.sender,
         params.recipient,
         params.tokenIn,
@@ -193,7 +198,7 @@ mod test {
         };
 
         let service = StubbedChainService::new(transfer_receipt, transfer_params);
-        let onlyswaps = OnlySwapsSigner::new(&service, &StubbedSigner {});
+        let onlyswaps = OnlySwapsSigner::new(service, StubbedSigner {});
 
         onlyswaps
             .evaluate_and_send(&Verification {
@@ -239,7 +244,7 @@ mod test {
         let service =
             StubbedChainService::error(transfer_receipt, transfer_params, "oh shit".to_string());
         let stub_signer = StubbedSigner {};
-        let onlyswaps = OnlySwapsSigner::new(&service, &stub_signer);
+        let onlyswaps = OnlySwapsSigner::new(service, stub_signer);
         let result = onlyswaps
             .evaluate_and_send(&Verification {
                 chain_id: 1,
