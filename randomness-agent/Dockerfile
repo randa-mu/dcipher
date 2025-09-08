@@ -16,7 +16,7 @@ COPY ./randomness-solidity/package-lock.json ./
 RUN npm install
 
 COPY ./randomness-solidity ./
-RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
+RUN FOUNDRY_PROFILE=build forge soldeer install && FOUNDRY_PROFILE=build forge build
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
