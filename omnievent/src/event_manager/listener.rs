@@ -95,7 +95,7 @@ impl InternalEventStreamRegistration {
 }
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
-pub(crate) enum EventReceiverHandleError {
+pub enum EventReceiverHandleError {
     #[error("cannot register stream: channel closed")]
     RegistrationChannelClosed,
 }

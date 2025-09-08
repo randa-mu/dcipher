@@ -4,7 +4,9 @@ members = [
     "blocklock-agent",
     "crates/adkg",
     "crates/adkg-cli",
+    "crates/config",
     "crates/network",
+    "crates/serde-keys",
     "crates/utils",
     "dcipher-agents",
     "dsigner",
@@ -12,7 +14,8 @@ members = [
     "onlyswaps-verifier",
     "randomness-agent",
     "signer",
-    "superalloy"
+    "superalloy",
+    "tools/gen-keys"
 ]
 
 [workspace.package]
@@ -22,10 +25,13 @@ edition = "2024"
 [workspace.dependencies]
 # workspace crates
 adkg = { path = "./crates/adkg" }
+config = { path = "./crates/config" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
 dsigner = { path = "./dsigner" }
+omnievent = { path = "./omnievent" }
+serde-keys = { path = "./crates/serde-keys" }
 superalloy = { path = "./superalloy" }
 
 # blockchain
@@ -70,7 +76,6 @@ tonic-build = { version = "0.13" }
 
 # serde
 prost = { version = "0.13" }
-prost-build = { version = "0.13" }
 prost-types = { version = "0.13" }
 serde = { version = "1.0", features = ["derive"], default-features = false }
 serde_with = "3.14"
@@ -99,4 +104,4 @@ thiserror = "2.0"
 
 [patch.crates-io]
 # Use custom patch to fix arkworks' FieldHasher
-ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher"}
+ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher" }
