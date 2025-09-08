@@ -4,7 +4,6 @@ use crate::pending::{RequestId, Verification};
 use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, FixedBytes};
 use alloy::sol_types::SolValue;
-use ark_serialize::{CanonicalSerialize, Compress};
 use async_trait::async_trait;
 use dcipher_signer::bls::{AsyncThresholdSigner, BlsPairingSigner, BlsSigner};
 use dcipher_signer::dsigner::{
@@ -13,7 +12,6 @@ use dcipher_signer::dsigner::{
 };
 use std::marker::PhantomData;
 use std::sync::Arc;
-use utils::serialize::point::PointDeserializeCompressed;
 
 pub struct OnlySwapsSigner<C, S> {
     chain: Arc<C>,
@@ -149,11 +147,7 @@ impl Signer for DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>> {
             }),
         };
         let point = self.s.async_sign(sig_request).await?;
-        let point = ark_bn254::G1Affine::deser_compressed(&point)?;
-
-        let mut bytes = Vec::with_capacity(point.serialized_size(Compress::No));
-        point.serialize_with_mode(&mut bytes, Compress::No)?;
-        Ok(bytes)
+        Ok(point.into())
     }
 }
 
@@ -175,10 +169,15 @@ mod test {
     use crate::eth::IRouter::SwapRequestParameters;
     use crate::parsing::TransferReceipt;
     use crate::pending::Verification;
-    use crate::signing::{ChainService, OnlySwapsSigner, Signer, VerifiedSwap};
+    use crate::signing::{ChainService, DsignerWrapper, OnlySwapsSigner, Signer, VerifiedSwap};
     use alloy::primitives::{Address, FixedBytes, U160, U256};
+    use ark_bn254::Fr;
+    use ark_ff::MontFp;
     use async_trait::async_trait;
+    use dcipher_network::transports::in_memory::MemoryNetwork;
+    use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
     use speculoos::assert_that;
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn matching_receipt_and_params_create_valid_signature() {
@@ -330,5 +329,69 @@ mod test {
         async fn sign(&self, _: Vec<u8>, _: u64) -> anyhow::Result<Vec<u8>> {
             Ok(vec![0x1, 0x2, 0x3, 0x4])
         }
+    }
+
+    use ark_ec::{AffineRepr, CurveGroup};
+    use futures::future::try_join_all;
+
+    #[tokio::test]
+    async fn in_memory_test() -> anyhow::Result<()> {
+        let n = 3;
+        let t = 2;
+        let g1 = ark_bn254::G1Affine::generator();
+        let g2 = ark_bn254::G2Affine::generator();
+
+        let _sk: Fr =
+            MontFp!("7685086713915354683875500702831995067084988389812060097318430034144315778947");
+        let sk1: Fr =
+            MontFp!("5840327440053394277204603653048962762290958051681898697354171413163183818203");
+        let sk2: Fr =
+            MontFp!("3995568166191433870533706603265930457496927713551737297389912792182051857459");
+        let sk3: Fr =
+            MontFp!("2150808892329473463862809553482898152702897375421575897425654171200919896715");
+
+        let pks_g2 = vec![g2 * sk1, g2 * sk2, g2 * sk3];
+        let pks_g2 = pks_g2
+            .into_iter()
+            .enumerate()
+            .map(|(i, pki)| (i as u16 + 1, pki.into_affine()))
+            .collect::<HashMap<_, _>>();
+
+        let pks_g1 = vec![g1 * sk1, g1 * sk2, g1 * sk3];
+        let pks_g1 = pks_g1
+            .into_iter()
+            .enumerate()
+            .map(|(i, pki)| (i as u16 + 1, pki.into_affine()))
+            .collect::<HashMap<_, _>>();
+
+        let cs1 = BlsPairingSigner::new_bn254(sk1);
+        let cs2 = BlsPairingSigner::new_bn254(sk2);
+        let cs3 = BlsPairingSigner::new_bn254(sk3);
+
+        // Get transports
+        let mut transports = MemoryNetwork::get_transports(1..=3);
+
+        // Start three threshold signers
+        let (_, ch1) =
+            BlsThresholdSigner::new(cs1.clone(), n, t, 1, pks_g1.clone(), pks_g2.clone())
+                .run(transports.pop_front().unwrap());
+        let (_, ch2) = BlsThresholdSigner::new(cs2, n, t, 2, pks_g1.clone(), pks_g2.clone())
+            .run(transports.pop_front().unwrap());
+        let (_, ch3) = BlsThresholdSigner::new(cs3, n, t, 3, pks_g1.clone(), pks_g2.clone())
+            .run(transports.pop_front().unwrap());
+
+        let s1 = DsignerWrapper::new(ch1);
+        let s2 = DsignerWrapper::new(ch2);
+        let s3 = DsignerWrapper::new(ch3);
+        let m = b"hello world";
+
+        let futs = vec![
+            s1.sign(m.to_vec(), 1),
+            s2.sign(m.to_vec(), 1),
+            s3.sign(m.to_vec(), 1),
+        ];
+        try_join_all(futs).await?;
+
+        Ok(())
     }
 }
