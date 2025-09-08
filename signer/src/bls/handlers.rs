@@ -14,6 +14,7 @@ use itertools::{Either, izip};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
+use utils::display::LogBytes;
 use utils::dst::NamedCurveGroup;
 use utils::serialize::point::{
     PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
@@ -130,7 +131,7 @@ where
 
                     // We filter with a sequential iterator here due to side effects
                     izip!(partials.iter(), stored_reqs.iter(), reqs.iter()).filter_map(|(partial_sig, stored_req, req)| {
-                        tracing::info!(msg = ?stored_req.m, party_id = self.id, "Storing partial signature on message");
+                        tracing::info!(msg = %LogBytes(&stored_req.m), party_id = self.id, "Storing partial signature on message");
                         let partials = partials_cache.get_or_insert_mut(stored_req.to_owned(), HashMap::default);
                         partials.insert(
                             self.id,
@@ -378,7 +379,7 @@ where
         partial: PartialSignature<Group<BLS>>,
         req: &BlsSignatureRequest,
     ) {
-        tracing::info!(msg = ?stored_req.m, party_id = partial.id, "Storing partial signature on message");
+        tracing::info!(msg = %LogBytes(stored_req.m), party_id = partial.id, "Storing partial signature on message");
         let mut partials_cache = self
             .partials_cache
             .lock()
