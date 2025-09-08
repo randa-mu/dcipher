@@ -231,16 +231,19 @@ impl RandomnessAgentConfig {
             Err(anyhow!("nodes configuration required when t > 1"))?
         }
 
-        let nodes_configuration = if c.key_config.t.get() == 1 {
+        let bn254_nodes_config = if c.key_config.t.get() == 1 {
             None
         } else {
             Some(Self::parse_nodes_config(&c)?)
         };
 
+        // FIXME: to make BLS12 work with multiple nodes, implement the parsing logic
+        let bls12_381_nodes_config = None;
+
         Ok(Self {
             config: c,
-            bn254_nodes_config: nodes_configuration,
-            bls12_381_nodes_config: None, // FIXME
+            bn254_nodes_config,
+            bls12_381_nodes_config,
         })
     }
 
