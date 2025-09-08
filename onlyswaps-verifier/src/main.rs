@@ -127,7 +127,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
                     error = e.to_string(),
                     "verification returned an error"
                 );
-            }
+            },
             Ok(_) => {
                 tracing::info!(
                     chain_id = verification.chain_id,
