@@ -5,12 +5,14 @@ edition = "2024"
 
 [features]
 bn254 = ["scheme", "dep:ark-bn254"]
+bls12-381 = ["scheme", "dep:ark-bls12-381", "dep:sha2"]
 scheme = []
 
 [dependencies]
 dcipher-network.workspace = true
 
 ark-bn254 = { workspace = true, optional = true }
+ark-bls12-381 = { workspace = true, optional = true }
 ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true
@@ -27,6 +29,7 @@ rand_chacha = "0.3"
 reed-solomon = "0.2.1"
 serde = { workspace = true, features = ["derive"] }
 serde_with.workspace = true
+sha2 = { workspace = true, optional = true}
 sha3.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
@@ -41,5 +44,4 @@ dcipher-network = { workspace = true, features = ["in_memory"] }
 ark-bn254.workspace = true
 ark-bls12-381.workspace = true
 utils = { workspace = true, features = ["bls12-381", "bn254", "sha3"] }
-sha2 = "0.10"
 rayon = "1.0"

@@ -47,7 +47,7 @@ pub struct NewScheme {
     #[arg(
         long,
         help = "The identifier of the scheme",
-        default_value = "DYX20-Bn254G1-Keccak256"
+        default_value = "DYX22-Bn254G1-Keccak256"
     )]
     pub scheme_id: SupportedAdkgScheme,
 

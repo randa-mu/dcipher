@@ -51,6 +51,7 @@ version = "0.1.0"
 dependencies = [
  "adkg",
  "anyhow",
+ "ark-bls12-381",
  "ark-bn254",
  "ark-ec",
  "ark-std 0.4.0",
