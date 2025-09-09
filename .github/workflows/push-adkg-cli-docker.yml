@@ -30,6 +30,14 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
 
+          
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -62,12 +70,20 @@ jobs:
             image=mirror.gcr.io/moby/buildkit:buildx-stable-1
             network=host
 
+      - name : Add SHORT_SHA Environment Variable
+        id   : short-sha
+        shell: bash
+        run  : echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+
       - id: docker-push-tagged
         name: Tag Docker image and push to Google Artifact Registry
         uses: docker/build-push-action@v6
         with:
           push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+                ${{ steps.meta.outputs.tags }}
+                ghcr.io/randa-mu/dcipher/adkg-cli:main-latest
+                ghcr.io/randa-mu/dcipher/adkg-cli:${{ env.SHORT_SHA }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./crates/adkg-cli/Dockerfile
