@@ -30,7 +30,8 @@ where
         if msg_count >= 2 * t + 2 {
             // Do an error correction with 2t + 1 + e shares (e > 0, number of allowed errors)
             Some(msg_count - 2 * t - 1)
-        } else if msg_count >= t + 1  { // && msg_count <= 2t + 1
+        } else if msg_count >= t + 1 {
+            // && msg_count <= 2t + 1
             // Or we can attempt to recover the shares with exactly t + 1 shares or more, assuming no errors
             Some(0)
         } else {

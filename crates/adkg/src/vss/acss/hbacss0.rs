@@ -348,7 +348,7 @@ where
                     .iter()
                     .map(|vss_share| {
                         vss_share
-                            .get_party_secrets(i.into())
+                            .get_party_secrets(&i)
                             .expect("feldman output less than n shares") // gen n shares, loop n times
                     })
                     .collect();
@@ -387,7 +387,7 @@ where
         self.acss_continue(
             vss_shares
                 .iter()
-                .map(|vss_share| vss_share.get_party_secrets(id.into()))
+                .map(|vss_share| vss_share.get_party_secrets(&id))
                 .collect(),
             output,
             &broadcast.enc_shares,

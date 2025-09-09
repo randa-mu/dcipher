@@ -3,7 +3,7 @@
 
 pub mod commit;
 
-use crate::helpers::eval_poly;
+use crate::helpers::{PartyId, eval_poly};
 use ark_ec::CurveGroup;
 use ark_poly::{DenseUVPolynomial, Polynomial, univariate::DensePolynomial};
 use ark_std::UniformRand;
@@ -39,13 +39,15 @@ impl<CG: CurveGroup> PedersenVssShare<CG> {
         &self.0.v
     }
 
-    pub fn get_party_secrets(&self, party: u64) -> Option<PedersenPartyShare<CG::ScalarField>> {
-        let party: usize = party.try_into().ok()?;
-        if party == 0 {
+    pub fn get_party_secrets(
+        &self,
+        party: &PartyId,
+    ) -> Option<PedersenPartyShare<CG::ScalarField>> {
+        if party == &PartyId(0) {
             None?
         } else {
-            let si = *self.0.s.get(party - 1)?;
-            let ri = *self.0.r.get(party - 1)?;
+            let si = *self.0.s.get(party.as_index())?;
+            let ri = *self.0.r.get(party.as_index())?;
             Some(PedersenPartyShare { si, ri })
         }
     }
@@ -183,11 +185,23 @@ mod tests {
 
         let vss = share(&s, &r, &g, &h, n, t, &mut rng);
 
-        assert!(vss.get_party_secrets(0).is_none());
-        assert_eq!(vss.get_party_secrets(1).map(|sk| sk.si), Some(vss.0.s[0]));
-        assert_eq!(vss.get_party_secrets(1).map(|sk| sk.ri), Some(vss.0.r[0]));
-        assert_eq!(vss.get_party_secrets(2).map(|sk| sk.si), Some(vss.0.s[1]));
-        assert_eq!(vss.get_party_secrets(2).map(|sk| sk.ri), Some(vss.0.r[1]));
-        assert!(vss.get_party_secrets(n + 2).is_none());
+        assert!(vss.get_party_secrets(&PartyId(0)).is_none());
+        assert_eq!(
+            vss.get_party_secrets(&PartyId(1)).map(|sk| sk.si),
+            Some(vss.0.s[0])
+        );
+        assert_eq!(
+            vss.get_party_secrets(&PartyId(1)).map(|sk| sk.ri),
+            Some(vss.0.r[0])
+        );
+        assert_eq!(
+            vss.get_party_secrets(&PartyId(2)).map(|sk| sk.si),
+            Some(vss.0.s[1])
+        );
+        assert_eq!(
+            vss.get_party_secrets(&PartyId(2)).map(|sk| sk.ri),
+            Some(vss.0.r[1])
+        );
+        assert!(vss.get_party_secrets(&PartyId(n as usize + 2)).is_none());
     }
 }
