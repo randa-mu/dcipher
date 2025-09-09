@@ -288,7 +288,7 @@ where
         let x_i_pows: Vec<F> = nth_powers(&x_i.into(), deg_q + 1);
         let x_i_pow_e = x_i_pows[deg_e];
 
-        let m_i_left = x_i_pows[0..deg_q + 1].to_vec();
+        let m_i_left = x_i_pows.clone();
 
         // Compute (-y_i, -y_i x^1, ..., -y_i^e)
         let m_i_right = x_i_pows[0..=e].iter().map(|x_i_pow_i| -y_i * x_i_pow_i);
