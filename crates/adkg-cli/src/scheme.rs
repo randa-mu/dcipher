@@ -33,7 +33,8 @@ pub fn new_scheme_config(
             Ok(AdkgCliSchemeConfig {
                 adkg_config: scheme_config,
                 adkg_scheme_name: scheme_id.to_string(),
-                output_generator: ark_bls12_381::G2Projective::generator().ser_compressed_base64()?,
+                output_generator: ark_bls12_381::G2Projective::generator()
+                    .ser_compressed_base64()?,
             })
         }
     }
