@@ -79,11 +79,20 @@ pub enum AcssError {
 /// Status of the node taking part in the ACSS protocol.
 #[derive(Clone)]
 pub(super) enum AcssStatus<CG: CurveGroup> {
-    New,                                                        // ACSS has just started.
-    ShareRecovery, // An invalid share was received, enter share recovery mode.
-    WaitingForOks(Vec<PedersenPartyShare<CG::ScalarField>>), // A valid share was received, waiting for 2t + 1 oks.
-    WaitingForReadys(Vec<PedersenPartyShare<CG::ScalarField>>), // Enough ok / readys were received, waiting for 2t + 1 readys.
-    Complete, // A share was recovered, about to exit.
+    /// ACSS has just started.
+    New,
+
+    /// An invalid share was received, enter share recovery mode.
+    ShareRecovery,
+
+    /// A valid share was received, waiting for 2t + 1 oks.
+    WaitingForOks(Vec<PedersenPartyShare<CG::ScalarField>>),
+
+    /// Enough ok / readys were received, waiting for 2t + 1 readys.
+    WaitingForReadys(Vec<PedersenPartyShare<CG::ScalarField>>),
+
+    /// A share was recovered, about to exit.
+    Complete,
 }
 
 /// Message broadcasted by the dealer through the RBC protocol.
