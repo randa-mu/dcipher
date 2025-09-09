@@ -63,7 +63,7 @@ where
         .nodes
         .iter()
         .map(|p| {
-            <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve::deser_base64(
+            <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
@@ -111,7 +111,7 @@ where
         .nodes
         .iter()
         .map(|p| {
-            <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve::deser_base64(
+            <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
@@ -268,7 +268,7 @@ where
     let adkg_pks = group_config
         .nodes
         .iter()
-        .map(|p| S::Curve::deser_base64(&p.public_key_material.adkg_pk))
+        .map(|p| S::Curve::deser_compressed_base64(&p.public_key_material.adkg_pk))
         .collect::<Result<Vec<_>, _>>()?;
 
     // Deserialize the transcripts
