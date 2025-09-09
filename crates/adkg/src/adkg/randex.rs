@@ -26,12 +26,13 @@ where
     let msg_count = points_z_i.len();
 
     let e = {
-        if msg_count == t + 1 {
-            // We can either attempt to recover the shares with exactly t + 1 shares (assuming no errors),
-            Some(0)
-        } else if msg_count >= 2 * t + 2 {
-            // Or do error correction with 2t + 1 + e shares (e > 0, number of allowed errors)
+        #[allow(clippy::int_plus_one)]
+        if msg_count >= 2 * t + 2 {
+            // Do an error correction with 2t + 1 + e shares (e > 0, number of allowed errors)
             Some(msg_count - 2 * t - 1)
+        } else if msg_count >= t + 1  { // && msg_count <= 2t + 1
+            // Or we can attempt to recover the shares with exactly t + 1 shares or more, assuming no errors
+            Some(0)
         } else {
             tracing::debug!(
                 msg_count,
