@@ -4,12 +4,13 @@
 
 use crate::InMemoryWriter;
 use crate::config::GroupConfig;
+use crate::scheme::AdkgCliSchemeConfig;
 use crate::transcripts::{
     BroadcastMessages, DirectMessages, EncryptedAdkgTranscript, SerializedBytes,
 };
 use adkg::aba::AbaConfig;
 use adkg::adkg::{AbaCrainInput, AdkgOutput, ShareWithPoly};
-use adkg::helpers::PartyId;
+use adkg::helpers::{PartyId, lagrange_points_interpolate_at, u64_from_usize};
 use adkg::pke::ec_hybrid_chacha20poly1305;
 use adkg::pke::ec_hybrid_chacha20poly1305::{
     HybridCiphertext, MultiHybridCiphertext, NONCE_LENGTH,
@@ -20,118 +21,173 @@ use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
 use adkg::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
 use adkg::vss::acss::AcssConfig;
 use anyhow::{Context, anyhow};
+use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_std::Zero;
+use ark_std::iterable::Iterable;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::{AeadCore, ChaCha20Poly1305, Key, KeyInit, Nonce};
 use dcipher_network::topic::TopicBasedTransport;
 use dcipher_network::topic::dispatcher::TopicDispatcher;
 use dcipher_network::transports::replayable::reader::InMemoryReaderTransport;
 use dcipher_network::transports::replayable::writer::{InMemoryEntry, InMemoryEntryType};
+use dcipher_network::{ReceivedMessage, Recipient, Transport, TransportSender};
+use futures_util::StreamExt;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng, thread_rng};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::ops::Neg;
 use std::sync::Arc;
 use std::time::Duration;
 use utils::dst::{NamedCurveGroup, NamedDynDigest};
-use utils::serialize::fq::FqDeserialize;
+use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
+/// Run adkg for BN254 on G1, and swap ADKG output on G2
 #[allow(clippy::too_many_arguments)]
-pub async fn adkg_dxkr23_bn254_g1_keccak256<TBT>(
+pub async fn adkg_dxkr23_bn254_g1_keccak256_out_g2<TBT>(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
-    scheme_config: AdkgSchemeConfig,
+    scheme_config: AdkgCliSchemeConfig,
     adkg_grace_period: Duration,
     adkg_timeout: Duration,
     topic_transport: Arc<TBT>,
     writer: Option<InMemoryWriter>,
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(
-    AdkgOutput<<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve>,
+    AdkgOutput<ark_bn254::G2Projective>,
     Option<EncryptedAdkgTranscript>,
 )>
 where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config)?;
-    let sk =
-        <<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
-            adkg_sk,
-        )?;
-    let pks = group_config
-        .nodes
-        .iter()
-        .map(|p| {
-            <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve::deser_compressed_base64(
-                &p.public_key_material.adkg_pk,
-            )
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    adkg_dxkr23(
+    let output_generator_g2 = scheme_config.output_generator;
+    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config.adkg_config)?;
+    adkg_dxkr23_pairing_out_g2::<ark_bn254::Bn254, _, _>(
         id,
-        sk,
-        pks,
+        adkg_sk,
         group_config,
+        &output_generator_g2,
+        scheme,
         adkg_grace_period,
         adkg_timeout,
         topic_transport,
         writer,
-        scheme,
         rng,
     )
     .await
 }
 
+/// Run adkg for Bls12-381 on G1, and swap ADKG output on G2
 #[allow(clippy::too_many_arguments)]
-pub async fn adkg_dxkr23_bls12_381_g1_sha256<TBT>(
+pub async fn adkg_dxkr23_bls12_381_g1_sha256_out_g2<TBT>(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
-    scheme_config: AdkgSchemeConfig,
+    scheme_config: AdkgCliSchemeConfig,
     adkg_grace_period: Duration,
     adkg_timeout: Duration,
     topic_transport: Arc<TBT>,
     writer: Option<InMemoryWriter>,
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(
-    AdkgOutput<<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve>,
+    AdkgOutput<ark_bls12_381::G2Projective>,
     Option<EncryptedAdkgTranscript>,
 )>
 where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config)?;
-    let sk =
-        <<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
-            adkg_sk,
-        )?;
-    let pks = group_config
-        .nodes
-        .iter()
-        .map(|p| {
-            <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve::deser_compressed_base64(
-                &p.public_key_material.adkg_pk,
-            )
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    adkg_dxkr23(
+    let output_generator_g2 = scheme_config.output_generator;
+    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config.adkg_config)?;
+    adkg_dxkr23_pairing_out_g2::<ark_bls12_381::Bls12_381, _, _>(
         id,
-        sk,
-        pks,
+        adkg_sk,
         group_config,
+        &output_generator_g2,
+        scheme,
         adkg_grace_period,
         adkg_timeout,
         topic_transport,
         writer,
-        scheme,
         rng,
     )
     .await
 }
 
+#[allow(clippy::too_many_arguments)]
+async fn adkg_dxkr23_pairing_out_g2<E, S, TBT>(
+    id: PartyId,
+    adkg_sk: &str,
+    group_config: &GroupConfig,
+    g2: &str,
+    adkg_scheme: S,
+    adkg_grace_period: Duration,
+    adkg_timeout: Duration,
+    topic_transport: Arc<TBT>,
+    writer: Option<InMemoryWriter>,
+    rng: &mut impl AdkgRng,
+) -> anyhow::Result<(AdkgOutput<E::G2>, Option<EncryptedAdkgTranscript>)>
+where
+    E: Pairing,
+    E::ScalarField: FqSerialize + FqDeserialize,
+    E::G1: PointSerializeCompressed + PointDeserializeCompressed,
+    E::G2: PointSerializeCompressed + PointDeserializeCompressed,
+    S: DXKR23AdkgScheme<Curve = E::G1>,
+    S::Curve: NamedCurveGroup,
+    S::Hash: NamedDynDigest,
+    S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
+    <S::ACSSConfig as AcssConfig<'static, S::Curve, PartyId>>::Output:
+        Into<ShareWithPoly<S::Curve>>,
+    TBT: TopicBasedTransport<Identity = PartyId>,
+{
+    let sk = E::ScalarField::deser_base64(adkg_sk)?;
+    let pks = group_config
+        .nodes
+        .iter()
+        .map(|p| S::Curve::deser_compressed_base64(&p.public_key_material.adkg_pk))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let transport = topic_transport
+        .get_transport_for("adkg_dxkr23_swap_g1_to_g2")
+        .context("failed to obtain transport")?;
+    let t_reconstruction = group_config.t_reconstruction.get();
+    let g = adkg_scheme.generator_g();
+    let g2 = E::G2::deser_compressed_base64(g2)?;
+
+    let adkg_out = adkg_dxkr23(
+        id,
+        sk,
+        pks.clone(),
+        group_config,
+        adkg_grace_period,
+        adkg_timeout,
+        topic_transport,
+        adkg_scheme,
+        rng,
+    )
+    .await?;
+
+    let adkg_out =
+        pairing_swap_g1_to_g2::<E, _>(t_reconstruction, adkg_out, &g, &g2, transport).await?;
+
+    let transcript = if let Some(writer) = writer {
+        match encrypt_transcripts(id, group_config, &writer, &sk, &pks, &mut thread_rng()).await {
+            Ok(transcript) => Some(transcript),
+            Err(e) => {
+                tracing::error!(error = ?e, "Failed to generate ADKG transcript");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    Ok((adkg_out, transcript))
+}
+
+/// Execute the DXKR23 HT-ADKG protocol to obtain a shared secret.
 #[allow(clippy::too_many_arguments)]
 async fn adkg_dxkr23<S, TBT>(
     id: PartyId,
@@ -141,10 +197,9 @@ async fn adkg_dxkr23<S, TBT>(
     adkg_grace_period: Duration,
     adkg_timeout: Duration,
     topic_transport: Arc<TBT>,
-    writer: Option<InMemoryWriter>,
     adkg_scheme: S,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<(AdkgOutput<S::Curve>, Option<EncryptedAdkgTranscript>)>
+) -> anyhow::Result<AdkgOutput<S::Curve>>
 where
     S: DXKR23AdkgScheme,
     S::Curve: NamedCurveGroup,
@@ -188,19 +243,7 @@ where
                     tracing::info!("ADKG has terminated with an Ok output");
                     tracing::info!("Running ADKG until grace period of {}", humantime::format_duration(adkg_grace_period));
                     tokio::time::sleep(adkg_grace_period).await;
-
-                    let transcript = if let Some(writer) = writer {
-                        match encrypt_transcripts(id, group_config, &writer, &sk, &pks, &mut thread_rng()).await {
-                            Ok(transcript) => Some(transcript),
-                            Err(e) => {
-                                tracing::error!(error = ?e, "Failed to generate ADKG transcript");
-                                None
-                            }
-                        }
-                    } else {
-                        None
-                    };
-                    Ok((adkg_out, transcript))
+                    Ok(adkg_out)
                 }
                 Err(e) => {
                     tracing::error!("failed to obtain output from ADKG: {e:?}");
@@ -221,6 +264,126 @@ where
     adkg.stop().await;
 
     Ok(res??)
+}
+
+/// Pairing-based DLEQ proof that there exists an s_j s.t. P_1 = [s_j] G_1 \land P_2 = [s_j] G_2,
+/// using witness s and proof \pi = P_2.
+#[derive(Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "CG: PointSerializeCompressed",
+    deserialize = "CG: PointDeserializeCompressed"
+))]
+struct AdkgSwapPairingGroupMessage<CG>
+where
+    CG: CurveGroup,
+{
+    #[serde(with = "utils::serialize::point::base64")]
+    g2_sj: CG,
+}
+
+/// Using an ADKG output, swap the public keys to a different generator of the same group.
+/// This protocol uses a pairing-based DLEQ proof to swap all the public keys from one group to another.
+async fn pairing_swap_g1_to_g2<E, T>(
+    t_reconstruction: usize,
+    adkg_output: AdkgOutput<E::G1>,
+    g1: &E::G1,
+    g2: &E::G2,
+    mut transport: T,
+) -> anyhow::Result<AdkgOutput<E::G2>>
+where
+    E: Pairing,
+    E::G2: CurveGroup + PointSerializeCompressed + PointDeserializeCompressed,
+    T: Transport<Identity = PartyId>,
+{
+    let node_pks = &adkg_output
+        .node_pks
+        .ok_or(anyhow!("cannot swap group without node pks"))?;
+
+    let sender = transport
+        .sender()
+        .ok_or(anyhow!("failed to obtain transport sender"))?;
+    let mut receiver = transport
+        .receiver_stream()
+        .ok_or(anyhow!("failed to obtain transport sender"))?;
+
+    // Generate the public key on G2. This also corresponds to a DLEQ proof that can be verified by
+    // checking that e([s] G_1, G_2) == e(G_1, [s] G_2) where [s] G_1 is the public key output by the
+    // ADKG, G_1, G_2 are public parameters.
+    let dleq_m = AdkgSwapPairingGroupMessage {
+        g2_sj: *g2 * adkg_output.sk,
+    };
+    let dleq_m = bson::to_vec(&dleq_m)?;
+    if let Err(e) = sender.send(dleq_m, Recipient::AllIncludingSelf).await {
+        tracing::error!(error = ?e, "Failed to send dleq group swap message")
+    }
+
+    // Collect at least t_reconstruction + 1 valid evals to reconstruct the swapped group public key
+    let mut dleq_msgs = BTreeMap::new();
+    loop {
+        let ReceivedMessage {
+            sender, content, ..
+        } = match receiver.next().await {
+            Some(Ok(msg)) => msg,
+            Some(Err(e)) => {
+                tracing::error!(error = ?e, "Failed to receive dleq message");
+                continue;
+            }
+            None => {
+                anyhow::bail!("Stream closed: no more dleq message to receive")
+            }
+        };
+
+        let dleq_j: AdkgSwapPairingGroupMessage<E::G2> = match bson::from_slice(&content) {
+            Ok(dleq_j) => dleq_j,
+            Err(e) => {
+                tracing::warn!(error = ?e, "Failed to decode dleq message");
+                continue;
+            }
+        };
+
+        let Some(g1_sj) = node_pks.get(sender.as_index()) else {
+            anyhow::bail!("adkg output's node_pks missing some ids")
+        };
+
+        // Verify the dleq proof with a pairing operation
+        if !E::multi_pairing([*g1, *g1_sj], [dleq_j.g2_sj, g2.neg()]).is_zero() {
+            tracing::warn!(?sender, "Failed to verify adkg swap dleq proof");
+            continue;
+        }
+
+        // Valid keys, insert.
+        dleq_msgs.insert(sender, dleq_j);
+        #[allow(clippy::int_plus_one)]
+        if dleq_msgs.len() >= t_reconstruction + 1 {
+            // Enough messages, we can interpolate the remaining public keys, and the group public key
+            let points: Vec<_> = dleq_msgs
+                .iter()
+                .map(|(&j, dleq_j)| (j.into(), dleq_j.g2_sj))
+                .collect();
+
+            let group_pk = lagrange_points_interpolate_at(&points, 0);
+            let node_pks = node_pks
+                .iter()
+                .enumerate()
+                .map(|(j, _)| {
+                    let j_node_idx = j + 1;
+                    if let Some(pk_j) = dleq_msgs.get(&PartyId::from(j_node_idx)) {
+                        pk_j.g2_sj
+                    } else {
+                        lagrange_points_interpolate_at(&points, u64_from_usize(j_node_idx))
+                    }
+                })
+                .collect();
+
+            let adkg_out = AdkgOutput {
+                sk: adkg_output.sk,
+                used_sessions: adkg_output.used_sessions,
+                node_pks: Some(node_pks),
+                group_pk: Some(group_pk),
+            };
+            return Ok(adkg_out);
+        }
+    }
 }
 
 pub async fn adkg_dxkr23_bn254_g1_keccak256_rescue(

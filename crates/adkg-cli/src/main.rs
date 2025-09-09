@@ -10,18 +10,17 @@ mod scheme;
 mod transcripts;
 
 use crate::adkg_dxkr23::{
-    adkg_dxkr23_bls12_381_g1_sha256, adkg_dxkr23_bls12_381_g1_sha256_rescue,
-    adkg_dxkr23_bn254_g1_keccak256, adkg_dxkr23_bn254_g1_keccak256_rescue,
+    adkg_dxkr23_bls12_381_g1_sha256_out_g2, adkg_dxkr23_bls12_381_g1_sha256_rescue,
+    adkg_dxkr23_bn254_g1_keccak256_out_g2, adkg_dxkr23_bn254_g1_keccak256_rescue,
 };
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::config::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
 use crate::keygen::{PrivateKeyMaterial, keygen};
-use crate::scheme::{SupportedAdkgScheme, new_scheme_config};
+use crate::scheme::{AdkgCliSchemeConfig, SupportedAdkgScheme, new_scheme_config};
 use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::adkg::AdkgOutput;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
-use adkg::scheme::AdkgSchemeConfig;
 use anyhow::{Context, anyhow};
 use ark_ec::CurveGroup;
 use ark_std::rand;
@@ -158,7 +157,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
 
     match adkg_scheme {
         SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
-            let output = adkg_dxkr23_bn254_g1_keccak256(
+            let output = adkg_dxkr23_bn254_g1_keccak256_out_g2(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -182,7 +181,7 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
         }
 
         SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
-            let output = adkg_dxkr23_bls12_381_g1_sha256(
+            let output = adkg_dxkr23_bls12_381_g1_sha256_out_g2(
                 id,
                 &sk.adkg_sk,
                 &group_config,
@@ -264,7 +263,7 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
                 id,
                 &sk.adkg_sk,
                 &group_config,
-                scheme_config,
+                scheme_config.adkg_config,
                 transcripts,
                 &mut rng,
             )
@@ -285,7 +284,7 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
                 id,
                 &sk.adkg_sk,
                 &group_config,
-                scheme_config,
+                scheme_config.adkg_config,
                 transcripts,
                 &mut rng,
             )
@@ -311,9 +310,9 @@ fn parse_adkg_common(
     priv_file: &PathBuf,
     priv_out: &PathBuf,
     pub_out: &PathBuf,
-) -> anyhow::Result<(AdkgSchemeConfig, GroupConfig, PrivateKeyMaterial)> {
+) -> anyhow::Result<(AdkgCliSchemeConfig, GroupConfig, PrivateKeyMaterial)> {
     // Deserialize the configs
-    let scheme_config: AdkgSchemeConfig =
+    let scheme_config: AdkgCliSchemeConfig =
         toml::from_str(&fs::read_to_string(scheme).context("failed to read scheme file")?)
             .context("failed to parse scheme config")?;
 
