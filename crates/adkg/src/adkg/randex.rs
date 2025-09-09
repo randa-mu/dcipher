@@ -269,7 +269,7 @@ pub fn berlekamp_welch<F>(
 where
     F: Field,
 {
-    if points.len() < 2 * t + 1 {
+    if points.len() < 2 * t + max_errors + 1 {
         panic!("points.len() must be >= 2 * t + max_errors + 1")
     }
 
