@@ -146,7 +146,7 @@ where
     let pks = group_config
         .nodes
         .iter()
-        .map(|p| S::Curve::deser_base64(&p.public_key_material.adkg_pk))
+        .map(|p| S::Curve::deser_compressed_base64(&p.public_key_material.adkg_pk))
         .collect::<Result<Vec<_>, _>>()?;
 
     let transport = topic_transport
@@ -154,7 +154,7 @@ where
         .context("failed to obtain transport")?;
     let t_reconstruction = group_config.t_reconstruction.get();
     let g = adkg_scheme.generator_g();
-    let g2 = E::G2::deser_base64(g2)?;
+    let g2 = E::G2::deser_compressed_base64(g2)?;
 
     let adkg_out = adkg_dxkr23(
         id,
@@ -431,7 +431,7 @@ where
     let adkg_pks = group_config
         .nodes
         .iter()
-        .map(|p| S::Curve::deser_base64(&p.public_key_material.adkg_pk))
+        .map(|p| S::Curve::deser_compressed_base64(&p.public_key_material.adkg_pk))
         .collect::<Result<Vec<_>, _>>()?;
 
     // Deserialize the transcripts
