@@ -384,7 +384,7 @@ where
                     // Make sure the vector contains at least t + 1 points
                     // This is not necessarily the case due to sending vectors - not fixed length
                     // arrays.
-                    if points_si.len() < self.config.t + 1 {
+                    if points_si.len() < self.config.t + 1 || points_ri.len() < self.config.t + 1 {
                         None
                     } else {
                         let si = lagrange_interpolate_at::<CG>(&points_si, self.config.id.into());
