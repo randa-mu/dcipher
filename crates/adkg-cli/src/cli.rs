@@ -1,3 +1,4 @@
+use crate::onlyswaps::GenerateOnlyswapsConfig;
 use crate::scheme::SupportedAdkgScheme;
 use clap::{Parser, Subcommand};
 use libp2p::Multiaddr;
@@ -39,6 +40,9 @@ pub enum Commands {
         about = "Recover your own share by relying on the ADKG transcripts from n - t participants"
     )]
     Rescue(Rescue),
+
+    #[command(about = "Create an onlyswaps-verifier compatible configuration file")]
+    GenerateOnlyswapsConfig(GenerateOnlyswapsConfig),
 }
 
 /// Generate a new scheme configuration

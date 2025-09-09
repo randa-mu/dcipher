@@ -4,15 +4,22 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+alloy = { workspace = true, features = ["serde"] }
 anyhow.workspace = true
 ark-bn254.workspace = true
+ark-ff.workspace = true
+base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 figment = { workspace = true, features = ["toml", "json"] }
 libp2p.workspace = true
 serde.workspace = true
-serde-keys.workspace = true
 shellexpand = "3.1.1"
 utils.workspace = true
 serde_json.workspace = true
-
+humantime-serde = "1.1.1"
+url = { version = "2.5.4", features = ["serde"] }
+serde_with = "3.14.0"
+hex.workspace = true
+tempfile = "3.21.0"
+speculoos = "0.13.0"
 

@@ -5,14 +5,13 @@ mod signing;
 mod util;
 
 mod config;
-mod config_network;
 mod events;
 mod healthcheck_server;
 mod monitoring;
 mod threshold;
 mod transport;
 
-use crate::config::{AppConfig, CliConfig, load_app_config};
+use crate::config::CliConfig;
 use crate::eth::NetworkBus;
 use crate::events::{EventManagement, create_omnievent_management};
 use crate::healthcheck_server::HealthcheckServer;
@@ -21,13 +20,15 @@ use crate::pending::{RequestId, Verification};
 use crate::signing::OnlySwapsSigner;
 use crate::threshold::create_bn254_signer;
 use crate::transport::create_libp2p_transport;
+use ::config::app::{AppConfig, load_app_config};
 use clap::Parser;
 use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // load config files and set up all the agent plumbing
-    let app_config = load_app_config(&CliConfig::parse())?;
+    let cli_config = CliConfig::parse();
+    let app_config = load_app_config(cli_config.config_path)?;
     let healthcheck_server = HealthcheckServer::new(
         app_config.agent.healthcheck_listen_addr,
         app_config.agent.healthcheck_port,

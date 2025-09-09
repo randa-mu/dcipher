@@ -22,7 +22,6 @@ humantime-serde = "1.1.1"
 libp2p.workspace = true
 omnievent.workspace = true
 serde.workspace = true
-serde-keys.workspace = true
 serde_with = { workspace = true, features = ["base64"] }
 speculoos = "0.13.0"
 superalloy.workspace = true

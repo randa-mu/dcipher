@@ -9,6 +9,7 @@ metrics = ["dep:warp", "dep:prometheus", "dcipher-network/metrics"]
 [dependencies]
 # workspace crates
 adkg = { workspace = true, features = ["bn254", "bls12-381"] }
+config.workspace = true
 dcipher-network = { workspace = true, features = ["libp2p", "reader", "writer"] }
 utils = { workspace = true, features = ["bn254", "sha3"] }
 
@@ -51,3 +52,6 @@ humantime.workspace = true
 itertools.workspace = true
 rand.workspace = true
 thiserror.workspace = true
+alloy = { workspace = true, features = ["serde"] }
+humantime-serde = "1.1.1"
+url = "2.5.7"

@@ -48,7 +48,7 @@ bytes.workspace = true
 clap = { workspace = true }
 figment = { workspace = true, features = ["toml", "env"] }
 hex = { workspace = true }
-serde-keys.workspace =  true
+config.workspace =  true
 thiserror.workspace = true
 
 [dev-dependencies]

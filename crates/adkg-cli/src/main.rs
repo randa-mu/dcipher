@@ -6,6 +6,7 @@ mod config;
 mod keygen;
 #[cfg(feature = "metrics")]
 mod metrics;
+mod onlyswaps;
 mod scheme;
 mod transcripts;
 
@@ -16,6 +17,7 @@ use crate::adkg_dxkr23::{
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::config::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
 use crate::keygen::{PrivateKeyMaterial, keygen};
+use crate::onlyswaps::generate_onlyswaps_config;
 use crate::scheme::{AdkgCliSchemeConfig, SupportedAdkgScheme, new_scheme_config};
 use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::adkg::AdkgOutput;
@@ -62,6 +64,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Run(args) => run_adkg(args).await?,
 
         Commands::Rescue(args) => rescue_adkg(args).await?,
+
+        Commands::GenerateOnlyswapsConfig(args) => generate_onlyswaps_config(args).await?,
     }
 
     Ok(())

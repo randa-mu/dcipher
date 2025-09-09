@@ -1,4 +1,4 @@
-use crate::config::AppConfig;
+use config::app::AppConfig;
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
