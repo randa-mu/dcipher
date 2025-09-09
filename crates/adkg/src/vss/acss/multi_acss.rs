@@ -47,7 +47,7 @@ where
     }
 
     /// Start the n parallel ACSS instances in the background.
-    pub fn start<T>(&mut self, s: &CG::ScalarField, rng: &mut impl AdkgRng, transport: T)
+    pub fn start<T>(&mut self, s: ACSSConfig::Input, rng: &mut impl AdkgRng, transport: T)
     where
         T: TopicBasedTransport<Identity = PartyId>,
     {
@@ -57,6 +57,7 @@ where
             .map(|(sender, receiver)| (sender, Some(receiver)))
             .collect();
         self.acss_receivers = receivers;
+        let mut s = Some(s); // need an option for interior mutability...
 
         for (sid, cancel, sender) in izip!(
             SessionId::iter_all(self.n_instances),
@@ -71,17 +72,27 @@ where
             // Spawn a new task for the acss
             self.acss_tasks.spawn({
                 let node_id = self.node_id;
-                let s = *s;
                 let cancellation_token = cancel.clone();
+
+                // s is not cloneable, and we only want to move it when sid == node_id
+                // In order to not move s due to the async move below, we take() s only once
+                // here, and use None when sid != node_id. This allows to move the value only once.
+                let s = if sid == node_id { s.take() } else { None };
+
                 let mut rng = rng
                     .get(AdkgRngType::Acss(sid))
                     .expect("failed to obtain acss rng");
                 async move {
                     // Start the acss tasks
                     let res = if sid == node_id {
-                        acss.deal(&s, cancellation_token, sender, &mut rng)
-                            .instrument(tracing::info_span!("ACSS::deal", ?sid))
-                            .await
+                        acss.deal(
+                            s.expect("can only enter once"), // s must be Some(.) since sid == node_id
+                            cancellation_token,
+                            sender,
+                            &mut rng,
+                        )
+                        .instrument(tracing::info_span!("ACSS::deal", ?sid))
+                        .await
                     } else {
                         acss.get_share(sid.into(), cancellation_token, sender, &mut rng)
                             .instrument(tracing::info_span!("ACSS::get_share", ?sid))

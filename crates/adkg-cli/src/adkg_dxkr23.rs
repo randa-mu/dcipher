@@ -1,5 +1,6 @@
-//! Provides implementations to execute the Practical Asynchronous Distributed Key Generation (DYX+22)
-//! described in <https://eprint.iacr.org/2021/1591.pdf>.
+//! Provides implementations to execute a high-threshold asynchronous distributed key generation using
+//! the scheme described in [Practical Asynchronous High-threshold Distributed Key Generation and Distributed Polynomial Sampling](https://www.usenix.org/system/files/usenixsecurity23-das.pdf)
+//! by Das et al.
 
 use crate::InMemoryWriter;
 use crate::config::GroupConfig;
@@ -14,9 +15,9 @@ use adkg::pke::ec_hybrid_chacha20poly1305::{
     HybridCiphertext, MultiHybridCiphertext, NONCE_LENGTH,
 };
 use adkg::rand::AdkgRng;
-use adkg::scheme::bls12_381::DYX22Bls12_381G1Sha256;
-use adkg::scheme::bn254::DYX22Bn254G1Keccak256;
-use adkg::scheme::{AdkgScheme, AdkgSchemeConfig};
+use adkg::scheme::bls12_381::DXKR23Bls12_381G1Sha256;
+use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
+use adkg::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
 use adkg::vss::acss::AcssConfig;
 use anyhow::{Context, anyhow};
 use ark_ec::{AffineRepr, CurveGroup, Group};
@@ -36,7 +37,7 @@ use utils::serialize::fq::FqDeserialize;
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 #[allow(clippy::too_many_arguments)]
-pub async fn adkg_dyx22_bn254_g1_keccak256<TBT>(
+pub async fn adkg_dxkr23_bn254_g1_keccak256<TBT>(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
@@ -47,27 +48,28 @@ pub async fn adkg_dyx22_bn254_g1_keccak256<TBT>(
     writer: Option<InMemoryWriter>,
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(
-    AdkgOutput<<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve>,
+    AdkgOutput<<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve>,
     Option<EncryptedAdkgTranscript>,
 )>
 where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let scheme = DYX22Bn254G1Keccak256::try_from(scheme_config)?;
-    let sk = <<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
-        adkg_sk,
-    )?;
+    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config)?;
+    let sk =
+        <<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
+            adkg_sk,
+        )?;
     let pks = group_config
         .nodes
         .iter()
         .map(|p| {
-            <DYX22Bn254G1Keccak256 as AdkgScheme>::Curve::deser_compressed_base64(
+            <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    adkg_dyx22(
+    adkg_dxkr23(
         id,
         sk,
         pks,
@@ -83,7 +85,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn adkg_dyx22_bls12_381_g1_sha256<TBT>(
+pub async fn adkg_dxkr23_bls12_381_g1_sha256<TBT>(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
@@ -94,27 +96,28 @@ pub async fn adkg_dyx22_bls12_381_g1_sha256<TBT>(
     writer: Option<InMemoryWriter>,
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(
-    AdkgOutput<<DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve>,
+    AdkgOutput<<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve>,
     Option<EncryptedAdkgTranscript>,
 )>
 where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let scheme = DYX22Bls12_381G1Sha256::try_from(scheme_config)?;
-    let sk = <<DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
-        adkg_sk,
-    )?;
+    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config)?;
+    let sk =
+        <<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve as Group>::ScalarField::deser_base64(
+            adkg_sk,
+        )?;
     let pks = group_config
         .nodes
         .iter()
         .map(|p| {
-            <DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve::deser_compressed_base64(
+            <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    adkg_dyx22(
+    adkg_dxkr23(
         id,
         sk,
         pks,
@@ -130,7 +133,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn adkg_dyx22<S, TBT>(
+async fn adkg_dxkr23<S, TBT>(
     id: PartyId,
     sk: <<S::Curve as CurveGroup>::Affine as AffineRepr>::ScalarField,
     pks: Vec<S::Curve>,
@@ -143,7 +146,7 @@ async fn adkg_dyx22<S, TBT>(
     rng: &mut impl AdkgRng,
 ) -> anyhow::Result<(AdkgOutput<S::Curve>, Option<EncryptedAdkgTranscript>)>
 where
-    S: AdkgScheme,
+    S: DXKR23AdkgScheme,
     S::Curve: NamedCurveGroup,
     S::Hash: NamedDynDigest,
     S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
@@ -151,7 +154,14 @@ where
         Into<ShareWithPoly<S::Curve>>,
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
-    let mut adkg = adkg_scheme.new_adkg(id, group_config.n, group_config.t, sk, pks.clone())?;
+    let mut adkg = adkg_scheme.new_adkg(
+        id,
+        group_config.n,
+        group_config.t,
+        group_config.t_reconstruction,
+        sk,
+        pks.clone(),
+    )?;
 
     // Calculate time to sleep before actively executing the adkg
     let sleep_duration = (group_config.start_time - chrono::Utc::now())
@@ -213,27 +223,27 @@ where
     Ok(res??)
 }
 
-pub async fn adkg_dyx22_bn254_g1_keccak256_rescue(
+pub async fn adkg_dxkr23_bn254_g1_keccak256_rescue(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
     scheme_config: AdkgSchemeConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve>> {
-    let scheme = DYX22Bn254G1Keccak256::try_from(scheme_config)?;
+) -> anyhow::Result<AdkgOutput<<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve>> {
+    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config)?;
     adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
 }
 
-pub async fn adkg_dyx22_bls12_381_g1_sha256_rescue(
+pub async fn adkg_dxkr23_bls12_381_g1_sha256_rescue(
     id: PartyId,
     adkg_sk: &str,
     group_config: &GroupConfig,
     scheme_config: AdkgSchemeConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<<DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve>> {
-    let scheme = DYX22Bls12_381G1Sha256::try_from(scheme_config)?;
+) -> anyhow::Result<AdkgOutput<<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve>> {
+    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config)?;
     adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
 }
 
@@ -246,7 +256,7 @@ async fn adkg_rescue<S>(
     scheme: S,
 ) -> anyhow::Result<AdkgOutput<S::Curve>>
 where
-    S: AdkgScheme,
+    S: DXKR23AdkgScheme,
     S::Curve: NamedCurveGroup,
     <S::Curve as Group>::ScalarField: FqDeserialize,
     S::Hash: NamedDynDigest,
@@ -263,7 +273,7 @@ where
 
     // Deserialize the transcripts
     let transcripts = transcripts.into_iter().map(|t| {
-        serde_json::from_slice::<DYX22Transcript>(&t).context("failed to deserialize transcripts")
+        serde_json::from_slice::<DXKR23Transcript>(&t).context("failed to deserialize transcripts")
     });
 
     // Decrypt the transcripts
@@ -312,6 +322,7 @@ where
         id,
         group_config.n,
         group_config.t,
+        group_config.t_reconstruction,
         adkg_sk,
         adkg_pks.clone(),
     )?;
@@ -343,7 +354,7 @@ struct ChaCha20BroadcastCiphertext {
 /// Authenticity of the transcript is obtained by relying on hybrid encryption w/ static public keys.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize)]
-struct DYX22Transcript {
+struct DXKR23Transcript {
     /// identifier of the party who created the transcript
     id: PartyId,
 
@@ -445,7 +456,7 @@ where
         .context("failed to encrypt direct messages")?;
 
     // Serialize the encrypted transcript w/ json for readability
-    let transcript = serde_json::to_vec(&DYX22Transcript {
+    let transcript = serde_json::to_vec(&DXKR23Transcript {
         id,
         broadcasts_key_ct: enc_broadcast_key,
         broadcasts_nonce: broadcasts_nonce.into(),
@@ -460,7 +471,7 @@ fn decrypt_transcript<CG>(
     receiver_id: PartyId,
     adkg_sk: &CG::ScalarField, // the secret sk such that g * sk == pks[id]
     adkg_pks: &[CG],
-    transcript_ct: DYX22Transcript,
+    transcript_ct: DXKR23Transcript,
 ) -> anyhow::Result<TranscriptData>
 where
     CG: CurveGroup + PointSerializeCompressed,

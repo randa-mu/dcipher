@@ -8,5 +8,6 @@ pub mod rand;
 pub mod rbc;
 pub mod vss;
 
+mod pok;
 #[cfg(feature = "scheme")]
 pub mod scheme;

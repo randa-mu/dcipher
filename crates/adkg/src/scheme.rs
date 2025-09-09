@@ -5,6 +5,7 @@ use crate::adkg::Adkg;
 use crate::helpers::PartyId;
 use crate::rbc::ReliableBroadcastConfig;
 use crate::vss::acss::AcssConfig;
+use crate::vss::acss::hbacss0::PedersenSecret;
 use ark_ec::{CurveGroup, Group};
 use ark_std::UniformRand;
 use digest::DynDigest;
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::num::NonZeroUsize;
 use utils::dst::{CurveId, HashId, NamedCurveGroup, NamedDynDigest};
 use utils::hash_to_curve::HashToCurve;
+use utils::serialize::SerializationError;
 use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
@@ -30,7 +32,7 @@ pub struct AdkgSchemeConfig {
     generator_h: String,
 }
 
-pub trait AdkgScheme: Send + Sync + 'static
+pub trait DXKR23AdkgScheme: Send + Sync + 'static
 where
     <Self::Curve as Group>::ScalarField: FqSerialize + FqDeserialize,
 {
@@ -41,7 +43,12 @@ where
     type Hash: Default + DynDigest + BlockSizeUser + Clone;
 
     type RBCConfig: ReliableBroadcastConfig<'static, PartyId>;
-    type ACSSConfig: AcssConfig<'static, Self::Curve, PartyId>;
+    type ACSSConfig: AcssConfig<
+            'static,
+            Self::Curve,
+            PartyId,
+            Input = Vec<PedersenSecret<<Self::Curve as Group>::ScalarField>>,
+        >;
     type ABAConfig: AbaConfig<'static, PartyId>;
 
     fn generator_g(&self) -> Self::Curve;
@@ -61,6 +68,7 @@ where
         id: PartyId,
         n: NonZeroUsize,
         t: NonZeroUsize,
+        t_reconstruction: NonZeroUsize,
         sk: <Self::Curve as Group>::ScalarField,
         pks: Vec<Self::Curve>,
     ) -> Result<
@@ -72,6 +80,33 @@ where
         Self::Hash: NamedDynDigest;
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum SchemeError {
+    #[error("bad curve id")]
+    BadCurveId,
+
+    #[error("bad hash id")]
+    BadHashId,
+
+    #[error("generator does not match expected")]
+    BadGenerator,
+
+    #[error("unsupported adkg scheme")]
+    UnsupportedScheme,
+
+    #[error("unsupported adkg version")]
+    UnsupportedAdkgVersion,
+
+    #[error("threshold too high: t must be <= (n - 1) / 3 = {0}")]
+    ThresholdTooHigh(usize),
+
+    #[error("reconstruction threshold not in [t, n - t - 1] = [{0}, {1}]")]
+    ReconstructionThresholdNotInRange(usize, usize),
+
+    #[error("failed to deserialize point")]
+    PointDeserialize(#[from] SerializationError),
+}
+
 #[cfg(feature = "bn254")]
 pub mod bn254 {
     use crate::aba::crain20::AbaCrain20Config;
@@ -80,23 +115,22 @@ pub mod bn254 {
     use crate::helpers::PartyId;
     use crate::network::RetryStrategy;
     use crate::rbc::r4::Rbc4RoundsConfig;
-    use crate::scheme::ADKG_VERSION;
-    use crate::scheme::{AdkgScheme, AdkgSchemeConfig};
+    use crate::scheme::{ADKG_VERSION, SchemeError};
+    use crate::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
     use crate::vss::acss::hbacss0::HbAcss0Config;
     use ark_ec::Group;
     use digest::core_api::BlockSizeUser;
     use std::num::NonZeroUsize;
     use utils::dst::{EncodingType, MapId, NamedCurveGroup, NamedDynDigest, Rfc9380DstBuilder};
     use utils::hash_to_curve::HashToCurve;
-    use utils::serialize::SerializationError;
     use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-    pub struct DYX22Bn254G1Keccak256 {
+    pub struct DXKR23Bn254G1Keccak256 {
         app_name: String,
         generator_h: ark_bn254::G1Projective,
     }
 
-    impl DYX22Bn254G1Keccak256 {
+    impl DXKR23Bn254G1Keccak256 {
         pub fn new(app_name: String, generator_h: ark_bn254::G1Projective) -> Self {
             Self {
                 app_name,
@@ -105,10 +139,10 @@ pub mod bn254 {
         }
     }
 
-    impl AdkgScheme for DYX22Bn254G1Keccak256 {
-        const NAME: &'static str = "DYX22-Bn254G1-Keccak256";
+    impl DXKR23AdkgScheme for DXKR23Bn254G1Keccak256 {
+        const NAME: &'static str = "DXKR23-Bn254G1-Keccak256";
 
-        type Error = DYX22Bn254G1Keccak256Error;
+        type Error = SchemeError;
         type Curve = ark_bn254::G1Projective;
         type Hash = sha3::Keccak256;
 
@@ -128,6 +162,7 @@ pub mod bn254 {
             id: PartyId,
             n: NonZeroUsize,
             t: NonZeroUsize,
+            t_reconstruction: NonZeroUsize,
             sk: <Self::Curve as Group>::ScalarField,
             pks: Vec<Self::Curve>,
         ) -> Result<
@@ -140,9 +175,18 @@ pub mod bn254 {
         {
             let n = n.get();
             let t = t.get();
+            let t_reconstruction = t_reconstruction.get();
             let max_t = (n - 1) / 3;
             if t > max_t {
                 Err(Self::Error::ThresholdTooHigh(max_t))?
+            }
+
+            let max_t_reconstruction = n - t - 1;
+            if t_reconstruction < t || t_reconstruction > max_t_reconstruction {
+                Err(Self::Error::ReconstructionThresholdNotInRange(
+                    t,
+                    max_t_reconstruction,
+                ))?
             }
 
             let retry_strategy = RetryStrategy::None;
@@ -157,6 +201,7 @@ pub mod bn254 {
                 n,
                 t,
                 generator_g,
+                self.generator_h,
                 retry_strategy,
             );
             let aba_config =
@@ -166,6 +211,7 @@ pub mod bn254 {
                 id,
                 n,
                 t,
+                t_reconstruction,
                 generator_g,
                 self.generator_h,
                 rbc_config,
@@ -175,35 +221,11 @@ pub mod bn254 {
         }
     }
 
-    #[derive(thiserror::Error, Debug)]
-    pub enum DYX22Bn254G1Keccak256Error {
-        #[error("bad curve id")]
-        BadCurveId,
-
-        #[error("bad hash id")]
-        BadHashId,
-
-        #[error("generator does not match expected")]
-        BadGenerator,
-
-        #[error("unsupported adkg scheme")]
-        UnsupportedScheme,
-
-        #[error("unsupported adkg version")]
-        UnsupportedAdkgVersion,
-
-        #[error("threshold too high: t must be <= (n - 1) / 3 = {0}")]
-        ThresholdTooHigh(usize),
-
-        #[error("failed to deserialize point")]
-        PointDeserialize(#[from] SerializationError),
-    }
-
-    impl TryFrom<AdkgSchemeConfig> for DYX22Bn254G1Keccak256 {
-        type Error = DYX22Bn254G1Keccak256Error;
+    impl TryFrom<AdkgSchemeConfig> for DXKR23Bn254G1Keccak256 {
+        type Error = SchemeError;
 
         fn try_from(value: AdkgSchemeConfig) -> Result<Self, Self::Error> {
-            if value.adkg_scheme_name != <Self as AdkgScheme>::NAME {
+            if value.adkg_scheme_name != <Self as DXKR23AdkgScheme>::NAME {
                 Err(Self::Error::UnsupportedScheme)?
             }
 
@@ -211,18 +233,18 @@ pub mod bn254 {
                 Err(Self::Error::UnsupportedAdkgVersion)?
             }
 
-            if value.curve_id != <<Self as AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
+            if value.curve_id != <<Self as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
                 Err(Self::Error::BadCurveId)?
             }
 
-            if value.hash_id != <<Self as AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
+            if value.hash_id != <<Self as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
                 Err(Self::Error::BadHashId)?
             }
 
             let generator_g =
-                <Self as AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
+                <Self as DXKR23AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
             let generator_h =
-                <Self as AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
+                <Self as DXKR23AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
             let scheme = Self::new(value.app_name, generator_h);
 
             // Make sure that the generator corresponds to the dynamically computed generator
@@ -234,8 +256,8 @@ pub mod bn254 {
         }
     }
 
-    impl From<DYX22Bn254G1Keccak256> for AdkgSchemeConfig {
-        fn from(value: DYX22Bn254G1Keccak256) -> Self {
+    impl From<DXKR23Bn254G1Keccak256> for AdkgSchemeConfig {
+        fn from(value: DXKR23Bn254G1Keccak256) -> Self {
             let generator_g = value
                 .generator_g()
                 .ser_compressed_base64()
@@ -247,12 +269,13 @@ pub mod bn254 {
             Self {
                 app_name: value.app_name,
                 adkg_version: ADKG_VERSION.to_owned(),
-                adkg_scheme_name: <DYX22Bn254G1Keccak256 as AdkgScheme>::NAME.to_owned(),
+                adkg_scheme_name: <DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::NAME.to_owned(),
                 generator_g,
                 generator_h,
                 curve_id:
-                    <<DYX22Bn254G1Keccak256 as AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
-                hash_id: <<DYX22Bn254G1Keccak256 as AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
+                    <<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
+                hash_id:
+                    <<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
             }
         }
     }
@@ -284,23 +307,22 @@ pub mod bls12_381 {
     use crate::helpers::PartyId;
     use crate::network::RetryStrategy;
     use crate::rbc::r4::Rbc4RoundsConfig;
-    use crate::scheme::ADKG_VERSION;
-    use crate::scheme::{AdkgScheme, AdkgSchemeConfig};
+    use crate::scheme::{ADKG_VERSION, SchemeError};
+    use crate::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
     use crate::vss::acss::hbacss0::HbAcss0Config;
     use ark_ec::Group;
     use digest::core_api::BlockSizeUser;
     use std::num::NonZeroUsize;
     use utils::dst::{EncodingType, MapId, NamedCurveGroup, NamedDynDigest, Rfc9380DstBuilder};
     use utils::hash_to_curve::HashToCurve;
-    use utils::serialize::SerializationError;
     use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-    pub struct DYX22Bls12_381G1Sha256 {
+    pub struct DXKR23Bls12_381G1Sha256 {
         app_name: String,
         generator_h: ark_bls12_381::G1Projective,
     }
 
-    impl DYX22Bls12_381G1Sha256 {
+    impl DXKR23Bls12_381G1Sha256 {
         pub fn new(app_name: String, generator_h: ark_bls12_381::G1Projective) -> Self {
             Self {
                 app_name,
@@ -309,10 +331,10 @@ pub mod bls12_381 {
         }
     }
 
-    impl AdkgScheme for DYX22Bls12_381G1Sha256 {
-        const NAME: &'static str = "DYX22-Bls12_381G1-Sha256";
+    impl DXKR23AdkgScheme for DXKR23Bls12_381G1Sha256 {
+        const NAME: &'static str = "DXKR23-Bls12_381G1-Sha256";
 
-        type Error = DYX22Bls12_381G1Sha256Error;
+        type Error = SchemeError;
         type Curve = ark_bls12_381::G1Projective;
         type Hash = sha2::Sha256;
 
@@ -324,7 +346,7 @@ pub mod bls12_381 {
             let app_name = format!("ADKG-{ADKG_VERSION}-{}", self.app_name)
                 .as_bytes()
                 .to_owned();
-            get_generator_g_sswu::<_, Self::Hash>(app_name)
+            get_generator_g_svdw::<_, Self::Hash>(app_name)
         }
 
         fn new_adkg(
@@ -332,6 +354,7 @@ pub mod bls12_381 {
             id: PartyId,
             n: NonZeroUsize,
             t: NonZeroUsize,
+            t_reconstruction: NonZeroUsize,
             sk: <Self::Curve as Group>::ScalarField,
             pks: Vec<Self::Curve>,
         ) -> Result<
@@ -344,9 +367,18 @@ pub mod bls12_381 {
         {
             let n = n.get();
             let t = t.get();
+            let t_reconstruction = t_reconstruction.get();
             let max_t = (n - 1) / 3;
             if t > max_t {
                 Err(Self::Error::ThresholdTooHigh(max_t))?
+            }
+
+            let max_t_reconstruction = n - t - 1;
+            if t_reconstruction < t || t_reconstruction > max_t_reconstruction {
+                Err(Self::Error::ReconstructionThresholdNotInRange(
+                    t,
+                    max_t_reconstruction,
+                ))?
             }
 
             let retry_strategy = RetryStrategy::None;
@@ -361,6 +393,7 @@ pub mod bls12_381 {
                 n,
                 t,
                 generator_g,
+                self.generator_h,
                 retry_strategy,
             );
             let aba_config =
@@ -370,6 +403,7 @@ pub mod bls12_381 {
                 id,
                 n,
                 t,
+                t_reconstruction,
                 generator_g,
                 self.generator_h,
                 rbc_config,
@@ -379,35 +413,11 @@ pub mod bls12_381 {
         }
     }
 
-    #[derive(thiserror::Error, Debug)]
-    pub enum DYX22Bls12_381G1Sha256Error {
-        #[error("bad curve id")]
-        BadCurveId,
-
-        #[error("bad hash id")]
-        BadHashId,
-
-        #[error("generator does not match expected")]
-        BadGenerator,
-
-        #[error("unsupported adkg scheme")]
-        UnsupportedScheme,
-
-        #[error("unsupported adkg version")]
-        UnsupportedAdkgVersion,
-
-        #[error("threshold too high: t must be <= (n - 1) / 3 = {0}")]
-        ThresholdTooHigh(usize),
-
-        #[error("failed to deserialize point")]
-        PointDeserialize(#[from] SerializationError),
-    }
-
-    impl TryFrom<AdkgSchemeConfig> for DYX22Bls12_381G1Sha256 {
-        type Error = DYX22Bls12_381G1Sha256Error;
+    impl TryFrom<AdkgSchemeConfig> for DXKR23Bls12_381G1Sha256 {
+        type Error = SchemeError;
 
         fn try_from(value: AdkgSchemeConfig) -> Result<Self, Self::Error> {
-            if value.adkg_scheme_name != <Self as AdkgScheme>::NAME {
+            if value.adkg_scheme_name != <Self as DXKR23AdkgScheme>::NAME {
                 Err(Self::Error::UnsupportedScheme)?
             }
 
@@ -415,18 +425,18 @@ pub mod bls12_381 {
                 Err(Self::Error::UnsupportedAdkgVersion)?
             }
 
-            if value.curve_id != <<Self as AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
+            if value.curve_id != <<Self as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID {
                 Err(Self::Error::BadCurveId)?
             }
 
-            if value.hash_id != <<Self as AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
+            if value.hash_id != <<Self as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID {
                 Err(Self::Error::BadHashId)?
             }
 
             let generator_g =
-                <Self as AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
+                <Self as DXKR23AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
             let generator_h =
-                <Self as AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
+                <Self as DXKR23AdkgScheme>::Curve::deser_compressed_base64(&value.generator_g)?;
             let scheme = Self::new(value.app_name, generator_h);
 
             // Make sure that the generator corresponds to the dynamically computed generator
@@ -438,8 +448,8 @@ pub mod bls12_381 {
         }
     }
 
-    impl From<DYX22Bls12_381G1Sha256> for AdkgSchemeConfig {
-        fn from(value: DYX22Bls12_381G1Sha256) -> Self {
+    impl From<DXKR23Bls12_381G1Sha256> for AdkgSchemeConfig {
+        fn from(value: DXKR23Bls12_381G1Sha256) -> Self {
             let generator_g = value
                 .generator_g()
                 .ser_compressed_base64()
@@ -451,17 +461,17 @@ pub mod bls12_381 {
             Self {
                 app_name: value.app_name,
                 adkg_version: ADKG_VERSION.to_owned(),
-                adkg_scheme_name: <DYX22Bls12_381G1Sha256 as AdkgScheme>::NAME.to_owned(),
+                adkg_scheme_name: <DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::NAME.to_owned(),
                 generator_g,
                 generator_h,
                 curve_id:
-                    <<DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
-                hash_id: <<DYX22Bls12_381G1Sha256 as AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
+                    <<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve as NamedCurveGroup>::CURVE_ID,
+                hash_id: <<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Hash as NamedDynDigest>::HASH_ID,
             }
         }
     }
 
-    fn get_generator_g_sswu<CG, H>(app_name: Vec<u8>) -> CG
+    fn get_generator_g_svdw<CG, H>(app_name: Vec<u8>) -> CG
     where
         CG: NamedCurveGroup + HashToCurve,
         H: Default + NamedDynDigest + BlockSizeUser + Clone,
@@ -470,7 +480,7 @@ pub mod bls12_381 {
             .with_application_name(app_name)
             .with_curve::<CG>()
             .with_hash::<H>()
-            .with_mapping(MapId::SSWU)
+            .with_mapping(MapId::SVDW)
             .with_encoding(EncodingType::Uniform)
             .with_suffix(b"GENERATORS".to_vec())
             .build()

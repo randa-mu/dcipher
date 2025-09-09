@@ -1,3 +1,4 @@
+mod randex;
 pub(crate) mod types;
 
 /// Re-export types required by ADKG trait bounds
@@ -7,24 +8,27 @@ pub use types::ShareWithPoly;
 use crate::aba::crain20::AbaInput;
 use crate::aba::multi_aba::MultiAba;
 use crate::aba::{AbaConfig, Estimate};
-use crate::helpers::{
-    PartyId, SessionId, eval_poly, lagrange_points_interpolate_at, u64_from_usize,
-};
-use crate::network::{RetryStrategy, broadcast_with_self};
-use crate::nizk::{NIZKDleqProof, NizkError};
+use crate::adkg::randex::build_randex_matrices;
+use crate::adkg::types::{AdkgKeyMessage, AdkgRandExMessage};
+use crate::helpers::{PartyId, SessionId, lagrange_points_interpolate_at};
+use crate::network::{RetryStrategy, broadcast_with_self, send_serialize_helper};
+use crate::pok::{PokError, PokProof};
 use crate::rand::{AdkgRng, AdkgRngType};
 use crate::rbc::ReliableBroadcastConfig;
 use crate::rbc::multi_rbc::MultiRbc;
 use crate::vss::acss::AcssConfig;
+use crate::vss::acss::hbacss0::PedersenSecret;
 use crate::vss::acss::multi_acss::MultiAcss;
-use ark_ec::CurveGroup;
+use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_ff::Zero;
 use ark_std::UniformRand;
 use dcipher_network::topic::TopicBasedTransport;
-use dcipher_network::{ReceivedMessage, Transport};
+use dcipher_network::{ReceivedMessage, Recipient, Transport};
 use digest::DynDigest;
 use digest::core_api::BlockSizeUser;
 use futures::StreamExt;
-use rand::rngs::OsRng;
+use itertools::izip;
+use nalgebra::RowDVector;
 use std::collections::{BTreeMap, HashSet};
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -35,15 +39,14 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use types::{
-    AdkgMessage, AdkgPublicKeyMessage, CompletedAcssSessions, LazyCoinKeys, NotifyMap,
-    NotifyPredicate, SharedState,
+    AdkgMessage, CompletedAcssSessions, LazyCoinKeys, NotifyMap, NotifyPredicate, SharedState,
 };
 use utils::dst::{NamedCurveGroup, NamedDynDigest, Rfc9380DstBuilder};
 use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 const APPNAME: &[u8] = b"ADKG-v1";
-const NIZK_DLEQ_SUFFIX: &[u8] = b"NIZK_DLEQ";
+const KEY_POK_SUFFIX: &[u8] = b"KEY_POK";
 
 pub struct Adkg<CG, H, RBCConfig, ACSSConfig, ABAConfig>
 where
@@ -56,9 +59,11 @@ where
     id: PartyId,
     n: usize,
     t: usize,
+    t_reconstruction: usize,
+
     g: CG,
     h: CG,
-    nizk_dleq_dst: Vec<u8>,
+    pok_dst: Vec<u8>,
     cancel: CancellationToken,
 
     rbc_task: Option<JoinHandle<()>>,
@@ -77,8 +82,8 @@ pub enum AdkgError {
     #[error("failed to initialize adkg transport")]
     TransportInit,
 
-    #[error("nizk proof error: `{1}`")]
-    Nizk(#[source] NizkError, &'static str),
+    #[error("pok error: `{1}`")]
+    Pok(#[source] PokError, &'static str),
 
     #[error("failed to serialize bson: `{1}`")]
     BsonSer(#[source] bson::ser::Error, &'static str),
@@ -94,6 +99,9 @@ pub enum AdkgError {
 
     #[error("failed to derive group public key")]
     DeriveGroupPublicKey,
+
+    #[error("failed to complete randomness extraction phase")]
+    RandEx,
 }
 
 pub struct AdkgOutput<CG: CurveGroup> {
@@ -116,36 +124,54 @@ where
         id: PartyId,
         n: usize,
         t: usize,
+        t_reconstruction: usize,
         g: CG,
         h: CG,
         rbc_config: Arc<RBCConfig>,
         acss_config: Arc<ACSSConfig>,
         aba_config: Arc<ABAConfig>,
     ) -> Self {
+        // Check bounds
+        if n < 3 * t + 1 {
+            panic!(
+                "t must be <= (n - 1) / 3 = {}, got n = {n}, t = {t}",
+                (n - 1) / 3
+            )
+        }
+        if t_reconstruction < t || t_reconstruction >= n - t {
+            panic!(
+                "reconstruction threshold ({}) must be in [t, n - t - 1] == [{t}, {}]",
+                t_reconstruction,
+                n - t - 1
+            );
+        }
+
         let multi_rbc = MultiRbc::new(id, n, rbc_config);
         let multi_acss = MultiAcss::new(id, n, acss_config);
         let multi_aba = MultiAba::new(id, n, aba_config);
 
-        // Generate a DST in the following format: ADKG-v1_%CURVE_NAME%_XMD:%HASH_NAME%_RO_NIZK_DLEQ_
-        // e.g.: ADKG-v1_BN254G1_XMD:SHA3-256_RO_NIZK_DLEQ_
-        let dst = Rfc9380DstBuilder::empty()
+        // Generate a DST in the following format: ADKG-v1_%CURVE_NAME%_XMD:%HASH_NAME%_RO_KEY_POK_
+        // e.g.: ADKG-v1_BN254G1_XMD:SHA3-256_RO_KEY_POK_
+        let pok_dst = Rfc9380DstBuilder::empty()
             .with_application_name(APPNAME.to_vec())
             .with_curve::<CG>()
             .with_hash::<H>()
-            .with_suffix(NIZK_DLEQ_SUFFIX.to_vec())
-            .build();
+            .with_suffix(KEY_POK_SUFFIX.to_vec())
+            .build()
+            .into();
 
         Self {
             id,
             n,
             t,
+            t_reconstruction,
             g,
             h,
             cancel: CancellationToken::new(),
             rbc_task: None,
             acss_task: None,
             shared_state: SharedState::new(id, n, t, multi_rbc, multi_acss, multi_aba).into(),
-            nizk_dleq_dst: dst.into(),
+            pok_dst,
             _h: PhantomData,
         }
     }
@@ -160,8 +186,8 @@ where
     CG::ScalarField: FqSerialize + FqDeserialize,
     H: Default + DynDigest + BlockSizeUser + Clone + 'static,
     RBCConfig: ReliableBroadcastConfig<'static, PartyId>,
-    ACSSConfig: AcssConfig<'static, CG, PartyId>,
-    ACSSConfig::Output: Sized + Clone + Into<ShareWithPoly<CG>>,
+    ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Vec<PedersenSecret<CG::ScalarField>>>,
+    ACSSConfig::Output: Into<ShareWithPoly<CG>>,
     ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<CG>>,
 {
     pub async fn start<T>(
@@ -241,6 +267,10 @@ where
     where
         T: TopicBasedTransport<Identity = PartyId>,
     {
+        // Either one or two secrets are required depending on the reconstruction threshold. Greater than
+        // t, two secrets, one otherwise.
+        let shares_per_acss: usize = 1 + usize::from(self.t_reconstruction > self.t);
+
         let state = self.shared_state.clone();
         let mut adkg_transport = transport
             .get_transport_for("adkg".to_string())
@@ -255,12 +285,19 @@ where
             .get(AdkgRngType::AcssSecret)
             .map_err(|e| AdkgError::Rng(e.into(), "failed to get acss secret rng"))?;
 
-        // Generate a random secret scalar to be used in the node's ACSS
-        let s = CG::ScalarField::rand(&mut acss_rng);
+        // Generate random secret scalars to be used in the node's ACSS
+        let s: Vec<_> = (0..shares_per_acss)
+            .map(|_| {
+                let a = CG::ScalarField::rand(&mut acss_rng);
+                let a_hat = CG::ScalarField::rand(&mut acss_rng);
+                PedersenSecret { s: a, r: a_hat }
+            })
+            .collect();
 
         // Generate predicates for each of the RBCs
         let rbc_predicates: Vec<_> = PartyId::iter_all(self.n)
             .map(|i| NotifyPredicate {
+                min_size: self.n - self.t,
                 completed_acss: state.completed_acss_outputs.clone(),
                 expected_sender: i,
             })
@@ -271,7 +308,7 @@ where
             .multi_acss
             .lock()
             .await
-            .start(&s, rng, transport.clone());
+            .start(s, rng, transport.clone());
         state
             .multi_rbc
             .lock()
@@ -340,63 +377,47 @@ where
         };
 
         // We got the final list of parties, enough ACSS instances have completed
-        let shares: Vec<_> = state
+        // 24: Let T be the output of the MVBA protocol
+        let acss_outputs: Vec<_> = state
             .completed_acss_outputs
             .filter_outputs(final_sessions.iter())
             .collect();
 
-        // 42: z_i = \sum_{k \in T} s_{k, i}
-        // z_i is the sum of the ACSS shares with id in final_parties
-        let z_i: CG::ScalarField = shares
-            .iter()
-            .filter_map(|(k, v)| {
-                if final_sessions.contains(k) {
-                    Some(v.share)
-                } else {
-                    None
-                }
-            })
-            .sum();
+        // Randomness extraction phase: recover pedersen commits, shares z_i, z_hat_i, and, optionally,
+        // messages for the next round.
+        let (z_i, z_hat_i, ped_commits, key_messages) = self
+            .randex_phase::<T::Transport>(
+                shares_per_acss,
+                acss_outputs,
+                &adkg_sender,
+                &mut adkg_receiver,
+            )
+            .await?;
 
-        // 43 Let \pi_i be the NIZK proof of log_g g^{z_i} = log_h h^{z_i}
-        let pk_i = self.h * z_i;
-        let pi_i: NIZKDleqProof<CG, H> = NIZKDleqProof::prove(
-            &z_i,
-            &self.g,
-            &self.h,
-            &(self.g * z_i),
-            &pk_i,
-            &self.nizk_dleq_dst,
-            &mut OsRng,
-        )
-        .map_err(|e| AdkgError::Nizk(e, "failed to generate nizk proof"))?;
+        // Group & partial public key derivation phase
+        let key_der_out = self
+            .key_derivation_phase::<T::Transport>(
+                &z_i,
+                &z_hat_i,
+                &ped_commits,
+                key_messages,
+                &adkg_sender,
+                &mut adkg_receiver,
+                rng,
+            )
+            .await;
+        let (group_pk, node_pks) = match key_der_out {
+            Ok((group_pk, nodes_pks)) => (Some(group_pk), Some(nodes_pks)),
+            Err(e) => {
+                error!(
+                    error = ?e,
+                    "ADKG failed to derive public keys"
+                );
 
-        // 44: Send \langle KEY, h_^{z_i}, \pi_i \rangle to all
-        let msg = AdkgMessage::PublicKey(AdkgPublicKeyMessage {
-            pi_j: pi_i,
-            pk_j: pk_i,
-        });
-
-        if let Err(e) = broadcast_with_self(&msg, &RetryStrategy::None, &adkg_sender).await {
-            error!(
-                "Node `{}` failed to send ADKG Public Key message to other nodes: {e:?}",
-                self.id
-            );
-        }
-
-        // Obtain the combined public polynomial as p_j = \sum_{k \in rbc_parties} p_k(x)
-        // which is the sum of the public polynomial output by each ACSS specified in the j-th RBC
-        let public_poly: Vec<CG> = (0..=self.t)
-            .map(|i| shares.iter().map(|(_, out)| out.public_poly[i]).sum())
-            .collect();
-        let (group_pk, node_pks) = self
-            .derive_group_pk::<T::Transport>(&mut adkg_receiver, &public_poly)
-            .await
-            .map(|(group_pk, node_pks)| (Some(group_pk), Some(node_pks.into_iter().collect())))
-            .unwrap_or_else(|e| {
-                error!("Failed to compute group pk {e:?}");
+                // If it fails, return no group_pk / nodes_pks
                 (None, None)
-            });
+            }
+        };
 
         Ok(AdkgOutput {
             sk: z_i,
@@ -406,19 +427,258 @@ where
         })
     }
 
-    async fn derive_group_pk<T>(
-        &self,
-        receiver: &mut T::ReceiveMessageStream,
-        public_poly: &[CG],
-    ) -> Result<(CG, impl IntoIterator<Item = CG>), AdkgError>
+    #[allow(clippy::too_many_arguments)]
+    async fn key_derivation_phase<T>(
+        &mut self,
+        z_i: &<CG as Group>::ScalarField,
+        z_hat_i: &<CG as Group>::ScalarField,
+        ped_commits: &[CG],
+        key_messages: impl IntoIterator<Item = (PartyId, AdkgKeyMessage<CG, H>)>,
+        adkg_sender: &T::Sender,
+        adkg_receiver: &mut T::ReceiveMessageStream,
+        rng: &mut impl AdkgRng,
+    ) -> Result<(CG, Vec<CG>), AdkgError>
     where
         T: Transport<Identity = PartyId>,
     {
-        let mut pubs = BTreeMap::new();
+        // Key derivation phase
+        // 51: Generate proof of knowledge of z_i, z_hat_i
+        let mut pok_rng = rng
+            .get(AdkgRngType::KeyPok)
+            .map_err(|e| AdkgError::Rng(e.into(), "failed to obtain rng for PoK"))?;
+        let g_z_i = self.g * z_i;
+        let pok_z_i = PokProof::<CG, H>::prove(z_i, &self.g, &g_z_i, &self.pok_dst, &mut pok_rng)
+            .map_err(|e| AdkgError::Pok(e, "failed to create PoK on z_i"))?;
+        let h_z_hat_i = self.h * z_hat_i;
+        let pok_z_hat_i =
+            PokProof::<CG, H>::prove(z_hat_i, &self.h, &h_z_hat_i, &self.pok_dst, &mut pok_rng)
+                .map_err(|e| AdkgError::Pok(e, "failed to create PoK on z_hat_i"))?;
+
+        // 52: Broadcast proofs & public keys
+        let msg: AdkgMessage<CG, H> = AdkgMessage::Key(AdkgKeyMessage {
+            z_j_proof: pok_z_i,
+            z_hat_j_proof: pok_z_hat_i,
+            g_z_j: g_z_i,
+            h_z_hat_j: h_z_hat_i,
+        });
+        if let Err(e) = broadcast_with_self(&msg, &RetryStrategy::None, adkg_sender).await {
+            error!(
+                "Node `{}` failed to send ADKG KEY message to other nodes: {e:?}",
+                self.id
+            );
+        }
+
+        self.key_derivation::<T>(ped_commits, key_messages, adkg_receiver)
+            .await
+    }
+
+    async fn key_derivation<T>(
+        &mut self,
+        ped_commits: &[CG],
+        key_messages: impl IntoIterator<Item = (PartyId, AdkgKeyMessage<CG, H>)>,
+        adkg_receiver: &mut T::ReceiveMessageStream,
+    ) -> Result<(CG, Vec<CG>), AdkgError>
+    where
+        T: Transport<Identity = PartyId>,
+    {
+        let mut key_messages = key_messages.into_iter();
+        let mut valid_keys = BTreeMap::new();
+        loop {
+            // Attempt to drain key_messages first
+            let (sender, msg) = match key_messages.next() {
+                Some(sender_msg) => sender_msg,
+                None => {
+                    // Otherwise, recv new message
+                    let (sender, AdkgMessage::Key(msg)) =
+                        self.recv_next_adkg_msg::<T>(adkg_receiver).await?
+                    else {
+                        // recv errors are unrecoverable
+                        continue; // ignore other types of messages
+                    };
+
+                    (sender, msg)
+                }
+            };
+
+            // Ignore message if invalid
+            if !self.is_key_msg_valid(ped_commits, &sender, &msg) {
+                warn!(?sender, "Ignoring invalid ADKG KEY message");
+                continue;
+            }
+
+            valid_keys.insert(sender, msg.g_z_j);
+
+            #[allow(clippy::int_plus_one)]
+            if valid_keys.len() >= self.t_reconstruction + 1 {
+                // More keys than the reconstruction threshold, we can interpolate the rest
+                let g_z_i_points: Vec<_> = valid_keys
+                    .iter()
+                    .map(|(j, g_z_j)| (j.into(), *g_z_j))
+                    .collect();
+                let g_z_0 = lagrange_points_interpolate_at(&g_z_i_points, 0);
+
+                let missing_keys: Vec<_> = PartyId::iter_all(self.n)
+                    .filter(|j| !valid_keys.contains_key(j))
+                    .map(|j| (j, lagrange_points_interpolate_at(&g_z_i_points, j.into())))
+                    .collect();
+
+                valid_keys.extend(missing_keys);
+                return Ok((g_z_0, valid_keys.into_values().collect()));
+            }
+        }
+    }
+
+    async fn randex_phase<T>(
+        &mut self,
+        shares_per_acss: usize,
+        acss_outputs: Vec<(SessionId, ShareWithPoly<CG>)>,
+        adkg_sender: &T::Sender,
+        adkg_receiver: &mut T::ReceiveMessageStream,
+    ) -> Result<
+        (
+            <CG as Group>::ScalarField,
+            <CG as Group>::ScalarField,
+            Vec<CG>,
+            BTreeMap<PartyId, AdkgKeyMessage<CG, H>>,
+        ),
+        AdkgError,
+    >
+    where
+        T: Transport<Identity = PartyId>,
+    {
+        // 25-28: for each j \in [n] \setminus T: set identity
+        // Set the secrets, randomness, ped_commits to zero when the ACSS was selected, use our share
+        // otherwise.
+        let mut secrets = vec![vec![CG::ScalarField::zero(); self.n]; shares_per_acss];
+        let mut randomness = vec![vec![CG::ScalarField::zero(); self.n]; shares_per_acss];
+        let mut all_ped_commits = vec![vec![CG::Affine::zero(); self.n]; shares_per_acss];
+        for (sid, acss_output) in acss_outputs {
+            for (share_idx, (share, poly)) in
+                izip!(acss_output.shares, acss_output.public_polys).enumerate()
+            {
+                secrets[share_idx][sid] = share.si; // a_i, b_i
+                randomness[share_idx][sid] = share.ri; // \hat{a}_i
+                all_ped_commits[share_idx][sid] = poly.to_vec()[0].into_affine(); // u_i
+            }
+        }
+
+        // Randomness extraction phase
+        // 32-37: Compute [[z(j)]]_i, [[z_hat(j)]]_i for j \in [n]
+        // Compute a secret-shared evaluation of the polynomial z(x), z_hat(x) for each of the parties
+        let (m, m_tilde) =
+            build_randex_matrices::<CG::ScalarField>(self.t, self.t_reconstruction, self.n);
+        let m = [m, m_tilde];
+        let m_vec: Vec<_> = m
+            .clone()
+            .into_iter()
+            .map(|m_i| {
+                m_i.row_iter()
+                    .map(|row| row.into_iter().cloned().collect::<Vec<_>>())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        let mut z_shares = vec![CG::ScalarField::zero(); self.n];
+        let mut z_hat_shares = vec![CG::ScalarField::zero(); self.n];
+        let mut ped_commits = vec![CG::zero(); self.n];
+        for i in 0..self.n {
+            for share_idx in 0..shares_per_acss {
+                z_shares[i] += m[share_idx]
+                    .row(i)
+                    .dot(&RowDVector::from(secrets[share_idx].clone()));
+                z_hat_shares[i] += m[share_idx]
+                    .row(i)
+                    .dot(&RowDVector::from(randomness[share_idx].clone()));
+                ped_commits[i] += CG::msm(&all_ped_commits[share_idx], &m_vec[share_idx][i])
+                    .expect("msm failed: bases and scalars have different lengths");
+            }
+        }
+
+        // 38: Send \langle RANDEX, [[z(j)]]_i, [[\hat{z}(j)]]_i \rangle
+        for (j_id, z_j, z_hat_j) in izip!(PartyId::iter_all(self.n), z_shares, z_hat_shares) {
+            let msg: AdkgMessage<CG, H> = AdkgMessage::RandEx(AdkgRandExMessage { z_j, z_hat_j });
+            if let Err(e) = send_serialize_helper(
+                &msg,
+                Recipient::Single(j_id),
+                &RetryStrategy::None,
+                adkg_sender,
+            )
+            .await
+            {
+                error!(
+                    "Node `{}` failed to send ADKG RANDEX message to other nodes: {e:?}",
+                    self.id
+                );
+            }
+        }
+
+        // 39-42: Wait for messages and execute OEC to recover our shares z_i, z_hat_i
+        let mut key_messages = BTreeMap::new();
+        let (z_i, z_hat_i) = self
+            .randex_oec::<T>(&ped_commits, &mut key_messages, adkg_receiver)
+            .await?;
+        Ok((z_i, z_hat_i, ped_commits, key_messages))
+    }
+
+    async fn randex_oec<T>(
+        &mut self,
+        ped_commits: &[CG],
+        key_messages: &mut BTreeMap<PartyId, AdkgKeyMessage<CG, H>>,
+        adkg_receiver: &mut T::ReceiveMessageStream,
+    ) -> Result<(CG::ScalarField, CG::ScalarField), AdkgError>
+    where
+        T: Transport<Identity = PartyId>,
+    {
+        let mut randex_messages = BTreeMap::new();
+        loop {
+            let (sender, adkg_msg) = self.recv_next_adkg_msg::<T>(adkg_receiver).await?; // recv errors are unrecoverable
+            match adkg_msg {
+                AdkgMessage::RandEx(m) => {
+                    // Store it and continue evaluating
+                    randex_messages.insert(sender, m);
+                }
+                AdkgMessage::Key(m) => {
+                    // Got a public key message, simply store it for later
+                    key_messages.insert(sender, m);
+                    continue;
+                }
+            };
+
+            #[allow(clippy::int_plus_one)]
+            if randex_messages.len() >= self.t + 1 {
+                // Once we have at least t + 1 randex messages, we can attempt an error correction with
+                // no errors.
+                // With 2t + 2 messages, we can try an error correction with 1 error up to t errors
+                if let Some((z_i, z_hat_i)) = randex::oec_round(
+                    randex_messages.to_owned(),
+                    self.t,
+                    &ped_commits[self.id],
+                    &self.g,
+                    &self.h,
+                ) {
+                    return Ok((z_i, z_hat_i));
+                } else if randex_messages.len() == self.n {
+                    error!(
+                        "Failed to recover share through randex with OEC: too many invalid shares"
+                    );
+                    // Unrecoverable
+                    return Err(AdkgError::RandEx);
+                }
+            }
+        }
+    }
+
+    async fn recv_next_adkg_msg<T>(
+        &self,
+        adkg_receiver: &mut T::ReceiveMessageStream,
+    ) -> Result<(T::Identity, AdkgMessage<CG, H>), AdkgError>
+    where
+        T: Transport,
+    {
         loop {
             let ReceivedMessage {
                 sender, content, ..
-            } = match receiver.next().await {
+            } = match adkg_receiver.next().await {
                 Some(Ok(m)) => m,
                 Some(Err(e)) => {
                     warn!("Node `{}` failed to recv: {e:?}", self.id);
@@ -426,42 +686,58 @@ where
                 }
                 None => {
                     error!("Node `{}` failed to recv: no more items in stream", self.id);
-                    return Err(AdkgError::DeriveGroupPublicKey);
+                    Err(AdkgError::RandEx)?
                 }
             };
+
             let msg: AdkgMessage<CG, H> = match bson::from_slice(&content) {
                 Ok(m) => m,
                 Err(e) => {
                     warn!(
-                        "Node `{}` received ADKG Public Key message from {sender} with bad format: {e:?}",
+                        "Node `{}` received ADKG message from {sender} with bad format: {e:?}",
                         self.id
                     );
                     continue;
                 }
             };
 
-            let AdkgMessage::PublicKey(m) = msg;
-            let g_z_j = eval_poly(&u64::from(sender).into(), public_poly);
-            if m.pi_j
-                .verify(&self.g, &self.h, &g_z_j, &m.pk_j, &self.nizk_dleq_dst)
-                .is_ok()
-            {
-                pubs.insert(u64::from(sender), m.pk_j);
-            }
-
-            // We now have more than t public keys, we can interpolate the group pk and the missing pks
-            if pubs.len() > self.t {
-                let pubs_vec: Vec<_> = pubs.iter().map(|(id, pk)| (*id, *pk)).collect();
-                let group_pk = lagrange_points_interpolate_at(&pubs_vec[..], 0);
-
-                let iter = (1..=u64_from_usize(self.n)).map(move |id| {
-                    pubs.get(&id)
-                        .copied()
-                        .unwrap_or_else(|| lagrange_points_interpolate_at(&pubs_vec[..], id))
-                });
-                return Ok((group_pk, iter));
-            }
+            return Ok((sender, msg));
         }
+    }
+
+    fn is_key_msg_valid(
+        &self,
+        ped_commits: &[CG],
+        sender: &PartyId,
+        msg: &AdkgKeyMessage<CG, H>,
+    ) -> bool {
+        // Validate the proofs
+        if msg
+            .z_j_proof
+            .verify(&self.g, &msg.g_z_j, &self.pok_dst)
+            .is_err()
+        {
+            warn!(?sender, "Failed to verify z_j proof");
+            return false;
+        }
+        if msg
+            .z_hat_j_proof
+            .verify(&self.h, &msg.h_z_hat_j, &self.pok_dst)
+            .is_err()
+        {
+            warn!(?sender, "Failed to verify z_hat_j proof");
+            return false;
+        }
+
+        // Now that we know z_j = log_g g_z_j and z_hat_j = log_h h_z_hat_j, make sure that
+        // commit(z_j, z_hat_j) == g_z_j + h_z_hat_j
+        if ped_commits[sender] != msg.g_z_j + msg.h_z_hat_j {
+            warn!(?sender, "Node sent proofs with invalid shares");
+            return false;
+        }
+
+        // Valid message
+        true
     }
 
     async fn acss_task(
@@ -502,12 +778,7 @@ where
 
                 // Once we have completed t + 1 ACSSs, broadcast the list of parties through our RBC
                 let completed_acss_ids = state.completed_acss_outputs.keys();
-                // TODO: We probably need to set some stages specifying how many shares we want to wait for, and
-                //  after how long we go to the next stage. E.g., n: wait for 1 minute, then, n/2: wait for 2 minutes,
-                //  n/3 otherwise.
-                //  If we stick to only t + 1, the ADKG may terminate quickly using only t + 1 ACSS shares, if we set
-                //  it to only n, the ADKG may never terminate.
-                if completed_acss_ids.len() == state.t + 1 {
+                if completed_acss_ids.len() == state.n - state.t {
                     if rbc_leader_sender
                         .take()
                         .expect("cannot enter condition twice")
@@ -754,7 +1025,9 @@ where
 
                     // Create new channel and send coin_keys through it
                     let (sender, receiver) = oneshot::channel();
-                    sender.send(coin_keys).expect("receiver not dropped here");
+                    sender.send(coin_keys).unwrap_or_else(|_| {
+                        panic!("receiver should not have been dropped at this point")
+                    });
 
                     // Input 1 to the j-th ABA if it has not received an input
                     let input = AbaInput {
@@ -919,7 +1192,9 @@ mod tests {
         let g = get_generator_g::<_, sha3::Sha3_256>();
         let h = ark_bn254::G1Projective::generator();
 
-        run_adkg_test::<_, sha3::Sha3_256>(t, n, g, h, SEED).await
+        // run adkg with reconstruction threshold of t & 2t
+        run_adkg_test::<_, sha3::Sha3_256>(t, t, n, g, h, SEED).await;
+        run_adkg_test::<_, sha3::Sha3_256>(2 * t, t, n, g, h, SEED).await;
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
@@ -935,11 +1210,18 @@ mod tests {
         let g = get_generator_g::<_, sha3::Sha3_256>();
         let h = ark_bls12_381::G1Projective::generator();
 
-        run_adkg_test::<_, sha3::Sha3_256>(t, n, g, h, SEED).await
+        run_adkg_test::<_, sha3::Sha3_256>(t, t, n, g, h, SEED).await;
+        run_adkg_test::<_, sha3::Sha3_256>(2 * t, t, n, g, h, SEED).await;
     }
 
-    async fn run_adkg_test<CG, H>(t: usize, n: usize, g: CG, h: CG, seed: &[u8])
-    where
+    async fn run_adkg_test<CG, H>(
+        t_reconstruction: usize,
+        t: usize,
+        n: usize,
+        g: CG,
+        h: CG,
+        seed: &[u8],
+    ) where
         CG: NamedCurveGroup + PointSerializeCompressed + PointDeserializeCompressed + HashToCurve,
         CG::ScalarField: FqSerialize + FqDeserialize,
         H: Default + NamedDynDigest + BlockSizeUser + Clone + 'static,
@@ -974,12 +1256,23 @@ mod tests {
                     n,
                     t,
                     g,
+                    h,
                     RetryStrategy::None,
                 );
                 let aba_config =
                     AbaCrain20Config::<_, _, sha3::Sha3_256>::new(i, n, t, g, RetryStrategy::None);
 
-                Adkg::<_, H, _, _, _>::new(i, n, t, g, h, rbc_config, acss_config, aba_config)
+                Adkg::<_, H, _, _, _>::new(
+                    i,
+                    n,
+                    t,
+                    t_reconstruction,
+                    g,
+                    h,
+                    rbc_config,
+                    acss_config,
+                    aba_config,
+                )
             })
             .collect();
 
@@ -1028,8 +1321,8 @@ mod tests {
             shares.iter().map(|(id, out)| (id.into(), out.sk)).collect();
 
         // Verify that the group public key matches the group secret
-        let s: CG::ScalarField = lagrange_interpolate_at::<CG>(&points[0..=t], 0);
-        assert_eq!((h * s).into_affine(), group_pk.into_affine());
+        let s: CG::ScalarField = lagrange_interpolate_at::<CG>(&points[0..=t_reconstruction], 0);
+        assert_eq!((g * s).into_affine(), group_pk.into_affine());
 
         // The group secret is the sum of the used ACSS secrets
         let acss_secrets = get_expected_acss_secrets::<CG>(n, seed);

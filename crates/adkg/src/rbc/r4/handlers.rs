@@ -65,7 +65,7 @@ pub(super) async fn rbc_receive_proposal<T>(
         // Update state machine
         st.status = RbcStatus::WaitingForEchos;
     } else {
-        info!("Node `{}` refused proposal", st.id);
+        warn!(proposal_sender = ?sender, "Node `{}` refused proposal", st.id);
     }
 }
 
