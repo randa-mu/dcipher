@@ -1,3 +1,5 @@
+//! Module for pedersen commitments over elliptic curves.
+
 use ark_ec::CurveGroup;
 use ark_std::UniformRand;
 use rand::RngCore;
@@ -8,6 +10,8 @@ pub struct PedersenCommitment<CG: CurveGroup> {
     pub commitment: CG,
 }
 
+/// Create a commitment using a randomly opening r.
+/// In most cases, g and h must be distinct, independently picked generators where log_g h is unknown.
 pub fn commit_rand<CG: CurveGroup, R: RngCore>(
     s: &CG::ScalarField,
     g: &CG,
@@ -23,10 +27,15 @@ pub fn commit_rand<CG: CurveGroup, R: RngCore>(
     }
 }
 
+/// Create a Pedersen commitment deterministically using secret `s` and opening `r`.
+/// In most cases, g and h must be distinct, independently picked generators where log_g h is unknown.
+#[inline]
 pub fn commit<CG: CurveGroup>(s: &CG::ScalarField, r: &CG::ScalarField, g: &CG, h: &CG) -> CG {
     *g * s + *h * r
 }
 
+/// Try to open a Pedersen commitment using a secret `s` and an opening scalar `r`.
+/// Outputs true if the commitment is valid.
 pub fn open<CG: CurveGroup>(
     s: &CG::ScalarField,
     opening: &CG::ScalarField,
