@@ -73,7 +73,12 @@ where
             self.acss_tasks.spawn({
                 let node_id = self.node_id;
                 let cancellation_token = cancel.clone();
+
+                // s is not cloneable, and we only want to move it when sid == node_id
+                // In order to not move s due to the async move below, we take() s only once
+                // here, and use None when sid != node_id. This allows to move the value only once.
                 let s = if sid == node_id { s.take() } else { None };
+
                 let mut rng = rng
                     .get(AdkgRngType::Acss(sid))
                     .expect("failed to obtain acss rng");
@@ -81,7 +86,7 @@ where
                     // Start the acss tasks
                     let res = if sid == node_id {
                         acss.deal(
-                            s.expect("can only enter once"),
+                            s.expect("can only enter once"), // s must be Some(.) since sid == node_id
                             cancellation_token,
                             sender,
                             &mut rng,
