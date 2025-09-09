@@ -91,3 +91,23 @@ jobs:
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/adkg-cli-cache:${{ steps.meta.outputs.version }}
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/adkg-cli-cache:main-latest
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/adkg-cli-cache:${{ steps.meta.outputs.version }},mode=max
+
+      - name : extract adkg-cli binary
+        shell: bash
+        run  : |
+          docker pull ghcr.io/randa-mu/dcipher/adkg-cli:${{ env.SHORT_SHA }}
+          container=$(docker create ghcr.io/randa-mu/dcipher/adkg-cli:${{ env.SHORT_SHA }})
+          docker cp $container:usr/local/bin/adkg-cli ./adkg-cli
+          docker rm $container
+
+      - name: Upload adkg-cli binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adkg-cli-binary
+          path: ./adkg-cli
+
+      - name: upload binaries to release
+        uses: softprops/action-gh-release@v1
+        if: ${{startsWith(github.ref, 'refs/tags/') }}
+        with:
+          files: ./adkg-cli
