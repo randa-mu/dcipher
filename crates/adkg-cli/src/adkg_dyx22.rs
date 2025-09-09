@@ -108,7 +108,7 @@ where
         .nodes
         .iter()
         .map(|p| {
-            <DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve::deser_base64(
+            <DYX22Bls12_381G1Sha256 as AdkgScheme>::Curve::deser_compressed_base64(
                 &p.public_key_material.adkg_pk,
             )
         })
