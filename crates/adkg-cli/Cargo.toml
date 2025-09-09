@@ -18,8 +18,10 @@ ark-bn254.workspace = true
 ark-ec.workspace = true
 ark-std.workspace = true
 chacha20poly1305.workspace = true
+digest.workspace = true
 
 # async
+futures-util.workspace = true
 tokio = { workspace = true, features = ["fs", "net", "rt", "sync", "macros", "io-util", "time", "tracing"] }
 
 # logs / metrics
@@ -34,6 +36,7 @@ libp2p = { workspace = true, features = ["serde"] }
 warp = { version = "0.3.7", optional = true }
 
 # serde
+bson.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true

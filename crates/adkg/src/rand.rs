@@ -14,6 +14,7 @@ pub enum AdkgRngType {
     Acss(SessionId),
     Aba(SessionId),
     KeyPok,
+    Other(&'static [u8]),
 }
 
 /// Trait to obtain per-component randomness.
@@ -61,6 +62,7 @@ impl std::fmt::Display for AdkgRngType {
             AdkgRngType::Acss(sid) => write!(f, "Acss({sid})"),
             AdkgRngType::Aba(sid) => write!(f, "Aba({sid})"),
             AdkgRngType::KeyPok => write!(f, "KeyPok"),
+            AdkgRngType::Other(o) => write!(f, "{}", String::from_utf8_lossy(o)),
         }
     }
 }
