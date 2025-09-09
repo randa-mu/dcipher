@@ -140,7 +140,8 @@ where
         }
         if t_reconstruction < t || t_reconstruction >= n - t {
             panic!(
-                "reconstruction threshold must be in [t, n - t - 1] == [{t}, {}]",
+                "reconstruction threshold ({}) must be in [t, n - t - 1] == [{t}, {}]",
+                t_reconstruction,
                 n - t - 1
             );
         }

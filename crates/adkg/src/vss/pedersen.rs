@@ -87,7 +87,7 @@ fn poly_commit<CG: CurveGroup>(
         )
         .collect();
 
-    // (4): Evaluate the polynomials at n points with Horner's method
+    // (4): Evaluate the polynomials at n points
     let s: Vec<CG::ScalarField> = (1..=n).map(|i| p.evaluate(&i.into())).collect();
     let r: Vec<CG::ScalarField> = (1..=n).map(|i| phi.evaluate(&i.into())).collect();
 
