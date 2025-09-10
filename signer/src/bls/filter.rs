@@ -79,7 +79,7 @@ pub(super) fn get_rfc9380_application_dst(
             )
         }
         ApplicationArgs::Randomness(args) => {
-            // dcipher-randomness-v01-%curve_name%:%expand%_%hash_name%_%mapping%_%encoding%_0x%chain_id%_
+            // dcipher-randomness-v01-%curve_name%_%expand%:%hash_name%_%mapping%_%encoding%_0x%chain_id%_
             (
                 "dcipher-randomness-v01".to_owned(),
                 b'-',
@@ -108,4 +108,61 @@ pub(super) fn get_rfc9380_application_dst(
         .with_application_name(app_name.into())
         .with_suffix(suffix.into())
         .build_with_app_name_sep(app_name_sep)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dsigner::{
+        ApplicationAnyArgs, ApplicationBlocklockArgs, ApplicationRandomnessArgs, BlsSignatureHash,
+        OnlySwapsVerifierArgs,
+    };
+
+    #[test]
+    fn bn254_dsts() {
+        let chain_id = 0x14a34;
+        let bn254 = BlsSignatureAlgorithm {
+            curve: BlsSignatureCurve::Bn254G1,
+            hash: BlsSignatureHash::Keccak256,
+            compression: false,
+        };
+
+        assert_eq!(
+            get_rfc9380_application_dst(
+                &ApplicationArgs::Blocklock(ApplicationBlocklockArgs { chain_id }),
+                &bn254
+            )
+            .0,
+            b"BLOCKLOCK_BN254G1_XMD:KECCAK-256_SVDW_RO_H1_0x0000000000000000000000000000000000000000000000000000000000014a34_".to_vec(),
+        );
+
+        assert_eq!(
+            get_rfc9380_application_dst(
+                &ApplicationArgs::Randomness(ApplicationRandomnessArgs { chain_id }),
+                &bn254
+            )
+            .0,
+            b"dcipher-randomness-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_0x0000000000000000000000000000000000000000000000000000000000014a34_".to_vec(),
+        );
+
+        assert_eq!(
+            get_rfc9380_application_dst(
+                &ApplicationArgs::OnlySwapsVerifier(OnlySwapsVerifierArgs { chain_id }),
+                &bn254
+            )
+            .0,
+            b"swap-v1-BN254G1_XMD:KECCAK-256_SVDW_RO_0x0000000000000000000000000000000000000000000000000000000000014a34_".to_vec(),
+        );
+
+        assert_eq!(
+            get_rfc9380_application_dst(
+                &ApplicationArgs::Any(ApplicationAnyArgs {
+                    dst_suffix: "test".to_owned()
+                }),
+                &bn254
+            )
+            .0,
+            b"dcipher-anyapp-v01-BN254G1_XMD:KECCAK-256_SVDW_RO_test_".to_vec(),
+        );
+    }
 }
