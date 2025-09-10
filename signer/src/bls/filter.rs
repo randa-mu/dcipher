@@ -124,6 +124,7 @@ mod tests {
         let bn254 = BlsSignatureAlgorithm {
             curve: BlsSignatureCurve::Bn254G1,
             hash: BlsSignatureHash::Keccak256,
+            compression: false,
         };
 
         assert_eq!(
