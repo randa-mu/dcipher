@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
 
         Commands::Rescue(args) => rescue_adkg(args).await?,
 
-        Commands::GenerateOnlyswapsConfig(args) => generate_onlyswaps_config(args).await?,
+        Commands::GenerateOnlyswapsConfig(args) => generate_onlyswaps_config(args)?,
     }
 
     Ok(())

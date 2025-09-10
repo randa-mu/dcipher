@@ -11,15 +11,17 @@ ark-ff.workspace = true
 base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 figment = { workspace = true, features = ["toml", "json"] }
+hex.workspace = true
+humantime-serde = "1.1.1"
 libp2p.workspace = true
 serde.workspace = true
 shellexpand = "3.1.1"
-utils.workspace = true
 serde_json.workspace = true
-humantime-serde = "1.1.1"
+serde_with.workspace = true
 url = { version = "2.5.4", features = ["serde"] }
-serde_with = "3.14.0"
-hex.workspace = true
-tempfile = "3.21.0"
+utils.workspace = true
+
+[dev-dependencies]
 speculoos = "0.13.0"
+tempfile = "3.21.0"
 
