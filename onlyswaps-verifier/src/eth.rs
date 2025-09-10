@@ -1,4 +1,3 @@
-use crate::config_network::NetworkConfig;
 use crate::eth::IRouter::SwapRequestParameters;
 use crate::eth::Router::RouterInstance;
 use crate::parsing::TransferReceipt;
@@ -11,6 +10,7 @@ use alloy::signers::local::PrivateKeySigner;
 use alloy::sol;
 use anyhow::anyhow;
 use async_trait::async_trait;
+use config::network::NetworkConfig;
 use futures::future::{try_join, try_join_all};
 use std::collections::HashMap;
 use std::hash::Hash;

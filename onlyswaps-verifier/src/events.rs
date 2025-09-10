@@ -1,5 +1,5 @@
-use crate::config_network::NetworkConfig;
 use alloy::providers::Provider;
+use config::network::NetworkConfig;
 use omnievent::event_manager::EventManager;
 use omnievent::event_manager::db::in_memory::InMemoryDatabase;
 use omnievent::proto_types::{BlockSafety, EventField, RegisterNewEventRequest};
@@ -19,7 +19,7 @@ pub(crate) async fn create_omnievent_management(
     let mut event_requests = vec![];
 
     for n in networks {
-        let provider = create_provider_with_retry(n.rpc_url.parse()?, RetryStrategy::None)
+        let provider = create_provider_with_retry(n.rpc_url.clone(), RetryStrategy::None)
             .await?
             .erased();
         mp.extend([(n.chain_id, provider)]);

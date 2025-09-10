@@ -9,26 +9,19 @@ anyhow.workspace = true
 ark-bn254.workspace = true
 ark-ec.workspace = true
 ark-ff.workspace = true
-ark-serialize.workspace = true
 async-trait.workspace = true
 axum = "0.8.4"
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
 dcipher-network = { workspace = true, features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
 dcipher-signer = { workspace = true, features = ["rayon", "bn254", "sha3"] }
-figment = { workspace = true, features = ["json", "toml"] }
 futures.workspace = true
-humantime-serde = "1.1.1"
 libp2p.workspace = true
 omnievent.workspace = true
-serde.workspace = true
-serde-keys.workspace = true
-serde_with = { workspace = true, features = ["base64"] }
-speculoos = "0.13.0"
 superalloy.workspace = true
-tempfile = "3.21.0"
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["json", "env-filter"] }
-serde_json.workspace = true
-utils.workspace = true
+
+[dev-dependencies]
+speculoos = "0.13.0"

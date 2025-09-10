@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 
 #[derive(Parser, Serialize, Deserialize, Debug, Clone)]
-pub struct SharedConfig {
+pub struct AgentConfig {
     /// The address to host the health-check HTTP server
     #[serde(default = "default_healthcheck_listen_addr")]
     pub healthcheck_listen_addr: Ipv4Addr,
@@ -21,7 +21,7 @@ pub struct SharedConfig {
     pub log_json: bool,
 }
 
-impl Default for SharedConfig {
+impl Default for AgentConfig {
     fn default() -> Self {
         Self {
             healthcheck_port: default_healthcheck_port(),
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn defaults_from_empty_object() {
-        let cfg: SharedConfig = json::from_str("{}").unwrap();
+        let cfg: AgentConfig = json::from_str("{}").unwrap();
 
         assert_eq!(
             cfg.healthcheck_listen_addr,
@@ -66,8 +66,8 @@ mod tests {
 
     #[test]
     fn defaults_match_impl_default() {
-        let from_empty: SharedConfig = json::from_str("{}").unwrap();
-        let from_default = SharedConfig::default();
+        let from_empty: AgentConfig = json::from_str("{}").unwrap();
+        let from_default = AgentConfig::default();
         assert_eq!(
             from_empty.healthcheck_listen_addr,
             from_default.healthcheck_listen_addr
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn partial_object_uses_defaults_for_missing_fields() {
         // Provide only one field; others should use defaults.
-        let cfg: SharedConfig = json::from_str(r#"{"log_level":"debug"}"#).unwrap();
+        let cfg: AgentConfig = json::from_str(r#"{"log_level":"debug"}"#).unwrap();
 
         assert_eq!(cfg.log_level, "debug");
         assert_eq!(
@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn explicit_values_override_defaults() {
-        let cfg: SharedConfig = json::from_str(
+        let cfg: AgentConfig = json::from_str(
             r#"{
                 "healthcheck_listen_addr":"127.0.0.1",
                 "healthcheck_port": 9000,
@@ -113,7 +113,7 @@ mod tests {
     fn null_is_not_treated_as_missing() {
         // Serde defaults apply when the field is *absent*, not when it's null.
         // This test ensures we don't silently accept nulls.
-        let err = json::from_str::<SharedConfig>(r#"{"log_level": null}"#).unwrap_err();
+        let err = json::from_str::<AgentConfig>(r#"{"log_level": null}"#).unwrap_err();
         let msg = err.to_string();
         assert!(
             msg.contains("invalid type") || msg.contains("null"),

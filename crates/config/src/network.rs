@@ -1,11 +1,14 @@
 use alloy::primitives::FixedBytes;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::time::Duration;
+use url::Url;
 
-#[derive(Deserialize, Debug, Clone)]
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetworkConfig {
     pub chain_id: u64,
-    pub rpc_url: String,
+    pub rpc_url: Url,
     pub private_key: FixedBytes<32>,
     pub router_address: FixedBytes<20>,
     #[serde(default = "default_should_write")]
@@ -46,7 +49,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(cfg.chain_id, 84532);
-        assert_eq!(cfg.rpc_url, "wss://example.org");
+        assert_eq!(cfg.rpc_url, Url::parse("wss://example.org").unwrap());
         assert!(!cfg.should_write);
         assert_eq!(cfg.request_timeout, Duration::from_secs(45));
 

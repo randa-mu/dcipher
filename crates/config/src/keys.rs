@@ -9,7 +9,7 @@ pub struct SecretKey<Fr>(pub Fr);
 
 /// Wrapper around libp2p::identity::Keypair with (de)serialization & cmd line parsing.
 #[derive(Clone, Debug)]
-pub struct Libp2pKeyWrapper(::libp2p::identity::Keypair);
+pub struct Libp2pKeyWrapper(pub ::libp2p::identity::Keypair);
 
 impl<Fr: std::fmt::Debug> std::fmt::Debug for SecretKey<Fr> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -75,6 +75,15 @@ impl<'de> Deserialize<'de> for Libp2pKeyWrapper {
 
         let s = String::deserialize(deserializer)?;
         s.parse::<Libp2pKeyWrapper>().map_err(D::Error::custom)
+    }
+}
+
+impl Serialize for Libp2pKeyWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_str())
     }
 }
 
