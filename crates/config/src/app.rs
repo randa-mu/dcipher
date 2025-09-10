@@ -7,8 +7,7 @@ use figment::providers::{Format, Json, Toml};
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use shellexpand::tilde;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
@@ -102,19 +101,6 @@ impl UnvalidatedCommitteeConfig {
             t: self.t,
             members: self.members,
         })
-    }
-}
-
-impl CommitteeConfig {
-    pub fn from_path(path: PathBuf) -> anyhow::Result<Self> {
-        let c: UnvalidatedCommitteeConfig = Figment::new()
-            .merge(Toml::file(&path))
-            .merge(Json::file(&path))
-            .extract()?;
-        c.parse()
-    }
-    pub fn from_path_str(path: impl AsRef<str>) -> anyhow::Result<Self> {
-        Self::from_path(PathBuf::from(tilde(&path).as_ref()))
     }
 }
 
