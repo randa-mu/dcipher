@@ -219,11 +219,11 @@ mod tests {
         Ok(())
     }
 
-    const PRIV_KEY_FILE_CONTENT: &'static str = r#"
+    const PRIV_KEY_FILE_CONTENT: &str = r#"
 adkg_sk = "AGzRJmmnPZ+VnsNVLbZyjuk369Y+zOLxXrm4B/kcKyw="
 libp2p_sk = "CAESQGRWsEjWcr1qGPz/X3rPomvRPSYXoOEKCBGC19aF3DyAfHkRgFT/HVqC840jXoEM/C34EkpM6VOpvcZvMZI1SxE="
         "#;
-    const GROUP_FILE_CONTENT: &'static str = r#"
+    const GROUP_FILE_CONTENT: &str = r#"
 n = 4
 t = 1
 t_reconstruction = 2
@@ -253,7 +253,7 @@ multiaddr = "/ip4/127.0.0.1/tcp/8004"
 adkg_pk = "jmX7ICkcxFvNNfGmx85pigHe4U6qoG+vt+vd9MyvZbE="
 peer_id = "12D3KooWRJPmAZLrUdM7nUsmdisDNgDLWPedMMCEtD2pQosLU31h"
         "#;
-    const ADKG_PUBLIC_CONTENT: &'static str = r#"
+    const ADKG_PUBLIC_CONTENT: &str = r#"
 adkg_scheme_name = "DXKR23-Bn254G1-Keccak256"
 genesis_timestamp = 1757499570
 group_pk = "ok1mwyByNNb82/pizDn+KGZxoPPIMpFtYEE02cTauWAn45XisiVRSpqO0gKCpgnSqcUAq1RkDS0tc02SbKGOzw=="
@@ -282,7 +282,7 @@ pk = "zSFEDijpgjEJvw8E/8XlkXKAbKTo1aMCp6Zg6pYGpFEZvPbLUr9qzJB0+uRiClI+qSvk0Q2jNX
 peer_id = "12D3KooWRJPmAZLrUdM7nUsmdisDNgDLWPedMMCEtD2pQosLU31h"
 multiaddr = "/ip4/127.0.0.1/tcp/8004"
         "#;
-    const ADKG_PRIVATE_CONTENT: &'static str = r#"
+    const ADKG_PRIVATE_CONTENT: &str = r#"
 adkg_scheme_name = "DXKR23-Bn254G1-Keccak256"
 genesis_timestamp = 1757499570
 sk = "Bjowi2bicZE2bpN1OOIvpbJ582giKchaaMF7TrM2Vvc="
