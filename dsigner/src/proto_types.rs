@@ -20,6 +20,7 @@ pub mod dsigner {
                 ApplicationArgsEnum::Blocklock(_) => Application::Blocklock,
                 ApplicationArgsEnum::Randomness(_) => Application::Randomness,
                 ApplicationArgsEnum::Any(_) => Application::Any,
+                ApplicationArgsEnum::Evmnet(_) => Application::Evmnet,
             }
         }
     }
@@ -40,6 +41,7 @@ pub mod dsigner {
                 Application::Blocklock => Ok(Self::Blocklock),
                 Application::Randomness => Ok(Self::Randomness),
                 Application::Any => Ok(Self::Any),
+                Application::Evmnet => Ok(Self::EvmNet),
             }
         }
     }
@@ -109,6 +111,7 @@ pub mod dsigner {
                 ApplicationArgsEnum::Blocklock(args) => Self::Blocklock(args.into()),
                 ApplicationArgsEnum::Randomness(args) => Self::Randomness(args.into()),
                 ApplicationArgsEnum::Any(args) => Self::Any(args.into()),
+                ApplicationArgsEnum::Evmnet(_) => Self::EvmNet,
             }
         }
     }

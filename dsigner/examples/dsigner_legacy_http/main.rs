@@ -13,8 +13,9 @@ use base64::prelude::BASE64_STANDARD;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use dcipher_signer::bls::{AsyncThresholdSigner, BlsPairingSigner, BlsThresholdSigner};
 use dcipher_signer::dsigner::{
-    ApplicationAnyArgs, ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
-    BlsSignatureHash, DSignerScheme, DSignerSchemeSigner, SignatureAlgorithm, SignatureRequest,
+    ApplicationAnyArgs, ApplicationArgs, ApplicationBlocklockArgs, ApplicationRandomnessArgs,
+    BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash, DSignerScheme, DSignerSchemeSigner,
+    OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -183,11 +184,9 @@ async fn main() -> anyhow::Result<()> {
     let alg = SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
         curve: BlsSignatureCurve::Bn254G1,
         hash: BlsSignatureHash::Keccak256,
-        compression: false,
+        compression: config.key_config.sig_compression,
     });
-    let args = ApplicationArgs::Any(ApplicationAnyArgs {
-        dst_suffix: config.key_config.dst_suffix,
-    });
+    let args = parse_application_args(&config.key_config.application_arguments)?;
 
     let params = async_signer
         .verification_parameters(&alg, &args)
@@ -259,4 +258,40 @@ async fn main() -> anyhow::Result<()> {
     }
     ts_cancel.cancel();
     Ok(res?)
+}
+
+/// Parse the following str into their corresponding [`ApplicationArgs`].
+///  - `"blocklock:%chain_id%"` where `%chain_id%` is a u64
+///  - `"randomness:%chain_id%"` where `%chain_id%` is a u64
+///  - `"onlyswaps_verifier:%chain_id%"` where `%chain_id%` is a u64
+///  - `"evmnet"`
+///  - `"any:%dst_suffix%"`
+fn parse_application_args(s: &str) -> anyhow::Result<ApplicationArgs> {
+    let parts: Vec<&str> = s.split(':').collect();
+    let get_chain_id = |chain_id_str: &str| {
+        chain_id_str
+            .parse::<u64>()
+            .context("failed to parse application arguments chain_id")
+    };
+
+    match parts.as_slice() {
+        ["blocklock", chain_id_str] => Ok(ApplicationArgs::Blocklock(ApplicationBlocklockArgs {
+            chain_id: get_chain_id(chain_id_str)?,
+        })),
+        ["randomness", chain_id_str] => {
+            Ok(ApplicationArgs::Randomness(ApplicationRandomnessArgs {
+                chain_id: get_chain_id(chain_id_str)?,
+            }))
+        }
+        ["onlyswaps", chain_id_str] => {
+            Ok(ApplicationArgs::OnlySwapsVerifier(OnlySwapsVerifierArgs {
+                chain_id: get_chain_id(chain_id_str)?,
+            }))
+        }
+        ["evmnet"] => Ok(ApplicationArgs::EvmNet),
+        ["any", dst_suffix] => Ok(ApplicationArgs::Any(ApplicationAnyArgs {
+            dst_suffix: dst_suffix.to_string(),
+        })),
+        _ => anyhow::bail!("application arguments not recognized"),
+    }
 }

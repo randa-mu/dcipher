@@ -94,6 +94,10 @@ pub(super) fn get_rfc9380_application_dst(
                 format!("0x{:064x}", args.chain_id),
             )
         }
+        ApplicationArgs::EvmNet => {
+            // BLS_SIG_%curve_name%_%expand%:%hash_name%_%mapping%_%encoding%_NUL_
+            ("BLS_SIG".to_owned(), b'_', "NUL".to_owned())
+        }
         ApplicationArgs::Any(args) => {
             // dcipher-anyapp-v01-%curve_name%_%expand%:%hash_name%_%mapping%_%encoding%_%custom_suffix%_
             (
@@ -152,6 +156,11 @@ mod tests {
             )
             .0,
             b"swap-v1-BN254G1_XMD:KECCAK-256_SVDW_RO_0x0000000000000000000000000000000000000000000000000000000000014a34_".to_vec(),
+        );
+
+        assert_eq!(
+            get_rfc9380_application_dst(&ApplicationArgs::EvmNet, &bn254).0,
+            b"BLS_SIG_BN254G1_XMD:KECCAK-256_SVDW_RO_NUL_".to_vec(),
         );
 
         assert_eq!(
