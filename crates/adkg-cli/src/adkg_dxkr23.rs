@@ -2,11 +2,13 @@
 //! the scheme described in [Practical Asynchronous High-threshold Distributed Key Generation and Distributed Polynomial Sampling](https://www.usenix.org/system/files/usenixsecurity23-das.pdf)
 //! by Das et al.
 
-use crate::InMemoryWriter;
 use crate::config::GroupConfig;
 use crate::scheme::AdkgCliSchemeConfig;
 use crate::transcripts::{
     BroadcastMessages, DirectMessages, EncryptedAdkgTranscript, SerializedBytes,
+};
+use crate::{
+    AdkgConfig, AdkgOutputDual, AdkgPubOutput, InMemoryWriter, write_adkg_keys, write_transcript,
 };
 use adkg::aba::AbaConfig;
 use adkg::adkg::{AbaCrainInput, AdkgOutput, ShareWithPoly};
@@ -16,9 +18,9 @@ use adkg::pke::ec_hybrid_chacha20poly1305::{
     HybridCiphertext, MultiHybridCiphertext, NONCE_LENGTH,
 };
 use adkg::rand::AdkgRng;
+use adkg::scheme::DXKR23AdkgScheme;
 use adkg::scheme::bls12_381::DXKR23Bls12_381G1Sha256;
 use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
-use adkg::scheme::{AdkgSchemeConfig, DXKR23AdkgScheme};
 use adkg::vss::acss::AcssConfig;
 use anyhow::{Context, anyhow};
 use ark_ec::pairing::Pairing;
@@ -40,39 +42,35 @@ use std::collections::BTreeMap;
 use std::ops::Neg;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::oneshot;
 use utils::dst::{NamedCurveGroup, NamedDynDigest};
+use utils::hash_to_curve::HashToCurve;
 use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
+const TOPIC_SWAP_G1_TO_G2: &str = "adkg_dxkr23_swap_g1_to_g2";
+
 /// Run adkg for BN254 on G1, and swap ADKG output on G2
-#[allow(clippy::too_many_arguments)]
 pub async fn adkg_dxkr23_bn254_g1_keccak256_out_g2<TBT>(
-    id: PartyId,
     adkg_sk: &str,
+    adkg_config: AdkgConfig,
     group_config: &GroupConfig,
     scheme_config: AdkgCliSchemeConfig,
-    adkg_grace_period: Duration,
-    adkg_timeout: Duration,
     topic_transport: Arc<TBT>,
     writer: Option<InMemoryWriter>,
-    rng: &mut impl AdkgRng,
-) -> anyhow::Result<(
-    AdkgOutput<ark_bn254::G2Projective>,
-    Option<EncryptedAdkgTranscript>,
-)>
+    rng: impl AdkgRng + 'static,
+) -> anyhow::Result<()>
 where
-    TBT: TopicBasedTransport<Identity = PartyId>,
+    TBT: TopicBasedTransport<Identity = PartyId> + Send + Sync + 'static,
 {
     let output_generator_g2 = scheme_config.output_generator;
     let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config.adkg_config)?;
-    adkg_dxkr23_pairing_out_g2::<ark_bn254::Bn254, _, _>(
-        id,
+    adkg_pairing_out_g2::<ark_bn254::Bn254, _, _>(
         adkg_sk,
+        adkg_config,
         group_config,
         &output_generator_g2,
         scheme,
-        adkg_grace_period,
-        adkg_timeout,
         topic_transport,
         writer,
         rng,
@@ -83,32 +81,25 @@ where
 /// Run adkg for Bls12-381 on G1, and swap ADKG output on G2
 #[allow(clippy::too_many_arguments)]
 pub async fn adkg_dxkr23_bls12_381_g1_sha256_out_g2<TBT>(
-    id: PartyId,
     adkg_sk: &str,
+    adkg_config: AdkgConfig,
     group_config: &GroupConfig,
     scheme_config: AdkgCliSchemeConfig,
-    adkg_grace_period: Duration,
-    adkg_timeout: Duration,
     topic_transport: Arc<TBT>,
     writer: Option<InMemoryWriter>,
-    rng: &mut impl AdkgRng,
-) -> anyhow::Result<(
-    AdkgOutput<ark_bls12_381::G2Projective>,
-    Option<EncryptedAdkgTranscript>,
-)>
+    rng: impl AdkgRng + 'static,
+) -> anyhow::Result<()>
 where
-    TBT: TopicBasedTransport<Identity = PartyId>,
+    TBT: TopicBasedTransport<Identity = PartyId> + Send + Sync + 'static,
 {
     let output_generator_g2 = scheme_config.output_generator;
     let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config.adkg_config)?;
-    adkg_dxkr23_pairing_out_g2::<ark_bls12_381::Bls12_381, _, _>(
-        id,
+    adkg_pairing_out_g2::<ark_bls12_381::Bls12_381, _, _>(
         adkg_sk,
+        adkg_config,
         group_config,
         &output_generator_g2,
         scheme,
-        adkg_grace_period,
-        adkg_timeout,
         topic_transport,
         writer,
         rng,
@@ -116,19 +107,29 @@ where
     .await
 }
 
+/// Execute the adkg on g1, and then the swapping protocol to write an adkg output on both g1 & g2
+///
+/// This protocol is executed in the following stages:
+///  1. Execute standard ADKG on G1
+///     1a. The ADKG has sent an output through the oneshot channel, continue to 2.
+///     1b. The ADKG has timed out, or returned an error => exit now
+///  2. Write the priv/pub output to the specified files
+///  3. Execute the G1 to G2 swap protocol
+///     3.a. The swap protocol completes, write the priv/pub output to the specified files, continue to 4.
+///     3.b. The ADKG task is finished, continue to 4. <-- The swap protocol has failed.
+///  4. Wait for the ADKG task to complete its grace period
+///  5. Write the transcripts to disk
 #[allow(clippy::too_many_arguments)]
-async fn adkg_dxkr23_pairing_out_g2<E, S, TBT>(
-    id: PartyId,
+async fn adkg_pairing_out_g2<'a, E, S, TBT>(
     adkg_sk: &str,
+    adkg_config: AdkgConfig,
     group_config: &GroupConfig,
     g2: &str,
     adkg_scheme: S,
-    adkg_grace_period: Duration,
-    adkg_timeout: Duration,
     topic_transport: Arc<TBT>,
     writer: Option<InMemoryWriter>,
-    rng: &mut impl AdkgRng,
-) -> anyhow::Result<(AdkgOutput<E::G2>, Option<EncryptedAdkgTranscript>)>
+    mut rng: impl AdkgRng + 'static,
+) -> anyhow::Result<()>
 where
     E: Pairing,
     E::ScalarField: FqSerialize + FqDeserialize,
@@ -140,7 +141,7 @@ where
     S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
     <S::ACSSConfig as AcssConfig<'static, S::Curve, PartyId>>::Output:
         Into<ShareWithPoly<S::Curve>>,
-    TBT: TopicBasedTransport<Identity = PartyId>,
+    TBT: TopicBasedTransport<Identity = PartyId> + Send + Sync + 'static,
 {
     let sk = E::ScalarField::deser_base64(adkg_sk)?;
     let pks = group_config
@@ -150,56 +151,173 @@ where
         .collect::<Result<Vec<_>, _>>()?;
 
     let transport = topic_transport
-        .get_transport_for("adkg_dxkr23_swap_g1_to_g2")
+        .get_transport_for(TOPIC_SWAP_G1_TO_G2)
         .context("failed to obtain transport")?;
     let t_reconstruction = group_config.t_reconstruction.get();
     let g = adkg_scheme.generator_g();
     let g2 = E::G2::deser_compressed_base64(g2)?;
 
-    let adkg_out = adkg_dxkr23(
-        id,
-        sk,
-        pks.clone(),
-        group_config,
-        adkg_grace_period,
-        adkg_timeout,
-        topic_transport,
-        adkg_scheme,
-        rng,
-    )
-    .await?;
+    // Spawn a task to run the adkg in the background.
+    let (tx_adkg_out, rx_adkg_out) = oneshot::channel();
+    let mut adkg_task: tokio::task::JoinHandle<anyhow::Result<()>> = tokio::spawn({
+        let pks = pks.clone();
+        let adkg_config = adkg_config.clone();
+        let group_config = group_config.to_owned();
+        async move {
+            adkg_dxkr23(
+                sk,
+                pks.clone(),
+                adkg_config,
+                group_config,
+                topic_transport,
+                adkg_scheme,
+                &mut rng,
+                tx_adkg_out,
+            )
+            .await
+        }
+    });
 
-    let adkg_out =
-        pairing_swap_g1_to_g2::<E, _>(t_reconstruction, adkg_out, &g, &g2, transport).await?;
-
-    let transcript = if let Some(writer) = writer {
-        match encrypt_transcripts(id, group_config, &writer, &sk, &pks, &mut thread_rng()).await {
-            Ok(transcript) => Some(transcript),
-            Err(e) => {
-                tracing::error!(error = ?e, "Failed to generate ADKG transcript");
-                None
+    // Execute the adkg task until it errors, or we get the adkg output through the oneshot channel
+    let adkg_out = tokio::select! {
+        join_res = &mut adkg_task => {
+            match join_res {
+                Ok(Ok(())) => {
+                    tracing::error!("ADKG task exited with Ok before returning an output??");
+                    anyhow::bail!("Failed to obtain ADKG output: exited early")
+                },
+                Ok(Err(e)) => {
+                    tracing::error!(error = ?e, "ADKG task exited with an error");
+                    Err(e).context("Failed to obtain ADKG output: exited early with an error")
+                },
+                Err(e) => {
+                    tracing::error!(error = ?e, "Failed to join ADKG Task");
+                    Err(e).context("Failed to join ADKG task")
+                }
             }
         }
-    } else {
-        None
-    };
 
-    Ok((adkg_out, transcript))
+        adkg_out = rx_adkg_out => {
+            match adkg_out {
+                Ok(adkg_out) => Ok(adkg_out),
+                Err(_) => {
+                    anyhow::bail!("Failed to obtain ADKG output: sender channel dropped")
+                }
+            }
+        }
+    }?; // Leave now if adkg has failed, nothing that can be done
+
+    // Save the initial adkg output
+    let adkg_pub_out = AdkgPubOutput {
+        node_pks: adkg_out.node_pks.clone(),
+        group_pk: adkg_out.group_pk,
+    };
+    let mut adkg_dual_out = AdkgOutputDual::<E::G1, E::G2> {
+        sk: adkg_out.sk,
+        out_pub_source: adkg_pub_out.clone(),
+        out_pub_dest: None,
+    };
+    if let Err(e) = write_adkg_keys(
+        &adkg_dual_out,
+        &adkg_config.priv_out,
+        &adkg_config.pub_out,
+        adkg_config.scheme_name.clone(),
+        group_config,
+    ) {
+        tracing::error!(error = ?e, "Failed to save initial adkg output");
+    }
+
+    // We have an ADKG output, keep running it in the background, and execute the pairing swap protocol
+    tokio::select! {
+        join_res = &mut adkg_task => {
+            match join_res {
+                Ok(Ok(())) => {
+                    tracing::error!("Failed to execute g1 to g2 swap within grace period");
+                },
+                Ok(Err(e)) => {
+                    tracing::error!(error = ?e, "ADKG task exited with an error");
+                },
+                Err(e) => {
+                    tracing::error!(error = ?e, "Failed to join ADKG Task");
+                }
+            }
+        }
+
+        adkg_out_g2 = pairing_swap_g1_to_g2::<E, _>(t_reconstruction, adkg_out, &g, &g2, transport) => {
+            match adkg_out_g2 {
+                Ok(out_g2) => {
+                    // We got an adkg output on g2, re-write the output files with the new keys
+                    adkg_dual_out.out_pub_dest = Some(AdkgPubOutput {
+                        group_pk: out_g2.group_pk,
+                        node_pks: out_g2.node_pks,
+                    });
+
+                    if let Err(e) = write_adkg_keys(
+                        &adkg_dual_out,
+                        &adkg_config.priv_out,
+                        &adkg_config.pub_out,
+                        adkg_config.scheme_name.clone(),
+                        group_config,
+                    ) {
+                        tracing::error!(error = ?e, "Failed to save final adkg output");
+                    }
+                },
+                Err(e) => {
+                    tracing::error!(error = ?e, "Failed to swap adkg output from G1 to G2");
+                }
+            }
+        }
+    }
+
+    if !adkg_task.is_finished() {
+        // adkg still not finished, wait till it completes
+        if let Err(e) = adkg_task.await {
+            tracing::error!(error = ?e, "ADKG completed with an error");
+        }
+    }
+
+    // Finally, save a transcript if writer is some
+    if let Some(writer) = writer {
+        let transcript = encrypt_transcripts(
+            adkg_config.id,
+            group_config,
+            &writer,
+            &sk,
+            &pks,
+            &mut thread_rng(),
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!(error = ?e, "Failed to generate ADKG transcript");
+            e
+        })?;
+
+        if let Some(transcript_out) = &adkg_config.transcript_out {
+            if let Err(e) = write_transcript(transcript_out, transcript) {
+                tracing::error!(error = ?e, transcript_out = %transcript_out.display(), "Failed to write transcript to file");
+            } else {
+                tracing::info!(transcript_out = %transcript_out.display(), "Successfully wrote transcript to file");
+            }
+        }
+    }
+
+    Ok(())
 }
 
-/// Execute the DXKR23 HT-ADKG protocol to obtain a shared secret.
+/// Execute the DXKR23 HT-ADKG protocol to obtain a shared secret, or until the `adkg_timeout` expires.
+/// Once the output is obtained, it is sent through the `out` channel, but the ADKG continues to run for
+/// the duration of the `adkg_grace_period`.
 #[allow(clippy::too_many_arguments)]
 async fn adkg_dxkr23<S, TBT>(
-    id: PartyId,
     sk: <<S::Curve as CurveGroup>::Affine as AffineRepr>::ScalarField,
     pks: Vec<S::Curve>,
-    group_config: &GroupConfig,
-    adkg_grace_period: Duration,
-    adkg_timeout: Duration,
+    adkg_config: AdkgConfig,
+    group_config: GroupConfig,
     topic_transport: Arc<TBT>,
     adkg_scheme: S,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<S::Curve>>
+    out: oneshot::Sender<AdkgOutput<S::Curve>>,
+) -> anyhow::Result<()>
 where
     S: DXKR23AdkgScheme,
     S::Curve: NamedCurveGroup,
@@ -210,7 +328,7 @@ where
     TBT: TopicBasedTransport<Identity = PartyId>,
 {
     let mut adkg = adkg_scheme.new_adkg(
-        id,
+        adkg_config.id,
         group_config.n,
         group_config.t,
         group_config.t_reconstruction,
@@ -233,17 +351,22 @@ where
     // Start the ADKG and wait until we obtain a share, or the timeout occurs
     tracing::info!(
         "Executing ADKG with a timeout of {}",
-        humantime::format_duration(adkg_timeout)
+        humantime::format_duration(adkg_config.timeout)
     );
 
     let res = tokio::select! {
         output = adkg.start(rng, topic_transport) => {
             let output = match output {
                 Ok(adkg_out) => {
-                    tracing::info!("ADKG has terminated with an Ok output");
-                    tracing::info!("Running ADKG until grace period of {}", humantime::format_duration(adkg_grace_period));
-                    tokio::time::sleep(adkg_grace_period).await;
-                    Ok(adkg_out)
+                    tracing::info!(used_sessions = ?adkg_out.used_sessions, "Successfully obtained secret key & output from ADKG");
+                    if out.send(adkg_out).is_err() {
+                        // fails if the receiver side is dropped early
+                        tracing::error!("Failed to send ADKG output through sender channel: channel closed");
+                    }
+
+                    tracing::info!("Running ADKG until grace period of {}", humantime::format_duration(adkg_config.grace_period));
+                    tokio::time::sleep(adkg_config.grace_period).await;
+                    Ok(())
                 }
                 Err(e) => {
                     tracing::error!("failed to obtain output from ADKG: {e:?}");
@@ -254,7 +377,7 @@ where
             Ok(output)
         }
 
-        _ = tokio::time::sleep(adkg_timeout) => {
+        _ = tokio::time::sleep(adkg_config.timeout) => {
             println!("Aborting ADKG due to timeout");
             Err(anyhow!("ADKG has timed out"))
         }
@@ -386,42 +509,64 @@ where
     }
 }
 
-pub async fn adkg_dxkr23_bn254_g1_keccak256_rescue(
-    id: PartyId,
+pub async fn adkg_dxkr23_bn254_g1_keccak256_out_g2_rescue(
     adkg_sk: &str,
+    adkg_config: AdkgConfig,
     group_config: &GroupConfig,
-    scheme_config: AdkgSchemeConfig,
+    scheme_config: AdkgCliSchemeConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<<DXKR23Bn254G1Keccak256 as DXKR23AdkgScheme>::Curve>> {
-    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config)?;
-    adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
+) -> anyhow::Result<()> {
+    let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config.adkg_config)?;
+    adkg_pairing_swap_g1_to_g2_rescue::<ark_bn254::Bn254, _>(
+        adkg_sk,
+        &scheme_config.output_generator,
+        adkg_config,
+        group_config,
+        transcripts,
+        rng,
+        scheme,
+    )
+    .await
 }
 
-pub async fn adkg_dxkr23_bls12_381_g1_sha256_rescue(
-    id: PartyId,
+pub async fn adkg_dxkr23_bls12_381_g1_sha256_out_g2_rescue(
     adkg_sk: &str,
+    adkg_config: AdkgConfig,
     group_config: &GroupConfig,
-    scheme_config: AdkgSchemeConfig,
+    scheme_config: AdkgCliSchemeConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
-) -> anyhow::Result<AdkgOutput<<DXKR23Bls12_381G1Sha256 as DXKR23AdkgScheme>::Curve>> {
-    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config)?;
-    adkg_rescue(id, adkg_sk, group_config, transcripts, rng, scheme).await
+) -> anyhow::Result<()> {
+    let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config.adkg_config)?;
+    adkg_pairing_swap_g1_to_g2_rescue::<ark_bls12_381::Bls12_381, _>(
+        adkg_sk,
+        &scheme_config.output_generator,
+        adkg_config,
+        group_config,
+        transcripts,
+        rng,
+        scheme,
+    )
+    .await
 }
 
-async fn adkg_rescue<S>(
-    id: PartyId,
+async fn adkg_pairing_swap_g1_to_g2_rescue<E, S>(
     adkg_sk: &str,
+    g2: &str,
+    adkg_config: AdkgConfig,
     group_config: &GroupConfig,
     transcripts: Vec<EncryptedAdkgTranscript>,
     rng: &mut impl AdkgRng,
     scheme: S,
-) -> anyhow::Result<AdkgOutput<S::Curve>>
+) -> anyhow::Result<()>
 where
-    S: DXKR23AdkgScheme,
+    E: Pairing,
+    E::ScalarField: FqSerialize + FqDeserialize,
+    E::G1: HashToCurve + PointSerializeCompressed + PointDeserializeCompressed,
+    E::G2: PointSerializeCompressed + PointDeserializeCompressed,
+    S: DXKR23AdkgScheme<Curve = E::G1>,
     S::Curve: NamedCurveGroup,
-    <S::Curve as Group>::ScalarField: FqDeserialize,
     S::Hash: NamedDynDigest,
     S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
     <S::ACSSConfig as AcssConfig<'static, S::Curve, PartyId>>::Output:
@@ -446,7 +591,7 @@ where
         let TranscriptData {
             broadcasts,
             directs,
-        } = decrypt_transcript(id, &adkg_sk, adkg_pks.as_slice(), transcript)?;
+        } = decrypt_transcript(adkg_config.id, &adkg_sk, adkg_pks.as_slice(), transcript)?;
         Ok((sender, broadcasts, directs))
     });
 
@@ -476,26 +621,79 @@ where
 
     let transport_reader = InMemoryReaderTransport::from_entries(broadcasts, directs);
     let mut topic_dispatcher = TopicDispatcher::new();
-    let topic_transport = topic_dispatcher.start(transport_reader).into();
+    let topic_transport = topic_dispatcher.start(transport_reader);
+    let transport = topic_transport
+        .get_transport_for(TOPIC_SWAP_G1_TO_G2)
+        .context("failed to obtain transport")?;
 
     // Start the ADKG and wait until we obtain a share, or the timeout occurs
     tracing::info!("Executing rescue ADKG");
 
     let mut adkg = scheme.new_adkg(
-        id,
+        adkg_config.id,
         group_config.n,
         group_config.t,
         group_config.t_reconstruction,
         adkg_sk,
         adkg_pks.clone(),
     )?;
-    let output = adkg
-        .start(rng, topic_transport)
+    let adkg_out = adkg
+        .start(rng, topic_transport.into())
         .await
         .context("Failed to execute ADKG")?;
-
     tracing::info!("Successfully obtained ADKG output");
-    Ok(output)
+
+    let adkg_pub_out = AdkgPubOutput {
+        node_pks: adkg_out.node_pks.clone(),
+        group_pk: adkg_out.group_pk,
+    };
+    let mut adkg_dual_out = AdkgOutputDual::<E::G1, E::G2> {
+        sk: adkg_out.sk,
+        out_pub_source: adkg_pub_out.clone(),
+        out_pub_dest: None,
+    };
+
+    // Save the initial adkg output
+    if let Err(e) = write_adkg_keys(
+        &adkg_dual_out,
+        &adkg_config.priv_out,
+        &adkg_config.pub_out,
+        adkg_config.scheme_name.clone(),
+        group_config,
+    ) {
+        tracing::error!(error = ?e, "Failed to save initial adkg output");
+    }
+
+    // Swap adkg output to g2
+    let g1 = scheme.generator_g();
+    let g2 = E::G2::deser_compressed_base64(g2)?;
+    let adkg_out_g2 = pairing_swap_g1_to_g2::<E, _>(
+        group_config.t_reconstruction.get(),
+        adkg_out,
+        &g1,
+        &g2,
+        transport,
+    )
+    .await
+    .context("failed to replay swap g1 to g2 protocol")?;
+
+    // We got an adkg output on g2, re-write the output files with the new keys
+    adkg_dual_out.out_pub_dest = Some(AdkgPubOutput {
+        group_pk: adkg_out_g2.group_pk,
+        node_pks: adkg_out_g2.node_pks,
+    });
+
+    if let Err(e) = write_adkg_keys(
+        &adkg_dual_out,
+        &adkg_config.priv_out,
+        &adkg_config.pub_out,
+        adkg_config.scheme_name.clone(),
+        group_config,
+    ) {
+        tracing::error!(error = ?e, "Failed to save final adkg output");
+    }
+
+    Ok(())
 }
 
 #[serde_with::serde_as]

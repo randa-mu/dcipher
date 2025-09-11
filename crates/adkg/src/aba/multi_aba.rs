@@ -145,10 +145,16 @@ where
         // Cancel each of the tasks
         self.cancels.iter().for_each(|c| c.cancel());
 
-        let outputs = join_all(
+        let outputs: Vec<_> = join_all(
             PartyId::iter_all(self.n_instances)
                 .zip(self.tasks.into_iter())
-                .filter_map(|(id, task)| task.map(|t| t.map(move |out| (id, out)))),
+                .filter_map(|(id, task)| {
+                    let task = task?;
+                    Some(async move {
+                        let out = task.await;
+                        (id, out)
+                    })
+                }),
         )
         .await;
 
