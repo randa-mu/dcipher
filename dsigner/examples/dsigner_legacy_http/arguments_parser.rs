@@ -64,7 +64,7 @@ pub struct KeyConfigArgs {
     pub application_arguments: String,
 
     /// Whether to use compression for bn254 signatures
-    #[arg(long, env = "DSIGNER_SIG_COMPRESSION", default_value = "true")]
+    #[arg(long, env = "DSIGNER_SIG_COMPRESSION", default_value = "false")]
     pub sig_compression: bool,
 
     /// Nodes configuration file

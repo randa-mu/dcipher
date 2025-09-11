@@ -56,15 +56,15 @@ export DSIGNER_LIBP2P_LISTEN_ADDR="/ip4/0.0.0.0/tcp/9001"
 
 ### Key Configuration
 
-| Argument                  | Environment Variable | Default | Description |
-|---------------------------|---------------------|---------|-------------|
+| Argument                  | Environment Variable | Default      | Description |
+|---------------------------|---------------------|--------------|-------------|
 | `--bls-key`               | `DSIGNER_BLS_KEY` | **Required** | BLS private key for signing |
-| `--node-id`               | `DSIGNER_NODE_ID` | `1` | Node identifier |
-| `-n`                      | `DSIGNER_N_PARTIES` | `1` | Total number of parties |
-| `-t`                      | `DSIGNER_THRESHOLD` | `1` | Threshold required to sign |
-| `--application-arguments` | `DSIGNER_APPLICATION_ARGUMENTS` | `evmnet` | Application-specific arguments |
-| `--sig-compression`       | `DSIGNER_SIG_COMPRESSION` | `true` | Use signature compression |
-| `--nodes-config`          | `DSIGNER_NODES_CONFIG` | Optional | Path to nodes configuration file |
+| `--node-id`               | `DSIGNER_NODE_ID` | `1`          | Node identifier |
+| `-n`                      | `DSIGNER_N_PARTIES` | `1`          | Total number of parties |
+| `-t`                      | `DSIGNER_THRESHOLD` | `1`          | Threshold required to sign |
+| `--application-arguments` | `DSIGNER_APPLICATION_ARGUMENTS` | `evmnet`     | Application-specific arguments |
+| `--sig-compression`       | `DSIGNER_SIG_COMPRESSION` | `false`      | Use signature compression |
+| `--nodes-config`          | `DSIGNER_NODES_CONFIG` | Optional     | Path to nodes configuration file |
 
 ### libp2p Configuration
 
