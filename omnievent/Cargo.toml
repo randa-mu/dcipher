@@ -9,7 +9,7 @@ sql = ["dep:sqlx"]
 timings = []
 
 [dependencies]
-alloy = { workspace = true, features = ["default", "provider-ws", "serde"] }
+alloy = { workspace = true, features = ["default", "provider-ws", "serde", "reqwest-default-tls"] }
 superalloy.workspace = true
 
 # async
