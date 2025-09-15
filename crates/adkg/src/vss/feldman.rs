@@ -102,7 +102,7 @@ pub fn share<CG: CurveGroup>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_ec::{Group, pairing::Pairing};
+    use ark_ec::{PrimeGroup, pairing::Pairing};
     use ark_std::UniformRand;
 
     #[test]

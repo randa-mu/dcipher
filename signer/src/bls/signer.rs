@@ -3,9 +3,9 @@
 use super::*;
 use ark_ec::pairing::Pairing;
 use ark_ec::short_weierstrass::{Affine, SWCurveConfig};
-use ark_ec::{AffineRepr, Group};
+use ark_ec::{AffineRepr, PrimeGroup};
 use ark_std::Zero;
-use digest::DynDigest;
+use digest::FixedOutputReset;
 use digest::core_api::BlockSizeUser;
 use std::ops::Neg;
 
@@ -47,7 +47,7 @@ where
 {
     type E = E;
 
-    fn verify_g1<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn verify_g1<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
@@ -70,7 +70,7 @@ where
         .is_zero()
     }
 
-    fn verify_g2<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn verify_g2<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
@@ -106,7 +106,7 @@ where
 {
     type Error = std::convert::Infallible;
 
-    fn sign_g1<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn sign_g1<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
@@ -116,7 +116,7 @@ where
         Ok(sig.into_affine())
     }
 
-    fn sign_g2<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn sign_g2<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,

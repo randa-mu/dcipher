@@ -3,7 +3,7 @@
 macro_rules! gen_hash_to_curve {
     ($cg_config:ty, $f:ident, $h:ty, $d:literal) => {
         impl CustomHashToCurve for ark_ec::short_weierstrass::Projective<$cg_config> {
-            fn hash_to_curve_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+            fn hash_to_curve_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
                 message: &[u8],
                 dst: &[u8],
             ) -> Self {
@@ -25,9 +25,9 @@ macro_rules! gen_hash_to_curve {
 #[cfg(feature = "bn254")]
 mod bn254 {
     use crate::hash_to_curve::{CustomHashToCurve, CustomPairingHashToCurve, HashToCurve};
-    use ark_ff::MontFp;
+    use ark_ff::{AdditiveGroup, MontFp};
     use digest::core_api::BlockSizeUser;
-    use digest::DynDigest;
+    use digest::FixedOutputReset;
 
     gen_hash_to_curve!(
         ark_bn254::g1::Config,
@@ -43,14 +43,14 @@ mod bn254 {
     );
 
     impl CustomPairingHashToCurve for ark_bn254::Bn254 {
-        fn hash_to_g1_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+        fn hash_to_g1_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
             message: &[u8],
             dst: &[u8],
         ) -> Self::G1 {
             Self::G1::hash_to_curve_custom::<H>(message, dst)
         }
 
-        fn hash_to_g2_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+        fn hash_to_g2_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
             message: &[u8],
             dst: &[u8],
         ) -> Self::G2 {
@@ -59,7 +59,7 @@ mod bn254 {
     }
 
     /// Hash message into a point on the G1 group of the bn254 curve using a custom hash function and dst.
-    fn bn254_hash_to_g1_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn bn254_hash_to_g1_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         message: &[u8],
         dst: &[u8],
     ) -> ark_bn254::G1Projective {
@@ -83,7 +83,7 @@ mod bn254 {
             MontFp!("7296080957279758407415468581752425029565437052432607887563012631548408736189"),
         ];
         let htf = <DefaultFieldHasher<H, 128> as HashToField<Fq>>::new(dst);
-        let m: Vec<Fq> = htf.hash_to_field(message, 2);
+        let m = htf.hash_to_field::<2>(message);
         let q0 = super::svdw::map_to_curve_const_a_zero::<ark_bn254::g1::Config>(m[0], C, Z);
         let q1 = super::svdw::map_to_curve_const_a_zero::<ark_bn254::g1::Config>(m[1], C, Z);
         let r: Affine<ark_bn254::g1::Config> = (q0 + q1).into();
@@ -95,7 +95,7 @@ mod bn254 {
     }
 
     /// Hash to a point on the G2 group of the bn254 curve using a custom hash function and dst.
-    fn bn254_hash_to_g2_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn bn254_hash_to_g2_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         message: &[u8],
         dst: &[u8],
     ) -> ark_bn254::G2Projective {
@@ -147,7 +147,7 @@ mod bn254 {
         const C: [Fq2; 4] = [C1, C2, C3, C4];
 
         let htf = <DefaultFieldHasher<H, 128> as HashToField<Fq2>>::new(dst);
-        let m: Vec<Fq2> = htf.hash_to_field(message, 2);
+        let m = htf.hash_to_field::<2>(message);
         let q0 = super::svdw::map_to_curve_const_a_zero::<ark_bn254::g2::Config>(m[0], C, Z);
         let q1 = super::svdw::map_to_curve_const_a_zero::<ark_bn254::g2::Config>(m[1], C, Z);
         let r = q0 + q1;
@@ -162,7 +162,7 @@ mod bn254 {
     /// Adapted from: https://github.com/nikkolasg/bn254_hash2curve/blob/5995e36149b0119fa2a97dfcc00758729f00cc93/src/hash2g2.rs#L291
     fn bn254_g2_clear_cofactor(p: ark_bn254::G2Projective) -> ark_bn254::G2Projective {
         use ark_bn254::{Fq2, Fr};
-        use ark_ec::Group;
+        use ark_ec::AdditiveGroup;
 
         const SEED: Fr = MontFp!("4965661367192848881");
         const ENDO_U: Fq2 = Fq2::new(
@@ -202,7 +202,7 @@ mod bn254 {
 mod bls12_381 {
     use crate::hash_to_curve::{CustomHashToCurve, CustomPairingHashToCurve, HashToCurve};
     use digest::core_api::BlockSizeUser;
-    use digest::DynDigest;
+    use digest::FixedOutputReset;
 
     gen_hash_to_curve!(
         ark_bls12_381::g1::Config,
@@ -219,14 +219,14 @@ mod bls12_381 {
     );
 
     impl CustomPairingHashToCurve for ark_bls12_381::Bls12_381 {
-        fn hash_to_g1_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+        fn hash_to_g1_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
             message: &[u8],
             dst: &[u8],
         ) -> Self::G1 {
             Self::G1::hash_to_curve_custom::<H>(message, dst)
         }
 
-        fn hash_to_g2_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+        fn hash_to_g2_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
             message: &[u8],
             dst: &[u8],
         ) -> Self::G2 {
@@ -234,7 +234,7 @@ mod bls12_381 {
         }
     }
 
-    fn bls12381_hash_to_g1_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn bls12381_hash_to_g1_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         message: &[u8],
         dst: &[u8],
     ) -> ark_bls12_381::G1Projective {
@@ -257,7 +257,7 @@ mod bls12_381 {
         hasher.hash(message).unwrap().into()
     }
 
-    fn bls12381_hash_to_g2_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn bls12381_hash_to_g2_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         message: &[u8],
         dst: &[u8],
     ) -> ark_bls12_381::G2Projective {

@@ -3,7 +3,7 @@
 use crate::helpers::{PartyId, lagrange_points_interpolate_at};
 use crate::nizk::NIZKDleqProof;
 use ark_ec::CurveGroup;
-use digest::{DynDigest, core_api::BlockSizeUser};
+use digest::{DynDigest, FixedOutputReset, core_api::BlockSizeUser};
 use itertools::{Itertools, izip};
 use rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ pub struct EcdhCoinTossEval<CG: CurveGroup, H> {
 
 impl<CG, H> EcdhCoinTossEval<CG, H>
 where
-    H: Default + DynDigest + BlockSizeUser + Clone,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone,
     CG: CurveGroup + Copy + HashToCurve + PointSerializeCompressed,
 {
     /// Outputs an evaluation Z_i = [si]H(coin input) and a discrete logarithm equivalence proof that there exists s s.t. [s]G = VK and [s]H(coin input) = Z_i.
@@ -165,7 +165,8 @@ mod tests {
     use super::{Coin, EcdhCoinTossEval};
     use crate::helpers::{PartyId, eval_poly};
     use ark_ec::pairing::Pairing;
-    use ark_ec::{CurveGroup, Group};
+    use ark_ec::{CurveGroup, PrimeGroup};
+    use ark_ff::AdditiveGroup;
     use ark_std::UniformRand;
     use rand::{Rng, thread_rng};
     use std::collections::HashSet;

@@ -78,7 +78,7 @@ where
             .rev()
             .collect::<Result<Vec<<Self as Field>::BasePrimeField>, _>>()?;
 
-        Self::from_base_prime_field_elems(&x).ok_or(SerializationError::InvalidData)
+        Self::from_base_prime_field_elems(x).ok_or(SerializationError::InvalidData)
     }
 }
 
@@ -138,7 +138,7 @@ mod tests {
     mod bn254 {
         use crate::serialize::fq::{FqDeserialize, FqSerialize};
         use ark_bn254::{Fq, Fq2};
-        use ark_ec::{AffineRepr, CurveGroup, Group};
+        use ark_ec::{AffineRepr, CurveGroup, PrimeGroup};
         use ark_ff::PrimeField;
         use rstest::*;
 

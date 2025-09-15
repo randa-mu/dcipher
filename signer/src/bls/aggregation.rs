@@ -1,11 +1,11 @@
-use ark_ec::{Group, VariableBaseMSM};
+use ark_ec::{PrimeGroup, VariableBaseMSM};
 use ark_ff::{Field, PrimeField};
 use ark_std::One;
 
 /// Lagrange interpolation of the polynomial defined by its points, evaluated at point eval_x.
 pub fn lagrange_points_interpolate_at<G>(points: &[(u64, G)], eval_x: u64) -> G
 where
-    G: VariableBaseMSM + Group,
+    G: VariableBaseMSM + PrimeGroup,
     G::ScalarField: PrimeField,
 {
     let eval_point: G::ScalarField = eval_x.into();

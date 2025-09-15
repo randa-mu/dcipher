@@ -365,7 +365,7 @@ where
 
     /// Sync the state of the agent with the on-chain contract.
     #[tracing::instrument(skip(self))]
-    pub async fn sync_state(&mut self) -> Result<(), InternalBlocklockAgentError> {
+    async fn sync_state(&mut self) -> Result<(), InternalBlocklockAgentError> {
         let last_seen_request_id = self.last_seen_request_id.0;
 
         // Query the current block first to make sure that it's either the latest, or a previous block
@@ -583,7 +583,7 @@ mod tests {
     use alloy::providers::{Provider, ProviderBuilder, RootProvider, WalletProvider};
     use alloy::rpc::types::TransactionRequest;
     use alloy::sol_types::{SolEvent, SolValue};
-    use ark_ec::{AffineRepr, CurveGroup, Group};
+    use ark_ec::{AffineRepr, CurveGroup, PrimeGroup};
     use ark_ff::{BigInteger, MontFp, PrimeField};
     use ark_std::UniformRand;
     use ark_std::rand::thread_rng;
@@ -635,7 +635,6 @@ mod tests {
 
     fn to_sol_g2(p: ark_bn254::G2Affine) -> ([U256; 2], [U256; 2]) {
         let (x, y) = p.xy().unwrap();
-        let (x, y) = (*x, *y);
         let x0 = U256::from_be_bytes::<32>(x.c0.into_bigint().to_bytes_be().try_into().unwrap());
         let x1 = U256::from_be_bytes::<32>(x.c1.into_bigint().to_bytes_be().try_into().unwrap());
         let y0 = U256::from_be_bytes::<32>(y.c0.into_bigint().to_bytes_be().try_into().unwrap());

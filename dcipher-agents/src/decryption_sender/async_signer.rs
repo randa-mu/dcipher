@@ -120,7 +120,6 @@ pub(crate) mod tests {
 
     pub(crate) fn create_ciphertext(eph_pk: ark_bn254::G2Affine) -> alloy::primitives::Bytes {
         let (x, y) = eph_pk.xy().unwrap();
-        let (x, y) = (*x, *y);
         let x0 = x.c0.into_bigint().to_bytes_be();
         let x1 = x.c1.into_bigint().to_bytes_be();
         let y0 = y.c0.into_bigint().to_bytes_be();

@@ -5,13 +5,13 @@
 //! on G1 is provided through the [`IbeIdentityOnBn254G1Suite`] struct.
 
 use ark_ec::pairing::Pairing;
-use ark_ec::{AffineRepr, Group};
+use ark_ec::{AffineRepr, PrimeGroup};
 
 /// Partial cipher suite for the IBE scheme described in <https://eprint.iacr.org/2023/189>, Algorithms 1-2
 pub trait PairingIbeCipherSuite {
     type IdentityGroup: AffineRepr;
     type PublicKeyGroup: AffineRepr;
-    type TargetGroup: Group;
+    type TargetGroup: PrimeGroup;
 
     type HashOutput: AsRef<[u8]>;
     type Ciphertext: IbeCiphertext<EphemeralPublicKey = Self::PublicKeyGroup>;

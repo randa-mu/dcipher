@@ -19,13 +19,13 @@ use crate::rbc::multi_rbc::MultiRbc;
 use crate::vss::acss::AcssConfig;
 use crate::vss::acss::hbacss0::PedersenSecret;
 use crate::vss::acss::multi_acss::MultiAcss;
-use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_ec::{AffineRepr, CurveGroup, PrimeGroup};
 use ark_ff::Zero;
 use ark_std::UniformRand;
 use dcipher_network::topic::TopicBasedTransport;
 use dcipher_network::{ReceivedMessage, Recipient, Transport};
-use digest::DynDigest;
 use digest::core_api::BlockSizeUser;
+use digest::{DynDigest, FixedOutputReset};
 use futures::StreamExt;
 use itertools::izip;
 use nalgebra::RowDVector;
@@ -184,7 +184,7 @@ where
         + PointDeserializeCompressed
         + utils::hash_to_curve::HashToCurve,
     CG::ScalarField: FqSerialize + FqDeserialize,
-    H: Default + DynDigest + BlockSizeUser + Clone + 'static,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     RBCConfig: ReliableBroadcastConfig<'static, PartyId>,
     ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Vec<PedersenSecret<CG::ScalarField>>>,
     ACSSConfig::Output: Into<ShareWithPoly<CG>>,
@@ -430,8 +430,8 @@ where
     #[allow(clippy::too_many_arguments)]
     async fn key_derivation_phase<T>(
         &mut self,
-        z_i: &<CG as Group>::ScalarField,
-        z_hat_i: &<CG as Group>::ScalarField,
+        z_i: &<CG as PrimeGroup>::ScalarField,
+        z_hat_i: &<CG as PrimeGroup>::ScalarField,
         ped_commits: &[CG],
         key_messages: impl IntoIterator<Item = (PartyId, AdkgKeyMessage<CG, H>)>,
         adkg_sender: &T::Sender,
@@ -536,8 +536,8 @@ where
         adkg_receiver: &mut T::ReceiveMessageStream,
     ) -> Result<
         (
-            <CG as Group>::ScalarField,
-            <CG as Group>::ScalarField,
+            <CG as PrimeGroup>::ScalarField,
+            <CG as PrimeGroup>::ScalarField,
             Vec<CG>,
             BTreeMap<PartyId, AdkgKeyMessage<CG, H>>,
         ),
@@ -1139,10 +1139,11 @@ mod tests {
     use crate::rand::{AdkgRng, AdkgRngType, get_rng};
     use crate::rbc::r4::Rbc4RoundsConfig;
     use crate::vss::acss::hbacss0::HbAcss0Config;
-    use ark_ec::{CurveGroup, Group};
+    use ark_ec::{CurveGroup, PrimeGroup};
     use ark_std::UniformRand;
     use dcipher_network::topic::dispatcher::TopicDispatcher;
     use dcipher_network::transports::in_memory::MemoryNetwork;
+    use digest::FixedOutputReset;
     use digest::core_api::BlockSizeUser;
     use itertools::izip;
     use std::collections::{HashMap, VecDeque};
@@ -1166,7 +1167,7 @@ mod tests {
     fn get_generator_g<CG, H>() -> CG
     where
         CG: NamedCurveGroup + HashToCurve,
-        H: Default + NamedDynDigest + BlockSizeUser + Clone,
+        H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone,
     {
         let dst: Vec<_> = Rfc9380DstBuilder::empty()
             .with_application_name(APPNAME.to_vec())
@@ -1224,7 +1225,7 @@ mod tests {
     ) where
         CG: NamedCurveGroup + PointSerializeCompressed + PointDeserializeCompressed + HashToCurve,
         CG::ScalarField: FqSerialize + FqDeserialize,
-        H: Default + NamedDynDigest + BlockSizeUser + Clone + 'static,
+        H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     {
         _ = tracing_subscriber::fmt()
             .with_max_level(tracing::Level::WARN)
