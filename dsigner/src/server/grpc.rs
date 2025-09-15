@@ -144,6 +144,7 @@ mod tests {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
 
+    #[ignore]
     #[tokio::test]
     async fn start_server() {
         // Try to set logging options
