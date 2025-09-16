@@ -10,15 +10,14 @@ mod scheme;
 mod transcripts;
 
 use crate::adkg_dxkr23::{
-    adkg_dxkr23_bls12_381_g1_sha256_out_g2, adkg_dxkr23_bls12_381_g1_sha256_rescue,
-    adkg_dxkr23_bn254_g1_keccak256_out_g2, adkg_dxkr23_bn254_g1_keccak256_rescue,
+    adkg_dxkr23_bls12_381_g1_sha256_out_g2, adkg_dxkr23_bls12_381_g1_sha256_out_g2_rescue,
+    adkg_dxkr23_bn254_g1_keccak256_out_g2, adkg_dxkr23_bn254_g1_keccak256_out_g2_rescue,
 };
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
 use crate::config::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
 use crate::keygen::{PrivateKeyMaterial, keygen};
 use crate::scheme::{AdkgCliSchemeConfig, SupportedAdkgScheme, new_scheme_config};
 use crate::transcripts::EncryptedAdkgTranscript;
-use adkg::adkg::AdkgOutput;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
 use anyhow::{Context, anyhow};
@@ -114,6 +113,18 @@ fn generate(args: Generate) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Various params used by the ADKG
+#[derive(Clone, Debug)]
+struct AdkgConfig {
+    id: PartyId,
+    grace_period: Duration,
+    timeout: Duration,
+    priv_out: PathBuf,
+    pub_out: PathBuf,
+    transcript_out: Option<PathBuf>,
+    scheme_name: String,
+}
+
 async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
     let RunAdkg {
         common:
@@ -141,68 +152,59 @@ async fn run_adkg(args: RunAdkg) -> anyhow::Result<()> {
         tracing::warn!("The start date specified in the group configuration is in the past");
     }
 
-    let id = PartyId(id.get());
+    let adkg_config = AdkgConfig {
+        id: PartyId(id.get()),
+        grace_period,
+        timeout,
+        priv_out,
+        pub_out,
+        transcript_out,
+        scheme_name: scheme_config.adkg_scheme_name.clone(),
+    };
     let adkg_scheme: SupportedAdkgScheme = scheme_config
         .adkg_scheme_name
         .parse()
         .context("adkg scheme not supported")?;
-    let mut rng = AdkgStdRng::new(OsRng);
+    let rng = AdkgStdRng::new(OsRng);
 
     // Start metrics server if enabled
     #[cfg(feature = "metrics")]
     adkg_metrics(&metrics_params);
 
     // Start libp2p transport
-    let transports = get_libp2p_transports(id, &sk, listen_address, &group_config).await?;
+    let transports =
+        get_libp2p_transports(adkg_config.id, &sk, listen_address, &group_config).await?;
 
-    match adkg_scheme {
+    let adkg_res = match adkg_scheme {
         SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
-            let output = adkg_dxkr23_bn254_g1_keccak256_out_g2(
-                id,
+            adkg_dxkr23_bn254_g1_keccak256_out_g2(
                 &sk.adkg_sk,
+                adkg_config,
                 &group_config,
                 scheme_config,
-                grace_period,
-                timeout,
                 transports.topic_transport.clone(),
                 Some(transports.writer),
-                &mut rng,
+                rng,
             )
-            .await;
-
-            process_adkg_output(
-                &priv_out,
-                &pub_out,
-                transcript_out,
-                &group_config,
-                adkg_scheme.to_string(),
-                output,
-            )?;
+            .await
         }
 
         SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
-            let output = adkg_dxkr23_bls12_381_g1_sha256_out_g2(
-                id,
+            adkg_dxkr23_bls12_381_g1_sha256_out_g2(
                 &sk.adkg_sk,
+                adkg_config,
                 &group_config,
                 scheme_config,
-                grace_period,
-                timeout,
                 transports.topic_transport.clone(),
                 Some(transports.writer),
-                &mut rng,
+                rng,
             )
-            .await;
-
-            process_adkg_output(
-                &priv_out,
-                &pub_out,
-                transcript_out,
-                &group_config,
-                adkg_scheme.to_string(),
-                output,
-            )?;
+            .await
         }
+    };
+
+    if let Err(e) = adkg_res {
+        tracing::error!(error = ?e, "ADKG returned an error");
     }
 
     tracing::info!("Stopping libp2p dispatcher...");
@@ -251,55 +253,49 @@ async fn rescue_adkg(args: Rescue) -> anyhow::Result<()> {
         ))?;
     }
 
-    let id = PartyId(id.get());
+    let adkg_config = AdkgConfig {
+        id: PartyId(id.get()),
+        grace_period: Duration::from_secs(0), // unused
+        timeout: Duration::from_secs(0),      // unused
+        priv_out,
+        pub_out,
+        transcript_out: None,
+        scheme_name: scheme_config.adkg_scheme_name.clone(),
+    };
     let adkg_scheme_name = scheme_config
         .adkg_scheme_name
         .parse()
         .context("adkg scheme not supported")?;
     let mut rng = AdkgStdRng::new(OsRng);
-    match adkg_scheme_name {
+    let adkg_res = match adkg_scheme_name {
         SupportedAdkgScheme::DXKR23Bn254G1Keccak256 => {
-            let output = adkg_dxkr23_bn254_g1_keccak256_rescue(
-                id,
+            adkg_dxkr23_bn254_g1_keccak256_out_g2_rescue(
                 &sk.adkg_sk,
+                adkg_config,
                 &group_config,
-                scheme_config.adkg_config,
+                scheme_config,
                 transcripts,
                 &mut rng,
             )
-            .await;
-
-            process_adkg_output(
-                &priv_out,
-                &pub_out,
-                None,
-                &group_config,
-                adkg_scheme_name.to_string(),
-                output.map(|out| (out, None)),
-            )?;
+            .await
         }
 
         SupportedAdkgScheme::DXKR23Bls12_381G1Sha256 => {
-            let output = adkg_dxkr23_bls12_381_g1_sha256_rescue(
-                id,
+            adkg_dxkr23_bls12_381_g1_sha256_out_g2_rescue(
                 &sk.adkg_sk,
+                adkg_config,
                 &group_config,
-                scheme_config.adkg_config,
+                scheme_config,
                 transcripts,
                 &mut rng,
             )
-            .await;
-
-            process_adkg_output(
-                &priv_out,
-                &pub_out,
-                None,
-                &group_config,
-                adkg_scheme_name.to_string(),
-                output.map(|out| (out, None)),
-            )?;
+            .await
         }
     };
+
+    if let Err(e) = adkg_res {
+        tracing::error!(error = ?e, "ADKG returned an error");
+    }
 
     Ok(())
 }
@@ -353,63 +349,55 @@ fn adkg_metrics(metrics_params: &cli::MetricsParams) {
     ));
 }
 
-/// Process the ADKG output
-fn process_adkg_output<CG>(
-    priv_out: &PathBuf,
-    pub_out: &PathBuf,
-    transcript_out: Option<PathBuf>,
-    group_config: &GroupConfig,
-    adkg_scheme_name: String,
-    output: anyhow::Result<(AdkgOutput<CG>, Option<EncryptedAdkgTranscript>)>,
-) -> anyhow::Result<()>
-where
-    CG: CurveGroup + PointSerializeCompressed,
-    CG::ScalarField: FqSerialize,
-{
-    match output {
-        Ok((adkg_out, opt_transcript)) => {
-            tracing::info!(used_sessions = ?adkg_out.used_sessions, "Successfully obtained secret key from ADKG");
-            write_adkg_keys(adkg_out, priv_out, pub_out, adkg_scheme_name, group_config)?;
+#[derive(Clone, Debug)]
+struct AdkgPubOutput<CG> {
+    pub group_pk: Option<CG>,
+    pub node_pks: Option<Vec<CG>>,
+}
 
-            if let Some(transcript_out) = transcript_out {
-                if let Some(transcript) = opt_transcript {
-                    if let Err(e) = fs::write(&transcript_out, transcript) {
-                        tracing::error!(error = ?e, transcript_out = %transcript_out.display(), "Failed to write transcript to file");
-                    } else {
-                        tracing::info!(transcript_out = %transcript_out.display(), "Successfully wrote transcript to file");
-                    }
-                } else {
-                    tracing::error!(
-                        "transcript_out file specified, but ADKG returned an empty transcript.."
-                    );
-                }
-            }
-        }
-        Err(e) => {
-            tracing::info!(error = ?e, "Failed to execute ADKG");
-            Err(e)?
-        }
+/// The adkg output with public outputs on the source group of the ADKG, and on a destination group
+/// used for signatures.
+#[derive(Clone)]
+struct AdkgOutputDual<CGSource, CGDest>
+where
+    CGSource: CurveGroup,
+    CGDest: CurveGroup<ScalarField = CGSource::ScalarField>,
+{
+    sk: CGSource::ScalarField,
+    out_pub_source: AdkgPubOutput<CGSource>,
+    out_pub_dest: Option<AdkgPubOutput<CGDest>>,
+}
+
+/// Write the adkg transcript
+fn write_transcript(
+    transcript_out: &PathBuf,
+    transcript: EncryptedAdkgTranscript,
+) -> anyhow::Result<()> {
+    if let Err(e) = fs::write(transcript_out, transcript) {
+        Err(e).context("failed to write ADKG transcript")?
     }
+
     Ok(())
 }
 
 /// Write the ADKG outputs in priv / pub files.
-fn write_adkg_keys<CG>(
-    output: AdkgOutput<CG>,
+fn write_adkg_keys<CGSource, CGDest>(
+    outputs: &AdkgOutputDual<CGSource, CGDest>,
     priv_out: &PathBuf,
     pub_out: &PathBuf,
     adkg_scheme_name: String,
     group_config: &GroupConfig,
 ) -> anyhow::Result<()>
 where
-    CG: CurveGroup + PointSerializeCompressed,
-    CG::ScalarField: FqSerialize,
+    CGSource: CurveGroup + PointSerializeCompressed,
+    CGSource::ScalarField: FqSerialize,
+    CGDest: CurveGroup<ScalarField = CGSource::ScalarField> + PointSerializeCompressed,
 {
     let genesis_timestamp = group_config.start_time.timestamp();
     let secret = AdkgSecret {
         adkg_scheme_name: adkg_scheme_name.clone(),
         genesis_timestamp,
-        sk: output
+        sk: outputs
             .sk
             .ser_base64()
             .context("failed to serialize secret key")?,
@@ -420,35 +408,66 @@ where
     )
     .context("failed to write secret key file")?;
 
-    if output.node_pks.is_none() || output.group_pk.is_none() {
-        Err(anyhow!("group_pk / node pks is None"))?;
-    }
-    let group_pk = output
-        .group_pk
-        .unwrap()
-        .ser_compressed_base64()
-        .context("failed to serialize group pk")?;
-    let node_pks = output
-        .node_pks
-        .unwrap()
-        .into_iter()
-        .zip(group_config.nodes.iter())
-        .map(|(node_pk, n)| {
-            Ok(AdkgNodePk {
-                id: n.id,
-                peer_id: n.public_key_material.peer_id,
-                multiaddr: n.multiaddr.clone(),
-                pk: node_pk
-                    .ser_compressed_base64()
-                    .context("failed to serialize group pk")?,
+    /// Serialize public parameters
+    fn ser_pub_params<CG: PointSerializeCompressed>(
+        outputs: &AdkgPubOutput<CG>,
+        group_config: &GroupConfig,
+    ) -> anyhow::Result<(String, Vec<AdkgNodePk>)> {
+        if outputs.node_pks.is_none() || outputs.group_pk.is_none() {
+            Err(anyhow!("group_pk / node pks is None"))?;
+        }
+        let group_pk = outputs
+            .group_pk
+            .as_ref()
+            .unwrap()
+            .ser_compressed_base64()
+            .context("failed to serialize group pk")?;
+        let node_pks = outputs
+            .node_pks
+            .as_ref()
+            .unwrap()
+            .iter()
+            .zip(group_config.nodes.iter())
+            .map(|(node_pk, n)| {
+                Ok(AdkgNodePk {
+                    id: n.id,
+                    peer_id: n.public_key_material.peer_id,
+                    multiaddr: n.multiaddr.clone(),
+                    pk: node_pk
+                        .ser_compressed_base64()
+                        .context("failed to serialize group pk")?,
+                })
             })
-        })
-        .collect::<anyhow::Result<_>>()?;
+            .collect::<anyhow::Result<_>>()?;
+
+        Ok((group_pk, node_pks))
+    }
+
+    // Serialize adkg source group, or get defaults if it fails
+    let (group_pk_source, node_pks_source) = ser_pub_params(&outputs.out_pub_source, group_config)
+        .unwrap_or_else(|e| {
+            tracing::error!(error = ?e, "Failed to serialize public output of adkg source group");
+            Default::default()
+        });
+
+    // Serialize adkg destination group, or get defaults if it fails
+    let (group_pk, node_pks) = outputs
+        .out_pub_dest
+        .as_ref()
+        .map(|out| ser_pub_params(out, group_config))
+        .unwrap_or(Ok(Default::default()))
+        .unwrap_or_else(|e| {
+            tracing::error!(error = ?e, "Failed to serialize public output of adkg destination group");
+            Default::default()
+        });
+
     let public = AdkgPublic {
         adkg_scheme_name,
         genesis_timestamp,
         group_pk,
+        group_pk_source,
         node_pks,
+        node_pks_source,
     };
     fs::write(
         pub_out,
