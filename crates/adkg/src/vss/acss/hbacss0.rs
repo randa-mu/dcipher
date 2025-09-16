@@ -528,7 +528,7 @@ where
             // We need to send the shared secret (K_i = [s_i] PK_d) and a proof
             // that we know an s s.t. log_{PK_d} K_i = log_G PK_i = s
             let shared_secret = enc_shares.derive_shared_key(&config.sk);
-            let pi = NIZKDleqProof::<CG, sha3::Sha3_256>::prove(
+            let pi = NIZKDleqProof::<CG, H>::prove(
                 &config.sk,
                 &config.g,
                 &enc_shares.sender_pk,
