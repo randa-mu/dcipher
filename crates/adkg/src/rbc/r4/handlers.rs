@@ -29,44 +29,55 @@ pub(super) async fn rbc_receive_proposal<T>(
         st.id
     );
 
-    // if sent by the expected broadcaster AND P(M) then
-    // Notice that we halt processing of all upcoming messages until the predicate resolves.
-    if sender.eq(expected_sender)
-        && predicate.predicate(sender, m.as_slice()).await
-        && st.status == RbcStatus::WaitingForProposal
-    {
-        info!("Node `{}` accepted proposal", st.id);
-
-        // let h := hash(M)
-        let h = Sha3_256::digest(m).to_vec();
-        // let M' = [m_1, m_2, ..., m_n] = RSEnc(M, n, t + 1)
-        let mp = rs_encode_stripes(m, n, t + 1);
-
-        // 10: send \langle ECHO, m_j, h \rangle to node j \in [n]
-        for j in PartyId::iter_all(n) {
-            let msg = Message::Echo(Echo {
-                h: h.clone(),
-                m: mp[j].clone(),
-            });
-            info!("Node `{}` Echoing encoded proposal to node `{j}`", st.id);
-
-            // Try to send message, ignore errors
-            if let Err(e) =
-                send_serialize_helper(&msg, Recipient::Single(j), st.retry_strategy, st.sender)
-                    .await
-            {
-                error!(
-                    "Node `{}` failed to send echo message, got error {e:?}",
-                    st.id
-                );
-            }
-        }
-
-        // Update state machine
-        st.status = RbcStatus::WaitingForEchos;
-    } else {
-        warn!(proposal_sender = ?sender, "Node `{}` refused proposal", st.id);
+    if &sender != expected_sender {
+        // Not the expected sender
+        warn!(proposal_sender = ?sender, ?expected_sender, "Node `{}` refused proposal: unexpected sender", st.id);
+        return;
     }
+
+    if st.status != RbcStatus::WaitingForProposal {
+        // A proposal was already accepted
+        warn!(proposal_sender = ?sender, "Node `{}` refused proposal: a proposal was already accepted", st.id);
+        return;
+    }
+
+    if !predicate.predicate(sender, m.as_slice()).await {
+        // Predicate refused the proposal
+        warn!(proposal_sender = ?sender, "Node `{}` refused proposal: refused due to predicate", st.id);
+        return;
+    }
+
+    // We reach here if the proposal was sent by the expected broadcaster AND waiting for a proposal
+    // AND P(M) -- the predicate returned true
+    // Notice that we halt processing of all upcoming messages until the predicate resolves.
+    info!("Node `{}` accepted proposal", st.id);
+
+    // let h := hash(M)
+    let h = Sha3_256::digest(m).to_vec();
+    // let M' = [m_1, m_2, ..., m_n] = RSEnc(M, n, t + 1)
+    let mp = rs_encode_stripes(m, n, t + 1);
+
+    // 10: send \langle ECHO, m_j, h \rangle to node j \in [n]
+    for j in PartyId::iter_all(n) {
+        let msg = Message::Echo(Echo {
+            h: h.clone(),
+            m: mp[j].clone(),
+        });
+        info!("Node `{}` Echoing encoded proposal to node `{j}`", st.id);
+
+        // Try to send message, ignore errors
+        if let Err(e) =
+            send_serialize_helper(&msg, Recipient::Single(j), st.retry_strategy, st.sender).await
+        {
+            error!(
+                "Node `{}` failed to send echo message, got error {e:?}",
+                st.id
+            );
+        }
+    }
+
+    // Update state machine
+    st.status = RbcStatus::WaitingForEchos;
 }
 
 /// Handle Echo messages.
