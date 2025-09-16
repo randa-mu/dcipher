@@ -59,6 +59,7 @@ pub enum Application {
     Blocklock,
     Randomness,
     OnlySwapsVerifier,
+    EvmNet,
     Any,
 }
 
@@ -69,6 +70,7 @@ pub enum ApplicationArgs {
     Blocklock(ApplicationBlocklockArgs),
     Randomness(ApplicationRandomnessArgs),
     OnlySwapsVerifier(OnlySwapsVerifierArgs),
+    EvmNet,
     Any(ApplicationAnyArgs),
 }
 
@@ -171,6 +173,7 @@ impl ApplicationArgs {
             ApplicationArgs::Randomness(_) => Application::Randomness,
             ApplicationArgs::OnlySwapsVerifier(_) => Application::OnlySwapsVerifier,
             ApplicationArgs::Any(_) => Application::Any,
+            ApplicationArgs::EvmNet => Application::EvmNet,
         }
     }
 }

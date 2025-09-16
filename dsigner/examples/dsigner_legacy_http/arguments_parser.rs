@@ -54,9 +54,18 @@ pub struct KeyConfigArgs {
     #[arg(short, env = "DSIGNER_THRESHOLD", default_value = "1")]
     pub t: NonZeroU16,
 
-    /// DST used in the signature scheme
-    #[arg(short, env = "DSIGNER_DST_SUFFIX", default_value = "dsigner")]
-    pub dst_suffix: String,
+    /// Application arguments to use for signing. We currently support the following applications:
+    ///  - `"blocklock:%chain_id%"` where `%chain_id%` is a u64
+    ///  - `"randomness:%chain_id%"` where `%chain_id%` is a u64
+    ///  - `"onlyswaps_verifier:%chain_id%"` where `%chain_id%` is a u64
+    ///  - `"evmnet"`
+    ///  - `"any:%dst_suffix%"`
+    #[arg(long, env = "DSIGNER_APPLICATION_ARGUMENTS", default_value = "evmnet")]
+    pub application_arguments: String,
+
+    /// Whether to use compression for bn254 signatures
+    #[arg(long, env = "DSIGNER_SIG_COMPRESSION", default_value = "false")]
+    pub sig_compression: bool,
 
     /// Nodes configuration file
     #[arg(long, env = "DSIGNER_NODES_CONFIG", required = false)]
