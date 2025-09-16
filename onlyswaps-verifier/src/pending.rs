@@ -44,10 +44,10 @@ pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
                     .iter()
                     .find(|route_status| route_status.route.request_id == request_id);
 
-                if let Some(route_status) = existing_fulfillment {
-                    if route_status.status == Status::Verified {
-                        continue;
-                    }
+                if let Some(route_status) = existing_fulfillment
+                    && route_status.status == Status::Verified
+                {
+                    continue;
                 }
 
                 let route = Verification {
