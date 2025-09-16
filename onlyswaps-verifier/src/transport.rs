@@ -1,4 +1,4 @@
-use crate::config::AppConfig;
+use config::app::AppConfig;
 use dcipher_network::transports::libp2p::Libp2pNodeConfig;
 
 pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp2pNodeConfig<u16>> {
@@ -21,15 +21,16 @@ pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp
 
 #[cfg(test)]
 mod test {
-    use crate::config::{AppConfig, Libp2pConfig};
-    use crate::config_network::NetworkConfig;
     use crate::transport::create_libp2p_transport;
     use alloy::primitives::{FixedBytes, U160, U256};
-    use ark_bn254::g2::G2Affine;
-    use config::shared::SharedConfig;
+    use alloy::transports::http::reqwest::Url;
+    use ark_bn254::G2Affine;
+    use config::agent::AgentConfig;
+    use config::app::{AppConfig, Libp2pConfig};
+    use config::keys::{Bn254SecretKey, Libp2pKeyWrapper};
+    use config::network::NetworkConfig;
     use config::signing::{CommitteeConfig, MemberConfig};
     use libp2p::PeerId;
-    use serde_keys::{Bn254SecretKey, Libp2pKeyWrapper};
     use std::num::NonZeroU16;
     use std::str::FromStr;
     use std::time::Duration;
@@ -37,7 +38,7 @@ mod test {
     #[test]
     fn test_builds_with_valid_config() -> anyhow::Result<()> {
         let config = AppConfig {
-            agent: SharedConfig {
+            agent: AgentConfig {
                 healthcheck_listen_addr: "0.0.0.0".parse()?,
                 healthcheck_port: 8080,
                 log_level: "debug".to_string(),
@@ -45,7 +46,7 @@ mod test {
             },
             networks: vec![NetworkConfig {
                 chain_id: 1,
-                rpc_url: "wss://example.com".to_string(),
+                rpc_url: Url::parse("wss://example.com")?,
                 router_address: FixedBytes::from(U160::from(1)),
                 private_key: FixedBytes::from(U256::from(1)),
                 should_write: false,

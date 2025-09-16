@@ -6,7 +6,6 @@ members = [
     "crates/adkg-cli",
     "crates/config",
     "crates/network",
-    "crates/serde-keys",
     "crates/utils",
     "dcipher-agents",
     "dsigner",
@@ -29,9 +28,7 @@ config = { path = "./crates/config" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
-dsigner = { path = "./dsigner" }
 omnievent = { path = "./omnievent" }
-serde-keys = { path = "./crates/serde-keys" }
 superalloy = { path = "./superalloy" }
 
 # blockchain
@@ -100,7 +97,6 @@ humantime = "2.2"
 itertools = "0.14"
 rand = "0.8.0"
 strum = { version = "0.27", features = ["derive"] }
-strum_macros = "0.27"
 thiserror = "2.0"
 
 [patch.crates-io]

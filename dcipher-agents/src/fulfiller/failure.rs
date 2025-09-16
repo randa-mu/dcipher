@@ -126,7 +126,7 @@ impl RequestRetryStrategy for RetryStrategyTimes {
 
 impl<R: Identifier> PartialOrd for RetryableRequest<R> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.req.id().cmp(other.req.id()))
+        Some(self.cmp(other))
     }
 }
 

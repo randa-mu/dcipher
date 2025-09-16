@@ -51,6 +51,7 @@ name = "adkg-cli"
 version = "0.1.0"
 dependencies = [
  "adkg",
+ "alloy",
  "anyhow",
  "ark-bls12-381",
  "ark-bn254",
@@ -61,10 +62,12 @@ dependencies = [
  "chacha20poly1305",
  "chrono",
  "clap",
+ "config",
  "dcipher-network",
  "digest 0.10.7",
  "futures-util",
  "humantime",
+ "humantime-serde",
  "itertools 0.14.0",
  "libp2p",
  "prometheus",
@@ -72,11 +75,13 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "tempfile",
  "thiserror 2.0.12",
  "tokio",
  "toml 0.9.2",
  "tracing",
  "tracing-subscriber",
+ "url",
  "utils",
  "warp",
 ]
@@ -1505,6 +1510,7 @@ dependencies = [
  "ark-ff 0.4.2",
  "base64 0.22.1",
  "clap",
+ "config",
  "dcipher-agents",
  "dcipher-network",
  "dcipher-signer",
@@ -1514,7 +1520,6 @@ dependencies = [
  "libp2p",
  "prometheus",
  "serde",
- "serde-keys",
  "serde_json",
  "superalloy",
  "tokio",
@@ -1747,15 +1752,23 @@ dependencies = [
 name = "config"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "anyhow",
  "ark-bn254",
+ "ark-ff 0.4.2",
+ "base64 0.22.1",
  "clap",
  "figment",
+ "hex",
+ "humantime-serde",
  "libp2p",
  "serde",
- "serde-keys",
  "serde_json",
+ "serde_with",
  "shellexpand",
+ "speculoos",
+ "tempfile",
+ "url",
  "utils",
 ]
 
@@ -2260,6 +2273,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "clap",
+ "config",
  "dcipher-network",
  "dcipher-signer",
  "either",
@@ -2271,7 +2285,6 @@ dependencies = [
  "prost",
  "prost-types",
  "serde",
- "serde-keys",
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
@@ -2556,9 +2569,9 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.1"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
+checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
 ]
@@ -3394,9 +3407,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "idna"
-version = "1.0.3"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "686f825264d630750a544639377bae737628043f20d38bbc029e8f29ea968a7e"
+checksum = "3b0875f23caa03898994f6ddc501886a45c7d3d62d04d2d90788d47be1b1e4de"
 dependencies = [
  "idna_adapter",
  "smallvec",
@@ -4662,29 +4675,20 @@ dependencies = [
  "ark-bn254",
  "ark-ec",
  "ark-ff 0.4.2",
- "ark-serialize 0.4.2",
  "async-trait",
  "axum",
  "clap",
  "config",
  "dcipher-network",
  "dcipher-signer",
- "figment",
  "futures",
- "humantime-serde",
  "libp2p",
  "omnievent",
- "serde",
- "serde-keys",
- "serde_json",
- "serde_with",
  "speculoos",
  "superalloy",
- "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "utils",
 ]
 
 [[package]]
@@ -4856,9 +4860,9 @@ dependencies = [
 
 [[package]]
 name = "percent-encoding"
-version = "2.3.1"
+version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "pest"
@@ -5440,6 +5444,7 @@ dependencies = [
  "ark-ff 0.4.2",
  "base64 0.22.1",
  "clap",
+ "config",
  "dcipher-agents",
  "dcipher-network",
  "dcipher-signer",
@@ -5449,7 +5454,6 @@ dependencies = [
  "libp2p",
  "prometheus",
  "serde",
- "serde-keys",
  "serde_json",
  "superalloy",
  "tokio",
@@ -6098,19 +6102,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-keys"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ark-bn254",
- "ark-ff 0.4.2",
- "base64 0.22.1",
- "hex",
- "libp2p",
- "serde",
 ]
 
 [[package]]
@@ -7434,13 +7425,14 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "url"
-version = "2.5.4"
+version = "2.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32f8b686cadd1473f4bd0117a5d28d36b1ade384ea9b5069a1c40aefed7fda60"
+checksum = "08bc136a29a3d1758e07a9cca267be308aeebf5cfd5a10f3f67ab2097683ef5b"
 dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

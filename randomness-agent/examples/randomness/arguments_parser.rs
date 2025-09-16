@@ -1,11 +1,11 @@
 use alloy::transports::http::reqwest;
 use anyhow::anyhow;
 use clap::Parser;
+use config::keys::{Libp2pKeyWrapper, SecretKey, serde_to_string_from_str};
 use dcipher_agents::fulfiller::RetryStrategy;
 use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
 use serde::{Deserialize, Serialize};
-use serde_keys::{Libp2pKeyWrapper, SecretKey, serde_to_string_from_str};
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
