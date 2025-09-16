@@ -174,10 +174,10 @@ mod tests {
         let member_id = 1;
         let router_address = Address::from(U160::from(16));
 
-        priv_file.write(PRIV_KEY_FILE_CONTENT.as_bytes())?;
-        group_file.write(GROUP_FILE_CONTENT.as_bytes())?;
-        adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
-        adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
+        let _ = priv_file.write(PRIV_KEY_FILE_CONTENT.as_bytes())?;
+        let _ = group_file.write(GROUP_FILE_CONTENT.as_bytes())?;
+        let _ = adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
+        let _ = adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
 
         let _ = generate_onlyswaps_config(GenerateOnlyswapsConfig {
             operator_private: priv_file.path().to_path_buf(),
@@ -201,10 +201,10 @@ mod tests {
         let multiaddr = Multiaddr::from_str("/ip4/127.0.0.1/tcp/5150")?;
         let member_id = 1;
 
-        priv_file.write(PRIV_KEY_FILE_CONTENT.as_bytes())?;
-        group_file.write(GROUP_FILE_CONTENT.as_bytes())?;
-        adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
-        adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
+        let _ = priv_file.write(PRIV_KEY_FILE_CONTENT.as_bytes())?;
+        let _ = group_file.write(GROUP_FILE_CONTENT.as_bytes())?;
+        let _ = adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
+        let _ = adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
 
         let _ = generate_onlyswaps_config(GenerateOnlyswapsConfig {
             operator_private: priv_file.path().to_path_buf(),
