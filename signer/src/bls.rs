@@ -20,7 +20,7 @@ use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use bytes::Bytes;
 use dcipher_network::Transport;
-use digest::DynDigest;
+use digest::FixedOutputReset;
 use digest::core_api::BlockSizeUser;
 use itertools::Either;
 use lru::LruCache;
@@ -560,7 +560,7 @@ where
     type E: Pairing;
 
     /// Outputs true if the signature is valid under the specified message, DST, and public key.
-    fn verify_g1<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn verify_g1<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
@@ -569,7 +569,7 @@ where
     ) -> bool;
 
     /// Outputs true if the signature is valid under the specified message, DST, and public key.
-    fn verify_g2<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn verify_g2<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
@@ -582,14 +582,14 @@ pub trait BlsSigner: BlsVerifier {
     type Error: std::error::Error + Send + Sync + 'static;
 
     /// Sign a message using the signer's private key and a custom DST.
-    fn sign_g1<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn sign_g1<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,
     ) -> Result<<Self::E as Pairing>::G1Affine, Self::Error>;
 
     /// Sign a message using the signer's private key and a custom DST.
-    fn sign_g2<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn sign_g2<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         &self,
         m: impl AsRef<[u8]>,
         dst: impl AsRef<[u8]>,

@@ -2,6 +2,7 @@
 use ark_ec::CurveGroup;
 use ark_ff::field_hashers::{DefaultFieldHasher, HashToField};
 use ark_std::UniformRand;
+use digest::FixedOutputReset;
 use itertools::Itertools;
 use rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -32,7 +33,7 @@ pub struct NIZKDleqProof<CG: CurveGroup, H> {
 
 impl<CG, H> NIZKDleqProof<CG, H>
 where
-    H: Default + DynDigest + BlockSizeUser + Clone,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone,
     CG: CurveGroup + PointSerializeCompressed,
 {
     /// Create a new NIZK proof proving the knowledge of s s.t. G_s = [s] G and P_s = [s] P
@@ -99,6 +100,6 @@ where
         let hasher: DefaultFieldHasher<H> = HashToField::<CG::ScalarField>::new(dst);
 
         // c = H(g, p, g_s, p_s, g_r, p_r)
-        Ok(hasher.hash_to_field(&input, 1)[0])
+        Ok(hasher.hash_to_field::<1>(&input)[0])
     }
 }

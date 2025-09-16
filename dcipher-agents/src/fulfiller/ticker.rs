@@ -376,7 +376,6 @@ mod tests {
 
     fn create_ciphertext(id: ark_bn254::G2Affine) -> Bytes {
         let (x, y) = id.xy().unwrap();
-        let (x, y) = (*x, *y);
         let x0 = x.c0.into_bigint().to_bytes_be();
         let x1 = x.c1.into_bigint().to_bytes_be();
         let y0 = y.c0.into_bigint().to_bytes_be();

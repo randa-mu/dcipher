@@ -196,7 +196,7 @@ async fn main() -> anyhow::Result<()> {
             .context("failed to deserialize dsigner public key")?;
 
     // Convert group pk to string
-    let (&x, &y) = group_pk.xy().context("dsigner public key at infinity")?;
+    let (x, y) = group_pk.xy().context("dsigner public key at infinity")?;
     let pk_ser = [
         x.c1.into_bigint().to_bytes_be(),
         x.c0.into_bigint().to_bytes_be(),

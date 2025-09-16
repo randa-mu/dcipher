@@ -1,5 +1,5 @@
 use ark_ec::{pairing::Pairing, CurveGroup};
-use digest::{core_api::BlockSizeUser, DynDigest};
+use digest::{core_api::BlockSizeUser, FixedOutputReset};
 
 #[cfg(any(feature = "bn254", feature = "bls12-381"))]
 mod bn254_bls12_381;
@@ -8,7 +8,7 @@ mod bn254_bls12_381;
 pub trait CustomHashToCurve: CurveGroup {
     /// Hashes a message to an element of the curve group using a custom DST and
     /// hash function.     
-    fn hash_to_curve_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn hash_to_curve_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         message: &[u8],
         dst: &[u8],
     ) -> Self;
@@ -16,7 +16,7 @@ pub trait CustomHashToCurve: CurveGroup {
 
 pub trait HashToCurve: CustomHashToCurve {
     const CIPHERSUITE: &'static str;
-    type DefaultInnerHash: DynDigest + BlockSizeUser + Default + Clone;
+    type DefaultInnerHash: FixedOutputReset + BlockSizeUser + Default + Clone;
 
     /// Hashes a message to an element of the curve group using a custom DST and
     /// hash function.     
@@ -32,14 +32,14 @@ where
 {
     /// Hashes a message to an element of the G1 group using a custom DST and
     /// hash function.
-    fn hash_to_g1_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn hash_to_g1_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         message: &[u8],
         dst: &[u8],
     ) -> Self::G1;
 
     /// Hashes a message to an element of the G2 group using a custom DST and
     /// hash function.
-    fn hash_to_g2_custom<H: DynDigest + BlockSizeUser + Default + Clone>(
+    fn hash_to_g2_custom<H: FixedOutputReset + BlockSizeUser + Default + Clone>(
         message: &[u8],
         dst: &[u8],
     ) -> Self::G2;

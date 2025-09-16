@@ -3,6 +3,7 @@
 use ark_ec::CurveGroup;
 use ark_ff::field_hashers::{DefaultFieldHasher, HashToField};
 use ark_std::UniformRand;
+use digest::FixedOutputReset;
 use itertools::Itertools;
 use rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -33,7 +34,7 @@ pub struct PokProof<CG: CurveGroup, H> {
 
 impl<CG, H> PokProof<CG, H>
 where
-    H: Default + DynDigest + BlockSizeUser + Clone,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone,
     CG: CurveGroup + PointSerializeCompressed,
 {
     /// Create a new proof proving the knowledge of s s.t. G_s = [s] G
@@ -85,7 +86,7 @@ where
         let hasher: DefaultFieldHasher<H> = HashToField::<CG::ScalarField>::new(dst);
 
         // c = H(g, g_s, g_r)
-        Ok(hasher.hash_to_field(&input, 1)[0])
+        Ok(hasher.hash_to_field::<1>(&input)[0])
     }
 }
 
@@ -94,7 +95,7 @@ mod tests {
     #[cfg(feature = "bn254")]
     mod bn254 {
         use super::super::*;
-        use ark_ec::Group;
+        use ark_ec::PrimeGroup;
         use rand::thread_rng;
 
         #[test]

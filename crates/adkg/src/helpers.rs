@@ -1,4 +1,4 @@
-use ark_ec::{CurveGroup, Group, VariableBaseMSM};
+use ark_ec::{CurveGroup, PrimeGroup, VariableBaseMSM};
 use ark_ff::{Field, PrimeField};
 use ark_std::{One, Zero};
 use serde::{Deserialize, Serialize};
@@ -313,7 +313,7 @@ where
 /// Lagrange interpolation of the polynomial defined by its points, evaluated at point eval_x.
 pub fn lagrange_points_interpolate_at<G>(points: &[(u64, G)], eval_x: u64) -> G
 where
-    G: VariableBaseMSM + Group,
+    G: VariableBaseMSM + PrimeGroup,
     G::ScalarField: PrimeField,
 {
     let eval_point: G::ScalarField = eval_x.into();

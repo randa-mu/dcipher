@@ -23,8 +23,8 @@ use ark_ff::FftField;
 use async_trait::async_trait;
 use dcipher_network::topic::TopicBasedTransport;
 use dcipher_network::{ReceivedMessage, Transport, TransportSender};
-use digest::DynDigest;
 use digest::core_api::BlockSizeUser;
+use digest::{DynDigest, FixedOutputReset};
 use rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -143,7 +143,7 @@ where
     CG: CurveGroup + PointSerializeCompressed + PointDeserializeCompressed,
     CG::ScalarField: FqSerialize + FqDeserialize,
     AcssBroadcastMessage<CG>: Serialize,
-    H: Default + DynDigest + BlockSizeUser + Clone + 'static,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     RBCConfig: for<'lt_rbc> ReliableBroadcastConfig<'lt_rbc, PartyId> + 'a,
 {
     type Input = Vec<PedersenSecret<CG::ScalarField>>;
@@ -212,7 +212,7 @@ where
     CG: CurveGroup + PointSerializeCompressed + PointDeserializeCompressed,
     CG::ScalarField: FqSerialize + FqDeserialize,
     AcssBroadcastMessage<CG>: Serialize,
-    H: Default + DynDigest + BlockSizeUser + Clone,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone,
     RBC: ReliableBroadcast<Identity = PartyId>,
     RBCConfig: for<'a> ReliableBroadcastConfig<'a, PartyId>,
     T: Transport<Identity = PartyId>,
@@ -299,7 +299,7 @@ where
 impl<CG, H, RBCConfig, RBC, T> HbAcss0<CG, H, RBCConfig, RBC, T>
 where
     CG: CurveGroup,
-    H: Default + DynDigest + BlockSizeUser + Clone,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone,
     RBCConfig: for<'a> ReliableBroadcastConfig<'a, PartyId>,
     RBC: ReliableBroadcast<Identity = PartyId>,
     T: Transport<Identity = PartyId>,
@@ -784,7 +784,7 @@ mod tests {
         vss::acss::Acss,
     };
     use ark_bn254::Bn254;
-    use ark_ec::{Group, pairing::Pairing};
+    use ark_ec::{PrimeGroup, pairing::Pairing};
     use ark_std::UniformRand;
     use dcipher_network::topic::dispatcher::TopicDispatcher;
     use dcipher_network::transports::in_memory::MemoryNetwork;
@@ -798,7 +798,7 @@ mod tests {
     use utils::hash_to_curve::HashToCurve;
 
     type G = <Bn254 as Pairing>::G1;
-    type ScalarField = <<Bn254 as Pairing>::G1 as Group>::ScalarField;
+    type ScalarField = <<Bn254 as Pairing>::G1 as PrimeGroup>::ScalarField;
 
     #[tokio::test]
     async fn test_acss_all_parties() {

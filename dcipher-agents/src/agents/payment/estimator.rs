@@ -139,7 +139,7 @@ where
             request_id = %request_id
         ))
     ]
-    pub async fn get_fulfillment_params<'a, C>(
+    pub async fn get_fulfillment_params<C>(
         &self,
         request_id: U256,
         fulfil_call: &C,

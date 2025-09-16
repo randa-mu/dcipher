@@ -1,5 +1,5 @@
 use ark_ec::pairing::Pairing;
-use ark_ec::{CurveGroup, Group, VariableBaseMSM};
+use ark_ec::{CurveGroup, PrimeGroup, VariableBaseMSM};
 use ark_ff::{BigInteger, Field, One, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{DenseUVPolynomial, Polynomial};
@@ -123,7 +123,7 @@ fn encode_libp2p(sk: &Keypair) -> String {
 /// Lagrange interpolation of the polynomial defined by its points, evaluated at point eval_x.
 pub fn lagrange_points_interpolate_at<G>(points: &[(u64, G)], eval_x: u64) -> G
 where
-    G: VariableBaseMSM + Group,
+    G: VariableBaseMSM + PrimeGroup,
     G::ScalarField: PrimeField,
 {
     let eval_point: G::ScalarField = eval_x.into();

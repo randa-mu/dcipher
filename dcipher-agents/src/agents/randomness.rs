@@ -150,7 +150,7 @@ where
 
     /// Sync the state of the agent with the on-chain contract.
     #[tracing::instrument(skip(self))]
-    pub async fn sync_state(&mut self) -> Result<(), InternalRandomnessAgentError> {
+    async fn sync_state(&mut self) -> Result<(), InternalRandomnessAgentError> {
         let last_seen_request_id = self.last_seen_request_id.0;
 
         // Query the current block first to make sure that it's either the latest, or a previous block

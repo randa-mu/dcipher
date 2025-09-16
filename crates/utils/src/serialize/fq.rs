@@ -78,7 +78,7 @@ where
             .rev()
             .collect::<Result<Vec<<Self as Field>::BasePrimeField>, _>>()?;
 
-        Self::from_base_prime_field_elems(&x).ok_or(SerializationError::InvalidData)
+        Self::from_base_prime_field_elems(x).ok_or(SerializationError::InvalidData)
     }
 }
 
@@ -138,23 +138,7 @@ mod tests {
     mod bn254 {
         use crate::serialize::fq::{FqDeserialize, FqSerialize};
         use ark_bn254::{Fq, Fq2};
-        use ark_ec::{AffineRepr, CurveGroup, Group};
-        use ark_ff::PrimeField;
         use rstest::*;
-
-        #[test]
-        fn removeme() {
-            let sk = ark_bn254::Fr::from_be_bytes_mod_order(
-                &hex::decode("1054aea751b37ba31966af26814f23246c27e456aedf6eeb9b8961fcd71bdafd")
-                    .unwrap(),
-            );
-
-            let pk = (ark_bn254::G2Projective::generator() * sk).into_affine();
-
-            println!("sk = {}", sk);
-            println!("pk.x = {}", pk.x().unwrap());
-            println!("pk.y = {}", pk.y().unwrap());
-        }
 
         #[rstest]
         #[case(

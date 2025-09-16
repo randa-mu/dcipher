@@ -11,9 +11,9 @@ use crate::network::{RetryStrategy, broadcast_with_self};
 use ark_ec::CurveGroup;
 use dcipher_network::topic::TopicBasedTransport;
 use dcipher_network::{ReceivedMessage, Transport, TransportSender};
-use digest::DynDigest;
 use digest::core_api::BlockSizeUser;
 use digest::crypto_common::rand_core::CryptoRng;
+use digest::{DynDigest, FixedOutputReset};
 use ecdh_coin_toss::{Coin, EcdhCoinTossError, EcdhCoinTossEval};
 use messages::{AbaMessage, AuxStage, CoinEvalMessage, View};
 use messages::{AuxiliaryMessage, AuxiliarySetMessage, EstimateMessage};
@@ -125,7 +125,7 @@ where
     CG::ScalarField: FqSerialize,
     EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
     CK: Send + Into<CoinKeys<CG>> + 'static,
-    H: Default + DynDigest + BlockSizeUser + Clone + Send + Sync + 'static,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
 {
     type Input = AbaInput<CK>;
     type Error = Box<AbaError>;
@@ -194,7 +194,7 @@ where
     CG::ScalarField: FqSerialize,
     EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
     CK: Send + Into<CoinKeys<CG>> + 'static,
-    H: Default + DynDigest + BlockSizeUser + Clone + Send + Sync + 'static,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
     T: Transport<Identity = PartyId> + 'static,
     T::Sender: Clone,
 {
@@ -487,7 +487,7 @@ where
     CG::ScalarField: FqSerialize,
     EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
     CK: Send + Into<CoinKeys<CG>> + 'static,
-    H: Default + DynDigest + BlockSizeUser + Clone + Send + Sync + 'static,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
     TS: TransportSender<Identity = PartyId> + Clone,
 {
     #[tracing::instrument(skip(self, aba_input, state, rng))]
@@ -1175,7 +1175,7 @@ mod tests {
     use crate::helpers::PartyId;
     use crate::network::RetryStrategy;
     use ark_bn254::Bn254;
-    use ark_ec::{Group, pairing::Pairing};
+    use ark_ec::{PrimeGroup, pairing::Pairing};
     use dcipher_network::topic::dispatcher::TopicDispatcher;
     use dcipher_network::transports::in_memory::MemoryNetwork;
     use rand::rngs::OsRng;

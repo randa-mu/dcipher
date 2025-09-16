@@ -11,10 +11,10 @@ use crate::rbc::r4::Rbc4RoundsConfig;
 use crate::vss::acss::AcssConfig;
 use crate::vss::acss::hbacss0::HbAcss0Config;
 use crate::vss::acss::hbacss0::PedersenSecret;
-use ark_ec::{CurveGroup, Group};
+use ark_ec::{CurveGroup, PrimeGroup};
 use ark_std::UniformRand;
-use digest::DynDigest;
 use digest::core_api::BlockSizeUser;
+use digest::{DynDigest, FixedOutputReset};
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
@@ -40,18 +40,18 @@ pub struct AdkgSchemeConfig {
 
 pub trait DXKR23AdkgScheme: Send + Sync + 'static
 where
-    <Self::Curve as Group>::ScalarField: FqSerialize + FqDeserialize,
+    <Self::Curve as PrimeGroup>::ScalarField: FqSerialize + FqDeserialize,
 {
     type Error: std::error::Error + Send + Sync + 'static;
     type Curve: CurveGroup + PointSerializeCompressed + PointDeserializeCompressed + HashToCurve;
-    type Hash: Default + DynDigest + BlockSizeUser + Clone;
+    type Hash: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone;
 
     type RBCConfig: ReliableBroadcastConfig<'static, PartyId>;
     type ACSSConfig: AcssConfig<
             'static,
             Self::Curve,
             PartyId,
-            Input = Vec<PedersenSecret<<Self::Curve as Group>::ScalarField>>,
+            Input = Vec<PedersenSecret<<Self::Curve as PrimeGroup>::ScalarField>>,
         >;
     type ABAConfig: AbaConfig<'static, PartyId>;
 
@@ -61,8 +61,8 @@ where
     fn keygen(
         &self,
         rng: &mut (impl Rng + CryptoRng),
-    ) -> (<Self::Curve as Group>::ScalarField, Self::Curve) {
-        let sk = <Self::Curve as Group>::ScalarField::rand(rng);
+    ) -> (<Self::Curve as PrimeGroup>::ScalarField, Self::Curve) {
+        let sk = <Self::Curve as PrimeGroup>::ScalarField::rand(rng);
         let pk = self.generator_g() * sk;
         (sk, pk)
     }
@@ -74,7 +74,7 @@ where
         n: NonZeroUsize,
         t: NonZeroUsize,
         t_reconstruction: NonZeroUsize,
-        sk: <Self::Curve as Group>::ScalarField,
+        sk: <Self::Curve as PrimeGroup>::ScalarField,
         pks: Vec<Self::Curve>,
     ) -> Result<
         Adkg<Self::Curve, Self::Hash, Self::RBCConfig, Self::ACSSConfig, Self::ABAConfig>,
@@ -132,7 +132,7 @@ impl<CG, H> DXKR23AdkgScheme for DXKR23Scheme<CG, H>
 where
     CG: NamedCurveGroup + PointSerializeCompressed + PointDeserializeCompressed + HashToCurve,
     CG::ScalarField: FqSerialize + FqDeserialize,
-    H: Default + NamedDynDigest + BlockSizeUser + Clone + Send + Sync + 'static,
+    H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
 {
     type Error = SchemeError;
     type Curve = CG;
@@ -162,7 +162,7 @@ where
         n: NonZeroUsize,
         t: NonZeroUsize,
         t_reconstruction: NonZeroUsize,
-        sk: <Self::Curve as Group>::ScalarField,
+        sk: <Self::Curve as PrimeGroup>::ScalarField,
         pks: Vec<Self::Curve>,
     ) -> Result<
         Adkg<Self::Curve, Self::Hash, Self::RBCConfig, Self::ACSSConfig, Self::ABAConfig>,
@@ -223,7 +223,7 @@ where
 fn get_generator<CG, H>(app_name: Vec<u8>, generator_name: &[u8]) -> CG
 where
     CG: NamedCurveGroup + HashToCurve,
-    H: Default + NamedDynDigest + BlockSizeUser + Clone,
+    H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone,
 {
     let dst: Vec<_> = Rfc9380DstBuilder::empty()
         .with_application_name(app_name)
@@ -241,7 +241,7 @@ impl<CG, H> TryFrom<AdkgSchemeConfig> for DXKR23Scheme<CG, H>
 where
     CG: NamedCurveGroup + PointSerializeCompressed + PointDeserializeCompressed + HashToCurve,
     CG::ScalarField: FqSerialize + FqDeserialize,
-    H: Default + NamedDynDigest + BlockSizeUser + Clone + Send + Sync + 'static,
+    H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
 {
     type Error = SchemeError;
 
@@ -281,7 +281,7 @@ impl<CG, H> From<DXKR23Scheme<CG, H>> for AdkgSchemeConfig
 where
     CG: NamedCurveGroup + PointSerializeCompressed + PointDeserializeCompressed + HashToCurve,
     CG::ScalarField: FqSerialize + FqDeserialize,
-    H: Default + NamedDynDigest + BlockSizeUser + Clone + Send + Sync + 'static,
+    H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
 {
     fn from(value: DXKR23Scheme<CG, H>) -> Self {
         let generator_g = value

@@ -24,7 +24,7 @@ use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
 use adkg::vss::acss::AcssConfig;
 use anyhow::{Context, anyhow};
 use ark_ec::pairing::Pairing;
-use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_ec::{AffineRepr, CurveGroup, PrimeGroup};
 use ark_std::Zero;
 use ark_std::iterable::Iterable;
 use chacha20poly1305::aead::Aead;
@@ -567,12 +567,13 @@ where
     E::G2: PointSerializeCompressed + PointDeserializeCompressed,
     S: DXKR23AdkgScheme<Curve = E::G1>,
     S::Curve: NamedCurveGroup,
+    <S::Curve as PrimeGroup>::ScalarField: FqDeserialize,
     S::Hash: NamedDynDigest,
     S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
     <S::ACSSConfig as AcssConfig<'static, S::Curve, PartyId>>::Output:
         Into<ShareWithPoly<S::Curve>>,
 {
-    let adkg_sk = <S::Curve as Group>::ScalarField::deser_base64(adkg_sk)?;
+    let adkg_sk = <S::Curve as PrimeGroup>::ScalarField::deser_base64(adkg_sk)?;
     let adkg_pks = group_config
         .nodes
         .iter()

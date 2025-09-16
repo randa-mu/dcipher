@@ -16,8 +16,8 @@ use crate::{
 };
 use ark_ec::CurveGroup;
 use dcipher_network::TransportSender;
-use digest::DynDigest;
 use digest::core_api::BlockSizeUser;
+use digest::{DynDigest, FixedOutputReset};
 use tracing::{error, info, warn};
 use utils::serialize::{
     fq::{FqDeserialize, FqSerialize},
@@ -27,7 +27,7 @@ use utils::serialize::{
 impl<'a, CG, H, RBCConfig, TS> HbAcss0Instance<CG, H, RBCConfig, TS>
 where
     CG: CurveGroup,
-    H: Default + DynDigest + BlockSizeUser + Clone,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone,
     RBCConfig: ReliableBroadcastConfig<'a, PartyId>,
     TS: TransportSender<Identity = PartyId>,
 {

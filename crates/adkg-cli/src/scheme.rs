@@ -1,7 +1,7 @@
 use adkg::scheme::AdkgSchemeConfig;
 use adkg::scheme::bls12_381::DXKR23Bls12_381G1Sha256;
 use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
-use ark_ec::Group;
+use ark_ec::PrimeGroup;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::str::FromStr;

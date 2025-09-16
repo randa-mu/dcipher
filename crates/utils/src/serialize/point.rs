@@ -114,7 +114,7 @@ mod fq_mod_8_eq_2 {
 
                 let (x, y) = match self.xy() {
                     Some((x, y)) => (x, y),
-                    _ => (&Zero::zero(), &Zero::zero()),
+                    _ => (Zero::zero(), Zero::zero()),
                 };
 
                 Ok([x, y].map(|v| v.into_bigint().to_bytes_be()).concat())
@@ -127,7 +127,7 @@ mod fq_mod_8_eq_2 {
 
                 let (x, y) = match self.xy() {
                     Some((x, y)) => (x, y),
-                    _ => (&Zero::zero(), &Zero::zero()),
+                    _ => (Zero::zero(), Zero::zero()),
                 };
 
                 Ok([x.c1, x.c0, y.c1, y.c0]
