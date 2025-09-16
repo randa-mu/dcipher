@@ -179,7 +179,7 @@ mod tests {
         let _ = adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
         let _ = adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
 
-        let _ = generate_onlyswaps_config(GenerateOnlyswapsConfig {
+        generate_onlyswaps_config(GenerateOnlyswapsConfig {
             operator_private: priv_file.path().to_path_buf(),
             group: group_file.path().to_path_buf(),
             adkg_public: adkg_public.path().to_path_buf(),
@@ -206,7 +206,7 @@ mod tests {
         let _ = adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
         let _ = adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
 
-        let _ = generate_onlyswaps_config(GenerateOnlyswapsConfig {
+        generate_onlyswaps_config(GenerateOnlyswapsConfig {
             operator_private: priv_file.path().to_path_buf(),
             group: group_file.path().to_path_buf(),
             adkg_public: adkg_public.path().to_path_buf(),
