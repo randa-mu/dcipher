@@ -243,7 +243,7 @@ async fn rbc<T>(
 where
     T: Transport<Identity = PartyId>,
 {
-    info!("Node `{i}` starting RBC with parameters (n = `{n}`, t = `{t}`)");
+    info!("Node `{i}` listening for RBC with parameters (n = `{n}`, t = `{t}`)");
 
     // Only the state machine should be mutable
     let mut state_machine = StateMachine {

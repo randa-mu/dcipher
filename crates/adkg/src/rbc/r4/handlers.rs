@@ -12,6 +12,7 @@ use sha3::{Digest, Sha3_256};
 use tracing::{debug, error, info, warn};
 
 /// Handle proposal messages.
+#[tracing::instrument(skip_all, name = "received_proposal", fields(proposal_sender = ?sender), level = "warn")]
 pub(super) async fn rbc_receive_proposal<T>(
     sender: PartyId,
     proposal: Propose,
@@ -23,7 +24,6 @@ pub(super) async fn rbc_receive_proposal<T>(
 {
     let (n, t) = (st.n, st.t);
     let m = &proposal.m;
-    info!("Node `{}` received proposal from node `{sender}`", st.id);
     debug!(
         "Node `{}` received proposal from node `{sender}` with message m = `{m:?}`",
         st.id
@@ -31,19 +31,28 @@ pub(super) async fn rbc_receive_proposal<T>(
 
     if &sender != expected_sender {
         // Not the expected sender
-        warn!(proposal_sender = ?sender, ?expected_sender, "Node `{}` refused proposal: unexpected sender", st.id);
+        warn!(
+            ?expected_sender,
+            "Node `{}` refused proposal: unexpected sender", st.id
+        );
         return;
     }
 
     if st.status != RbcStatus::WaitingForProposal {
         // A proposal was already accepted
-        warn!(proposal_sender = ?sender, "Node `{}` refused proposal: a proposal was already accepted", st.id);
+        warn!(
+            "Node `{}` refused proposal: a proposal was already accepted",
+            st.id
+        );
         return;
     }
 
     if !predicate.predicate(sender, m.as_slice()).await {
         // Predicate refused the proposal
-        warn!(proposal_sender = ?sender, "Node `{}` refused proposal: refused due to predicate", st.id);
+        warn!(
+            "Node `{}` refused proposal: refused due to predicate",
+            st.id
+        );
         return;
     }
 
@@ -58,12 +67,13 @@ pub(super) async fn rbc_receive_proposal<T>(
     let mp = rs_encode_stripes(m, n, t + 1);
 
     // 10: send \langle ECHO, m_j, h \rangle to node j \in [n]
+    debug!("Node `{}` echoing proposal to all nodes", st.id);
     for j in PartyId::iter_all(n) {
         let msg = Message::Echo(Echo {
             h: h.clone(),
             m: mp[j].clone(),
         });
-        info!("Node `{}` Echoing encoded proposal to node `{j}`", st.id);
+        debug!("Node `{}` Echoing encoded proposal to node `{j}`", st.id);
 
         // Try to send message, ignore errors
         if let Err(e) =
@@ -86,14 +96,13 @@ where
     T: TransportSender<Identity = PartyId>,
 {
     let Echo { m, h } = echo.clone();
-    info!("Node `{}` received echo from node `{sender}`", st.id);
     debug!(
         "Node `{}` received echo from node `{sender}` with message m = `{m:?}`, h = `{h:?}`",
         st.id
     );
 
     if st.status != RbcStatus::WaitingForProposal && st.status != RbcStatus::WaitingForEchos {
-        info!("Node `{}` ignored echo from node `{sender}`", st.id);
+        debug!("Node `{}` ignored echo from node `{sender}`", st.id);
         return;
     }
 
@@ -107,7 +116,7 @@ where
     // 11: upon receiving 2𝑡 + 1 ⟨ECHO, 𝑚𝑖, ℎ⟩ matching messages and not having sent a READY message
     #[allow(clippy::int_plus_one)]
     if count_echos >= 2 * st.t + 1 {
-        info!("Node `{}` is ready", st.id);
+        info!("Node `{}` changing state to ready", st.id);
 
         // send ⟨READY, 𝑚𝑖, ℎ⟩ to all, include oneself
         let ready = Ready {
@@ -116,14 +125,14 @@ where
         };
         try_send_ready(ready, st).await;
     } else if count_echos >= st.t + 1 {
-        debug!("Node `{}` received `{count_echos}` (>= t + 1) echos", st.id);
         // 14: Wait for 𝑡 + 1 matching ⟨ECHO, 𝑚′𝑖, ℎ⟩
+        debug!("Node `{}` received `{count_echos}` (>= t + 1) echos", st.id);
 
         // 13: upon receiving 𝑡 + 1 ⟨READY, ∗, ℎ⟩ messages and not having sent a READY message
         let count_readys = st.ready_h_messages.get_count(&h);
         if count_readys >= st.t + 1 {
             info!(
-                "Node `{}` received t + 1 echos and t + 1 readys, sending ready",
+                "Node `{}` received t + 1 echos and t + 1 readys, changing state to ready",
                 st.id
             );
 
@@ -135,10 +144,23 @@ where
             };
             try_send_ready(ready, st).await;
         } else {
-            info!(
-                "Node `{}` received t + 1 echos, waiting for t + 1 readys to change state",
-                st.id
-            );
+            // info log when reaching the bound, debug otherwise to prevent spamming
+            if count_echos == st.t + 1 {
+                info!(
+                    count_echos,
+                    count_readys,
+                    "Node `{}` received t + 1 echos, waiting for t + 1 readys to change state to ready",
+                    st.id,
+                );
+            } else {
+                debug!(
+                    count_echos,
+                    count_readys,
+                    "Node `{}` received t + 1 echos, waiting for t + 1 readys to change state to ready",
+                    st.id,
+                );
+            };
+
             // Not enough readys were sent yet, store the message for later
             st.h_message_crossed_threshold.insert(h, m);
         }
@@ -183,7 +205,7 @@ pub(super) async fn rbc_receive_ready<T>(
             );
         }
 
-        info!(
+        debug!(
             "Node `{}` attempting to recover message from `{count_readys}` codewords",
             st.id
         );
@@ -197,6 +219,10 @@ pub(super) async fn rbc_receive_ready<T>(
         // Try to decode
         if let Some(m) = rs_decode_stripes(&stripes, &missing_indices, st.n, st.t + 1) {
             if Sha3_256::digest(&m)[..] == h[..] {
+                info!(
+                    "Node `{}` recovered message from `{count_readys}` codewords, changing state to complete",
+                    st.id
+                );
                 st.status = RbcStatus::Complete(m);
             } else {
                 warn!(
@@ -220,14 +246,14 @@ pub(super) async fn rbc_receive_ready<T>(
         if let RbcStatus::ReadySent(_) = st.status {
             // Ready has already been sent
         } else {
-            info!(
-                "Node `{}` received t + 1 echos and t + 1 readys, sending ready",
-                st.id
-            );
-
             // 14: Wait for 𝑡 + 1 matching ⟨ECHO, 𝑚′𝑖, ℎ⟩
             // Is one such message already stored?
             if let Some(m) = st.h_message_crossed_threshold.get(h.as_slice()) {
+                info!(
+                    "Node `{}` received t + 1 echos and t + 1 readys, changing state to ready",
+                    st.id
+                );
+
                 // send ⟨READY, 𝑚𝑖, ℎ⟩ to all, include oneself
                 let ready = Ready {
                     h: h.clone(),
