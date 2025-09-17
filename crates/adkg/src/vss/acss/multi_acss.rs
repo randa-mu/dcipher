@@ -91,11 +91,11 @@ where
                             sender,
                             &mut rng,
                         )
-                        .instrument(tracing::info_span!("ACSS::deal", ?sid))
+                        .instrument(tracing::warn_span!("ACSS::deal", ?sid))
                         .await
                     } else {
                         acss.get_share(sid.into(), cancellation_token, sender, &mut rng)
-                            .instrument(tracing::info_span!("ACSS::get_share", ?sid))
+                            .instrument(tracing::warn_span!("ACSS::get_share", ?sid))
                             .await
                     };
 
