@@ -18,7 +18,7 @@ use ark_ec::CurveGroup;
 use dcipher_network::TransportSender;
 use digest::core_api::BlockSizeUser;
 use digest::{DynDigest, FixedOutputReset};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use utils::serialize::{
     fq::{FqDeserialize, FqSerialize},
     point::{PointDeserializeCompressed, PointSerializeCompressed},
@@ -133,7 +133,7 @@ where
             AcssStatus::WaitingForReadys(shares) => {
                 #[allow(clippy::int_plus_one)]
                 if state_machine.nodes_readys.len() >= 2 * self.config.t + 1 {
-                    info!(
+                    debug!(
                         "Node `{}` received 2t + 1 Ready, ACSS has decided on a share",
                         self.config.id
                     );
@@ -141,9 +141,10 @@ where
                     // share through the oneshot channel, if not done before.
                     if let Some(output) = state_machine.output.take() {
                         info!(
-                            "Node `{}` sending the ACSS share through the oneshot channel",
+                            "Node `{}` received 2t + 1 Ready, ACSS has decided on a share, sending it through channel",
                             self.config.id
                         );
+
                         if output
                             .send(Hbacss0Output {
                                 shares: shares.to_owned(),
