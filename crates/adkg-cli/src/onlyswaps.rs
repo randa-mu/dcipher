@@ -26,22 +26,22 @@ use utils::serialize::point::PointDeserializeCompressed;
 pub struct GenerateOnlyswapsConfig {
     #[arg(
         long = "private",
-        help = "the private key file from the generate-keys step"
+        help = "your longterm private key file from the generate-keys step"
     )]
     pub operator_private: PathBuf,
 
     #[arg(long = "group", help = "the group file used to run the DKG")]
     pub group: PathBuf,
 
-    #[arg(long = "adkg-public", help = "the ADKG public output file")]
+    #[arg(long = "public-share", help = "the public keyshare file generated during the ADKG")]
     pub adkg_public: PathBuf,
 
-    #[arg(long = "adkg-private", help = "the ADKG private output file")]
+    #[arg(long = "private-share", help = "the private keyshare file generated during the ADKG")]
     pub adkg_private: PathBuf,
 
     #[arg(
         long = "multiaddr",
-        help = "the multiaddr your node is running at to peer with other nodes"
+        help = "the multiaddr your node shoudl bind locally to receive packets from peers. It may differ from the one you shared with them."
     )]
     pub multiaddr: Multiaddr,
 
