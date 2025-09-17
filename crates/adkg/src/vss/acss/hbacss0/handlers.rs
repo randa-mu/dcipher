@@ -178,6 +178,7 @@ where
     }
 
     /// Handle Implicate messages.
+    #[tracing::instrument(skip_all, fields(implicate_sender = ?sender), level = "warn")]
     pub(super) async fn implicate_handler(
         &self,
         msg: &ImplicateMessage,
@@ -309,6 +310,7 @@ where
     }
 
     /// Handle Recovery message.
+    #[tracing::instrument(skip_all, fields(recovery_sender = ?sender), level = "warn")]
     pub(super) async fn recovery_handler(
         &self,
         shared_key: &[u8],
