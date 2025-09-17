@@ -13,7 +13,6 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::task::{JoinError, JoinHandle};
 use tokio_util::sync::CancellationToken;
-use tracing::Instrument;
 
 pub struct MultiAba<ABAConfig>
 where
@@ -84,7 +83,6 @@ where
                 let mut rng = rng.get(AdkgRngType::Aba(sid)).unwrap();
                 async move {
                     aba.propose(estimate_recv, output_send, cancel, &mut rng)
-                        .instrument(tracing::warn_span!("ABA::propose", ?sid))
                         .await
                 }
             })));
