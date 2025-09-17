@@ -201,7 +201,7 @@ where
     type Input = AbaInput<CK>;
     type Error = Box<AbaError>;
 
-    #[tracing::instrument(skip(self, rng, inputs, output))]
+    #[tracing::instrument(skip_all, fields(sid = ?self.sid))]
     async fn propose<RNG>(
         self,
         inputs: oneshot::Receiver<Self::Input>,
@@ -225,7 +225,7 @@ where
             sender: sender.clone(),
         };
 
-        info!("Node `{}` started ABA with sid `{sid}`", config.id);
+        debug!("Node `{}` started ABA with sid `{sid}`", config.id);
 
         // Initialize the ABA state machine
         let state = Arc::new(AbaState::<CG, H> {
@@ -490,7 +490,7 @@ where
     H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
     TS: TransportSender<Identity = PartyId> + Clone,
 {
-    #[tracing::instrument(skip(self, aba_input, state, rng))]
+    #[tracing::instrument(skip_all, fields(aba_input = ?aba_input.v))]
     async fn propose_internal<RNG>(
         self,
         state: Arc<AbaState<CG, H>>,
@@ -518,7 +518,7 @@ where
         loop {
             // 4: r \gets r + 1
             r += 1;
-            info!("Node `{}` started ABA round {r}", self.config.id);
+            info!(estimate = ?est, "Node `{}` started ABA round {r}", self.config.id);
             // 5: (view[r, 0], bin_values[r]) \gets SBV_Broadcast(est)
             let view_r_0 = self.sbv_broadcast(r, AuxStage::Stage1, est, &state).await;
 
