@@ -3,8 +3,6 @@ resolver = "3"
 members = [
     "bin/*",
     "crates/*",
-    "dcipher-agents",
-e    "omnievent",
 ]
 
 [workspace.package]
@@ -15,12 +13,13 @@ edition = "2024"
 # workspace crates
 adkg = { path = "./crates/adkg" }
 config = { path = "./crates/config" }
-dcipher-agents = { path = "./dcipher-agents" }
+dcipher-agents = { path = "./crates/dcipher-agents" }
 dcipher-signer = { path = "./crates/signer" }
 dcipher-network = { path = "./crates/network" }
 generated = { path = "./generated" }
 omnievent = { path = "./crates/omnievent" }
 superalloy = { path = "./crates/superalloy" }
+utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 
 # blockchain
 alloy = { version = "1.0.32", features = ["sol-types"] }
@@ -34,7 +33,6 @@ ark-poly = "0.5.0"
 ark-serialize = "0.5.0"
 ark-std = "0.5.0"
 chacha20poly1305 = "0.10"
-utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 
 # hashes
 digest = "0.10"
