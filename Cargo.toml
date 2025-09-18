@@ -4,8 +4,7 @@ members = [
     "bin/*",
     "crates/*",
     "dcipher-agents",
-    "generated",
-    "omnievent",
+e    "omnievent",
 ]
 
 [workspace.package]
@@ -20,7 +19,7 @@ dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./crates/signer" }
 dcipher-network = { path = "./crates/network" }
 generated = { path = "./generated" }
-omnievent = { path = "./omnievent" }
+omnievent = { path = "./crates/omnievent" }
 superalloy = { path = "./crates/superalloy" }
 
 # blockchain
