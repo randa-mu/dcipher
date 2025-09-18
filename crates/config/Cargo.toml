@@ -10,14 +10,17 @@ ark-bn254.workspace = true
 ark-ff.workspace = true
 base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+chrono = { workspace = true, features = ["serde"] }
 figment = { workspace = true, features = ["toml", "json"] }
 hex.workspace = true
 humantime-serde = "1.1.1"
+itertools.workspace = true
 libp2p.workspace = true
 serde.workspace = true
 shellexpand = "3.1.1"
 serde_json.workspace = true
 serde_with.workspace = true
+toml.workspace = true
 url = { version = "2.5.4", features = ["serde"] }
 utils.workspace = true
 
