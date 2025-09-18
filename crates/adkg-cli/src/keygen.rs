@@ -4,6 +4,7 @@ use adkg::scheme::bls12_381::DXKR23Bls12_381G1Sha256;
 use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
 use anyhow::Context;
 use config::adkg::{PrivateKeyMaterial, PublicKeyMaterial};
+use config::keys::Libp2pKeyWrapper;
 use libp2p::{PeerId, identity};
 use rand::thread_rng;
 use utils::serialize::fq::FqSerialize;
@@ -24,7 +25,7 @@ pub fn keygen(
             let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
             let sk = PrivateKeyMaterial {
                 adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
-                libp2p_sk,
+                libp2p_sk: Libp2pKeyWrapper(libp2p_sk),
             };
 
             let pk = PublicKeyMaterial {
@@ -42,7 +43,7 @@ pub fn keygen(
             let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
             let sk = PrivateKeyMaterial {
                 adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
-                libp2p_sk,
+                libp2p_sk: Libp2pKeyWrapper(libp2p_sk),
             };
 
             let pk = PublicKeyMaterial {

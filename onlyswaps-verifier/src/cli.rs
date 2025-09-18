@@ -14,7 +14,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = "Start the onylswaps verifier agent")]
+    #[command(about = "Start the onlyswaps verifier agent")]
     Start(StartArgs),
     #[command(
         about = "Generate a basic config for the onlyswaps verifier agent using key material created during the distributed key generation."

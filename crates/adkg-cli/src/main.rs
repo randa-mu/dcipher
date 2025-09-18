@@ -509,12 +509,13 @@ async fn get_libp2p_transports(
         })
         .collect();
 
-    let mut node = Libp2pNodeConfig::new(sk.libp2p_sk.clone(), id, peer_addrs, peer_ids, short_ids)
-        .run(listen_addr)
-        .map_err(|e| {
-            tracing::error!("Failed to start libp2p network: {e:?}");
-            e
-        })?;
+    let mut node =
+        Libp2pNodeConfig::new(sk.libp2p_sk.0.clone(), id, peer_addrs, peer_ids, short_ids)
+            .run(listen_addr)
+            .map_err(|e| {
+                tracing::error!("Failed to start libp2p network: {e:?}");
+                e
+            })?;
 
     // Start libp2p transport
     tracing::info!("Starting libp2p networking");

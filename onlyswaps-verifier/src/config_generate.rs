@@ -1,13 +1,13 @@
 use alloy::hex;
 use alloy::primitives::FixedBytes;
 use alloy::transports::http::reqwest::Url;
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use ark_bn254::G2Affine;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use config::adkg::{AdkgPublic, AdkgSecret, GroupConfig, PrivateKeyMaterial};
 use config::agent::AgentConfig;
-use config::keys::{Bn254SecretKey, Libp2pKeyWrapper};
+use config::keys::Bn254SecretKey;
 use config::network::{Libp2pConfig, NetworkConfig};
 use config::signing::{CommitteeConfig, MemberConfig};
 use libp2p::Multiaddr;
@@ -81,6 +81,11 @@ fn build_app_config(
         members.push(config);
     }
 
+    let threshold = group
+        .t_reconstruction
+        .checked_add(1)
+        .ok_or(anyhow!("getting threshold overflowed"))?;
+
     Ok(AppConfig {
         agent: AgentConfig {
             healthcheck_listen_addr: Ipv4Addr::new(0, 0, 0, 0),
@@ -107,13 +112,13 @@ fn build_app_config(
             },
         ],
         libp2p: Libp2pConfig {
-            secret_key: Libp2pKeyWrapper(secret_key.libp2p_sk),
+            secret_key: secret_key.libp2p_sk,
             multiaddr,
         },
         committee: CommitteeConfig {
             member_id,
             secret_key: Bn254SecretKey::from_str(shared_secret_key_hex.as_str())?,
-            t: group.t.try_into()?,
+            t: threshold.try_into()?,
             n: group.n.try_into()?,
             members,
         },

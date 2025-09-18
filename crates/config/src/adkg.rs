@@ -1,7 +1,7 @@
-use crate::keys::libp2p_keypair_serde;
+use crate::keys::Libp2pKeyWrapper;
 use anyhow::{Context, anyhow};
 use itertools::Itertools;
-use libp2p::{Multiaddr, PeerId, identity};
+use libp2p::{Multiaddr, PeerId};
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroUsize;
 use std::str::FromStr;
@@ -61,8 +61,7 @@ pub struct AdkgNodePk {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PrivateKeyMaterial {
     pub adkg_sk: String,
-    #[serde(with = "libp2p_keypair_serde")]
-    pub libp2p_sk: identity::Keypair,
+    pub libp2p_sk: Libp2pKeyWrapper,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
