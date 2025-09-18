@@ -33,10 +33,16 @@ pub struct GenerateOnlyswapsConfig {
     #[arg(long = "group", help = "the group file used to run the DKG")]
     pub group: PathBuf,
 
-    #[arg(long = "public-share", help = "the public keyshare file generated during the ADKG")]
+    #[arg(
+        long = "public-share",
+        help = "the public keyshare file generated during the ADKG"
+    )]
     pub adkg_public: PathBuf,
 
-    #[arg(long = "private-share", help = "the private keyshare file generated during the ADKG")]
+    #[arg(
+        long = "private-share",
+        help = "the private keyshare file generated during the ADKG"
+    )]
     pub adkg_private: PathBuf,
 
     #[arg(
