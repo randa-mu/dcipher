@@ -1,6 +1,6 @@
+use crate::config::AppConfig;
 use crate::signing::DsignerWrapper;
 use anyhow::anyhow;
-use config::file::AppConfig;
 use dcipher_network::transports::libp2p::Libp2pNodeConfig;
 use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
 use std::collections::HashMap;

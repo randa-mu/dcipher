@@ -2,7 +2,6 @@
 //! the scheme described in [Practical Asynchronous High-threshold Distributed Key Generation and Distributed Polynomial Sampling](https://www.usenix.org/system/files/usenixsecurity23-das.pdf)
 //! by Das et al.
 
-use config::adkg::GroupConfig;
 use crate::scheme::AdkgCliSchemeConfig;
 use crate::transcripts::{
     BroadcastMessages, DirectMessages, EncryptedAdkgTranscript, SerializedBytes,
@@ -29,6 +28,7 @@ use ark_std::Zero;
 use ark_std::iterable::Iterable;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::{AeadCore, ChaCha20Poly1305, Key, KeyInit, Nonce};
+use config::adkg::GroupConfig;
 use dcipher_network::topic::TopicBasedTransport;
 use dcipher_network::topic::dispatcher::TopicDispatcher;
 use dcipher_network::transports::replayable::reader::InMemoryReaderTransport;

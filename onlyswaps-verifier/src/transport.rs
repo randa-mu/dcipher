@@ -1,4 +1,4 @@
-use config::file::AppConfig;
+use crate::config::AppConfig;
 use dcipher_network::transports::libp2p::Libp2pNodeConfig;
 
 pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp2pNodeConfig<u16>> {
@@ -21,14 +21,14 @@ pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp
 
 #[cfg(test)]
 mod test {
+    use crate::config::AppConfig;
     use crate::transport::create_libp2p_transport;
     use alloy::primitives::{FixedBytes, U160, U256};
     use alloy::transports::http::reqwest::Url;
     use ark_bn254::G2Affine;
     use config::agent::AgentConfig;
-    use config::file::{AppConfig, Libp2pConfig};
     use config::keys::{Bn254SecretKey, Libp2pKeyWrapper};
-    use config::network::NetworkConfig;
+    use config::network::{Libp2pConfig, NetworkConfig};
     use config::signing::{CommitteeConfig, MemberConfig};
     use libp2p::PeerId;
     use std::num::NonZeroU16;

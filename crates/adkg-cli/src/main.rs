@@ -5,7 +5,6 @@ mod cli;
 mod keygen;
 #[cfg(feature = "metrics")]
 mod metrics;
-mod onlyswaps;
 mod scheme;
 mod transcripts;
 
@@ -14,24 +13,23 @@ use crate::adkg_dxkr23::{
     adkg_dxkr23_bn254_g1_keccak256_out_g2, adkg_dxkr23_bn254_g1_keccak256_out_g2_rescue,
 };
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
-use config::adkg::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
 use crate::keygen::keygen;
-use crate::onlyswaps::generate_onlyswaps_config;
-use crate::scheme::{new_scheme_config, AdkgCliSchemeConfig, SupportedAdkgScheme};
+use crate::scheme::{AdkgCliSchemeConfig, SupportedAdkgScheme, new_scheme_config};
 use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use ark_ec::CurveGroup;
 use ark_std::rand;
 use clap::Parser;
+use config::adkg::PrivateKeyMaterial;
+use config::adkg::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
 use dcipher_network::topic::dispatcher::{TopicBasedTransportImpl, TopicDispatcher};
 use dcipher_network::transports::libp2p::transport::Libp2pSender;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use dcipher_network::transports::replayable::writer;
 use dcipher_network::transports::replayable::writer::TransportWriter;
 use dcipher_network::transports::replayable::writer::TransportWriterSender;
-use itertools::Itertools;
 use libp2p::Multiaddr;
 use rand::rngs::OsRng;
 use std::fs;
@@ -43,7 +41,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use utils::serialize::fq::FqSerialize;
 use utils::serialize::point::PointSerializeCompressed;
-use config::adkg::PrivateKeyMaterial;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -63,8 +60,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Run(args) => run_adkg(args).await?,
 
         Commands::Rescue(args) => rescue_adkg(args).await?,
-
-        Commands::GenerateOnlyswapsConfig(args) => generate_onlyswaps_config(args)?,
     }
 
     Ok(())

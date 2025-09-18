@@ -1,9 +1,10 @@
 use crate::keys::libp2p_keypair_serde;
+use anyhow::{Context, anyhow};
+use itertools::Itertools;
 use libp2p::{Multiaddr, PeerId, identity};
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroUsize;
 use std::str::FromStr;
-use anyhow::{anyhow, Context};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeDetail {

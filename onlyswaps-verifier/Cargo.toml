@@ -11,6 +11,7 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 async-trait.workspace = true
 axum = "0.8.4"
+base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 config.workspace = true
 dcipher-network = { workspace = true, features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
@@ -21,8 +22,10 @@ omnievent.workspace = true
 serde.workspace = true
 superalloy.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
+toml.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["json", "env-filter"] }
+utils.workspace = true
 
 [dev-dependencies]
 speculoos = "0.13.0"

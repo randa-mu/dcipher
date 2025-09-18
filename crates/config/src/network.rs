@@ -1,10 +1,10 @@
+use crate::keys::Libp2pKeyWrapper;
 use alloy::primitives::FixedBytes;
+use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::time::Duration;
 use url::Url;
-use libp2p::Multiaddr;
-use crate::keys::Libp2pKeyWrapper;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -1,66 +1,27 @@
-use config::adkg::PrivateKeyMaterial;
-use crate::{AdkgPublic, AdkgSecret, GroupConfig};
 use alloy::hex;
 use alloy::primitives::FixedBytes;
+use alloy::transports::http::reqwest::Url;
 use anyhow::Context;
 use ark_bn254::G2Affine;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use clap::Parser;
+use config::adkg::{AdkgPublic, AdkgSecret, GroupConfig, PrivateKeyMaterial};
 use config::agent::AgentConfig;
 use config::keys::{Bn254SecretKey, Libp2pKeyWrapper};
-use config::network::NetworkConfig;
+use config::network::{Libp2pConfig, NetworkConfig};
 use config::signing::{CommitteeConfig, MemberConfig};
 use libp2p::Multiaddr;
 use std::fs;
 use std::net::Ipv4Addr;
 use std::num::NonZeroU16;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
-use url::Url;
 use utils::serialize::point::PointDeserializeCompressed;
 
-#[derive(Parser, Debug)]
-pub struct GenerateOnlyswapsConfig {
-    #[arg(
-        long = "private",
-        help = "your longterm private key file from the generate-keys step"
-    )]
-    pub operator_private: PathBuf,
+use crate::cli::GenerateConfigArgs;
+use crate::config::AppConfig;
 
-    #[arg(long = "group", help = "the group file used to run the DKG")]
-    pub group: PathBuf,
-
-    #[arg(
-        long = "public-share",
-        help = "the public keyshare file generated during the ADKG"
-    )]
-    pub adkg_public: PathBuf,
-
-    #[arg(
-        long = "private-share",
-        help = "the private keyshare file generated during the ADKG"
-    )]
-    pub adkg_private: PathBuf,
-
-    #[arg(
-        long = "multiaddr",
-        help = "the multiaddr your node should bind locally to receive packets from peers. It may differ from the one you shared with them."
-    )]
-    pub multiaddr: Multiaddr,
-
-    #[arg(
-        long = "member-id",
-        help = "the index of your node in the final committee"
-    )]
-    pub member_id: NonZeroU16,
-
-    #[arg(long, help = "the address of the router contract on each chain")]
-    pub router_address: Option<FixedBytes<20>>,
-}
-
-pub(crate) fn generate_onlyswaps_config(args: GenerateOnlyswapsConfig) -> anyhow::Result<()> {
+pub(crate) fn generate_onlyswaps_config(args: GenerateConfigArgs) -> anyhow::Result<()> {
     let secret_key: PrivateKeyMaterial =
         toml::from_str(&fs::read_to_string(&args.operator_private)?)
             .context("failed to read operator private key")?;
@@ -161,7 +122,8 @@ fn build_app_config(
 
 #[cfg(test)]
 mod tests {
-    use crate::onlyswaps::{GenerateOnlyswapsConfig, generate_onlyswaps_config};
+    use crate::cli::GenerateConfigArgs;
+    use crate::config_generate::generate_onlyswaps_config;
     use alloy::primitives::{Address, U160};
     use libp2p::Multiaddr;
     use std::io::Write;
@@ -184,7 +146,7 @@ mod tests {
         let _ = adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
         let _ = adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
 
-        generate_onlyswaps_config(GenerateOnlyswapsConfig {
+        generate_onlyswaps_config(GenerateConfigArgs {
             operator_private: priv_file.path().to_path_buf(),
             group: group_file.path().to_path_buf(),
             adkg_public: adkg_public.path().to_path_buf(),
@@ -211,7 +173,7 @@ mod tests {
         let _ = adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
         let _ = adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
 
-        generate_onlyswaps_config(GenerateOnlyswapsConfig {
+        generate_onlyswaps_config(GenerateConfigArgs {
             operator_private: priv_file.path().to_path_buf(),
             group: group_file.path().to_path_buf(),
             adkg_public: adkg_public.path().to_path_buf(),

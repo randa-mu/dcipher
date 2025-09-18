@@ -3,12 +3,11 @@ use adkg::scheme::DXKR23AdkgScheme;
 use adkg::scheme::bls12_381::DXKR23Bls12_381G1Sha256;
 use adkg::scheme::bn254::DXKR23Bn254G1Keccak256;
 use anyhow::Context;
-use libp2p::{identity, PeerId};
+use config::adkg::{PrivateKeyMaterial, PublicKeyMaterial};
+use libp2p::{PeerId, identity};
 use rand::thread_rng;
-use serde::{Deserialize, Serialize};
 use utils::serialize::fq::FqSerialize;
 use utils::serialize::point::PointSerializeCompressed;
-use config::adkg::{PrivateKeyMaterial, PublicKeyMaterial};
 
 pub fn keygen(
     scheme_config: AdkgCliSchemeConfig,
@@ -57,4 +56,3 @@ pub fn keygen(
         }
     }
 }
-
