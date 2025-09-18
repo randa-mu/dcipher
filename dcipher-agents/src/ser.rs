@@ -57,12 +57,12 @@ pub(crate) mod tests {
     #[cfg(all(feature = "blocklock", feature = "ibe"))] // uses blocklock types & ibe
     pub(crate) mod bn254 {
         use super::super::*;
-        use crate::agents::blocklock::contracts::{BLS, TypesLib};
         use crate::ibe_helper::{IbeCiphertext, IbeIdentityOnBn254G1Ciphertext};
         use alloy::primitives::{Bytes, U256};
         use alloy::sol_types::SolValue;
         use ark_ec::AffineRepr;
         use ark_ff::{BigInteger, PrimeField};
+        use generated::blocklock::blocklock_sender::{BLS, TypesLib};
 
         pub(crate) fn encode_ciphertext(x0: &[u8], x1: &[u8], y0: &[u8], y1: &[u8]) -> Bytes {
             let x0 = U256::from_be_bytes::<32>(x0.try_into().unwrap());
