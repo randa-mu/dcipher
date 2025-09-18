@@ -28,6 +28,7 @@ rayon = ["dcipher-signer/rayon"]
 [dependencies]
 # workspace crates
 dcipher-signer = { workspace = true, optional = true }
+generated = { workspace = true }
 
 alloy = { workspace = true, features = ["default", "provider-ws"], optional = true}
 

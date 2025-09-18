@@ -1588,6 +1588,7 @@ dependencies = [
  "figment",
  "futures",
  "futures-util",
+ "generated",
  "libp2p",
  "prometheus",
  "serde",
@@ -2175,6 +2176,7 @@ dependencies = [
  "dcipher-signer",
  "digest 0.10.7",
  "futures-util",
+ "generated",
  "hex",
  "prometheus",
  "serde",
@@ -2888,6 +2890,14 @@ dependencies = [
  "rand 0.8.5",
  "strum",
  "utils",
+]
+
+[[package]]
+name = "generated"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "serde",
 ]
 
 [[package]]
@@ -4841,6 +4851,7 @@ dependencies = [
  "dcipher-network",
  "dcipher-signer",
  "futures",
+ "generated",
  "libp2p",
  "omnievent",
  "speculoos",
@@ -5614,6 +5625,7 @@ dependencies = [
  "figment",
  "futures",
  "futures-util",
+ "generated",
  "libp2p",
  "prometheus",
  "serde",

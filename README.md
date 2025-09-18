@@ -47,3 +47,8 @@ just forge outputs:
 ```bash
 make clean_forge
 ```
+
+## Bindings
+If any of the solidity code is updated, you must generate new Rust bindings before committing. 
+This can be done by running `./generate-bindings.sh`.
+Any mismatch in the generated bindings and those in the repo will cause a build failure.

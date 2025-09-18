@@ -16,6 +16,7 @@ config.workspace = true
 dcipher-network = { workspace = true, features = ["libp2p", "transports", "replayable", "in_memory", "reader"] }
 dcipher-signer = { workspace = true, features = ["rayon", "bn254", "sha3"] }
 futures.workspace = true
+generated.workspace = true
 libp2p.workspace = true
 omnievent.workspace = true
 superalloy.workspace = true

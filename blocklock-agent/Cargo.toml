@@ -24,6 +24,7 @@ serde = { workspace = true, features = ["derive"] }
 # misc
 anyhow = { workspace = true }
 config.workspace = true
+generated.workspace = true
 
 [dev-dependencies]
 # blockchain

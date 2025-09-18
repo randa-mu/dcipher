@@ -9,6 +9,7 @@ members = [
     "crates/utils",
     "dcipher-agents",
     "dsigner",
+    "generated",
     "omnievent",
     "onlyswaps-verifier",
     "randomness-agent",
@@ -28,11 +29,12 @@ config = { path = "./crates/config" }
 dcipher-agents = { path = "./dcipher-agents" }
 dcipher-signer = { path = "./signer" }
 dcipher-network = { path = "./crates/network" }
+generated = { path = "./generated" }
 omnievent = { path = "./omnievent" }
 superalloy = { path = "./superalloy" }
 
 # blockchain
-alloy = { version = "1.0", default-features = false }
+alloy = { version = "1.0.32", features = ["sol-types"] }
 
 # crypto
 ark-bn254 = "0.5.0"
@@ -102,4 +104,4 @@ thiserror = "2.0"
 [patch.crates-io]
 # Use custom patch to fix arkworks' FieldHasher
 ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher-v0.5.0" }
-libp2p-floodsub = { git = "https://github.com/azixus/rust-libp2p", branch = "fix/floodsub-msg-size"}
+libp2p-floodsub = { git = "https://github.com/azixus/rust-libp2p", branch = "fix/floodsub-msg-size" }

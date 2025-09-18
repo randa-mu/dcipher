@@ -5,10 +5,11 @@ use anyhow::anyhow;
 use dcipher_agents::agents::randomness::RandomnessAgent;
 use dcipher_agents::fulfiller::{RequestChannel, Ticker};
 use dcipher_agents::signature_sender::SignatureRequest;
-use dcipher_agents::signature_sender::contracts::SignatureSender;
-use dcipher_agents::signature_sender::contracts::SignatureSender::SignatureRequested;
 use futures::Stream;
 use futures_util::StreamExt;
+use generated::randomness::signature_sender::SignatureSender::{
+    SignatureRequested, SignatureSenderInstance,
+};
 use std::future::Future;
 use std::sync::Arc;
 
@@ -37,7 +38,7 @@ enum ChainEvent {
 pub async fn run_agent<F, P>(
     agent: &mut RandomnessAgent<F, P>,
     ticker: NotifyTicker,
-    signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
+    signature_sender_contract: SignatureSenderInstance<P>,
 ) -> anyhow::Result<()>
 where
     F: RequestChannel<Request = SignatureRequest>,
@@ -63,7 +64,7 @@ where
 }
 
 async fn create_events_stream<P>(
-    signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
+    signature_sender_contract: SignatureSenderInstance<P>,
 ) -> anyhow::Result<impl Stream<Item = ChainEvent>>
 where
     P: Provider + Clone + 'static,

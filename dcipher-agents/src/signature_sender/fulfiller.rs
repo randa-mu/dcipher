@@ -4,12 +4,12 @@
 
 use crate::fulfiller::TransactionFulfiller;
 use crate::signature_sender::SignedSignatureRequest;
-use crate::signature_sender::contracts::SignatureSender;
 use alloy::primitives::TxHash;
 use alloy::providers::utils::Eip1559Estimation;
 use alloy::providers::{Provider, WalletProvider};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
+use generated::randomness::signature_sender::SignatureSender;
 use std::time::Duration;
 
 #[derive(thiserror::Error, Debug)]

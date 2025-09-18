@@ -1,4 +1,3 @@
-use crate::eth::IRouter::SwapRequestParameters;
 use crate::parsing::{TransferReceipt, reconcile_transfer_params};
 use crate::pending::{RequestId, Verification};
 use crate::util::normalise_chain_id;
@@ -10,6 +9,7 @@ use dcipher_signer::dsigner::{
     ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash,
     DSignerSchemeSigner, OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
+use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use std::sync::Arc;
 
 pub struct OnlySwapsSigner<C, S> {
@@ -164,7 +164,6 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::eth::IRouter::SwapRequestParameters;
     use crate::parsing::TransferReceipt;
     use crate::pending::Verification;
     use crate::signing::{ChainService, DsignerWrapper, OnlySwapsSigner, Signer, VerifiedSwap};
@@ -331,6 +330,7 @@ mod test {
 
     use ark_ec::{AffineRepr, CurveGroup};
     use futures::future::try_join_all;
+    use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 
     #[tokio::test]
     async fn in_memory_test() -> anyhow::Result<()> {

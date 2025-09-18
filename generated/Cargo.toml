@@ -1,0 +1,8 @@
+[package]
+name = "generated"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+alloy = { workspace = true, features = ["sol-types", "contract"] }
+serde = { workspace = true, features = ["derive"] }

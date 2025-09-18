@@ -8,12 +8,16 @@ use crate::agents::blocklock::condition_resolver::{
 };
 use crate::agents::blocklock::metrics::Metrics;
 use crate::decryption_sender::DecryptionRequest;
-use crate::decryption_sender::contracts::{DecryptionSender, TypesLib};
+
 use crate::fulfiller::RequestChannel;
 use alloy::network::Ethereum;
 use alloy::primitives::U256;
 use alloy::primitives::ruint::FromUintError;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
+use generated::blocklock::decryption_sender::DecryptionSender::{
+    DecryptionRequested, DecryptionSenderInstance,
+};
+use generated::blocklock::decryption_sender::TypesLib::DecryptionRequest as GeneratedDecryptionRequest;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Add, Sub};
@@ -44,7 +48,7 @@ pub struct BlocklockAgent<F, P> {
     last_seen_request_id: RequestId,
     decryption_requests: HashMap<RequestId, DecryptionRequest>,
     fulfiller_channel: F,
-    decryption_sender: DecryptionSender::DecryptionSenderInstance<P>,
+    decryption_sender: DecryptionSenderInstance<P>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -59,7 +63,7 @@ impl<F, P> BlocklockAgent<F, P> {
         scheme_id: &str,
         sync_batch_size: usize, // batch size to use when sync'ing state
         fulfiller_channel: F,
-        ro_instance: DecryptionSender::DecryptionSenderInstance<P>,
+        ro_instance: DecryptionSenderInstance<P>,
     ) -> Self {
         Self {
             scheme_id: scheme_id.to_owned(),
@@ -84,7 +88,7 @@ where
         scheme_id: &str,
         sync_batch_size: usize, // batch size to use when sync'ing state
         fulfiller_channel: F,
-        ro_instance: DecryptionSender::DecryptionSenderInstance<P>,
+        ro_instance: DecryptionSenderInstance<P>,
         state: BlocklockAgentSavedState,
     ) -> Result<Self, BlocklockAgentError> {
         let mut agent = Self::new(scheme_id, sync_batch_size, fulfiller_channel, ro_instance);
@@ -203,10 +207,7 @@ where
     ///         on-chain contract.
     ///     3) If no requests were missed, store the new request.
     #[tracing::instrument(skip_all, fields(request_id = %decryption_requested.requestId))]
-    pub async fn handle_decryption_requested(
-        &mut self,
-        decryption_requested: DecryptionSender::DecryptionRequested,
-    ) {
+    pub async fn handle_decryption_requested(&mut self, decryption_requested: DecryptionRequested) {
         tracing::info!(
             "Blocklock agent detected decryption requested event: {decryption_requested:?}"
         );
@@ -260,7 +261,7 @@ where
     fn handle_new_request(
         &mut self,
         request_id: RequestId,
-        decryption_requested: DecryptionSender::DecryptionRequested,
+        decryption_requested: DecryptionRequested,
     ) {
         // No missed requests, set the last seen to the current request id
         self.last_seen_request_id = request_id;
@@ -283,7 +284,7 @@ where
     fn handle_seen_request(
         &self,
         request_id: RequestId,
-        decryption_requested: DecryptionSender::DecryptionRequested,
+        decryption_requested: DecryptionRequested,
     ) {
         // That request id was already seen, make sure that it is equal to whatever is stored internally
         tracing::info!("Decryption request has already been seen, checking against internal state");
@@ -509,10 +510,14 @@ where
     /// Returns a vector of request ids, and a multicall.
     fn create_multicall_with_ids(
         requests: impl IntoIterator<Item = U256> + ExactSizeIterator,
-        decryption_sender: DecryptionSender::DecryptionSenderInstance<P>,
+        decryption_sender: DecryptionSenderInstance<P>,
     ) -> (
         Vec<U256>,
-        MulticallBuilder<Dynamic<DecryptionSender::getRequestCall>, P, Ethereum>,
+        MulticallBuilder<
+            Dynamic<generated::blocklock::decryption_sender::DecryptionSender::getRequestCall>,
+            P,
+            Ethereum,
+        >,
     ) {
         let batch_size = requests.len();
         let mut request_ids = Vec::with_capacity(batch_size);
@@ -539,14 +544,14 @@ impl Default for BlocklockAgentSavedState {
 
 /// Helper struct used for TypesLibDecryptionRequest
 struct TypesLibDecryptionRequest {
-    inner: TypesLib::DecryptionRequest,
+    inner: GeneratedDecryptionRequest,
     id: U256,
 }
 
 impl TypesLibDecryptionRequest {
     pub fn from_typeslib_decryption_request(
         request_id: U256,
-        value: TypesLib::DecryptionRequest,
+        value: GeneratedDecryptionRequest,
     ) -> Self {
         Self {
             id: request_id,
@@ -571,9 +576,6 @@ mod tests {
     use crate::agents::blocklock::BlocklockCondition;
     use crate::agents::blocklock::agent::tests::MockBlocklockReceiver::MockBlocklockReceiverInstance;
     use crate::agents::blocklock::contracts::BlocklockSender;
-    use crate::decryption_sender::contracts::DecryptionSender::{
-        DecryptionRequested, DecryptionSenderInstance,
-    };
     use crate::ibe_helper::{IbeIdentityOnBn254G1Suite, PairingIbeCipherSuite, PairingIbeSigner};
     use alloy::consensus::constants::ETH_TO_WEI;
     use alloy::hex;
@@ -589,6 +591,9 @@ mod tests {
     use ark_std::rand::thread_rng;
     use futures_util::StreamExt;
     use futures_util::future::join_all;
+    use generated::blocklock::decryption_sender::DecryptionSender::{
+        DecryptionRequested, DecryptionSenderInstance,
+    };
     use std::collections::VecDeque;
     use std::ops::AddAssign;
     use std::rc::Rc;
@@ -606,26 +611,25 @@ mod tests {
     alloy::sol!(
         #[derive(Debug)]
         #[sol(rpc)]
-        SignatureSchemeAddressProvider,
-        "../blocklock-solidity/out/SignatureSchemeAddressProvider.sol/SignatureSchemeAddressProvider.json"
+        "../blocklock-solidity/src/signature-schemes/SignatureSchemeAddressProvider.sol"
     );
     alloy::sol!(
         #[derive(Debug)]
         #[sol(rpc)]
         BlocklockSignatureScheme,
-        "../blocklock-solidity/out/BlocklockSignatureScheme.sol/BlocklockSignatureScheme.json"
+        "../blocklock-solidity/src/signature-schemes/BlocklockSignatureScheme.sol"
     );
     alloy::sol!(
         #[derive(Debug)]
         #[sol(rpc)]
         UUPSProxy,
-        "../blocklock-solidity/out/UUPSProxy.sol/UUPSProxy.json"
+        "../blocklock-solidity/src/proxy/UUPSProxy.sol"
     );
     alloy::sol!(
         #[derive(Debug)]
         #[sol(rpc)]
         MockBlocklockReceiver,
-        "../blocklock-solidity/out/MockBlocklockReceiver.sol/MockBlocklockReceiver.json"
+        "../blocklock-solidity/src/mocks/MockBlocklockReceiver.sol"
     );
 
     fn pk() -> ark_bn254::G2Affine {

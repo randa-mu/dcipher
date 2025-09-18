@@ -10,11 +10,13 @@ use crate::agents::BlockNumber;
 use crate::agents::randomness::metrics::Metrics;
 use crate::fulfiller::RequestChannel;
 use crate::signature_sender::SignatureRequest;
-use crate::signature_sender::contracts::{SignatureSender, TypesLib};
 use alloy::network::Ethereum;
 use alloy::primitives::U256;
 use alloy::primitives::ruint::FromUintError;
 use alloy::providers::{Dynamic, MulticallBuilder, MulticallError, Provider};
+use generated::randomness::signature_sender::SignatureSender;
+use generated::randomness::signature_sender::SignatureSender::SignatureSenderInstance;
+use generated::randomness::signature_sender::TypesLib;
 use std::ops::{Add, Sub};
 use tracing::Instrument;
 
@@ -291,7 +293,7 @@ where
     /// Returns a vector of request ids, and a multicall.
     fn create_multicall_with_ids(
         requests: impl IntoIterator<Item = U256> + ExactSizeIterator,
-        decryption_sender: SignatureSender::SignatureSenderInstance<P>,
+        decryption_sender: SignatureSenderInstance<P>,
     ) -> (
         Vec<U256>,
         MulticallBuilder<Dynamic<SignatureSender::getRequestCall>, P, Ethereum>,

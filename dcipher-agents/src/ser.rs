@@ -5,11 +5,11 @@ pub use blocklock::*;
 
 #[cfg(feature = "blocklock")]
 mod blocklock {
-    use crate::agents::blocklock::contracts::TypesLib;
     use crate::ibe_helper::IbeIdentityOnBn254G1Ciphertext;
+    use alloy::dyn_abi::SolType;
     use alloy::primitives::Bytes;
-    use alloy::sol_types::SolType;
     use ark_ec::AffineRepr;
+    use generated::blocklock::i_blocklock_sender::TypesLib::Ciphertext;
 
     #[derive(thiserror::Error, Debug)]
     pub enum IbeIdentityOnBn254G1CiphertextError {
@@ -24,7 +24,7 @@ mod blocklock {
         pub fn deser(bytes: &Bytes) -> Result<Self, IbeIdentityOnBn254G1CiphertextError> {
             use ark_ff::PrimeField;
 
-            let ciphertext = TypesLib::Ciphertext::abi_decode(bytes)?;
+            let ciphertext = Ciphertext::abi_decode(bytes)?;
             let x0: [u8; 32] = ciphertext.u.x[0].to_be_bytes();
             let x1: [u8; 32] = ciphertext.u.x[1].to_be_bytes();
             let y0: [u8; 32] = ciphertext.u.y[0].to_be_bytes();

@@ -1,12 +1,10 @@
 //! Module with signers / tx fulfillers used by the decryption sender contract.
 
 pub mod async_signer;
-pub mod contracts;
 pub mod single_call_fulfiller;
 pub mod single_party_signer;
 
 use crate::decryption_sender::async_signer::DecryptionSenderAsyncSigner;
-use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::RetryStrategy;
 use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::{Identifier, TransactionFulfiller};
@@ -14,6 +12,7 @@ use crate::ibe_helper::PairingIbeCipherSuite;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
 use dcipher_signer::dsigner::{ApplicationArgs, DSignerSchemeSigner, SignatureAlgorithm};
+use generated::blocklock::decryption_sender::DecryptionSender;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::marker::PhantomData;

@@ -8,19 +8,15 @@ use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
 use blocklock_agent::{BN254_BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
-use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSavedState};
-use dcipher_agents::agents::blocklock::contracts::BlocklockSender;
-use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
-use dcipher_agents::decryption_sender::contracts::DecryptionSender;
-use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
-use dcipher_agents::ibe_helper::IbeIdentityOnBn254G1Suite;
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
 use dcipher_signer::dsigner::{
     ApplicationArgs, ApplicationBlocklockArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
     BlsSignatureHash, SignatureAlgorithm,
 };
+use generated::blocklock::blocklock_sender::BlocklockSender;
+use generated::blocklock::decryption_sender::DecryptionSender;
 use std::time::Duration;
 use superalloy::provider::create_provider_with_retry;
 use superalloy::retry::RetryStrategy;
