@@ -13,16 +13,17 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # You _can_ generate *ALL* the bindings for each project, but it slows down the build
 # and there are weird conflicts with the `Factory` CREATE2 deployer stuff that presently break with foundry
 # see: https://github.com/foundry-rs/foundry/issues/11705
-cd $ROOT_DIR/randomness-solidity
+pushd $ROOT_DIR/randomness-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/randomness --skip-cargo-toml --module \
 --select RandomnessSender \
 --select TypesLib \
 --select SignatureSender \
 --overwrite
+popd
 
 git --no-pager diff
 
-cd $ROOT_DIR/blocklock-solidity
+pushd $ROOT_DIR/blocklock-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/blocklock --skip-cargo-toml --module \
 --select BlocklockSender \
 --select TypesLib \
@@ -32,8 +33,9 @@ forge bind --bindings-path $ROOT_DIR/generated/src/blocklock --skip-cargo-toml -
 --select BlocklockSignatureScheme \
 --select UUPSProxy \
 --select MockBlocklockReceiver
+popd
 
-cd $ROOT_DIR/onlyswaps-solidity
+pushd $ROOT_DIR/onlyswaps-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/onlyswaps --skip-cargo-toml --module \
 --select Router \
 --select IRouter \
