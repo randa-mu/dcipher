@@ -4,8 +4,8 @@ fn main() -> std::io::Result<()> {
         .client_mod_attribute("attrs", "#[cfg(feature = \"client\")]")
         .bytes(["."])
         .compile_protos(
-            &["../dcipher-proto/dsigner/dsigner.proto"],
-            &["../dcipher-proto/dsigner/"],
+            &["../../dcipher-proto/dsigner/dsigner.proto"],
+            &["../../dcipher-proto/dsigner/"],
         )?;
     Ok(())
 }
