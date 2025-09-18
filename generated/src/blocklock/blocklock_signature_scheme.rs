@@ -280,11 +280,12 @@ pub mod BlocklockSignatureScheme {
     pub static DEPLOYED_BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
         b"`\x80`@R4\x80\x15a\0\x0FW__\xFD[P`\x046\x10a\0\x85W_5`\xE0\x1C\x80c\x8A\x1F\x16Z\x11a\0XW\x80c\x8A\x1F\x16Z\x14a\0\xF3W\x80c\xAC\xAE\x9F\xEE\x14a\x01%W\x80c\xEA\xE1\xE1[\x14a\x01-W\x80c\xF6\xE5H\xE9\x14a\x01@W__\xFD[\x80c.3DR\x14a\0\x89W\x80c03\xCCQ\x14a\0\xA8W\x80c4\x08\xE4p\x14a\0\xD0W\x80c_|u\"\x14a\0\xDEW[__\xFD[a\0\x91a\x01cV[`@Qa\0\x9F\x92\x91\x90a\x1E\x88V[`@Q\x80\x91\x03\x90\xF3[a\0\xBBa\0\xB66`\x04a\x1E\xE8V[a\x01\xDCV[`@\x80Q\x92\x83R` \x83\x01\x91\x90\x91R\x01a\0\x9FV[`@QF\x81R` \x01a\0\x9FV[a\0\xE6a\x02\xBCV[`@Qa\0\x9F\x91\x90a\x1FUV[a\0\xE6`@Q\x80`@\x01`@R\x80`\x13\x81R` \x01rBN254-BLS-BLOCKLOCK`h\x1B\x81RP\x81V[a\0\xE6a\x03HV[a\0\xE6a\x01;6`\x04a\x1E\xE8V[a\x03\xC7V[a\x01Sa\x01N6`\x04a\x1FgV[a\x04\x01V[`@Q\x90\x15\x15\x81R` \x01a\0\x9FV[a\x01ka\x1D\xE1V[a\x01sa\x1D\xE1V[`@\x80Q\x80\x82\x01\x91\x82\x90R_\x91`\x02\x91\x90\x83\x90\x83\x90\x82\x84[\x81T\x81R` \x01\x90`\x01\x01\x90\x80\x83\x11a\x01\x8BWPP`@\x80Q\x80\x82\x01\x91\x82\x90R\x94\x96P\x85\x93P`\x02\x92P\x90P\x82\x84[\x81T\x81R` \x01\x90`\x01\x01\x90\x80\x83\x11a\x01\xBAWPPPPP\x90P\x91P\x91P\x90\x91V[___a\x02\xA6`\x04\x80Ta\x01\xEF\x90a \x06V[\x80`\x1F\x01` \x80\x91\x04\x02` \x01`@Q\x90\x81\x01`@R\x80\x92\x91\x90\x81\x81R` \x01\x82\x80Ta\x02\x1B\x90a \x06V[\x80\x15a\x02fW\x80`\x1F\x10a\x02=Wa\x01\0\x80\x83T\x04\x02\x83R\x91` \x01\x91a\x02fV[\x82\x01\x91\x90_R` _ \x90[\x81T\x81R\x90`\x01\x01\x90` \x01\x80\x83\x11a\x02IW\x82\x90\x03`\x1F\x16\x82\x01\x91[PPPPP\x86\x86\x80\x80`\x1F\x01` \x80\x91\x04\x02` \x01`@Q\x90\x81\x01`@R\x80\x93\x92\x91\x90\x81\x81R` \x01\x83\x83\x80\x82\x847_\x92\x01\x91\x90\x91RPa\x04\xE1\x92PPPV[\x80Q` \x90\x91\x01Q\x90\x93P\x91PP[\x92P\x92\x90PV[`\x04\x80Ta\x02\xC9\x90a \x06V[\x80`\x1F\x01` \x80\x91\x04\x02` \x01`@Q\x90\x81\x01`@R\x80\x92\x91\x90\x81\x81R` \x01\x82\x80Ta\x02\xF5\x90a \x06V[\x80\x15a\x03@W\x80`\x1F\x10a\x03\x17Wa\x01\0\x80\x83T\x04\x02\x83R\x91` \x01\x91a\x03@V[\x82\x01\x91\x90_R` _ \x90[\x81T\x81R\x90`\x01\x01\x90` \x01\x80\x83\x11a\x03#W\x82\x90\x03`\x1F\x16\x82\x01\x91[PPPPP\x81V[`@\x80Q`\x80\x81\x01\x80\x83R``\x92a\x03\xC2\x92\x91_\x91\x83\x91\x90\x82\x01\x90\x83\x90`\x02\x90\x82\x84[\x81T\x81R` \x01\x90`\x01\x01\x90\x80\x83\x11a\x03kWPPP\x91\x83RPP`@\x80Q\x80\x82\x01\x91\x82\x90R` \x90\x92\x01\x91\x90`\x02\x84\x81\x01\x91\x82\x84[\x81T\x81R` \x01\x90`\x01\x01\x90\x80\x83\x11a\x03\xA1WPPPPP\x81RPPa\x05\xADV[\x90P\x90V[``__a\x03\xD5\x85\x85a\x01\xDCV[\x91P\x91Pa\x03\xF6`@Q\x80`@\x01`@R\x80\x84\x81R` \x01\x83\x81RPa\x06\tV[\x92PPP[\x92\x91PPV[__a\x04A\x88\x88\x80\x80`\x1F\x01` \x80\x91\x04\x02` \x01`@Q\x90\x81\x01`@R\x80\x93\x92\x91\x90\x81\x81R` \x01\x83\x83\x80\x82\x847_\x92\x01\x91\x90\x91RPa\x06B\x92PPPV[\x90P_a\x04\x82\x87\x87\x80\x80`\x1F\x01` \x80\x91\x04\x02` \x01`@Q\x90\x81\x01`@R\x80\x93\x92\x91\x90\x81\x81R` \x01\x83\x83\x80\x82\x847_\x92\x01\x91\x90\x91RPa\x06B\x92PPPV[\x90P_a\x04\xC3\x86\x86\x80\x80`\x1F\x01` \x80\x91\x04\x02` \x01`@Q\x90\x81\x01`@R\x80\x93\x92\x91\x90\x81\x81R` \x01\x83\x83\x80\x82\x847_\x92\x01\x91\x90\x91RPa\x06\xC5\x92PPPV[\x90P_a\x04\xD1\x83\x83\x86a\x07fV[P\x9B\x9APPPPPPPPPPPV[`@\x80Q\x80\x82\x01\x90\x91R_\x80\x82R` \x82\x01R_a\x04\xFF\x84\x84a\x08\xD9V[\x90P_a\x05\x12\x82\x82[` \x02\x01Qa\t\x8EV[\x90P_a\x05 \x83`\x01a\x05\x08V[\x90Pa\x05*a\x1D\xFFV[\x82Q\x81R` \x80\x84\x01Q\x82\x82\x01R\x82Q`@\x80\x84\x01\x91\x90\x91R\x90\x83\x01Q``\x83\x01R_\x90\x84`\x80\x84`\x06a\x07\xD0Z\x03\xFA\x90P\x80a\x05\x85W\x81`@Qc\x02Q\xC7\xE1`\xE3\x1B\x81R`\x04\x01a\x05|\x91\x90a RV[`@Q\x80\x91\x03\x90\xFD[`@\x80Q\x80\x82\x01\x90\x91R\x84Q\x81R` \x81\x01\x85`\x01` \x02\x01Q\x90R\x98\x97PPPPPPPPV[`@\x80Q`\x80\x80\x82R`\xA0\x82\x01\x90\x92R``\x91_\x91\x90` \x82\x01\x81\x806\x837PP\x84Q\x80Q` \x91\x82\x01Q\x96\x82\x01Q\x80Q\x90\x83\x01Q\x92\x85\x01\x91\x90\x91R`@\x84\x01\x96\x90\x96R``\x83\x01\x95\x90\x95RP`\x80\x81\x01\x93\x90\x93RP\x90\x91\x90PV[`@\x80Q\x81\x81R``\x81\x81\x01\x83R\x91_\x91\x90` \x82\x01\x81\x806\x837PP\x84Q` \x95\x86\x01Q\x95\x83\x01RP`@\x81\x01\x93\x90\x93RP\x90\x91\x90PV[`@\x80Q\x80\x82\x01\x90\x91R_\x80\x82R` \x82\x01R\x81Q`@\x14a\x06\xA6W`@QbF\x1B\xCD`\xE5\x1B\x81R` `\x04\x82\x01R`\x17`$\x82\x01R\x7FInvalid G1 bytes length\0\0\0\0\0\0\0\0\0`D\x82\x01R`d\x01a\x05|V[P` \x81\x81\x01Q`@\x92\x83\x01Q\x83Q\x80\x85\x01\x90\x94R\x90\x83R\x90\x82\x01R\x90V[a\x06\xCDa\x1E\x1DV[\x81Q`\x80\x14a\x07\x1EW`@QbF\x1B\xCD`\xE5\x1B\x81R` `\x04\x82\x01R`\x17`$\x82\x01R\x7FInvalid G2 bytes length\0\0\0\0\0\0\0\0\0`D\x82\x01R`d\x01a\x05|V[P` \x81\x81\x01Q`@\x80\x84\x01Q``\x80\x86\x01Q`\x80\x96\x87\x01Q\x84Q\x97\x88\x01\x85R\x87\x85\x01\x95\x86R\x91\x87\x01\x92\x90\x92R\x92\x85R\x81Q\x80\x83\x01\x90\x92R\x81R\x80\x83\x01\x91\x90\x91R\x90\x82\x01R\x90V[___`@Q\x80a\x01\x80\x01`@R\x80\x87_\x01Q\x81R` \x01\x87` \x01Q\x81R` \x01\x7F\x19\x8E\x93\x93\x92\rH:r`\xBF\xB71\xFB]%\xF1\xAAI35\xA9\xE7\x12\x97\xE4\x85\xB7\xAE\xF3\x12\xC2\x81R` \x01\x7F\x18\0\xDE\xEF\x12\x1F\x1EvBj\0f^\\DygC\"\xD4\xF7^\xDA\xDDF\xDE\xBD\\\xD9\x92\xF6\xED\x81R` \x01\x7F']\xC4\xA2\x88\xD1\xAF\xB3\xCB\xB1\xAC\t\x18u$\xC7\xDB69]\xF7\xBE;\x99\xE6s\xB1:\x07Ze\xEC\x81R` \x01\x7F\x1D\x9B\xEF\xCD\x05\xA52>m\xA4\xD45\xF3\xB6\x17\xCD\xB3\xAF\x83(\\-\xF7\x11\xEF9\xC0\x15q\x82\x7F\x9D\x81R` \x01\x85_\x01Q\x81R` \x01\x85` \x01Q\x81R` \x01\x86_\x01Q`\x01`\x02\x81\x10a\x08IWa\x08Ia >V[` \x02\x01Q\x81R` \x01\x86_\x01Q_`\x02\x81\x10a\x08hWa\x08ha >V[` \x02\x01Q\x81R` \x01\x86` \x01Q`\x01`\x02\x81\x10a\x08\x89Wa\x08\x89a >V[` \x02\x01Q\x81R` \x01\x86` \x01Q_`\x02\x81\x10a\x08\xA9Wa\x08\xA9a >V[` \x02\x01Q\x90R\x90Pa\x08\xBAa\x1EBV[` \x81a\x01\x80\x84`\x08a\x07\xD0Z\x03\xFA\x90Q\x15\x15\x97\x90\x96P\x94PPPPPV[a\x08\xE1a\x1D\xE1V[_a\x08\xEC\x84\x84a\x0CoV[\x90P____`\x18\x85\x01`\x01`\x01`\xC0\x1B\x03\x81Q\x16\x93P`0\x86\x01\x90P`\x01`\x01`\xC0\x1B\x03\x81Q\x16\x94P_Q` a!\xA0_9_Q\x90_R\x85_Q` a!\xA0_9_Q\x90_R`\x01`\xC0\x1B\x87\t\x08`H\x87\x01Q``\x88\x01Q`\x01`\x01`\xC0\x1B\x03\x90\x81\x16\x97P\x16\x94P\x92P_Q` a!\xA0_9_Q\x90_R\x90P\x84\x81`\x01`\xC0\x1B\x86\t\x08`@\x80Q\x80\x82\x01\x90\x91R\x92\x83R` \x83\x01RP\x96\x95PPPPPPV[a\t\x96a\x1D\xE1V[_Q` a!\xA0_9_Q\x90_R\x82\x10a\t\xC6W`@Qc\xD5>\x94\x15`\xE0\x1B\x81R`\x04\x81\x01\x83\x90R`$\x01a\x05|V[__Q` a!\xA0_9_Q\x90_R`\x04_Q` a!\xA0_9_Q\x90_R\x85\x86\t\t\x90P__Q` a!\xA0_9_Q\x90_R\x82`\x01\x08\x90P_Q` a!\xA0_9_Q\x90_Ra\n%\x83_Q` a!\xA0_9_Q\x90_Ra \x96V[`\x01\x08\x91P_a\nD_Q` a!\xA0_9_Q\x90_R\x83\x85\ta\r\xC6V[\x90P__Q` a!\xA0_9_Q\x90_Rx\x01g\x89\xAF:\x83R.\xB3S\xC9\x8F\xC6\xB3mq=]\x8D\x1C\xC5\xDF\xFF\xFF\xFA_Q` a!\xA0_9_Q\x90_R\x84_Q` a!\xA0_9_Q\x90_R\x88\x8B\t\t\t\x90P__Q` a!\xA0_9_Q\x90_Ra\n\xB9\x83_Q` a!\xA0_9_Q\x90_Ra \x96V[_Q` a!\xC0_9_Q\x90_R\x08\x90P__Q` a!\xA0_9_Q\x90_R\x83_Q` a!\xC0_9_Q\x90_R\x08\x90P__Q` a!\xA0_9_Q\x90_R\x86\x87\t\x90P__Q` a!\xA0_9_Q\x90_R\x86\x83\t\x90P__Q` a!\xA0_9_Q\x90_R\x80_Q` a!\xA0_9_Q\x90_R\x84\x85\t\x7F\x10!o{\xA0e\xE0\r\xE8\x1A\xC1\xE7\x80\x80r\xC9\xDD+#\x85\xCD{C\x84i`.\xB2H)\xA9\xBD\t`\x01\x08\x90P__a\x0Bna\x0Bi\x88a\r\xD0V[a\x0E\tV[_\x0B`\x01\x03a\x0B\xBEW\x86\x8CRa\x0B\x83\x87a\r\xD0V[\x90Pa\x0B\x8E\x81a\x0EnV[` \x8E\x01\x91\x90\x91R\x91P\x81a\x0B\xB9W`@Qc9n\xC7q`\xE0\x1B\x81R`\x04\x81\x01\x82\x90R`$\x01a\x05|V[a\x0C!V[a\x0B\xCAa\x0Bi\x87a\r\xD0V[_\x0B`\x01\x03a\x0B\xDFW\x85\x8CRa\x0B\x83\x86a\r\xD0V[\x82\x8CRa\x0B\xEB\x83a\r\xD0V[\x90Pa\x0B\xF6\x81a\x0EnV[` \x8E\x01\x91\x90\x91R\x91P\x81a\x0C!W`@Qc9n\xC7q`\xE0\x1B\x81R`\x04\x81\x01\x82\x90R`$\x01a\x05|V[` \x8C\x01Qa\x0C/\x90a\x0E\x95V[a\x0C8\x8Ea\x0E\x95V[\x14a\x0C_W` \x8C\x01Qa\x0CY\x90_Q` a!\xA0_9_Q\x90_Ra \x96V[` \x8D\x01R[PPPPPPPPPPP\x91\x90PV[\x81Q``\x90`\xFF\x81\x11\x15a\x0C\x98W\x83`@Qc\x13r|\xDD`\xE1\x1B\x81R`\x04\x01a\x05|\x91\x90a\x1FUV[`@\x80Q`\x88\x80\x82R`\xC0\x82\x01\x90\x92R_\x91` \x82\x01\x81\x806\x837\x01\x90PP\x90P_\x81\x85_``_\x8A\x88`@Q` \x01a\x0C\xD8\x97\x96\x95\x94\x93\x92\x91\x90a \xC0V[`@Q` \x81\x83\x03\x03\x81R\x90`@R\x90P_\x81\x80Q\x90` \x01 \x90P_\x81`\x01\x89\x87`@Q` \x01a\r\r\x94\x93\x92\x91\x90a!*V[`@\x80Q\x80\x83\x03`\x1F\x19\x01\x81R\x82\x82R\x80Q` \x82\x01 ``\x80\x85R`\x80\x85\x01\x90\x93R\x90\x93P\x91_\x91` \x82\x01\x81\x806\x837\x01\x90PP\x90P`\x03`\x01[\x81\x81\x10\x15a\r\xA9W\x85\x84\x18a\r`\x82`\x01a!mV[\x8D\x8B`@Q` \x01a\ru\x94\x93\x92\x91\x90a!*V[`@\x80Q\x80\x83\x03`\x1F\x19\x01\x81R\x91\x90R` _\x19\x83\x01\x81\x02\x85\x01\x81\x01\x95\x90\x95R\x80Q\x94\x81\x01\x94\x90\x94 \x93\x94P`\x01\x01a\rJV[P_\x19\x01` \x90\x81\x02\x82\x01\x01\x91\x90\x91R\x95PPPPPP\x92\x91PPV[_a\x03\xFB\x82a\x0E\xA1V[__Q` a!\xA0_9_Q\x90_R`\x03_Q` a!\xA0_9_Q\x90_R\x84_Q` a!\xA0_9_Q\x90_R\x86\x87\t\t\x08\x92\x91PPV[__a\x0E\x14\x83a\x15\xE6V[\x90Pa\x0E.`\x01_Q` a!\xA0_9_Q\x90_Ra \x96V[\x81\x03a\x0E=WP_\x19\x92\x91PPV[\x80\x15\x80\x15\x90a\x0EMWP\x80`\x01\x14\x15[\x15a\x03\xFBW`@Qc9n\xC7q`\xE0\x1B\x81R`\x04\x81\x01\x84\x90R`$\x01a\x05|V[__a\x0Ey\x83a\x16\xAEV[\x91P\x82_Q` a!\xA0_9_Q\x90_R\x83\x84\t\x14\x90P\x91P\x91V[_a\x03\xFB`\x02\x83a!\x80V[__Q` a!\xA0_9_Q\x90_R\x80\x83\x84\t\x91P\x80\x83\x83\t\x81\x83\x82\t\x82\x82\x83\t\x83\x85\x83\t\x84\x84\x83\t\x85\x84\x84\t\x86\x84\x85\t\x97P\x86\x84\x84\t\x87\x85\x84\t\x94P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x81\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x81\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x83\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x81\x8A\t\x98PP\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x84\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x89\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x89\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x86\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x81\x89\t\x97PP\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x85\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x85\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x83\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x81\x88\t\x96PPP\x83\x85\x86\t\x94P\x83\x85\x86\t\x94P\x83\x85\x86\t\x94P\x83\x85\x86\t\x94P\x83\x81\x86\t\x94PP\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x81\x85\t\x93P\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x85\x85\t\x93P\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x84\x85\t\x93P\x82\x81\x85\t\x95\x94PPPPPV[`@\x80Q`\xC0\x80\x82R`\xE0\x82\x01\x90\x92R_\x91\x82\x91\x90` \x82\x01\x81\x806\x837\x01\x90PP` \x80\x82\x01\x81\x81R`@\x83\x01\x82\x90R``\x83\x01\x82\x90R`\x80\x83\x01\x86\x90R_Q` a!\xC0_9_Q\x90_R`\xA0\x84\x01R_Q` a!\xA0_9_Q\x90_R`\xC0\x80\x85\x01\x91\x90\x91R\x92\x93P_\x92\x83\x91`\x05Z\xFA\x90P_Q\x92P\x80a\x16\xA7W`@Qc\xC6\xDA\xF7\xAB`\xE0\x1B\x81R`\x04\x81\x01\x85\x90R_Q` a!\xC0_9_Q\x90_R`$\x82\x01R_Q` a!\xA0_9_Q\x90_R`D\x82\x01R`d\x01a\x05|V[PP\x91\x90PV[__Q` a!\xA0_9_Q\x90_R\x80\x83\x84\t\x91P\x80\x83\x83\t\x81\x83\x82\t\x82\x82\x83\t\x83\x85\x83\t\x84\x84\x83\t\x85\x84\x84\t\x86\x84\x85\t\x97P\x86\x84\x84\t\x87\x85\x84\t\x94P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x81\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x81\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x87\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x83\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x82\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x84\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x86\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x8A\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x89\x8A\t\x98P\x87\x81\x8A\t\x98PP\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x84\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x89\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x89\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x86\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x88\x89\t\x97P\x86\x81\x89\t\x97PP\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x85\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x85\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x83\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x81\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x83\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x84\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x87\x88\t\x96P\x85\x81\x88\t\x96PPPPPP\x80\x82\x83\t\x93\x92PPPV[`@Q\x80`@\x01`@R\x80`\x02\x90` \x82\x02\x806\x837P\x91\x92\x91PPV[`@Q\x80`\x80\x01`@R\x80`\x04\x90` \x82\x02\x806\x837P\x91\x92\x91PPV[`@Q\x80`@\x01`@R\x80a\x1E0a\x1D\xE1V[\x81R` \x01a\x1E=a\x1D\xE1V[\x90R\x90V[`@Q\x80` \x01`@R\x80`\x01\x90` \x82\x02\x806\x837P\x91\x92\x91PPV[\x80_[`\x02\x81\x10\x15a\x1E\x82W\x81Q\x84R` \x93\x84\x01\x93\x90\x91\x01\x90`\x01\x01a\x1EcV[PPPPV[`\x80\x81\x01a\x1E\x96\x82\x85a\x1E`V[a\x1E\xA3`@\x83\x01\x84a\x1E`V[\x93\x92PPPV[__\x83`\x1F\x84\x01\x12a\x1E\xBAW__\xFD[P\x815g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x1E\xD1W__\xFD[` \x83\x01\x91P\x83` \x82\x85\x01\x01\x11\x15a\x02\xB5W__\xFD[__` \x83\x85\x03\x12\x15a\x1E\xF9W__\xFD[\x825g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x1F\x0FW__\xFD[a\x1F\x1B\x85\x82\x86\x01a\x1E\xAAV[\x90\x96\x90\x95P\x93PPPPV[_\x81Q\x80\x84R\x80` \x84\x01` \x86\x01^_` \x82\x86\x01\x01R` `\x1F\x19`\x1F\x83\x01\x16\x85\x01\x01\x91PP\x92\x91PPV[` \x81R_a\x1E\xA3` \x83\x01\x84a\x1F'V[______``\x87\x89\x03\x12\x15a\x1F|W__\xFD[\x865g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x1F\x92W__\xFD[a\x1F\x9E\x89\x82\x8A\x01a\x1E\xAAV[\x90\x97P\x95PP` \x87\x015g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x1F\xBDW__\xFD[a\x1F\xC9\x89\x82\x8A\x01a\x1E\xAAV[\x90\x95P\x93PP`@\x87\x015g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x1F\xE8W__\xFD[a\x1F\xF4\x89\x82\x8A\x01a\x1E\xAAV[\x97\x9A\x96\x99P\x94\x97P\x92\x95\x93\x94\x92PPPV[`\x01\x81\x81\x1C\x90\x82\x16\x80a \x1AW`\x7F\x82\x16\x91P[` \x82\x10\x81\x03a 8WcNH{q`\xE0\x1B_R`\"`\x04R`$_\xFD[P\x91\x90PV[cNH{q`\xE0\x1B_R`2`\x04R`$_\xFD[`\x80\x81\x01\x81\x83_[`\x04\x81\x10\x15a yW\x81Q\x83R` \x92\x83\x01\x92\x90\x91\x01\x90`\x01\x01a ZV[PPP\x92\x91PPV[cNH{q`\xE0\x1B_R`\x11`\x04R`$_\xFD[\x81\x81\x03\x81\x81\x11\x15a\x03\xFBWa\x03\xFBa \x82V[_\x81Q\x80` \x84\x01\x85^_\x93\x01\x92\x83RP\x90\x91\x90PV[_a \xD4a \xCE\x83\x8Ba \xA9V[\x89a \xA9V[`\x01`\x01`\xF8\x1B\x03\x19`\xF8\x89\x81\x1B\x82\x16\x83R\x88\x81\x1B\x82\x16`\x01\x84\x01R\x87\x90\x1B\x16`\x02\x82\x01Ra!\x06`\x03\x82\x01\x86a \xA9V[`\xF8\x94\x90\x94\x1B`\x01`\x01`\xF8\x1B\x03\x19\x16\x84RPP`\x01\x90\x91\x01\x97\x96PPPPPPPV[\x84\x81R`\xF8\x84\x90\x1B`\x01`\x01`\xF8\x1B\x03\x19\x16` \x82\x01R_a!O`!\x83\x01\x85a \xA9V[`\xF8\x93\x90\x93\x1B`\x01`\x01`\xF8\x1B\x03\x19\x16\x83RPP`\x01\x01\x93\x92PPPV[\x80\x82\x01\x80\x82\x11\x15a\x03\xFBWa\x03\xFBa \x82V[_\x82a!\x9AWcNH{q`\xE0\x1B_R`\x12`\x04R`$_\xFD[P\x06\x90V\xFE0dNr\xE11\xA0)\xB8PE\xB6\x81\x81X]\x97\x81j\x91hq\xCA\x8D< \x8C\x16\xD8|\xFDG\x182'9p\x98\xD0\x14\xDC(\"\xDB@\xC0\xAC.\xCB\xC0\xB5H\xB48\xE5F\x9E\x10F\x0Bl>~\xA3\xA2dipfsX\"\x12 K\xC8\x0Bn\xAE\x0B\xE6\xAEx\xE0\xF3\xF9\x1F]\xA3=\xF6\xC1Y\x0F\xC3\x99\x14\xE1^\x9F\x9B\xFA\xA5Z\x9B\xB5dsolcC\0\x08\x1C\x003",
     );
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Custom error with signature `BNAddFailed(uint256[4])` and selector `0x128e3f08`.
-    ```solidity
-    error BNAddFailed(uint256[4] input);
-    ```*/
+```solidity
+error BNAddFailed(uint256[4] input);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct BNAddFailed {
@@ -301,14 +302,20 @@ pub mod BlocklockSignatureScheme {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
         type UnderlyingSolTuple<'a> = (
-            alloy::sol_types::sol_data::FixedArray<alloy::sol_types::sol_data::Uint<256>, 4usize>,
+            alloy::sol_types::sol_data::FixedArray<
+                alloy::sol_types::sol_data::Uint<256>,
+                4usize,
+            >,
         );
         #[doc(hidden)]
-        type UnderlyingRustTuple<'a> =
-            ([alloy::sol_types::private::primitives::aliases::U256; 4usize],);
+        type UnderlyingRustTuple<'a> = (
+            [alloy::sol_types::private::primitives::aliases::U256; 4usize],
+        );
         #[cfg(test)]
         #[allow(dead_code, unreachable_patterns)]
-        fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+        fn _type_assertion(
+            _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+        ) {
             match _t {
                 alloy_sol_types::private::AssertTypeEq::<
                     <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -332,7 +339,9 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolError for BNAddFailed {
             type Parameters<'a> = UnderlyingSolTuple<'a>;
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "BNAddFailed(uint256[4])";
             const SELECTOR: [u8; 4] = [18u8, 142u8, 63u8, 8u8];
             #[inline]
@@ -343,27 +352,28 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn tokenize(&self) -> Self::Token<'_> {
-                (<alloy::sol_types::sol_data::FixedArray<
-                    alloy::sol_types::sol_data::Uint<256>,
-                    4usize,
-                > as alloy_sol_types::SolType>::tokenize(
-                    &self.input
-                ),)
+                (
+                    <alloy::sol_types::sol_data::FixedArray<
+                        alloy::sol_types::sol_data::Uint<256>,
+                        4usize,
+                    > as alloy_sol_types::SolType>::tokenize(&self.input),
+                )
             }
             #[inline]
             fn abi_decode_raw_validate(data: &[u8]) -> alloy_sol_types::Result<Self> {
-                <Self::Parameters<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Self::new)
+                <Self::Parameters<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Self::new)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Custom error with signature `InvalidDSTLength(bytes)` and selector `0x26e4f9ba`.
-    ```solidity
-    error InvalidDSTLength(bytes dst);
-    ```*/
+```solidity
+error InvalidDSTLength(bytes dst);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct InvalidDSTLength {
@@ -384,7 +394,9 @@ pub mod BlocklockSignatureScheme {
         type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
         #[cfg(test)]
         #[allow(dead_code, unreachable_patterns)]
-        fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+        fn _type_assertion(
+            _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+        ) {
             match _t {
                 alloy_sol_types::private::AssertTypeEq::<
                     <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -408,7 +420,9 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolError for InvalidDSTLength {
             type Parameters<'a> = UnderlyingSolTuple<'a>;
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "InvalidDSTLength(bytes)";
             const SELECTOR: [u8; 4] = [38u8, 228u8, 249u8, 186u8];
             #[inline]
@@ -427,18 +441,19 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn abi_decode_raw_validate(data: &[u8]) -> alloy_sol_types::Result<Self> {
-                <Self::Parameters<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Self::new)
+                <Self::Parameters<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Self::new)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Custom error with signature `InvalidFieldElement(uint256)` and selector `0xd53e9415`.
-    ```solidity
-    error InvalidFieldElement(uint256 x);
-    ```*/
+```solidity
+error InvalidFieldElement(uint256 x);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct InvalidFieldElement {
@@ -456,10 +471,14 @@ pub mod BlocklockSignatureScheme {
         #[doc(hidden)]
         type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
         #[doc(hidden)]
-        type UnderlyingRustTuple<'a> = (alloy::sol_types::private::primitives::aliases::U256,);
+        type UnderlyingRustTuple<'a> = (
+            alloy::sol_types::private::primitives::aliases::U256,
+        );
         #[cfg(test)]
         #[allow(dead_code, unreachable_patterns)]
-        fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+        fn _type_assertion(
+            _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+        ) {
             match _t {
                 alloy_sol_types::private::AssertTypeEq::<
                     <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -483,7 +502,9 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolError for InvalidFieldElement {
             type Parameters<'a> = UnderlyingSolTuple<'a>;
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "InvalidFieldElement(uint256)";
             const SELECTOR: [u8; 4] = [213u8, 62u8, 148u8, 21u8];
             #[inline]
@@ -495,25 +516,26 @@ pub mod BlocklockSignatureScheme {
             #[inline]
             fn tokenize(&self) -> Self::Token<'_> {
                 (
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self.x,
-                    ),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.x),
                 )
             }
             #[inline]
             fn abi_decode_raw_validate(data: &[u8]) -> alloy_sol_types::Result<Self> {
-                <Self::Parameters<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Self::new)
+                <Self::Parameters<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Self::new)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Custom error with signature `MapToPointFailed(uint256)` and selector `0x396ec771`.
-    ```solidity
-    error MapToPointFailed(uint256 noSqrt);
-    ```*/
+```solidity
+error MapToPointFailed(uint256 noSqrt);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct MapToPointFailed {
@@ -531,10 +553,14 @@ pub mod BlocklockSignatureScheme {
         #[doc(hidden)]
         type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
         #[doc(hidden)]
-        type UnderlyingRustTuple<'a> = (alloy::sol_types::private::primitives::aliases::U256,);
+        type UnderlyingRustTuple<'a> = (
+            alloy::sol_types::private::primitives::aliases::U256,
+        );
         #[cfg(test)]
         #[allow(dead_code, unreachable_patterns)]
-        fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+        fn _type_assertion(
+            _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+        ) {
             match _t {
                 alloy_sol_types::private::AssertTypeEq::<
                     <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -558,7 +584,9 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolError for MapToPointFailed {
             type Parameters<'a> = UnderlyingSolTuple<'a>;
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "MapToPointFailed(uint256)";
             const SELECTOR: [u8; 4] = [57u8, 110u8, 199u8, 113u8];
             #[inline]
@@ -570,25 +598,26 @@ pub mod BlocklockSignatureScheme {
             #[inline]
             fn tokenize(&self) -> Self::Token<'_> {
                 (
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self.noSqrt,
-                    ),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.noSqrt),
                 )
             }
             #[inline]
             fn abi_decode_raw_validate(data: &[u8]) -> alloy_sol_types::Result<Self> {
-                <Self::Parameters<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Self::new)
+                <Self::Parameters<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Self::new)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Custom error with signature `ModExpFailed(uint256,uint256,uint256)` and selector `0xc6daf7ab`.
-    ```solidity
-    error ModExpFailed(uint256 base, uint256 exponent, uint256 modulus);
-    ```*/
+```solidity
+error ModExpFailed(uint256 base, uint256 exponent, uint256 modulus);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct ModExpFailed {
@@ -621,7 +650,9 @@ pub mod BlocklockSignatureScheme {
         );
         #[cfg(test)]
         #[allow(dead_code, unreachable_patterns)]
-        fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+        fn _type_assertion(
+            _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+        ) {
             match _t {
                 alloy_sol_types::private::AssertTypeEq::<
                     <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -649,7 +680,9 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolError for ModExpFailed {
             type Parameters<'a> = UnderlyingSolTuple<'a>;
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "ModExpFailed(uint256,uint256,uint256)";
             const SELECTOR: [u8; 4] = [198u8, 218u8, 247u8, 171u8];
             #[inline]
@@ -661,30 +694,30 @@ pub mod BlocklockSignatureScheme {
             #[inline]
             fn tokenize(&self) -> Self::Token<'_> {
                 (
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self.base,
-                    ),
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self.exponent,
-                    ),
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self.modulus,
-                    ),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.base),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.exponent),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.modulus),
                 )
             }
             #[inline]
             fn abi_decode_raw_validate(data: &[u8]) -> alloy_sol_types::Result<Self> {
-                <Self::Parameters<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Self::new)
+                <Self::Parameters<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Self::new)
             }
         }
     };
     /**Constructor`.
-    ```solidity
-    constructor(uint256[2] x, uint256[2] y);
-    ```*/
+```solidity
+constructor(uint256[2] x, uint256[2] y);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct constructorCall {
@@ -714,7 +747,9 @@ pub mod BlocklockSignatureScheme {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -732,10 +767,7 @@ pub mod BlocklockSignatureScheme {
             #[doc(hidden)]
             impl ::core::convert::From<UnderlyingRustTuple<'_>> for constructorCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
-                    Self {
-                        x: tuple.0,
-                        y: tuple.1,
-                    }
+                    Self { x: tuple.0, y: tuple.1 }
                 }
             }
         }
@@ -751,7 +783,9 @@ pub mod BlocklockSignatureScheme {
                     2usize,
                 >,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             #[inline]
             fn new<'a>(
                 tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
@@ -773,15 +807,17 @@ pub mod BlocklockSignatureScheme {
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `DST()` and selector `0x5f7c7522`.
-    ```solidity
-    function DST() external view returns (bytes memory);
-    ```*/
+```solidity
+function DST() external view returns (bytes memory);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct DSTCall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`DST()`](DSTCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -804,7 +840,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -833,7 +871,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -858,10 +898,14 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for DSTCall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::Bytes;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "DST()";
             const SELECTOR: [u8; 4] = [95u8, 124u8, 117u8, 34u8];
             #[inline]
@@ -876,38 +920,47 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: DSTReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: DSTReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: DSTReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `SCHEME_ID()` and selector `0x8a1f165a`.
-    ```solidity
-    function SCHEME_ID() external view returns (string memory);
-    ```*/
+```solidity
+function SCHEME_ID() external view returns (string memory);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct SCHEME_IDCall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`SCHEME_ID()`](SCHEME_IDCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -930,7 +983,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -959,7 +1014,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::String,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -984,10 +1041,14 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for SCHEME_IDCall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::String;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::String,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "SCHEME_ID()";
             const SELECTOR: [u8; 4] = [138u8, 31u8, 22u8, 90u8];
             #[inline]
@@ -1002,38 +1063,47 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::String as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::String as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: SCHEME_IDReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: SCHEME_IDReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: SCHEME_IDReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `getChainId()` and selector `0x3408e470`.
-    ```solidity
-    function getChainId() external view returns (uint256 chainId);
-    ```*/
+```solidity
+function getChainId() external view returns (uint256 chainId);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct getChainIdCall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`getChainId()`](getChainIdCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1056,7 +1126,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1082,10 +1154,14 @@ pub mod BlocklockSignatureScheme {
             #[doc(hidden)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
-            type UnderlyingRustTuple<'a> = (alloy::sol_types::private::primitives::aliases::U256,);
+            type UnderlyingRustTuple<'a> = (
+                alloy::sol_types::private::primitives::aliases::U256,
+            );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1110,10 +1186,14 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for getChainIdCall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::primitives::aliases::U256;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "getChainId()";
             const SELECTOR: [u8; 4] = [52u8, 8u8, 228u8, 112u8];
             #[inline]
@@ -1129,41 +1209,46 @@ pub mod BlocklockSignatureScheme {
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
                 (
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        ret,
-                    ),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(ret),
                 )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: getChainIdReturn = r.into();
                         r.chainId
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: getChainIdReturn = r.into();
-                    r.chainId
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: getChainIdReturn = r.into();
+                        r.chainId
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `getPublicKey()` and selector `0x2e334452`.
-    ```solidity
-    function getPublicKey() external view returns (uint256[2] memory, uint256[2] memory);
-    ```*/
+```solidity
+function getPublicKey() external view returns (uint256[2] memory, uint256[2] memory);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct getPublicKeyCall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`getPublicKey()`](getPublicKeyCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1188,7 +1273,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1229,7 +1316,9 @@ pub mod BlocklockSignatureScheme {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1247,15 +1336,14 @@ pub mod BlocklockSignatureScheme {
             #[doc(hidden)]
             impl ::core::convert::From<UnderlyingRustTuple<'_>> for getPublicKeyReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
-                    Self {
-                        _0: tuple.0,
-                        _1: tuple.1,
-                    }
+                    Self { _0: tuple.0, _1: tuple.1 }
                 }
             }
         }
         impl getPublicKeyReturn {
-            fn _tokenize(&self) -> <getPublicKeyCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
+            fn _tokenize(
+                &self,
+            ) -> <getPublicKeyCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
                 (
                     <alloy::sol_types::sol_data::FixedArray<
                         alloy::sol_types::sol_data::Uint<256>,
@@ -1271,7 +1359,9 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for getPublicKeyCall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = getPublicKeyReturn;
             type ReturnTuple<'a> = (
                 alloy::sol_types::sol_data::FixedArray<
@@ -1283,7 +1373,9 @@ pub mod BlocklockSignatureScheme {
                     2usize,
                 >,
             );
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "getPublicKey()";
             const SELECTOR: [u8; 4] = [46u8, 51u8, 68u8, 82u8];
             #[inline]
@@ -1302,27 +1394,33 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `getPublicKeyBytes()` and selector `0xacae9fee`.
-    ```solidity
-    function getPublicKeyBytes() external view returns (bytes memory);
-    ```*/
+```solidity
+function getPublicKeyBytes() external view returns (bytes memory);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct getPublicKeyBytesCall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`getPublicKeyBytes()`](getPublicKeyBytesCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1345,7 +1443,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1354,14 +1454,16 @@ pub mod BlocklockSignatureScheme {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<getPublicKeyBytesCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<getPublicKeyBytesCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: getPublicKeyBytesCall) -> Self {
                     ()
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for getPublicKeyBytesCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getPublicKeyBytesCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self
                 }
@@ -1374,7 +1476,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1383,14 +1487,16 @@ pub mod BlocklockSignatureScheme {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<getPublicKeyBytesReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<getPublicKeyBytesReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: getPublicKeyBytesReturn) -> Self {
                     (value._0,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for getPublicKeyBytesReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getPublicKeyBytesReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { _0: tuple.0 }
                 }
@@ -1399,10 +1505,14 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for getPublicKeyBytesCall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::Bytes;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "getPublicKeyBytes()";
             const SELECTOR: [u8; 4] = [172u8, 174u8, 159u8, 238u8];
             #[inline]
@@ -1417,41 +1527,50 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: getPublicKeyBytesReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: getPublicKeyBytesReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: getPublicKeyBytesReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `hashToBytes(bytes)` and selector `0xeae1e15b`.
-    ```solidity
-    function hashToBytes(bytes memory message) external view returns (bytes memory);
-    ```*/
+```solidity
+function hashToBytes(bytes memory message) external view returns (bytes memory);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct hashToBytesCall {
         #[allow(missing_docs)]
         pub message: alloy::sol_types::private::Bytes,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`hashToBytes(bytes)`](hashToBytesCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1474,7 +1593,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1503,7 +1624,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1528,10 +1651,14 @@ pub mod BlocklockSignatureScheme {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for hashToBytesCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::Bytes,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::Bytes;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "hashToBytes(bytes)";
             const SELECTOR: [u8; 4] = [234u8, 225u8, 225u8, 91u8];
             #[inline]
@@ -1550,41 +1677,50 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: hashToBytesReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: hashToBytesReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: hashToBytesReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `hashToPoint(bytes)` and selector `0x3033cc51`.
-    ```solidity
-    function hashToPoint(bytes memory message) external view returns (uint256, uint256);
-    ```*/
+```solidity
+function hashToPoint(bytes memory message) external view returns (uint256, uint256);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct hashToPointCall {
         #[allow(missing_docs)]
         pub message: alloy::sol_types::private::Bytes,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`hashToPoint(bytes)`](hashToPointCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1609,7 +1745,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1644,7 +1782,9 @@ pub mod BlocklockSignatureScheme {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1662,35 +1802,38 @@ pub mod BlocklockSignatureScheme {
             #[doc(hidden)]
             impl ::core::convert::From<UnderlyingRustTuple<'_>> for hashToPointReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
-                    Self {
-                        _0: tuple.0,
-                        _1: tuple.1,
-                    }
+                    Self { _0: tuple.0, _1: tuple.1 }
                 }
             }
         }
         impl hashToPointReturn {
-            fn _tokenize(&self) -> <hashToPointCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
+            fn _tokenize(
+                &self,
+            ) -> <hashToPointCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
                 (
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self._0,
-                    ),
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self._1,
-                    ),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self._0),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self._1),
                 )
             }
         }
         #[automatically_derived]
         impl alloy_sol_types::SolCall for hashToPointCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::Bytes,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = hashToPointReturn;
             type ReturnTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Uint<256>,
             );
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "hashToPoint(bytes)";
             const SELECTOR: [u8; 4] = [48u8, 51u8, 204u8, 81u8];
             #[inline]
@@ -1713,23 +1856,28 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `verifySignature(bytes,bytes,bytes)` and selector `0xf6e548e9`.
-    ```solidity
-    function verifySignature(bytes memory message, bytes memory signature, bytes memory publicKey) external view returns (bool isValid);
-    ```*/
+```solidity
+function verifySignature(bytes memory message, bytes memory signature, bytes memory publicKey) external view returns (bool isValid);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct verifySignatureCall {
@@ -1740,7 +1888,8 @@ pub mod BlocklockSignatureScheme {
         #[allow(missing_docs)]
         pub publicKey: alloy::sol_types::private::Bytes,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`verifySignature(bytes,bytes,bytes)`](verifySignatureCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1771,7 +1920,9 @@ pub mod BlocklockSignatureScheme {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1804,7 +1955,9 @@ pub mod BlocklockSignatureScheme {
             type UnderlyingRustTuple<'a> = (bool,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1813,14 +1966,16 @@ pub mod BlocklockSignatureScheme {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<verifySignatureReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<verifySignatureReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: verifySignatureReturn) -> Self {
                     (value.isValid,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for verifySignatureReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for verifySignatureReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { isValid: tuple.0 }
                 }
@@ -1833,10 +1988,14 @@ pub mod BlocklockSignatureScheme {
                 alloy::sol_types::sol_data::Bytes,
                 alloy::sol_types::sol_data::Bytes,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = bool;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bool,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "verifySignature(bytes,bytes,bytes)";
             const SELECTOR: [u8; 4] = [246u8, 229u8, 72u8, 233u8];
             #[inline]
@@ -1861,31 +2020,39 @@ pub mod BlocklockSignatureScheme {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: verifySignatureReturn = r.into();
                         r.isValid
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: verifySignatureReturn = r.into();
-                    r.isValid
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: verifySignatureReturn = r.into();
+                        r.isValid
+                    })
             }
         }
     };
     ///Container for all the [`BlocklockSignatureScheme`](self) function calls.
     #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive()]
     pub enum BlocklockSignatureSchemeCalls {
         #[allow(missing_docs)]
         DST(DSTCall),
@@ -1932,14 +2099,24 @@ pub mod BlocklockSignatureScheme {
         fn selector(&self) -> [u8; 4] {
             match self {
                 Self::DST(_) => <DSTCall as alloy_sol_types::SolCall>::SELECTOR,
-                Self::SCHEME_ID(_) => <SCHEME_IDCall as alloy_sol_types::SolCall>::SELECTOR,
-                Self::getChainId(_) => <getChainIdCall as alloy_sol_types::SolCall>::SELECTOR,
-                Self::getPublicKey(_) => <getPublicKeyCall as alloy_sol_types::SolCall>::SELECTOR,
+                Self::SCHEME_ID(_) => {
+                    <SCHEME_IDCall as alloy_sol_types::SolCall>::SELECTOR
+                }
+                Self::getChainId(_) => {
+                    <getChainIdCall as alloy_sol_types::SolCall>::SELECTOR
+                }
+                Self::getPublicKey(_) => {
+                    <getPublicKeyCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::getPublicKeyBytes(_) => {
                     <getPublicKeyBytesCall as alloy_sol_types::SolCall>::SELECTOR
                 }
-                Self::hashToBytes(_) => <hashToBytesCall as alloy_sol_types::SolCall>::SELECTOR,
-                Self::hashToPoint(_) => <hashToPointCall as alloy_sol_types::SolCall>::SELECTOR,
+                Self::hashToBytes(_) => {
+                    <hashToBytesCall as alloy_sol_types::SolCall>::SELECTOR
+                }
+                Self::hashToPoint(_) => {
+                    <hashToPointCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::verifySignature(_) => {
                     <verifySignatureCall as alloy_sol_types::SolCall>::SELECTOR
                 }
@@ -1955,17 +2132,20 @@ pub mod BlocklockSignatureScheme {
         }
         #[inline]
         #[allow(non_snake_case)]
-        fn abi_decode_raw(selector: [u8; 4], data: &[u8]) -> alloy_sol_types::Result<Self> {
+        fn abi_decode_raw(
+            selector: [u8; 4],
+            data: &[u8],
+        ) -> alloy_sol_types::Result<Self> {
             static DECODE_SHIMS: &[fn(
                 &[u8],
-            )
-                -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>] = &[
+            ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>] = &[
                 {
                     fn getPublicKey(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <getPublicKeyCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <getPublicKeyCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::getPublicKey)
                     }
                     getPublicKey
@@ -1973,9 +2153,10 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn hashToPoint(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <hashToPointCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <hashToPointCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::hashToPoint)
                     }
                     hashToPoint
@@ -1983,15 +2164,18 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn getChainId(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <getChainIdCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <getChainIdCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::getChainId)
                     }
                     getChainId
                 },
                 {
-                    fn DST(data: &[u8]) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                    fn DST(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
                         <DSTCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
                             .map(BlocklockSignatureSchemeCalls::DST)
                     }
@@ -2000,8 +2184,7 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn SCHEME_ID(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
                         <SCHEME_IDCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
                             .map(BlocklockSignatureSchemeCalls::SCHEME_ID)
                     }
@@ -2010,9 +2193,10 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn getPublicKeyBytes(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <getPublicKeyBytesCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <getPublicKeyBytesCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::getPublicKeyBytes)
                     }
                     getPublicKeyBytes
@@ -2020,9 +2204,10 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn hashToBytes(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <hashToBytesCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <hashToBytesCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::hashToBytes)
                     }
                     hashToBytes
@@ -2030,19 +2215,22 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn verifySignature(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <verifySignatureCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <verifySignatureCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::verifySignature)
                     }
                     verifySignature
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_SHIMS[idx](data)
         }
@@ -2054,27 +2242,25 @@ pub mod BlocklockSignatureScheme {
         ) -> alloy_sol_types::Result<Self> {
             static DECODE_VALIDATE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                BlocklockSignatureSchemeCalls,
-            >] = &[
+            ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>] = &[
                 {
                     fn getPublicKey(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
                         <getPublicKeyCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
-                            data,
-                        )
-                        .map(BlocklockSignatureSchemeCalls::getPublicKey)
+                                data,
+                            )
+                            .map(BlocklockSignatureSchemeCalls::getPublicKey)
                     }
                     getPublicKey
                 },
                 {
                     fn hashToPoint(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <hashToPointCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <hashToPointCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::hashToPoint)
                     }
                     hashToPoint
@@ -2082,16 +2268,21 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn getChainId(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <getChainIdCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <getChainIdCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::getChainId)
                     }
                     getChainId
                 },
                 {
-                    fn DST(data: &[u8]) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
-                        <DSTCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    fn DST(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <DSTCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::DST)
                     }
                     DST
@@ -2099,9 +2290,10 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn SCHEME_ID(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <SCHEME_IDCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <SCHEME_IDCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::SCHEME_ID)
                     }
                     SCHEME_ID
@@ -2109,8 +2301,7 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn getPublicKeyBytes(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
                         <getPublicKeyBytesCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -2121,9 +2312,10 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn hashToBytes(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
-                        <hashToBytesCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
+                        <hashToBytesCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeCalls::hashToBytes)
                     }
                     hashToBytes
@@ -2131,28 +2323,31 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn verifySignature(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeCalls> {
                         <verifySignatureCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
-                            data,
-                        )
-                        .map(BlocklockSignatureSchemeCalls::verifySignature)
+                                data,
+                            )
+                            .map(BlocklockSignatureSchemeCalls::verifySignature)
                     }
                     verifySignature
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_VALIDATE_SHIMS[idx](data)
         }
         #[inline]
         fn abi_encoded_size(&self) -> usize {
             match self {
-                Self::DST(inner) => <DSTCall as alloy_sol_types::SolCall>::abi_encoded_size(inner),
+                Self::DST(inner) => {
+                    <DSTCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                }
                 Self::SCHEME_ID(inner) => {
                     <SCHEME_IDCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
                 }
@@ -2160,19 +2355,29 @@ pub mod BlocklockSignatureScheme {
                     <getChainIdCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
                 }
                 Self::getPublicKey(inner) => {
-                    <getPublicKeyCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <getPublicKeyCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::getPublicKeyBytes(inner) => {
-                    <getPublicKeyBytesCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <getPublicKeyBytesCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::hashToBytes(inner) => {
-                    <hashToBytesCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <hashToBytesCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::hashToPoint(inner) => {
-                    <hashToPointCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <hashToPointCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::verifySignature(inner) => {
-                    <verifySignatureCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <verifySignatureCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
             }
         }
@@ -2183,31 +2388,53 @@ pub mod BlocklockSignatureScheme {
                     <DSTCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
                 }
                 Self::SCHEME_ID(inner) => {
-                    <SCHEME_IDCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <SCHEME_IDCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::getChainId(inner) => {
-                    <getChainIdCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <getChainIdCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::getPublicKey(inner) => {
-                    <getPublicKeyCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <getPublicKeyCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::getPublicKeyBytes(inner) => {
-                    <getPublicKeyBytesCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <getPublicKeyBytesCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::hashToBytes(inner) => {
-                    <hashToBytesCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <hashToBytesCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::hashToPoint(inner) => {
-                    <hashToPointCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <hashToPointCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::verifySignature(inner) => {
-                    <verifySignatureCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <verifySignatureCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
             }
         }
     }
     ///Container for all the [`BlocklockSignatureScheme`](self) custom errors.
-    #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Hash)]
     pub enum BlocklockSignatureSchemeErrors {
         #[allow(missing_docs)]
         BNAddFailed(BNAddFailed),
@@ -2244,7 +2471,9 @@ pub mod BlocklockSignatureScheme {
         #[inline]
         fn selector(&self) -> [u8; 4] {
             match self {
-                Self::BNAddFailed(_) => <BNAddFailed as alloy_sol_types::SolError>::SELECTOR,
+                Self::BNAddFailed(_) => {
+                    <BNAddFailed as alloy_sol_types::SolError>::SELECTOR
+                }
                 Self::InvalidDSTLength(_) => {
                     <InvalidDSTLength as alloy_sol_types::SolError>::SELECTOR
                 }
@@ -2254,7 +2483,9 @@ pub mod BlocklockSignatureScheme {
                 Self::MapToPointFailed(_) => {
                     <MapToPointFailed as alloy_sol_types::SolError>::SELECTOR
                 }
-                Self::ModExpFailed(_) => <ModExpFailed as alloy_sol_types::SolError>::SELECTOR,
+                Self::ModExpFailed(_) => {
+                    <ModExpFailed as alloy_sol_types::SolError>::SELECTOR
+                }
             }
         }
         #[inline]
@@ -2267,17 +2498,17 @@ pub mod BlocklockSignatureScheme {
         }
         #[inline]
         #[allow(non_snake_case)]
-        fn abi_decode_raw(selector: [u8; 4], data: &[u8]) -> alloy_sol_types::Result<Self> {
+        fn abi_decode_raw(
+            selector: [u8; 4],
+            data: &[u8],
+        ) -> alloy_sol_types::Result<Self> {
             static DECODE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                BlocklockSignatureSchemeErrors,
-            >] = &[
+            ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>] = &[
                 {
                     fn BNAddFailed(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
                         <BNAddFailed as alloy_sol_types::SolError>::abi_decode_raw(data)
                             .map(BlocklockSignatureSchemeErrors::BNAddFailed)
                     }
@@ -2286,9 +2517,10 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn InvalidDSTLength(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
-                        <InvalidDSTLength as alloy_sol_types::SolError>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
+                        <InvalidDSTLength as alloy_sol_types::SolError>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeErrors::InvalidDSTLength)
                     }
                     InvalidDSTLength
@@ -2296,9 +2528,10 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn MapToPointFailed(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
-                        <MapToPointFailed as alloy_sol_types::SolError>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
+                        <MapToPointFailed as alloy_sol_types::SolError>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeErrors::MapToPointFailed)
                     }
                     MapToPointFailed
@@ -2306,8 +2539,7 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn ModExpFailed(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
                         <ModExpFailed as alloy_sol_types::SolError>::abi_decode_raw(data)
                             .map(BlocklockSignatureSchemeErrors::ModExpFailed)
                     }
@@ -2316,19 +2548,22 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn InvalidFieldElement(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
-                        <InvalidFieldElement as alloy_sol_types::SolError>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
+                        <InvalidFieldElement as alloy_sol_types::SolError>::abi_decode_raw(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeErrors::InvalidFieldElement)
                     }
                     InvalidFieldElement
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_SHIMS[idx](data)
         }
@@ -2340,15 +2575,14 @@ pub mod BlocklockSignatureScheme {
         ) -> alloy_sol_types::Result<Self> {
             static DECODE_VALIDATE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                BlocklockSignatureSchemeErrors,
-            >] = &[
+            ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>] = &[
                 {
                     fn BNAddFailed(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
-                        <BNAddFailed as alloy_sol_types::SolError>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
+                        <BNAddFailed as alloy_sol_types::SolError>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeErrors::BNAddFailed)
                     }
                     BNAddFailed
@@ -2356,33 +2590,32 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn InvalidDSTLength(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
                         <InvalidDSTLength as alloy_sol_types::SolError>::abi_decode_raw_validate(
-                            data,
-                        )
-                        .map(BlocklockSignatureSchemeErrors::InvalidDSTLength)
+                                data,
+                            )
+                            .map(BlocklockSignatureSchemeErrors::InvalidDSTLength)
                     }
                     InvalidDSTLength
                 },
                 {
                     fn MapToPointFailed(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
                         <MapToPointFailed as alloy_sol_types::SolError>::abi_decode_raw_validate(
-                            data,
-                        )
-                        .map(BlocklockSignatureSchemeErrors::MapToPointFailed)
+                                data,
+                            )
+                            .map(BlocklockSignatureSchemeErrors::MapToPointFailed)
                     }
                     MapToPointFailed
                 },
                 {
                     fn ModExpFailed(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
-                        <ModExpFailed as alloy_sol_types::SolError>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
+                        <ModExpFailed as alloy_sol_types::SolError>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(BlocklockSignatureSchemeErrors::ModExpFailed)
                     }
                     ModExpFailed
@@ -2390,21 +2623,22 @@ pub mod BlocklockSignatureScheme {
                 {
                     fn InvalidFieldElement(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors>
-                    {
+                    ) -> alloy_sol_types::Result<BlocklockSignatureSchemeErrors> {
                         <InvalidFieldElement as alloy_sol_types::SolError>::abi_decode_raw_validate(
-                            data,
-                        )
-                        .map(BlocklockSignatureSchemeErrors::InvalidFieldElement)
+                                data,
+                            )
+                            .map(BlocklockSignatureSchemeErrors::InvalidFieldElement)
                     }
                     InvalidFieldElement
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_VALIDATE_SHIMS[idx](data)
         }
@@ -2415,13 +2649,19 @@ pub mod BlocklockSignatureScheme {
                     <BNAddFailed as alloy_sol_types::SolError>::abi_encoded_size(inner)
                 }
                 Self::InvalidDSTLength(inner) => {
-                    <InvalidDSTLength as alloy_sol_types::SolError>::abi_encoded_size(inner)
+                    <InvalidDSTLength as alloy_sol_types::SolError>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::InvalidFieldElement(inner) => {
-                    <InvalidFieldElement as alloy_sol_types::SolError>::abi_encoded_size(inner)
+                    <InvalidFieldElement as alloy_sol_types::SolError>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::MapToPointFailed(inner) => {
-                    <MapToPointFailed as alloy_sol_types::SolError>::abi_encoded_size(inner)
+                    <MapToPointFailed as alloy_sol_types::SolError>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::ModExpFailed(inner) => {
                     <ModExpFailed as alloy_sol_types::SolError>::abi_encoded_size(inner)
@@ -2432,19 +2672,34 @@ pub mod BlocklockSignatureScheme {
         fn abi_encode_raw(&self, out: &mut alloy_sol_types::private::Vec<u8>) {
             match self {
                 Self::BNAddFailed(inner) => {
-                    <BNAddFailed as alloy_sol_types::SolError>::abi_encode_raw(inner, out)
+                    <BNAddFailed as alloy_sol_types::SolError>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::InvalidDSTLength(inner) => {
-                    <InvalidDSTLength as alloy_sol_types::SolError>::abi_encode_raw(inner, out)
+                    <InvalidDSTLength as alloy_sol_types::SolError>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::InvalidFieldElement(inner) => {
-                    <InvalidFieldElement as alloy_sol_types::SolError>::abi_encode_raw(inner, out)
+                    <InvalidFieldElement as alloy_sol_types::SolError>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::MapToPointFailed(inner) => {
-                    <MapToPointFailed as alloy_sol_types::SolError>::abi_encode_raw(inner, out)
+                    <MapToPointFailed as alloy_sol_types::SolError>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::ModExpFailed(inner) => {
-                    <ModExpFailed as alloy_sol_types::SolError>::abi_encode_raw(inner, out)
+                    <ModExpFailed as alloy_sol_types::SolError>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
             }
         }
@@ -2452,7 +2707,7 @@ pub mod BlocklockSignatureScheme {
     use alloy::contract as alloy_contract;
     /**Creates a new wrapper around an on-chain [`BlocklockSignatureScheme`](self) contract instance.
 
-    See the [wrapper's documentation](`BlocklockSignatureSchemeInstance`) for more details.*/
+See the [wrapper's documentation](`BlocklockSignatureSchemeInstance`) for more details.*/
     #[inline]
     pub const fn new<
         P: alloy_contract::private::Provider<N>,
@@ -2465,11 +2720,14 @@ pub mod BlocklockSignatureScheme {
     }
     /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-    Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-    For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
     #[inline]
-    pub fn deploy<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>(
+    pub fn deploy<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    >(
         provider: P,
         x: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
         y: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
@@ -2479,10 +2737,10 @@ pub mod BlocklockSignatureScheme {
         BlocklockSignatureSchemeInstance::<P, N>::deploy(provider, x, y)
     }
     /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-    and constructor arguments, if any.
+and constructor arguments, if any.
 
-    This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-    the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
     #[inline]
     pub fn deploy_builder<
         P: alloy_contract::private::Provider<N>,
@@ -2496,17 +2754,20 @@ pub mod BlocklockSignatureScheme {
     }
     /**A [`BlocklockSignatureScheme`](self) instance.
 
-    Contains type-safe methods for interacting with an on-chain instance of the
-    [`BlocklockSignatureScheme`](self) contract located at a given `address`, using a given
-    provider `P`.
+Contains type-safe methods for interacting with an on-chain instance of the
+[`BlocklockSignatureScheme`](self) contract located at a given `address`, using a given
+provider `P`.
 
-    If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
-    documentation on how to provide it), the `deploy` and `deploy_builder` methods can
-    be used to deploy a new instance of the contract.
+If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
+documentation on how to provide it), the `deploy` and `deploy_builder` methods can
+be used to deploy a new instance of the contract.
 
-    See the [module-level documentation](self) for all the available methods.*/
+See the [module-level documentation](self) for all the available methods.*/
     #[derive(Clone)]
-    pub struct BlocklockSignatureSchemeInstance<P, N = alloy_contract::private::Ethereum> {
+    pub struct BlocklockSignatureSchemeInstance<
+        P,
+        N = alloy_contract::private::Ethereum,
+    > {
         address: alloy_sol_types::private::Address,
         provider: P,
         _network: ::core::marker::PhantomData<N>,
@@ -2522,14 +2783,18 @@ pub mod BlocklockSignatureScheme {
     }
     /// Instantiation and getters/setters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        BlocklockSignatureSchemeInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > BlocklockSignatureSchemeInstance<P, N> {
         /**Creates a new wrapper around an on-chain [`BlocklockSignatureScheme`](self) contract instance.
 
-        See the [wrapper's documentation](`BlocklockSignatureSchemeInstance`) for more details.*/
+See the [wrapper's documentation](`BlocklockSignatureSchemeInstance`) for more details.*/
         #[inline]
-        pub const fn new(address: alloy_sol_types::private::Address, provider: P) -> Self {
+        pub const fn new(
+            address: alloy_sol_types::private::Address,
+            provider: P,
+        ) -> Self {
             Self {
                 address,
                 provider,
@@ -2538,9 +2803,9 @@ pub mod BlocklockSignatureScheme {
         }
         /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-        Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-        For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
         #[inline]
         pub async fn deploy(
             provider: P,
@@ -2552,10 +2817,10 @@ pub mod BlocklockSignatureScheme {
             Ok(Self::new(contract_address, call_builder.provider))
         }
         /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-        and constructor arguments, if any.
+and constructor arguments, if any.
 
-        This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-        the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         #[inline]
         pub fn deploy_builder(
             provider: P,
@@ -2566,10 +2831,12 @@ pub mod BlocklockSignatureScheme {
                 provider,
                 [
                     &BYTECODE[..],
-                    &alloy_sol_types::SolConstructor::abi_encode(&constructorCall { x, y })[..],
+                    &alloy_sol_types::SolConstructor::abi_encode(
+                        &constructorCall { x, y },
+                    )[..],
                 ]
-                .concat()
-                .into(),
+                    .concat()
+                    .into(),
             )
         }
         /// Returns a reference to the address.
@@ -2606,9 +2873,10 @@ pub mod BlocklockSignatureScheme {
     }
     /// Function calls.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        BlocklockSignatureSchemeInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > BlocklockSignatureSchemeInstance<P, N> {
         /// Creates a new call builder using this contract instance's provider and address.
         ///
         /// Note that the call can be any function call, not just those defined in this
@@ -2628,11 +2896,15 @@ pub mod BlocklockSignatureScheme {
             self.call_builder(&SCHEME_IDCall)
         }
         ///Creates a new call builder for the [`getChainId`] function.
-        pub fn getChainId(&self) -> alloy_contract::SolCallBuilder<&P, getChainIdCall, N> {
+        pub fn getChainId(
+            &self,
+        ) -> alloy_contract::SolCallBuilder<&P, getChainIdCall, N> {
             self.call_builder(&getChainIdCall)
         }
         ///Creates a new call builder for the [`getPublicKey`] function.
-        pub fn getPublicKey(&self) -> alloy_contract::SolCallBuilder<&P, getPublicKeyCall, N> {
+        pub fn getPublicKey(
+            &self,
+        ) -> alloy_contract::SolCallBuilder<&P, getPublicKeyCall, N> {
             self.call_builder(&getPublicKeyCall)
         }
         ///Creates a new call builder for the [`getPublicKeyBytes`] function.
@@ -2662,18 +2934,21 @@ pub mod BlocklockSignatureScheme {
             signature: alloy::sol_types::private::Bytes,
             publicKey: alloy::sol_types::private::Bytes,
         ) -> alloy_contract::SolCallBuilder<&P, verifySignatureCall, N> {
-            self.call_builder(&verifySignatureCall {
-                message,
-                signature,
-                publicKey,
-            })
+            self.call_builder(
+                &verifySignatureCall {
+                    message,
+                    signature,
+                    publicKey,
+                },
+            )
         }
     }
     /// Event filters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        BlocklockSignatureSchemeInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > BlocklockSignatureSchemeInstance<P, N> {
         /// Creates a new event filter using this contract instance's provider and address.
         ///
         /// Note that the type can be any event, not just those defined in this contract.

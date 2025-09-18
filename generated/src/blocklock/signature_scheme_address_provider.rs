@@ -392,11 +392,12 @@ pub mod SignatureSchemeAddressProvider {
     pub static DEPLOYED_BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
         b"`\x80`@R4\x80\x15a\0\x0FW__\xFD[P`\x046\x10a\0\xA6W_5`\xE0\x1C\x80c[\xB0\x9C\xF8\x11a\0nW\x80c[\xB0\x9C\xF8\x14a\x01=W\x80cu\xB28\xFC\x14a\x01hW\x80c\x91\xD1HT\x14a\x01\x8FW\x80c\xA2\x17\xFD\xDF\x14a\x01\xA2W\x80c\xBA\xB8g\xDA\x14a\x01\xA9W\x80c\xD5Gt\x1F\x14a\x01\xBCW__\xFD[\x80c\x01\xFF\xC9\xA7\x14a\0\xAAW\x80c$\x8A\x9C\xA3\x14a\0\xD2W\x80c//\xF1]\x14a\x01\x02W\x80c/\xC9\xFA3\x14a\x01\x17W\x80c6V\x8A\xBE\x14a\x01*W[__\xFD[a\0\xBDa\0\xB86`\x04a\x06\\V[a\x01\xCFV[`@Q\x90\x15\x15\x81R` \x01[`@Q\x80\x91\x03\x90\xF3[a\0\xF4a\0\xE06`\x04a\x06\x8AV[_\x90\x81R` \x81\x90R`@\x90 `\x01\x01T\x90V[`@Q\x90\x81R` \x01a\0\xC9V[a\x01\x15a\x01\x106`\x04a\x06\xBCV[a\x02\x05V[\0[a\0\xBDa\x01%6`\x04a\x07+V[a\x02/V[a\x01\x15a\x0186`\x04a\x06\xBCV[a\x02oV[a\x01Pa\x01K6`\x04a\x07+V[a\x02\xA7V[`@Q`\x01`\x01`\xA0\x1B\x03\x90\x91\x16\x81R` \x01a\0\xC9V[a\0\xF4\x7F\xA4\x98\x07 \\\xE4\xD3U\t.\xF5\xA8\xA1\x8FV\xE8\x91<\xF4\xA2\x01\xFB\xE2\x87\x82[\tV\x93\xC2\x17u\x81V[a\0\xBDa\x01\x9D6`\x04a\x06\xBCV[a\x02\xDBV[a\0\xF4_\x81V[a\x01\x15a\x01\xB76`\x04a\x07jV[a\x03\x03V[a\x01\x15a\x01\xCA6`\x04a\x06\xBCV[a\x04\xF6V[_`\x01`\x01`\xE0\x1B\x03\x19\x82\x16cye\xDB\x0B`\xE0\x1B\x14\x80a\x01\xFFWPc\x01\xFF\xC9\xA7`\xE0\x1B`\x01`\x01`\xE0\x1B\x03\x19\x83\x16\x14[\x92\x91PPV[_\x82\x81R` \x81\x90R`@\x90 `\x01\x01Ta\x02\x1F\x81a\x05\x1AV[a\x02)\x83\x83a\x05'V[PPPPV[__`\x01`\x01`\xA0\x1B\x03\x16`\x01\x84\x84`@Qa\x02L\x92\x91\x90a\x07\xBAV[\x90\x81R`@Q\x90\x81\x90\x03` \x01\x90 T`\x01`\x01`\xA0\x1B\x03\x16\x14\x15\x90P\x92\x91PPV[`\x01`\x01`\xA0\x1B\x03\x81\x163\x14a\x02\x98W`@Qc3K\xD9\x19`\xE1\x1B\x81R`\x04\x01`@Q\x80\x91\x03\x90\xFD[a\x02\xA2\x82\x82a\x05\xB6V[PPPV[_`\x01\x83\x83`@Qa\x02\xBA\x92\x91\x90a\x07\xBAV[\x90\x81R`@Q\x90\x81\x90\x03` \x01\x90 T`\x01`\x01`\xA0\x1B\x03\x16\x90P\x92\x91PPV[_\x91\x82R` \x82\x81R`@\x80\x84 `\x01`\x01`\xA0\x1B\x03\x93\x90\x93\x16\x84R\x91\x90R\x90 T`\xFF\x16\x90V[a\x03,\x7F\xA4\x98\x07 \\\xE4\xD3U\t.\xF5\xA8\xA1\x8FV\xE8\x91<\xF4\xA2\x01\xFB\xE2\x87\x82[\tV\x93\xC2\x17ua\x05\x1AV[`\x01`\x01`\xA0\x1B\x03\x81\x16\x15\x80\x15\x90a\x03MWP_\x81`\x01`\x01`\xA0\x1B\x03\x16;\x11[a\x03\xB1W`@QbF\x1B\xCD`\xE5\x1B\x81R` `\x04\x82\x01R`*`$\x82\x01R\x7FInvalid contract address for sch`D\x82\x01RiemeAddress`\xB0\x1B`d\x82\x01R`\x84\x01[`@Q\x80\x91\x03\x90\xFD[_`\x01`\x01`\xA0\x1B\x03\x16`\x01\x84\x84`@Qa\x03\xCD\x92\x91\x90a\x07\xBAV[\x90\x81R`@Q\x90\x81\x90\x03` \x01\x90 T`\x01`\x01`\xA0\x1B\x03\x16\x14a\x04=W`@QbF\x1B\xCD`\xE5\x1B\x81R` `\x04\x82\x01R`!`$\x82\x01R\x7FScheme already added for schemeI`D\x82\x01R`\x11`\xFA\x1B`d\x82\x01R`\x84\x01a\x03\xA8V[\x80`\x01\x84\x84`@Qa\x04P\x92\x91\x90a\x07\xBAV[\x90\x81R`@Q\x90\x81\x90\x03` \x01\x81 \x80T`\x01`\x01`\xA0\x1B\x03\x93\x90\x93\x16`\x01`\x01`\xA0\x1B\x03\x19\x90\x93\x16\x92\x90\x92\x17\x90\x91U`\x01\x90a\x04\x90\x90\x85\x90\x85\x90a\x07\xBAV[\x90\x81R`@Q\x90\x81\x90\x03` \x01\x81 T`\x01`\x01`\xA0\x1B\x03\x16\x90a\x04\xB7\x90\x85\x90\x85\x90a\x07\xBAV[`@Q\x90\x81\x90\x03\x81 B\x82R\x90\x7F\n\x1C\xD6\xA1\xE0\xA7\xB2\0\xD2\x8E\xADU_<\xEE\x96\xE0\xD2\xDE\xF0IS_\xBC\xFD\xC2\x92k\xC4\xCE\xC5\x04\x90` \x01`@Q\x80\x91\x03\x90\xA3PPPV[_\x82\x81R` \x81\x90R`@\x90 `\x01\x01Ta\x05\x10\x81a\x05\x1AV[a\x02)\x83\x83a\x05\xB6V[a\x05$\x813a\x06\x1FV[PV[_a\x052\x83\x83a\x02\xDBV[a\x05\xAFW_\x83\x81R` \x81\x81R`@\x80\x83 `\x01`\x01`\xA0\x1B\x03\x86\x16\x84R\x90\x91R\x90 \x80T`\xFF\x19\x16`\x01\x17\x90Ua\x05g3\x90V[`\x01`\x01`\xA0\x1B\x03\x16\x82`\x01`\x01`\xA0\x1B\x03\x16\x84\x7F/\x87\x88\x11~~\xFF\x1D\x82\xE9&\xECyI\x01\xD1|x\x02JP'\t@0E@\xA73eo\r`@Q`@Q\x80\x91\x03\x90\xA4P`\x01a\x01\xFFV[P_a\x01\xFFV[_a\x05\xC1\x83\x83a\x02\xDBV[\x15a\x05\xAFW_\x83\x81R` \x81\x81R`@\x80\x83 `\x01`\x01`\xA0\x1B\x03\x86\x16\x80\x85R\x92R\x80\x83 \x80T`\xFF\x19\x16\x90UQ3\x92\x86\x91\x7F\xF69\x1F\\2\xD9\xC6\x9D*G\xEAg\x0BD)t\xB595\xD1\xED\xC7\xFDd\xEB!\xE0G\xA89\x17\x1B\x91\x90\xA4P`\x01a\x01\xFFV[a\x06)\x82\x82a\x02\xDBV[a\x06XW`@Qc\xE2Q}?`\xE0\x1B\x81R`\x01`\x01`\xA0\x1B\x03\x82\x16`\x04\x82\x01R`$\x81\x01\x83\x90R`D\x01a\x03\xA8V[PPV[_` \x82\x84\x03\x12\x15a\x06lW__\xFD[\x815`\x01`\x01`\xE0\x1B\x03\x19\x81\x16\x81\x14a\x06\x83W__\xFD[\x93\x92PPPV[_` \x82\x84\x03\x12\x15a\x06\x9AW__\xFD[P5\x91\x90PV[\x805`\x01`\x01`\xA0\x1B\x03\x81\x16\x81\x14a\x06\xB7W__\xFD[\x91\x90PV[__`@\x83\x85\x03\x12\x15a\x06\xCDW__\xFD[\x825\x91Pa\x06\xDD` \x84\x01a\x06\xA1V[\x90P\x92P\x92\x90PV[__\x83`\x1F\x84\x01\x12a\x06\xF6W__\xFD[P\x815g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x07\rW__\xFD[` \x83\x01\x91P\x83` \x82\x85\x01\x01\x11\x15a\x07$W__\xFD[\x92P\x92\x90PV[__` \x83\x85\x03\x12\x15a\x07<W__\xFD[\x825g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x07RW__\xFD[a\x07^\x85\x82\x86\x01a\x06\xE6V[\x90\x96\x90\x95P\x93PPPPV[___`@\x84\x86\x03\x12\x15a\x07|W__\xFD[\x835g\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x11\x15a\x07\x92W__\xFD[a\x07\x9E\x86\x82\x87\x01a\x06\xE6V[\x90\x94P\x92Pa\x07\xB1\x90P` \x85\x01a\x06\xA1V[\x90P\x92P\x92P\x92V[\x81\x83\x827_\x91\x01\x90\x81R\x91\x90PV\xFE\xA2dipfsX\"\x12 \x8Eu\xF4\x02\xA6\xA7\x93R\xDB\x9E\x94%K\xCC]\xC7\x06\x9A\xA4P8zHI\x13\xE4\xB1\x95\x8A\xF5\x9E\xA2dsolcC\0\x08\x1C\x003",
     );
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Custom error with signature `AccessControlBadConfirmation()` and selector `0x6697b232`.
-    ```solidity
-    error AccessControlBadConfirmation();
-    ```*/
+```solidity
+error AccessControlBadConfirmation();
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct AccessControlBadConfirmation;
@@ -414,7 +415,9 @@ pub mod SignatureSchemeAddressProvider {
         type UnderlyingRustTuple<'a> = ();
         #[cfg(test)]
         #[allow(dead_code, unreachable_patterns)]
-        fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+        fn _type_assertion(
+            _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+        ) {
             match _t {
                 alloy_sol_types::private::AssertTypeEq::<
                     <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -423,14 +426,16 @@ pub mod SignatureSchemeAddressProvider {
         }
         #[automatically_derived]
         #[doc(hidden)]
-        impl ::core::convert::From<AccessControlBadConfirmation> for UnderlyingRustTuple<'_> {
+        impl ::core::convert::From<AccessControlBadConfirmation>
+        for UnderlyingRustTuple<'_> {
             fn from(value: AccessControlBadConfirmation) -> Self {
                 ()
             }
         }
         #[automatically_derived]
         #[doc(hidden)]
-        impl ::core::convert::From<UnderlyingRustTuple<'_>> for AccessControlBadConfirmation {
+        impl ::core::convert::From<UnderlyingRustTuple<'_>>
+        for AccessControlBadConfirmation {
             fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                 Self
             }
@@ -438,7 +443,9 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolError for AccessControlBadConfirmation {
             type Parameters<'a> = UnderlyingSolTuple<'a>;
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "AccessControlBadConfirmation()";
             const SELECTOR: [u8; 4] = [102u8, 151u8, 178u8, 50u8];
             #[inline]
@@ -453,18 +460,19 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_raw_validate(data: &[u8]) -> alloy_sol_types::Result<Self> {
-                <Self::Parameters<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Self::new)
+                <Self::Parameters<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Self::new)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Custom error with signature `AccessControlUnauthorizedAccount(address,bytes32)` and selector `0xe2517d3f`.
-    ```solidity
-    error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
-    ```*/
+```solidity
+error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct AccessControlUnauthorizedAccount {
@@ -493,7 +501,9 @@ pub mod SignatureSchemeAddressProvider {
         );
         #[cfg(test)]
         #[allow(dead_code, unreachable_patterns)]
-        fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+        fn _type_assertion(
+            _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+        ) {
             match _t {
                 alloy_sol_types::private::AssertTypeEq::<
                     <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -502,14 +512,16 @@ pub mod SignatureSchemeAddressProvider {
         }
         #[automatically_derived]
         #[doc(hidden)]
-        impl ::core::convert::From<AccessControlUnauthorizedAccount> for UnderlyingRustTuple<'_> {
+        impl ::core::convert::From<AccessControlUnauthorizedAccount>
+        for UnderlyingRustTuple<'_> {
             fn from(value: AccessControlUnauthorizedAccount) -> Self {
                 (value.account, value.neededRole)
             }
         }
         #[automatically_derived]
         #[doc(hidden)]
-        impl ::core::convert::From<UnderlyingRustTuple<'_>> for AccessControlUnauthorizedAccount {
+        impl ::core::convert::From<UnderlyingRustTuple<'_>>
+        for AccessControlUnauthorizedAccount {
             fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                 Self {
                     account: tuple.0,
@@ -520,7 +532,9 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolError for AccessControlUnauthorizedAccount {
             type Parameters<'a> = UnderlyingSolTuple<'a>;
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "AccessControlUnauthorizedAccount(address,bytes32)";
             const SELECTOR: [u8; 4] = [226u8, 81u8, 125u8, 63u8];
             #[inline]
@@ -542,18 +556,19 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_raw_validate(data: &[u8]) -> alloy_sol_types::Result<Self> {
-                <Self::Parameters<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Self::new)
+                <Self::Parameters<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Self::new)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Event with signature `NewSignatureSchemeAddressAdded(string,address,uint256)` and selector `0x0a1cd6a1e0a7b200d28ead555f3cee96e0d2def049535fbcfdc2926bc4cec504`.
-    ```solidity
-    event NewSignatureSchemeAddressAdded(string indexed schemeID, address indexed schemeAddress, uint256 addedAt);
-    ```*/
+```solidity
+event NewSignatureSchemeAddressAdded(string indexed schemeID, address indexed schemeAddress, uint256 addedAt);
+```*/
     #[allow(
         non_camel_case_types,
         non_snake_case,
@@ -580,20 +595,20 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolEvent for NewSignatureSchemeAddressAdded {
             type DataTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
-            type DataToken<'a> = <Self::DataTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type DataToken<'a> = <Self::DataTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type TopicList = (
                 alloy_sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::Address,
             );
-            const SIGNATURE: &'static str =
-                "NewSignatureSchemeAddressAdded(string,address,uint256)";
-            const SIGNATURE_HASH: alloy_sol_types::private::B256 =
-                alloy_sol_types::private::B256::new([
-                    10u8, 28u8, 214u8, 161u8, 224u8, 167u8, 178u8, 0u8, 210u8, 142u8, 173u8, 85u8,
-                    95u8, 60u8, 238u8, 150u8, 224u8, 210u8, 222u8, 240u8, 73u8, 83u8, 95u8, 188u8,
-                    253u8, 194u8, 146u8, 107u8, 196u8, 206u8, 197u8, 4u8,
-                ]);
+            const SIGNATURE: &'static str = "NewSignatureSchemeAddressAdded(string,address,uint256)";
+            const SIGNATURE_HASH: alloy_sol_types::private::B256 = alloy_sol_types::private::B256::new([
+                10u8, 28u8, 214u8, 161u8, 224u8, 167u8, 178u8, 0u8, 210u8, 142u8, 173u8,
+                85u8, 95u8, 60u8, 238u8, 150u8, 224u8, 210u8, 222u8, 240u8, 73u8, 83u8,
+                95u8, 188u8, 253u8, 194u8, 146u8, 107u8, 196u8, 206u8, 197u8, 4u8,
+            ]);
             const ANONYMOUS: bool = false;
             #[allow(unused_variables)]
             #[inline]
@@ -612,20 +627,22 @@ pub mod SignatureSchemeAddressProvider {
                 topics: &<Self::TopicList as alloy_sol_types::SolType>::RustType,
             ) -> alloy_sol_types::Result<()> {
                 if topics.0 != Self::SIGNATURE_HASH {
-                    return Err(alloy_sol_types::Error::invalid_event_signature_hash(
-                        Self::SIGNATURE,
-                        topics.0,
-                        Self::SIGNATURE_HASH,
-                    ));
+                    return Err(
+                        alloy_sol_types::Error::invalid_event_signature_hash(
+                            Self::SIGNATURE,
+                            topics.0,
+                            Self::SIGNATURE_HASH,
+                        ),
+                    );
                 }
                 Ok(())
             }
             #[inline]
             fn tokenize_body(&self) -> Self::DataToken<'_> {
                 (
-                    <alloy::sol_types::sol_data::Uint<256> as alloy_sol_types::SolType>::tokenize(
-                        &self.addedAt,
-                    ),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.addedAt),
                 )
             }
             #[inline]
@@ -644,7 +661,9 @@ pub mod SignatureSchemeAddressProvider {
                 if out.len() < <Self::TopicList as alloy_sol_types::TopicList>::COUNT {
                     return Err(alloy_sol_types::Error::Overrun);
                 }
-                out[0usize] = alloy_sol_types::abi::token::WordToken(Self::SIGNATURE_HASH);
+                out[0usize] = alloy_sol_types::abi::token::WordToken(
+                    Self::SIGNATURE_HASH,
+                );
                 out[1usize] = <alloy_sol_types::sol_data::FixedBytes<
                     32,
                 > as alloy_sol_types::EventTopic>::encode_topic(&self.schemeID);
@@ -664,18 +683,22 @@ pub mod SignatureSchemeAddressProvider {
             }
         }
         #[automatically_derived]
-        impl From<&NewSignatureSchemeAddressAdded> for alloy_sol_types::private::LogData {
+        impl From<&NewSignatureSchemeAddressAdded>
+        for alloy_sol_types::private::LogData {
             #[inline]
-            fn from(this: &NewSignatureSchemeAddressAdded) -> alloy_sol_types::private::LogData {
+            fn from(
+                this: &NewSignatureSchemeAddressAdded,
+            ) -> alloy_sol_types::private::LogData {
                 alloy_sol_types::SolEvent::encode_log_data(this)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Event with signature `RoleAdminChanged(bytes32,bytes32,bytes32)` and selector `0xbd79b86ffe0ab8e8776151514217cd7cacd52c909f66475c3af44e129f0b00ff`.
-    ```solidity
-    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
-    ```*/
+```solidity
+event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
+```*/
     #[allow(
         non_camel_case_types,
         non_snake_case,
@@ -702,7 +725,9 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolEvent for RoleAdminChanged {
             type DataTuple<'a> = ();
-            type DataToken<'a> = <Self::DataTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type DataToken<'a> = <Self::DataTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type TopicList = (
                 alloy_sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::FixedBytes<32>,
@@ -710,12 +735,11 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::FixedBytes<32>,
             );
             const SIGNATURE: &'static str = "RoleAdminChanged(bytes32,bytes32,bytes32)";
-            const SIGNATURE_HASH: alloy_sol_types::private::B256 =
-                alloy_sol_types::private::B256::new([
-                    189u8, 121u8, 184u8, 111u8, 254u8, 10u8, 184u8, 232u8, 119u8, 97u8, 81u8, 81u8,
-                    66u8, 23u8, 205u8, 124u8, 172u8, 213u8, 44u8, 144u8, 159u8, 102u8, 71u8, 92u8,
-                    58u8, 244u8, 78u8, 18u8, 159u8, 11u8, 0u8, 255u8,
-                ]);
+            const SIGNATURE_HASH: alloy_sol_types::private::B256 = alloy_sol_types::private::B256::new([
+                189u8, 121u8, 184u8, 111u8, 254u8, 10u8, 184u8, 232u8, 119u8, 97u8, 81u8,
+                81u8, 66u8, 23u8, 205u8, 124u8, 172u8, 213u8, 44u8, 144u8, 159u8, 102u8,
+                71u8, 92u8, 58u8, 244u8, 78u8, 18u8, 159u8, 11u8, 0u8, 255u8,
+            ]);
             const ANONYMOUS: bool = false;
             #[allow(unused_variables)]
             #[inline]
@@ -734,11 +758,13 @@ pub mod SignatureSchemeAddressProvider {
                 topics: &<Self::TopicList as alloy_sol_types::SolType>::RustType,
             ) -> alloy_sol_types::Result<()> {
                 if topics.0 != Self::SIGNATURE_HASH {
-                    return Err(alloy_sol_types::Error::invalid_event_signature_hash(
-                        Self::SIGNATURE,
-                        topics.0,
-                        Self::SIGNATURE_HASH,
-                    ));
+                    return Err(
+                        alloy_sol_types::Error::invalid_event_signature_hash(
+                            Self::SIGNATURE,
+                            topics.0,
+                            Self::SIGNATURE_HASH,
+                        ),
+                    );
                 }
                 Ok(())
             }
@@ -763,7 +789,9 @@ pub mod SignatureSchemeAddressProvider {
                 if out.len() < <Self::TopicList as alloy_sol_types::TopicList>::COUNT {
                     return Err(alloy_sol_types::Error::Overrun);
                 }
-                out[0usize] = alloy_sol_types::abi::token::WordToken(Self::SIGNATURE_HASH);
+                out[0usize] = alloy_sol_types::abi::token::WordToken(
+                    Self::SIGNATURE_HASH,
+                );
                 out[1usize] = <alloy::sol_types::sol_data::FixedBytes<
                     32,
                 > as alloy_sol_types::EventTopic>::encode_topic(&self.role);
@@ -793,11 +821,12 @@ pub mod SignatureSchemeAddressProvider {
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Event with signature `RoleGranted(bytes32,address,address)` and selector `0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d`.
-    ```solidity
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
-    ```*/
+```solidity
+event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+```*/
     #[allow(
         non_camel_case_types,
         non_snake_case,
@@ -824,7 +853,9 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolEvent for RoleGranted {
             type DataTuple<'a> = ();
-            type DataToken<'a> = <Self::DataTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type DataToken<'a> = <Self::DataTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type TopicList = (
                 alloy_sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::FixedBytes<32>,
@@ -832,12 +863,11 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::Address,
             );
             const SIGNATURE: &'static str = "RoleGranted(bytes32,address,address)";
-            const SIGNATURE_HASH: alloy_sol_types::private::B256 =
-                alloy_sol_types::private::B256::new([
-                    47u8, 135u8, 136u8, 17u8, 126u8, 126u8, 255u8, 29u8, 130u8, 233u8, 38u8, 236u8,
-                    121u8, 73u8, 1u8, 209u8, 124u8, 120u8, 2u8, 74u8, 80u8, 39u8, 9u8, 64u8, 48u8,
-                    69u8, 64u8, 167u8, 51u8, 101u8, 111u8, 13u8,
-                ]);
+            const SIGNATURE_HASH: alloy_sol_types::private::B256 = alloy_sol_types::private::B256::new([
+                47u8, 135u8, 136u8, 17u8, 126u8, 126u8, 255u8, 29u8, 130u8, 233u8, 38u8,
+                236u8, 121u8, 73u8, 1u8, 209u8, 124u8, 120u8, 2u8, 74u8, 80u8, 39u8, 9u8,
+                64u8, 48u8, 69u8, 64u8, 167u8, 51u8, 101u8, 111u8, 13u8,
+            ]);
             const ANONYMOUS: bool = false;
             #[allow(unused_variables)]
             #[inline]
@@ -856,11 +886,13 @@ pub mod SignatureSchemeAddressProvider {
                 topics: &<Self::TopicList as alloy_sol_types::SolType>::RustType,
             ) -> alloy_sol_types::Result<()> {
                 if topics.0 != Self::SIGNATURE_HASH {
-                    return Err(alloy_sol_types::Error::invalid_event_signature_hash(
-                        Self::SIGNATURE,
-                        topics.0,
-                        Self::SIGNATURE_HASH,
-                    ));
+                    return Err(
+                        alloy_sol_types::Error::invalid_event_signature_hash(
+                            Self::SIGNATURE,
+                            topics.0,
+                            Self::SIGNATURE_HASH,
+                        ),
+                    );
                 }
                 Ok(())
             }
@@ -885,7 +917,9 @@ pub mod SignatureSchemeAddressProvider {
                 if out.len() < <Self::TopicList as alloy_sol_types::TopicList>::COUNT {
                     return Err(alloy_sol_types::Error::Overrun);
                 }
-                out[0usize] = alloy_sol_types::abi::token::WordToken(Self::SIGNATURE_HASH);
+                out[0usize] = alloy_sol_types::abi::token::WordToken(
+                    Self::SIGNATURE_HASH,
+                );
                 out[1usize] = <alloy::sol_types::sol_data::FixedBytes<
                     32,
                 > as alloy_sol_types::EventTopic>::encode_topic(&self.role);
@@ -915,11 +949,12 @@ pub mod SignatureSchemeAddressProvider {
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Event with signature `RoleRevoked(bytes32,address,address)` and selector `0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b`.
-    ```solidity
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
-    ```*/
+```solidity
+event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
+```*/
     #[allow(
         non_camel_case_types,
         non_snake_case,
@@ -946,7 +981,9 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolEvent for RoleRevoked {
             type DataTuple<'a> = ();
-            type DataToken<'a> = <Self::DataTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type DataToken<'a> = <Self::DataTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type TopicList = (
                 alloy_sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::FixedBytes<32>,
@@ -954,12 +991,11 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::Address,
             );
             const SIGNATURE: &'static str = "RoleRevoked(bytes32,address,address)";
-            const SIGNATURE_HASH: alloy_sol_types::private::B256 =
-                alloy_sol_types::private::B256::new([
-                    246u8, 57u8, 31u8, 92u8, 50u8, 217u8, 198u8, 157u8, 42u8, 71u8, 234u8, 103u8,
-                    11u8, 68u8, 41u8, 116u8, 181u8, 57u8, 53u8, 209u8, 237u8, 199u8, 253u8, 100u8,
-                    235u8, 33u8, 224u8, 71u8, 168u8, 57u8, 23u8, 27u8,
-                ]);
+            const SIGNATURE_HASH: alloy_sol_types::private::B256 = alloy_sol_types::private::B256::new([
+                246u8, 57u8, 31u8, 92u8, 50u8, 217u8, 198u8, 157u8, 42u8, 71u8, 234u8,
+                103u8, 11u8, 68u8, 41u8, 116u8, 181u8, 57u8, 53u8, 209u8, 237u8, 199u8,
+                253u8, 100u8, 235u8, 33u8, 224u8, 71u8, 168u8, 57u8, 23u8, 27u8,
+            ]);
             const ANONYMOUS: bool = false;
             #[allow(unused_variables)]
             #[inline]
@@ -978,11 +1014,13 @@ pub mod SignatureSchemeAddressProvider {
                 topics: &<Self::TopicList as alloy_sol_types::SolType>::RustType,
             ) -> alloy_sol_types::Result<()> {
                 if topics.0 != Self::SIGNATURE_HASH {
-                    return Err(alloy_sol_types::Error::invalid_event_signature_hash(
-                        Self::SIGNATURE,
-                        topics.0,
-                        Self::SIGNATURE_HASH,
-                    ));
+                    return Err(
+                        alloy_sol_types::Error::invalid_event_signature_hash(
+                            Self::SIGNATURE,
+                            topics.0,
+                            Self::SIGNATURE_HASH,
+                        ),
+                    );
                 }
                 Ok(())
             }
@@ -1007,7 +1045,9 @@ pub mod SignatureSchemeAddressProvider {
                 if out.len() < <Self::TopicList as alloy_sol_types::TopicList>::COUNT {
                     return Err(alloy_sol_types::Error::Overrun);
                 }
-                out[0usize] = alloy_sol_types::abi::token::WordToken(Self::SIGNATURE_HASH);
+                out[0usize] = alloy_sol_types::abi::token::WordToken(
+                    Self::SIGNATURE_HASH,
+                );
                 out[1usize] = <alloy::sol_types::sol_data::FixedBytes<
                     32,
                 > as alloy_sol_types::EventTopic>::encode_topic(&self.role);
@@ -1038,9 +1078,9 @@ pub mod SignatureSchemeAddressProvider {
         }
     };
     /**Constructor`.
-    ```solidity
-    constructor(address owner);
-    ```*/
+```solidity
+constructor(address owner);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct constructorCall {
@@ -1056,7 +1096,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Address,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1081,7 +1123,9 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolConstructor for constructorCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::Address,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             #[inline]
             fn new<'a>(
                 tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
@@ -1098,15 +1142,17 @@ pub mod SignatureSchemeAddressProvider {
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `ADMIN_ROLE()` and selector `0x75b238fc`.
-    ```solidity
-    function ADMIN_ROLE() external view returns (bytes32);
-    ```*/
+```solidity
+function ADMIN_ROLE() external view returns (bytes32);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct ADMIN_ROLECall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`ADMIN_ROLE()`](ADMIN_ROLECall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1129,7 +1175,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1158,7 +1206,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::FixedBytes<32>,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1183,10 +1233,14 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for ADMIN_ROLECall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::FixedBytes<32>;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::FixedBytes<32>,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "ADMIN_ROLE()";
             const SELECTOR: [u8; 4] = [117u8, 178u8, 56u8, 252u8];
             #[inline]
@@ -1209,34 +1263,39 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: ADMIN_ROLEReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: ADMIN_ROLEReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: ADMIN_ROLEReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `DEFAULT_ADMIN_ROLE()` and selector `0xa217fddf`.
-    ```solidity
-    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
-    ```*/
+```solidity
+function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct DEFAULT_ADMIN_ROLECall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`DEFAULT_ADMIN_ROLE()`](DEFAULT_ADMIN_ROLECall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1259,7 +1318,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1268,14 +1329,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<DEFAULT_ADMIN_ROLECall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<DEFAULT_ADMIN_ROLECall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: DEFAULT_ADMIN_ROLECall) -> Self {
                     ()
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for DEFAULT_ADMIN_ROLECall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for DEFAULT_ADMIN_ROLECall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self
                 }
@@ -1288,7 +1351,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::FixedBytes<32>,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1297,14 +1362,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<DEFAULT_ADMIN_ROLEReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<DEFAULT_ADMIN_ROLEReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: DEFAULT_ADMIN_ROLEReturn) -> Self {
                     (value._0,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for DEFAULT_ADMIN_ROLEReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for DEFAULT_ADMIN_ROLEReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { _0: tuple.0 }
                 }
@@ -1313,10 +1380,14 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for DEFAULT_ADMIN_ROLECall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::FixedBytes<32>;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::FixedBytes<32>,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "DEFAULT_ADMIN_ROLE()";
             const SELECTOR: [u8; 4] = [162u8, 23u8, 253u8, 223u8];
             #[inline]
@@ -1339,37 +1410,42 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: DEFAULT_ADMIN_ROLEReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: DEFAULT_ADMIN_ROLEReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: DEFAULT_ADMIN_ROLEReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `getRoleAdmin(bytes32)` and selector `0x248a9ca3`.
-    ```solidity
-    function getRoleAdmin(bytes32 role) external view returns (bytes32);
-    ```*/
+```solidity
+function getRoleAdmin(bytes32 role) external view returns (bytes32);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct getRoleAdminCall {
         #[allow(missing_docs)]
         pub role: alloy::sol_types::private::FixedBytes<32>,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`getRoleAdmin(bytes32)`](getRoleAdminCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1392,7 +1468,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::FixedBytes<32>,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1421,7 +1499,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::FixedBytes<32>,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1446,10 +1526,14 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for getRoleAdminCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::FixedBytes<32>,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::FixedBytes<32>;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::FixedBytes<32>,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "getRoleAdmin(bytes32)";
             const SELECTOR: [u8; 4] = [36u8, 138u8, 156u8, 163u8];
             #[inline]
@@ -1476,37 +1560,42 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: getRoleAdminReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: getRoleAdminReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: getRoleAdminReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `getSignatureSchemeAddress(string)` and selector `0x5bb09cf8`.
-    ```solidity
-    function getSignatureSchemeAddress(string memory schemeID) external view returns (address);
-    ```*/
+```solidity
+function getSignatureSchemeAddress(string memory schemeID) external view returns (address);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct getSignatureSchemeAddressCall {
         #[allow(missing_docs)]
         pub schemeID: alloy::sol_types::private::String,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`getSignatureSchemeAddress(string)`](getSignatureSchemeAddressCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1529,7 +1618,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::String,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1538,14 +1629,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<getSignatureSchemeAddressCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<getSignatureSchemeAddressCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: getSignatureSchemeAddressCall) -> Self {
                     (value.schemeID,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for getSignatureSchemeAddressCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getSignatureSchemeAddressCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { schemeID: tuple.0 }
                 }
@@ -1558,7 +1651,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Address,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1567,14 +1662,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<getSignatureSchemeAddressReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<getSignatureSchemeAddressReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: getSignatureSchemeAddressReturn) -> Self {
                     (value._0,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for getSignatureSchemeAddressReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getSignatureSchemeAddressReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { _0: tuple.0 }
                 }
@@ -1583,10 +1680,14 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for getSignatureSchemeAddressCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::String,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::Address;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Address,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "getSignatureSchemeAddress(string)";
             const SELECTOR: [u8; 4] = [91u8, 176u8, 156u8, 248u8];
             #[inline]
@@ -1613,30 +1714,34 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: getSignatureSchemeAddressReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: getSignatureSchemeAddressReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: getSignatureSchemeAddressReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `grantRole(bytes32,address)` and selector `0x2f2ff15d`.
-    ```solidity
-    function grantRole(bytes32 role, address account) external;
-    ```*/
+```solidity
+function grantRole(bytes32 role, address account) external;
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct grantRoleCall {
@@ -1670,7 +1775,9 @@ pub mod SignatureSchemeAddressProvider {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1702,7 +1809,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1725,7 +1834,9 @@ pub mod SignatureSchemeAddressProvider {
             }
         }
         impl grantRoleReturn {
-            fn _tokenize(&self) -> <grantRoleCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
+            fn _tokenize(
+                &self,
+            ) -> <grantRoleCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
                 ()
             }
         }
@@ -1735,10 +1846,14 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::Address,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = grantRoleReturn;
             type ReturnTuple<'a> = ();
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "grantRole(bytes32,address)";
             const SELECTOR: [u8; 4] = [47u8, 47u8, 241u8, 93u8];
             #[inline]
@@ -1764,23 +1879,28 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `hasRole(bytes32,address)` and selector `0x91d14854`.
-    ```solidity
-    function hasRole(bytes32 role, address account) external view returns (bool);
-    ```*/
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct hasRoleCall {
@@ -1789,7 +1909,8 @@ pub mod SignatureSchemeAddressProvider {
         #[allow(missing_docs)]
         pub account: alloy::sol_types::private::Address,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`hasRole(bytes32,address)`](hasRoleCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1818,7 +1939,9 @@ pub mod SignatureSchemeAddressProvider {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1850,7 +1973,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (bool,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1878,10 +2003,14 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::Address,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = bool;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bool,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "hasRole(bytes32,address)";
             const SELECTOR: [u8; 4] = [145u8, 209u8, 72u8, 84u8];
             #[inline]
@@ -1903,41 +2032,50 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: hasRoleReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: hasRoleReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: hasRoleReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `isSupportedScheme(string)` and selector `0x2fc9fa33`.
-    ```solidity
-    function isSupportedScheme(string memory schemeID) external view returns (bool);
-    ```*/
+```solidity
+function isSupportedScheme(string memory schemeID) external view returns (bool);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct isSupportedSchemeCall {
         #[allow(missing_docs)]
         pub schemeID: alloy::sol_types::private::String,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`isSupportedScheme(string)`](isSupportedSchemeCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -1960,7 +2098,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::String,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1969,14 +2109,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<isSupportedSchemeCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<isSupportedSchemeCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: isSupportedSchemeCall) -> Self {
                     (value.schemeID,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for isSupportedSchemeCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for isSupportedSchemeCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { schemeID: tuple.0 }
                 }
@@ -1989,7 +2131,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (bool,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -1998,14 +2142,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<isSupportedSchemeReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<isSupportedSchemeReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: isSupportedSchemeReturn) -> Self {
                     (value._0,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for isSupportedSchemeReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for isSupportedSchemeReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { _0: tuple.0 }
                 }
@@ -2014,10 +2160,14 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for isSupportedSchemeCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::String,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = bool;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bool,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "isSupportedScheme(string)";
             const SELECTOR: [u8; 4] = [47u8, 201u8, 250u8, 51u8];
             #[inline]
@@ -2036,34 +2186,42 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: isSupportedSchemeReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: isSupportedSchemeReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: isSupportedSchemeReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `renounceRole(bytes32,address)` and selector `0x36568abe`.
-    ```solidity
-    function renounceRole(bytes32 role, address callerConfirmation) external;
-    ```*/
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external;
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct renounceRoleCall {
@@ -2097,7 +2255,9 @@ pub mod SignatureSchemeAddressProvider {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2129,7 +2289,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2152,7 +2314,9 @@ pub mod SignatureSchemeAddressProvider {
             }
         }
         impl renounceRoleReturn {
-            fn _tokenize(&self) -> <renounceRoleCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
+            fn _tokenize(
+                &self,
+            ) -> <renounceRoleCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
                 ()
             }
         }
@@ -2162,10 +2326,14 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::Address,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = renounceRoleReturn;
             type ReturnTuple<'a> = ();
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "renounceRole(bytes32,address)";
             const SELECTOR: [u8; 4] = [54u8, 86u8, 138u8, 190u8];
             #[inline]
@@ -2191,23 +2359,28 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `revokeRole(bytes32,address)` and selector `0xd547741f`.
-    ```solidity
-    function revokeRole(bytes32 role, address account) external;
-    ```*/
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct revokeRoleCall {
@@ -2241,7 +2414,9 @@ pub mod SignatureSchemeAddressProvider {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2273,7 +2448,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2296,7 +2473,9 @@ pub mod SignatureSchemeAddressProvider {
             }
         }
         impl revokeRoleReturn {
-            fn _tokenize(&self) -> <revokeRoleCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
+            fn _tokenize(
+                &self,
+            ) -> <revokeRoleCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
                 ()
             }
         }
@@ -2306,10 +2485,14 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::Address,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = revokeRoleReturn;
             type ReturnTuple<'a> = ();
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "revokeRole(bytes32,address)";
             const SELECTOR: [u8; 4] = [213u8, 71u8, 116u8, 31u8];
             #[inline]
@@ -2335,30 +2518,36 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `supportsInterface(bytes4)` and selector `0x01ffc9a7`.
-    ```solidity
-    function supportsInterface(bytes4 interfaceId) external view returns (bool);
-    ```*/
+```solidity
+function supportsInterface(bytes4 interfaceId) external view returns (bool);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct supportsInterfaceCall {
         #[allow(missing_docs)]
         pub interfaceId: alloy::sol_types::private::FixedBytes<4>,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`supportsInterface(bytes4)`](supportsInterfaceCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -2381,7 +2570,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::FixedBytes<4>,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2390,18 +2581,18 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<supportsInterfaceCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<supportsInterfaceCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: supportsInterfaceCall) -> Self {
                     (value.interfaceId,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for supportsInterfaceCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for supportsInterfaceCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
-                    Self {
-                        interfaceId: tuple.0,
-                    }
+                    Self { interfaceId: tuple.0 }
                 }
             }
         }
@@ -2412,7 +2603,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (bool,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2421,14 +2614,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<supportsInterfaceReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<supportsInterfaceReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: supportsInterfaceReturn) -> Self {
                     (value._0,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for supportsInterfaceReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for supportsInterfaceReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { _0: tuple.0 }
                 }
@@ -2437,10 +2632,14 @@ pub mod SignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for supportsInterfaceCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::FixedBytes<4>,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = bool;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bool,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "supportsInterface(bytes4)";
             const SELECTOR: [u8; 4] = [1u8, 255u8, 201u8, 167u8];
             #[inline]
@@ -2459,34 +2658,42 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: supportsInterfaceReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: supportsInterfaceReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: supportsInterfaceReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `updateSignatureScheme(string,address)` and selector `0xbab867da`.
-    ```solidity
-    function updateSignatureScheme(string memory schemeID, address schemeAddress) external;
-    ```*/
+```solidity
+function updateSignatureScheme(string memory schemeID, address schemeAddress) external;
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct updateSignatureSchemeCall {
@@ -2520,7 +2727,9 @@ pub mod SignatureSchemeAddressProvider {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2529,14 +2738,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<updateSignatureSchemeCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<updateSignatureSchemeCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: updateSignatureSchemeCall) -> Self {
                     (value.schemeID, value.schemeAddress)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for updateSignatureSchemeCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for updateSignatureSchemeCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self {
                         schemeID: tuple.0,
@@ -2552,7 +2763,9 @@ pub mod SignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -2561,14 +2774,16 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<updateSignatureSchemeReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<updateSignatureSchemeReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: updateSignatureSchemeReturn) -> Self {
                     ()
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for updateSignatureSchemeReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for updateSignatureSchemeReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self {}
                 }
@@ -2577,8 +2792,9 @@ pub mod SignatureSchemeAddressProvider {
         impl updateSignatureSchemeReturn {
             fn _tokenize(
                 &self,
-            ) -> <updateSignatureSchemeCall as alloy_sol_types::SolCall>::ReturnToken<'_>
-            {
+            ) -> <updateSignatureSchemeCall as alloy_sol_types::SolCall>::ReturnToken<
+                '_,
+            > {
                 ()
             }
         }
@@ -2588,10 +2804,14 @@ pub mod SignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::String,
                 alloy::sol_types::sol_data::Address,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = updateSignatureSchemeReturn;
             type ReturnTuple<'a> = ();
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "updateSignatureScheme(string,address)";
             const SELECTOR: [u8; 4] = [186u8, 184u8, 103u8, 218u8];
             #[inline]
@@ -2617,20 +2837,25 @@ pub mod SignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
     ///Container for all the [`SignatureSchemeAddressProvider`](self) function calls.
     #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive()]
     pub enum SignatureSchemeAddressProviderCalls {
         #[allow(missing_docs)]
         ADMIN_ROLE(ADMIN_ROLECall),
@@ -2685,21 +2910,31 @@ pub mod SignatureSchemeAddressProvider {
         #[inline]
         fn selector(&self) -> [u8; 4] {
             match self {
-                Self::ADMIN_ROLE(_) => <ADMIN_ROLECall as alloy_sol_types::SolCall>::SELECTOR,
+                Self::ADMIN_ROLE(_) => {
+                    <ADMIN_ROLECall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::DEFAULT_ADMIN_ROLE(_) => {
                     <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::SELECTOR
                 }
-                Self::getRoleAdmin(_) => <getRoleAdminCall as alloy_sol_types::SolCall>::SELECTOR,
+                Self::getRoleAdmin(_) => {
+                    <getRoleAdminCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::getSignatureSchemeAddress(_) => {
                     <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::SELECTOR
                 }
-                Self::grantRole(_) => <grantRoleCall as alloy_sol_types::SolCall>::SELECTOR,
+                Self::grantRole(_) => {
+                    <grantRoleCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::hasRole(_) => <hasRoleCall as alloy_sol_types::SolCall>::SELECTOR,
                 Self::isSupportedScheme(_) => {
                     <isSupportedSchemeCall as alloy_sol_types::SolCall>::SELECTOR
                 }
-                Self::renounceRole(_) => <renounceRoleCall as alloy_sol_types::SolCall>::SELECTOR,
-                Self::revokeRole(_) => <revokeRoleCall as alloy_sol_types::SolCall>::SELECTOR,
+                Self::renounceRole(_) => {
+                    <renounceRoleCall as alloy_sol_types::SolCall>::SELECTOR
+                }
+                Self::revokeRole(_) => {
+                    <revokeRoleCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::supportsInterface(_) => {
                     <supportsInterfaceCall as alloy_sol_types::SolCall>::SELECTOR
                 }
@@ -2718,18 +2953,20 @@ pub mod SignatureSchemeAddressProvider {
         }
         #[inline]
         #[allow(non_snake_case)]
-        fn abi_decode_raw(selector: [u8; 4], data: &[u8]) -> alloy_sol_types::Result<Self> {
+        fn abi_decode_raw(
+            selector: [u8; 4],
+            data: &[u8],
+        ) -> alloy_sol_types::Result<Self> {
             static DECODE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                SignatureSchemeAddressProviderCalls,
-            >] = &[
+            ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>] = &[
                 {
                     fn supportsInterface(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <supportsInterfaceCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <supportsInterfaceCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::supportsInterface)
                     }
                     supportsInterface
@@ -2737,9 +2974,10 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn getRoleAdmin(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <getRoleAdminCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <getRoleAdminCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::getRoleAdmin)
                     }
                     getRoleAdmin
@@ -2747,8 +2985,7 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn grantRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <grantRoleCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
                             .map(SignatureSchemeAddressProviderCalls::grantRole)
                     }
@@ -2757,9 +2994,10 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn isSupportedScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::isSupportedScheme)
                     }
                     isSupportedScheme
@@ -2767,9 +3005,10 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn renounceRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <renounceRoleCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <renounceRoleCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::renounceRole)
                     }
                     renounceRole
@@ -2777,21 +3016,23 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn getSignatureSchemeAddress(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::abi_decode_raw(
-                            data,
-                        )
-                        .map(SignatureSchemeAddressProviderCalls::getSignatureSchemeAddress)
+                                data,
+                            )
+                            .map(
+                                SignatureSchemeAddressProviderCalls::getSignatureSchemeAddress,
+                            )
                     }
                     getSignatureSchemeAddress
                 },
                 {
                     fn ADMIN_ROLE(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::ADMIN_ROLE)
                     }
                     ADMIN_ROLE
@@ -2799,8 +3040,7 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn hasRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <hasRoleCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
                             .map(SignatureSchemeAddressProviderCalls::hasRole)
                     }
@@ -2809,9 +3049,10 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn DEFAULT_ADMIN_ROLE(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::DEFAULT_ADMIN_ROLE)
                     }
                     DEFAULT_ADMIN_ROLE
@@ -2819,31 +3060,35 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn updateSignatureScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw(
-                            data,
-                        )
-                        .map(SignatureSchemeAddressProviderCalls::updateSignatureScheme)
+                                data,
+                            )
+                            .map(
+                                SignatureSchemeAddressProviderCalls::updateSignatureScheme,
+                            )
                     }
                     updateSignatureScheme
                 },
                 {
                     fn revokeRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <revokeRoleCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <revokeRoleCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::revokeRole)
                     }
                     revokeRole
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_SHIMS[idx](data)
         }
@@ -2855,14 +3100,11 @@ pub mod SignatureSchemeAddressProvider {
         ) -> alloy_sol_types::Result<Self> {
             static DECODE_VALIDATE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                SignatureSchemeAddressProviderCalls,
-            >] = &[
+            ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>] = &[
                 {
                     fn supportsInterface(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <supportsInterfaceCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -2873,21 +3115,21 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn getRoleAdmin(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <getRoleAdminCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
-                            data,
-                        )
-                        .map(SignatureSchemeAddressProviderCalls::getRoleAdmin)
+                                data,
+                            )
+                            .map(SignatureSchemeAddressProviderCalls::getRoleAdmin)
                     }
                     getRoleAdmin
                 },
                 {
                     fn grantRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <grantRoleCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <grantRoleCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::grantRole)
                     }
                     grantRole
@@ -2895,8 +3137,7 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn isSupportedScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -2907,20 +3148,18 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn renounceRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <renounceRoleCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
-                            data,
-                        )
-                        .map(SignatureSchemeAddressProviderCalls::renounceRole)
+                                data,
+                            )
+                            .map(SignatureSchemeAddressProviderCalls::renounceRole)
                     }
                     renounceRole
                 },
                 {
                     fn getSignatureSchemeAddress(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -2933,9 +3172,10 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn ADMIN_ROLE(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::ADMIN_ROLE)
                     }
                     ADMIN_ROLE
@@ -2943,9 +3183,10 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn hasRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <hasRoleCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <hasRoleCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::hasRole)
                     }
                     hasRole
@@ -2953,8 +3194,7 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn DEFAULT_ADMIN_ROLE(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -2965,8 +3205,7 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn updateSignatureScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
                         <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -2979,19 +3218,22 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn revokeRole(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls>
-                    {
-                        <revokeRoleCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderCalls> {
+                        <revokeRoleCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(SignatureSchemeAddressProviderCalls::revokeRole)
                     }
                     revokeRole
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_VALIDATE_SHIMS[idx](data)
         }
@@ -3002,10 +3244,14 @@ pub mod SignatureSchemeAddressProvider {
                     <ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
                 }
                 Self::DEFAULT_ADMIN_ROLE(inner) => {
-                    <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::getRoleAdmin(inner) => {
-                    <getRoleAdminCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <getRoleAdminCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::getSignatureSchemeAddress(inner) => {
                     <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::abi_encoded_size(
@@ -3019,19 +3265,27 @@ pub mod SignatureSchemeAddressProvider {
                     <hasRoleCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
                 }
                 Self::isSupportedScheme(inner) => {
-                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::renounceRole(inner) => {
-                    <renounceRoleCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <renounceRoleCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::revokeRole(inner) => {
                     <revokeRoleCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
                 }
                 Self::supportsInterface(inner) => {
-                    <supportsInterfaceCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <supportsInterfaceCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::updateSignatureScheme(inner) => {
-                    <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
             }
         }
@@ -3039,47 +3293,74 @@ pub mod SignatureSchemeAddressProvider {
         fn abi_encode_raw(&self, out: &mut alloy_sol_types::private::Vec<u8>) {
             match self {
                 Self::ADMIN_ROLE(inner) => {
-                    <ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::DEFAULT_ADMIN_ROLE(inner) => {
-                    <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <DEFAULT_ADMIN_ROLECall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::getRoleAdmin(inner) => {
-                    <getRoleAdminCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <getRoleAdminCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::getSignatureSchemeAddress(inner) => {
                     <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::abi_encode_raw(
-                        inner, out,
+                        inner,
+                        out,
                     )
                 }
                 Self::grantRole(inner) => {
-                    <grantRoleCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <grantRoleCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::hasRole(inner) => {
                     <hasRoleCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
                 }
                 Self::isSupportedScheme(inner) => {
-                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::renounceRole(inner) => {
-                    <renounceRoleCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <renounceRoleCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::revokeRole(inner) => {
-                    <revokeRoleCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <revokeRoleCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::supportsInterface(inner) => {
-                    <supportsInterfaceCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <supportsInterfaceCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::updateSignatureScheme(inner) => {
                     <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_encode_raw(
-                        inner, out,
+                        inner,
+                        out,
                     )
                 }
             }
         }
     }
     ///Container for all the [`SignatureSchemeAddressProvider`](self) custom errors.
-    #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Hash)]
     pub enum SignatureSchemeAddressProviderErrors {
         #[allow(missing_docs)]
         AccessControlBadConfirmation(AccessControlBadConfirmation),
@@ -3094,8 +3375,10 @@ pub mod SignatureSchemeAddressProvider {
         /// No guarantees are made about the order of the selectors.
         ///
         /// Prefer using `SolInterface` methods instead.
-        pub const SELECTORS: &'static [[u8; 4usize]] =
-            &[[102u8, 151u8, 178u8, 50u8], [226u8, 81u8, 125u8, 63u8]];
+        pub const SELECTORS: &'static [[u8; 4usize]] = &[
+            [102u8, 151u8, 178u8, 50u8],
+            [226u8, 81u8, 125u8, 63u8],
+        ];
     }
     #[automatically_derived]
     impl alloy_sol_types::SolInterface for SignatureSchemeAddressProviderErrors {
@@ -3123,29 +3406,30 @@ pub mod SignatureSchemeAddressProvider {
         }
         #[inline]
         #[allow(non_snake_case)]
-        fn abi_decode_raw(selector: [u8; 4], data: &[u8]) -> alloy_sol_types::Result<Self> {
+        fn abi_decode_raw(
+            selector: [u8; 4],
+            data: &[u8],
+        ) -> alloy_sol_types::Result<Self> {
             static DECODE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                SignatureSchemeAddressProviderErrors,
-            >] = &[
+            ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors>] = &[
                 {
                     fn AccessControlBadConfirmation(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors> {
                         <AccessControlBadConfirmation as alloy_sol_types::SolError>::abi_decode_raw(
-                            data,
-                        )
-                        .map(SignatureSchemeAddressProviderErrors::AccessControlBadConfirmation)
+                                data,
+                            )
+                            .map(
+                                SignatureSchemeAddressProviderErrors::AccessControlBadConfirmation,
+                            )
                     }
                     AccessControlBadConfirmation
                 },
                 {
                     fn AccessControlUnauthorizedAccount(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors> {
                         <AccessControlUnauthorizedAccount as alloy_sol_types::SolError>::abi_decode_raw(
                                 data,
                             )
@@ -3157,10 +3441,12 @@ pub mod SignatureSchemeAddressProvider {
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_SHIMS[idx](data)
         }
@@ -3172,14 +3458,11 @@ pub mod SignatureSchemeAddressProvider {
         ) -> alloy_sol_types::Result<Self> {
             static DECODE_VALIDATE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                SignatureSchemeAddressProviderErrors,
-            >] = &[
+            ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors>] = &[
                 {
                     fn AccessControlBadConfirmation(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors> {
                         <AccessControlBadConfirmation as alloy_sol_types::SolError>::abi_decode_raw_validate(
                                 data,
                             )
@@ -3192,8 +3475,7 @@ pub mod SignatureSchemeAddressProvider {
                 {
                     fn AccessControlUnauthorizedAccount(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors>
-                    {
+                    ) -> alloy_sol_types::Result<SignatureSchemeAddressProviderErrors> {
                         <AccessControlUnauthorizedAccount as alloy_sol_types::SolError>::abi_decode_raw_validate(
                                 data,
                             )
@@ -3205,10 +3487,12 @@ pub mod SignatureSchemeAddressProvider {
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_VALIDATE_SHIMS[idx](data)
         }
@@ -3232,19 +3516,22 @@ pub mod SignatureSchemeAddressProvider {
             match self {
                 Self::AccessControlBadConfirmation(inner) => {
                     <AccessControlBadConfirmation as alloy_sol_types::SolError>::abi_encode_raw(
-                        inner, out,
+                        inner,
+                        out,
                     )
                 }
                 Self::AccessControlUnauthorizedAccount(inner) => {
                     <AccessControlUnauthorizedAccount as alloy_sol_types::SolError>::abi_encode_raw(
-                        inner, out,
+                        inner,
+                        out,
                     )
                 }
             }
         }
     }
     ///Container for all the [`SignatureSchemeAddressProvider`](self) events.
-    #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Hash)]
     pub enum SignatureSchemeAddressProviderEvents {
         #[allow(missing_docs)]
         NewSignatureSchemeAddressAdded(NewSignatureSchemeAddressAdded),
@@ -3265,24 +3552,24 @@ pub mod SignatureSchemeAddressProvider {
         /// Prefer using `SolInterface` methods instead.
         pub const SELECTORS: &'static [[u8; 32usize]] = &[
             [
-                10u8, 28u8, 214u8, 161u8, 224u8, 167u8, 178u8, 0u8, 210u8, 142u8, 173u8, 85u8,
-                95u8, 60u8, 238u8, 150u8, 224u8, 210u8, 222u8, 240u8, 73u8, 83u8, 95u8, 188u8,
-                253u8, 194u8, 146u8, 107u8, 196u8, 206u8, 197u8, 4u8,
+                10u8, 28u8, 214u8, 161u8, 224u8, 167u8, 178u8, 0u8, 210u8, 142u8, 173u8,
+                85u8, 95u8, 60u8, 238u8, 150u8, 224u8, 210u8, 222u8, 240u8, 73u8, 83u8,
+                95u8, 188u8, 253u8, 194u8, 146u8, 107u8, 196u8, 206u8, 197u8, 4u8,
             ],
             [
-                47u8, 135u8, 136u8, 17u8, 126u8, 126u8, 255u8, 29u8, 130u8, 233u8, 38u8, 236u8,
-                121u8, 73u8, 1u8, 209u8, 124u8, 120u8, 2u8, 74u8, 80u8, 39u8, 9u8, 64u8, 48u8,
-                69u8, 64u8, 167u8, 51u8, 101u8, 111u8, 13u8,
+                47u8, 135u8, 136u8, 17u8, 126u8, 126u8, 255u8, 29u8, 130u8, 233u8, 38u8,
+                236u8, 121u8, 73u8, 1u8, 209u8, 124u8, 120u8, 2u8, 74u8, 80u8, 39u8, 9u8,
+                64u8, 48u8, 69u8, 64u8, 167u8, 51u8, 101u8, 111u8, 13u8,
             ],
             [
-                189u8, 121u8, 184u8, 111u8, 254u8, 10u8, 184u8, 232u8, 119u8, 97u8, 81u8, 81u8,
-                66u8, 23u8, 205u8, 124u8, 172u8, 213u8, 44u8, 144u8, 159u8, 102u8, 71u8, 92u8,
-                58u8, 244u8, 78u8, 18u8, 159u8, 11u8, 0u8, 255u8,
+                189u8, 121u8, 184u8, 111u8, 254u8, 10u8, 184u8, 232u8, 119u8, 97u8, 81u8,
+                81u8, 66u8, 23u8, 205u8, 124u8, 172u8, 213u8, 44u8, 144u8, 159u8, 102u8,
+                71u8, 92u8, 58u8, 244u8, 78u8, 18u8, 159u8, 11u8, 0u8, 255u8,
             ],
             [
-                246u8, 57u8, 31u8, 92u8, 50u8, 217u8, 198u8, 157u8, 42u8, 71u8, 234u8, 103u8, 11u8,
-                68u8, 41u8, 116u8, 181u8, 57u8, 53u8, 209u8, 237u8, 199u8, 253u8, 100u8, 235u8,
-                33u8, 224u8, 71u8, 168u8, 57u8, 23u8, 27u8,
+                246u8, 57u8, 31u8, 92u8, 50u8, 217u8, 198u8, 157u8, 42u8, 71u8, 234u8,
+                103u8, 11u8, 68u8, 41u8, 116u8, 181u8, 57u8, 53u8, 209u8, 237u8, 199u8,
+                253u8, 100u8, 235u8, 33u8, 224u8, 71u8, 168u8, 57u8, 23u8, 27u8,
             ],
         ];
     }
@@ -3297,31 +3584,45 @@ pub mod SignatureSchemeAddressProvider {
             match topics.first().copied() {
                 Some(
                     <NewSignatureSchemeAddressAdded as alloy_sol_types::SolEvent>::SIGNATURE_HASH,
-                ) => <NewSignatureSchemeAddressAdded as alloy_sol_types::SolEvent>::decode_raw_log(
-                    topics, data,
-                )
-                .map(Self::NewSignatureSchemeAddressAdded),
+                ) => {
+                    <NewSignatureSchemeAddressAdded as alloy_sol_types::SolEvent>::decode_raw_log(
+                            topics,
+                            data,
+                        )
+                        .map(Self::NewSignatureSchemeAddressAdded)
+                }
                 Some(<RoleAdminChanged as alloy_sol_types::SolEvent>::SIGNATURE_HASH) => {
-                    <RoleAdminChanged as alloy_sol_types::SolEvent>::decode_raw_log(topics, data)
+                    <RoleAdminChanged as alloy_sol_types::SolEvent>::decode_raw_log(
+                            topics,
+                            data,
+                        )
                         .map(Self::RoleAdminChanged)
                 }
                 Some(<RoleGranted as alloy_sol_types::SolEvent>::SIGNATURE_HASH) => {
-                    <RoleGranted as alloy_sol_types::SolEvent>::decode_raw_log(topics, data)
+                    <RoleGranted as alloy_sol_types::SolEvent>::decode_raw_log(
+                            topics,
+                            data,
+                        )
                         .map(Self::RoleGranted)
                 }
                 Some(<RoleRevoked as alloy_sol_types::SolEvent>::SIGNATURE_HASH) => {
-                    <RoleRevoked as alloy_sol_types::SolEvent>::decode_raw_log(topics, data)
+                    <RoleRevoked as alloy_sol_types::SolEvent>::decode_raw_log(
+                            topics,
+                            data,
+                        )
                         .map(Self::RoleRevoked)
                 }
-                _ => alloy_sol_types::private::Err(alloy_sol_types::Error::InvalidLog {
-                    name: <Self as alloy_sol_types::SolEventInterface>::NAME,
-                    log: alloy_sol_types::private::Box::new(
-                        alloy_sol_types::private::LogData::new_unchecked(
-                            topics.to_vec(),
-                            data.to_vec().into(),
+                _ => {
+                    alloy_sol_types::private::Err(alloy_sol_types::Error::InvalidLog {
+                        name: <Self as alloy_sol_types::SolEventInterface>::NAME,
+                        log: alloy_sol_types::private::Box::new(
+                            alloy_sol_types::private::LogData::new_unchecked(
+                                topics.to_vec(),
+                                data.to_vec().into(),
+                            ),
                         ),
-                    ),
-                }),
+                    })
+                }
             }
         }
     }
@@ -3363,7 +3664,7 @@ pub mod SignatureSchemeAddressProvider {
     use alloy::contract as alloy_contract;
     /**Creates a new wrapper around an on-chain [`SignatureSchemeAddressProvider`](self) contract instance.
 
-    See the [wrapper's documentation](`SignatureSchemeAddressProviderInstance`) for more details.*/
+See the [wrapper's documentation](`SignatureSchemeAddressProviderInstance`) for more details.*/
     #[inline]
     pub const fn new<
         P: alloy_contract::private::Provider<N>,
@@ -3376,11 +3677,14 @@ pub mod SignatureSchemeAddressProvider {
     }
     /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-    Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-    For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
     #[inline]
-    pub fn deploy<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>(
+    pub fn deploy<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    >(
         provider: P,
         owner: alloy::sol_types::private::Address,
     ) -> impl ::core::future::Future<
@@ -3389,10 +3693,10 @@ pub mod SignatureSchemeAddressProvider {
         SignatureSchemeAddressProviderInstance::<P, N>::deploy(provider, owner)
     }
     /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-    and constructor arguments, if any.
+and constructor arguments, if any.
 
-    This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-    the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
     #[inline]
     pub fn deploy_builder<
         P: alloy_contract::private::Provider<N>,
@@ -3405,17 +3709,20 @@ pub mod SignatureSchemeAddressProvider {
     }
     /**A [`SignatureSchemeAddressProvider`](self) instance.
 
-    Contains type-safe methods for interacting with an on-chain instance of the
-    [`SignatureSchemeAddressProvider`](self) contract located at a given `address`, using a given
-    provider `P`.
+Contains type-safe methods for interacting with an on-chain instance of the
+[`SignatureSchemeAddressProvider`](self) contract located at a given `address`, using a given
+provider `P`.
 
-    If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
-    documentation on how to provide it), the `deploy` and `deploy_builder` methods can
-    be used to deploy a new instance of the contract.
+If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
+documentation on how to provide it), the `deploy` and `deploy_builder` methods can
+be used to deploy a new instance of the contract.
 
-    See the [module-level documentation](self) for all the available methods.*/
+See the [module-level documentation](self) for all the available methods.*/
     #[derive(Clone)]
-    pub struct SignatureSchemeAddressProviderInstance<P, N = alloy_contract::private::Ethereum> {
+    pub struct SignatureSchemeAddressProviderInstance<
+        P,
+        N = alloy_contract::private::Ethereum,
+    > {
         address: alloy_sol_types::private::Address,
         provider: P,
         _network: ::core::marker::PhantomData<N>,
@@ -3431,14 +3738,18 @@ pub mod SignatureSchemeAddressProvider {
     }
     /// Instantiation and getters/setters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        SignatureSchemeAddressProviderInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > SignatureSchemeAddressProviderInstance<P, N> {
         /**Creates a new wrapper around an on-chain [`SignatureSchemeAddressProvider`](self) contract instance.
 
-        See the [wrapper's documentation](`SignatureSchemeAddressProviderInstance`) for more details.*/
+See the [wrapper's documentation](`SignatureSchemeAddressProviderInstance`) for more details.*/
         #[inline]
-        pub const fn new(address: alloy_sol_types::private::Address, provider: P) -> Self {
+        pub const fn new(
+            address: alloy_sol_types::private::Address,
+            provider: P,
+        ) -> Self {
             Self {
                 address,
                 provider,
@@ -3447,9 +3758,9 @@ pub mod SignatureSchemeAddressProvider {
         }
         /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-        Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-        For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
         #[inline]
         pub async fn deploy(
             provider: P,
@@ -3460,10 +3771,10 @@ pub mod SignatureSchemeAddressProvider {
             Ok(Self::new(contract_address, call_builder.provider))
         }
         /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-        and constructor arguments, if any.
+and constructor arguments, if any.
 
-        This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-        the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         #[inline]
         pub fn deploy_builder(
             provider: P,
@@ -3473,10 +3784,12 @@ pub mod SignatureSchemeAddressProvider {
                 provider,
                 [
                     &BYTECODE[..],
-                    &alloy_sol_types::SolConstructor::abi_encode(&constructorCall { owner })[..],
+                    &alloy_sol_types::SolConstructor::abi_encode(
+                        &constructorCall { owner },
+                    )[..],
                 ]
-                .concat()
-                .into(),
+                    .concat()
+                    .into(),
             )
         }
         /// Returns a reference to the address.
@@ -3503,7 +3816,9 @@ pub mod SignatureSchemeAddressProvider {
     impl<P: ::core::clone::Clone, N> SignatureSchemeAddressProviderInstance<&P, N> {
         /// Clones the provider and returns a new instance with the cloned provider.
         #[inline]
-        pub fn with_cloned_provider(self) -> SignatureSchemeAddressProviderInstance<P, N> {
+        pub fn with_cloned_provider(
+            self,
+        ) -> SignatureSchemeAddressProviderInstance<P, N> {
             SignatureSchemeAddressProviderInstance {
                 address: self.address,
                 provider: ::core::clone::Clone::clone(&self.provider),
@@ -3513,9 +3828,10 @@ pub mod SignatureSchemeAddressProvider {
     }
     /// Function calls.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        SignatureSchemeAddressProviderInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > SignatureSchemeAddressProviderInstance<P, N> {
         /// Creates a new call builder using this contract instance's provider and address.
         ///
         /// Note that the call can be any function call, not just those defined in this
@@ -3527,7 +3843,9 @@ pub mod SignatureSchemeAddressProvider {
             alloy_contract::SolCallBuilder::new_sol(&self.provider, &self.address, call)
         }
         ///Creates a new call builder for the [`ADMIN_ROLE`] function.
-        pub fn ADMIN_ROLE(&self) -> alloy_contract::SolCallBuilder<&P, ADMIN_ROLECall, N> {
+        pub fn ADMIN_ROLE(
+            &self,
+        ) -> alloy_contract::SolCallBuilder<&P, ADMIN_ROLECall, N> {
             self.call_builder(&ADMIN_ROLECall)
         }
         ///Creates a new call builder for the [`DEFAULT_ADMIN_ROLE`] function.
@@ -3548,7 +3866,11 @@ pub mod SignatureSchemeAddressProvider {
             &self,
             schemeID: alloy::sol_types::private::String,
         ) -> alloy_contract::SolCallBuilder<&P, getSignatureSchemeAddressCall, N> {
-            self.call_builder(&getSignatureSchemeAddressCall { schemeID })
+            self.call_builder(
+                &getSignatureSchemeAddressCall {
+                    schemeID,
+                },
+            )
         }
         ///Creates a new call builder for the [`grantRole`] function.
         pub fn grantRole(
@@ -3579,10 +3901,12 @@ pub mod SignatureSchemeAddressProvider {
             role: alloy::sol_types::private::FixedBytes<32>,
             callerConfirmation: alloy::sol_types::private::Address,
         ) -> alloy_contract::SolCallBuilder<&P, renounceRoleCall, N> {
-            self.call_builder(&renounceRoleCall {
-                role,
-                callerConfirmation,
-            })
+            self.call_builder(
+                &renounceRoleCall {
+                    role,
+                    callerConfirmation,
+                },
+            )
         }
         ///Creates a new call builder for the [`revokeRole`] function.
         pub fn revokeRole(
@@ -3597,7 +3921,11 @@ pub mod SignatureSchemeAddressProvider {
             &self,
             interfaceId: alloy::sol_types::private::FixedBytes<4>,
         ) -> alloy_contract::SolCallBuilder<&P, supportsInterfaceCall, N> {
-            self.call_builder(&supportsInterfaceCall { interfaceId })
+            self.call_builder(
+                &supportsInterfaceCall {
+                    interfaceId,
+                },
+            )
         }
         ///Creates a new call builder for the [`updateSignatureScheme`] function.
         pub fn updateSignatureScheme(
@@ -3605,17 +3933,20 @@ pub mod SignatureSchemeAddressProvider {
             schemeID: alloy::sol_types::private::String,
             schemeAddress: alloy::sol_types::private::Address,
         ) -> alloy_contract::SolCallBuilder<&P, updateSignatureSchemeCall, N> {
-            self.call_builder(&updateSignatureSchemeCall {
-                schemeID,
-                schemeAddress,
-            })
+            self.call_builder(
+                &updateSignatureSchemeCall {
+                    schemeID,
+                    schemeAddress,
+                },
+            )
         }
     }
     /// Event filters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        SignatureSchemeAddressProviderInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > SignatureSchemeAddressProviderInstance<P, N> {
         /// Creates a new event filter using this contract instance's provider and address.
         ///
         /// Note that the type can be any event, not just those defined in this contract.
@@ -3632,7 +3963,9 @@ pub mod SignatureSchemeAddressProvider {
             self.event_filter::<NewSignatureSchemeAddressAdded>()
         }
         ///Creates a new event filter for the [`RoleAdminChanged`] event.
-        pub fn RoleAdminChanged_filter(&self) -> alloy_contract::Event<&P, RoleAdminChanged, N> {
+        pub fn RoleAdminChanged_filter(
+            &self,
+        ) -> alloy_contract::Event<&P, RoleAdminChanged, N> {
             self.event_filter::<RoleAdminChanged>()
         }
         ///Creates a new event filter for the [`RoleGranted`] event.

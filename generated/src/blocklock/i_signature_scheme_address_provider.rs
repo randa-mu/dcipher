@@ -100,18 +100,20 @@ pub mod ISignatureSchemeAddressProvider {
     pub static DEPLOYED_BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
         b"",
     );
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `getSignatureSchemeAddress(string)` and selector `0x5bb09cf8`.
-    ```solidity
-    function getSignatureSchemeAddress(string memory schemeID) external view returns (address);
-    ```*/
+```solidity
+function getSignatureSchemeAddress(string memory schemeID) external view returns (address);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct getSignatureSchemeAddressCall {
         #[allow(missing_docs)]
         pub schemeID: alloy::sol_types::private::String,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`getSignatureSchemeAddress(string)`](getSignatureSchemeAddressCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -134,7 +136,9 @@ pub mod ISignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::String,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -143,14 +147,16 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<getSignatureSchemeAddressCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<getSignatureSchemeAddressCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: getSignatureSchemeAddressCall) -> Self {
                     (value.schemeID,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for getSignatureSchemeAddressCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getSignatureSchemeAddressCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { schemeID: tuple.0 }
                 }
@@ -163,7 +169,9 @@ pub mod ISignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Address,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -172,14 +180,16 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<getSignatureSchemeAddressReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<getSignatureSchemeAddressReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: getSignatureSchemeAddressReturn) -> Self {
                     (value._0,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for getSignatureSchemeAddressReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getSignatureSchemeAddressReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { _0: tuple.0 }
                 }
@@ -188,10 +198,14 @@ pub mod ISignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for getSignatureSchemeAddressCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::String,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = alloy::sol_types::private::Address;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Address,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "getSignatureSchemeAddress(string)";
             const SELECTOR: [u8; 4] = [91u8, 176u8, 156u8, 248u8];
             #[inline]
@@ -218,37 +232,42 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: getSignatureSchemeAddressReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: getSignatureSchemeAddressReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: getSignatureSchemeAddressReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `isSupportedScheme(string)` and selector `0x2fc9fa33`.
-    ```solidity
-    function isSupportedScheme(string memory schemeID) external view returns (bool);
-    ```*/
+```solidity
+function isSupportedScheme(string memory schemeID) external view returns (bool);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct isSupportedSchemeCall {
         #[allow(missing_docs)]
         pub schemeID: alloy::sol_types::private::String,
     }
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`isSupportedScheme(string)`](isSupportedSchemeCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -271,7 +290,9 @@ pub mod ISignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::String,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -280,14 +301,16 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<isSupportedSchemeCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<isSupportedSchemeCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: isSupportedSchemeCall) -> Self {
                     (value.schemeID,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for isSupportedSchemeCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for isSupportedSchemeCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { schemeID: tuple.0 }
                 }
@@ -300,7 +323,9 @@ pub mod ISignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = (bool,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -309,14 +334,16 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<isSupportedSchemeReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<isSupportedSchemeReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: isSupportedSchemeReturn) -> Self {
                     (value._0,)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for isSupportedSchemeReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for isSupportedSchemeReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self { _0: tuple.0 }
                 }
@@ -325,10 +352,14 @@ pub mod ISignatureSchemeAddressProvider {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for isSupportedSchemeCall {
             type Parameters<'a> = (alloy::sol_types::sol_data::String,);
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = bool;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bool,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "isSupportedScheme(string)";
             const SELECTOR: [u8; 4] = [47u8, 201u8, 250u8, 51u8];
             #[inline]
@@ -347,34 +378,42 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: isSupportedSchemeReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: isSupportedSchemeReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: isSupportedSchemeReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `updateSignatureScheme(string,address)` and selector `0xbab867da`.
-    ```solidity
-    function updateSignatureScheme(string memory schemeID, address schemeAddress) external;
-    ```*/
+```solidity
+function updateSignatureScheme(string memory schemeID, address schemeAddress) external;
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct updateSignatureSchemeCall {
@@ -408,7 +447,9 @@ pub mod ISignatureSchemeAddressProvider {
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -417,14 +458,16 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<updateSignatureSchemeCall> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<updateSignatureSchemeCall>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: updateSignatureSchemeCall) -> Self {
                     (value.schemeID, value.schemeAddress)
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for updateSignatureSchemeCall {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for updateSignatureSchemeCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self {
                         schemeID: tuple.0,
@@ -440,7 +483,9 @@ pub mod ISignatureSchemeAddressProvider {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -449,14 +494,16 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<updateSignatureSchemeReturn> for UnderlyingRustTuple<'_> {
+            impl ::core::convert::From<updateSignatureSchemeReturn>
+            for UnderlyingRustTuple<'_> {
                 fn from(value: updateSignatureSchemeReturn) -> Self {
                     ()
                 }
             }
             #[automatically_derived]
             #[doc(hidden)]
-            impl ::core::convert::From<UnderlyingRustTuple<'_>> for updateSignatureSchemeReturn {
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for updateSignatureSchemeReturn {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self {}
                 }
@@ -465,8 +512,9 @@ pub mod ISignatureSchemeAddressProvider {
         impl updateSignatureSchemeReturn {
             fn _tokenize(
                 &self,
-            ) -> <updateSignatureSchemeCall as alloy_sol_types::SolCall>::ReturnToken<'_>
-            {
+            ) -> <updateSignatureSchemeCall as alloy_sol_types::SolCall>::ReturnToken<
+                '_,
+            > {
                 ()
             }
         }
@@ -476,10 +524,14 @@ pub mod ISignatureSchemeAddressProvider {
                 alloy::sol_types::sol_data::String,
                 alloy::sol_types::sol_data::Address,
             );
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = updateSignatureSchemeReturn;
             type ReturnTuple<'a> = ();
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "updateSignatureScheme(string,address)";
             const SELECTOR: [u8; 4] = [186u8, 184u8, 103u8, 218u8];
             #[inline]
@@ -505,20 +557,25 @@ pub mod ISignatureSchemeAddressProvider {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
     ///Container for all the [`ISignatureSchemeAddressProvider`](self) function calls.
     #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive()]
     pub enum ISignatureSchemeAddressProviderCalls {
         #[allow(missing_docs)]
         getSignatureSchemeAddress(getSignatureSchemeAddressCall),
@@ -570,18 +627,20 @@ pub mod ISignatureSchemeAddressProvider {
         }
         #[inline]
         #[allow(non_snake_case)]
-        fn abi_decode_raw(selector: [u8; 4], data: &[u8]) -> alloy_sol_types::Result<Self> {
+        fn abi_decode_raw(
+            selector: [u8; 4],
+            data: &[u8],
+        ) -> alloy_sol_types::Result<Self> {
             static DECODE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                ISignatureSchemeAddressProviderCalls,
-            >] = &[
+            ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>] = &[
                 {
                     fn isSupportedScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>
-                    {
-                        <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
+                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls> {
+                        <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
                             .map(ISignatureSchemeAddressProviderCalls::isSupportedScheme)
                     }
                     isSupportedScheme
@@ -589,33 +648,37 @@ pub mod ISignatureSchemeAddressProvider {
                 {
                     fn getSignatureSchemeAddress(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls> {
                         <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::abi_decode_raw(
-                            data,
-                        )
-                        .map(ISignatureSchemeAddressProviderCalls::getSignatureSchemeAddress)
+                                data,
+                            )
+                            .map(
+                                ISignatureSchemeAddressProviderCalls::getSignatureSchemeAddress,
+                            )
                     }
                     getSignatureSchemeAddress
                 },
                 {
                     fn updateSignatureScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls> {
                         <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw(
-                            data,
-                        )
-                        .map(ISignatureSchemeAddressProviderCalls::updateSignatureScheme)
+                                data,
+                            )
+                            .map(
+                                ISignatureSchemeAddressProviderCalls::updateSignatureScheme,
+                            )
                     }
                     updateSignatureScheme
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_SHIMS[idx](data)
         }
@@ -627,14 +690,11 @@ pub mod ISignatureSchemeAddressProvider {
         ) -> alloy_sol_types::Result<Self> {
             static DECODE_VALIDATE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                ISignatureSchemeAddressProviderCalls,
-            >] = &[
+            ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>] = &[
                 {
                     fn isSupportedScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls> {
                         <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -645,8 +705,7 @@ pub mod ISignatureSchemeAddressProvider {
                 {
                     fn getSignatureSchemeAddress(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls> {
                         <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -659,8 +718,7 @@ pub mod ISignatureSchemeAddressProvider {
                 {
                     fn updateSignatureScheme(
                         data: &[u8],
-                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls>
-                    {
+                    ) -> alloy_sol_types::Result<ISignatureSchemeAddressProviderCalls> {
                         <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
                                 data,
                             )
@@ -672,10 +730,12 @@ pub mod ISignatureSchemeAddressProvider {
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_VALIDATE_SHIMS[idx](data)
         }
@@ -688,10 +748,14 @@ pub mod ISignatureSchemeAddressProvider {
                     )
                 }
                 Self::isSupportedScheme(inner) => {
-                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
                 Self::updateSignatureScheme(inner) => {
-                    <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                    <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
                 }
             }
         }
@@ -700,15 +764,20 @@ pub mod ISignatureSchemeAddressProvider {
             match self {
                 Self::getSignatureSchemeAddress(inner) => {
                     <getSignatureSchemeAddressCall as alloy_sol_types::SolCall>::abi_encode_raw(
-                        inner, out,
+                        inner,
+                        out,
                     )
                 }
                 Self::isSupportedScheme(inner) => {
-                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <isSupportedSchemeCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::updateSignatureScheme(inner) => {
                     <updateSignatureSchemeCall as alloy_sol_types::SolCall>::abi_encode_raw(
-                        inner, out,
+                        inner,
+                        out,
                     )
                 }
             }
@@ -717,7 +786,7 @@ pub mod ISignatureSchemeAddressProvider {
     use alloy::contract as alloy_contract;
     /**Creates a new wrapper around an on-chain [`ISignatureSchemeAddressProvider`](self) contract instance.
 
-    See the [wrapper's documentation](`ISignatureSchemeAddressProviderInstance`) for more details.*/
+See the [wrapper's documentation](`ISignatureSchemeAddressProviderInstance`) for more details.*/
     #[inline]
     pub const fn new<
         P: alloy_contract::private::Provider<N>,
@@ -730,11 +799,14 @@ pub mod ISignatureSchemeAddressProvider {
     }
     /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-    Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-    For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
     #[inline]
-    pub fn deploy<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>(
+    pub fn deploy<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    >(
         provider: P,
     ) -> impl ::core::future::Future<
         Output = alloy_contract::Result<ISignatureSchemeAddressProviderInstance<P, N>>,
@@ -742,32 +814,33 @@ pub mod ISignatureSchemeAddressProvider {
         ISignatureSchemeAddressProviderInstance::<P, N>::deploy(provider)
     }
     /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-    and constructor arguments, if any.
+and constructor arguments, if any.
 
-    This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-    the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
     #[inline]
     pub fn deploy_builder<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
-    >(
-        provider: P,
-    ) -> alloy_contract::RawCallBuilder<P, N> {
+    >(provider: P) -> alloy_contract::RawCallBuilder<P, N> {
         ISignatureSchemeAddressProviderInstance::<P, N>::deploy_builder(provider)
     }
     /**A [`ISignatureSchemeAddressProvider`](self) instance.
 
-    Contains type-safe methods for interacting with an on-chain instance of the
-    [`ISignatureSchemeAddressProvider`](self) contract located at a given `address`, using a given
-    provider `P`.
+Contains type-safe methods for interacting with an on-chain instance of the
+[`ISignatureSchemeAddressProvider`](self) contract located at a given `address`, using a given
+provider `P`.
 
-    If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
-    documentation on how to provide it), the `deploy` and `deploy_builder` methods can
-    be used to deploy a new instance of the contract.
+If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
+documentation on how to provide it), the `deploy` and `deploy_builder` methods can
+be used to deploy a new instance of the contract.
 
-    See the [module-level documentation](self) for all the available methods.*/
+See the [module-level documentation](self) for all the available methods.*/
     #[derive(Clone)]
-    pub struct ISignatureSchemeAddressProviderInstance<P, N = alloy_contract::private::Ethereum> {
+    pub struct ISignatureSchemeAddressProviderInstance<
+        P,
+        N = alloy_contract::private::Ethereum,
+    > {
         address: alloy_sol_types::private::Address,
         provider: P,
         _network: ::core::marker::PhantomData<N>,
@@ -783,14 +856,18 @@ pub mod ISignatureSchemeAddressProvider {
     }
     /// Instantiation and getters/setters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        ISignatureSchemeAddressProviderInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > ISignatureSchemeAddressProviderInstance<P, N> {
         /**Creates a new wrapper around an on-chain [`ISignatureSchemeAddressProvider`](self) contract instance.
 
-        See the [wrapper's documentation](`ISignatureSchemeAddressProviderInstance`) for more details.*/
+See the [wrapper's documentation](`ISignatureSchemeAddressProviderInstance`) for more details.*/
         #[inline]
-        pub const fn new(address: alloy_sol_types::private::Address, provider: P) -> Self {
+        pub const fn new(
+            address: alloy_sol_types::private::Address,
+            provider: P,
+        ) -> Self {
             Self {
                 address,
                 provider,
@@ -799,9 +876,9 @@ pub mod ISignatureSchemeAddressProvider {
         }
         /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-        Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-        For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
         #[inline]
         pub async fn deploy(
             provider: P,
@@ -811,10 +888,10 @@ pub mod ISignatureSchemeAddressProvider {
             Ok(Self::new(contract_address, call_builder.provider))
         }
         /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-        and constructor arguments, if any.
+and constructor arguments, if any.
 
-        This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-        the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         #[inline]
         pub fn deploy_builder(provider: P) -> alloy_contract::RawCallBuilder<P, N> {
             alloy_contract::RawCallBuilder::new_raw_deploy(
@@ -846,7 +923,9 @@ pub mod ISignatureSchemeAddressProvider {
     impl<P: ::core::clone::Clone, N> ISignatureSchemeAddressProviderInstance<&P, N> {
         /// Clones the provider and returns a new instance with the cloned provider.
         #[inline]
-        pub fn with_cloned_provider(self) -> ISignatureSchemeAddressProviderInstance<P, N> {
+        pub fn with_cloned_provider(
+            self,
+        ) -> ISignatureSchemeAddressProviderInstance<P, N> {
             ISignatureSchemeAddressProviderInstance {
                 address: self.address,
                 provider: ::core::clone::Clone::clone(&self.provider),
@@ -856,9 +935,10 @@ pub mod ISignatureSchemeAddressProvider {
     }
     /// Function calls.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        ISignatureSchemeAddressProviderInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > ISignatureSchemeAddressProviderInstance<P, N> {
         /// Creates a new call builder using this contract instance's provider and address.
         ///
         /// Note that the call can be any function call, not just those defined in this
@@ -874,7 +954,11 @@ pub mod ISignatureSchemeAddressProvider {
             &self,
             schemeID: alloy::sol_types::private::String,
         ) -> alloy_contract::SolCallBuilder<&P, getSignatureSchemeAddressCall, N> {
-            self.call_builder(&getSignatureSchemeAddressCall { schemeID })
+            self.call_builder(
+                &getSignatureSchemeAddressCall {
+                    schemeID,
+                },
+            )
         }
         ///Creates a new call builder for the [`isSupportedScheme`] function.
         pub fn isSupportedScheme(
@@ -889,17 +973,20 @@ pub mod ISignatureSchemeAddressProvider {
             schemeID: alloy::sol_types::private::String,
             schemeAddress: alloy::sol_types::private::Address,
         ) -> alloy_contract::SolCallBuilder<&P, updateSignatureSchemeCall, N> {
-            self.call_builder(&updateSignatureSchemeCall {
-                schemeID,
-                schemeAddress,
-            })
+            self.call_builder(
+                &updateSignatureSchemeCall {
+                    schemeID,
+                    schemeAddress,
+                },
+            )
         }
     }
     /// Event filters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        ISignatureSchemeAddressProviderInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > ISignatureSchemeAddressProviderInstance<P, N> {
         /// Creates a new event filter using this contract instance's provider and address.
         ///
         /// Note that the type can be any event, not just those defined in this contract.

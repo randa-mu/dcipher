@@ -63,15 +63,17 @@ pub mod ConfigureRouterScript {
     pub static DEPLOYED_BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
         b"`\x80`@R4\x80\x15a\0\x0FW__\xFD[P`\x046\x10a\x004W_5`\xE0\x1C\x80c\xC0@b&\x14a\08W\x80c\xF8\xCC\xBFG\x14a\0BW[__\xFD[a\0@a\0iV[\0[`\x0CTa\0U\x90b\x01\0\0\x90\x04`\xFF\x16\x81V[`@Q\x90\x15\x15\x81R` \x01`@Q\x80\x91\x03\x90\xF3[`@Q\x7F5\rV\xBF\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R` `\x04\x82\x01R`\x12`$\x82\x01R\x7FROUTER_SRC_ADDRESS\0\0\0\0\0\0\0\0\0\0\0\0\0\0`D\x82\x01R_\x90sq\tp\x9E\xCF\xA9\x1A\x80bo\xF3\x98\x9Dh\xF6\x7F[\x1D\xD1-\x90c5\rV\xBF\x90`d\x01` `@Q\x80\x83\x03\x81\x86Z\xFA\x15\x80\x15a\0\xFFW=__>=_\xFD[PPPP`@Q=`\x1F\x19`\x1F\x82\x01\x16\x82\x01\x80`@RP\x81\x01\x90a\x01#\x91\x90a\x083V[\x90Pa\x01d\x81`@Q\x80`@\x01`@R\x80`\x12\x81R` \x01\x7FROUTER_SRC_ADDRESS\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81RPa\x06\x8FV[`@Q\x7F5\rV\xBF\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R` `\x04\x82\x01R`\x11`$\x82\x01R\x7FERC20_SRC_ADDRESS\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`D\x82\x01R_\x90sq\tp\x9E\xCF\xA9\x1A\x80bo\xF3\x98\x9Dh\xF6\x7F[\x1D\xD1-\x90c5\rV\xBF\x90`d\x01` `@Q\x80\x83\x03\x81\x86Z\xFA\x15\x80\x15a\x01\xFAW=__>=_\xFD[PPPP`@Q=`\x1F\x19`\x1F\x82\x01\x16\x82\x01\x80`@RP\x81\x01\x90a\x02\x1E\x91\x90a\x083V[\x90Pa\x02_\x81`@Q\x80`@\x01`@R\x80`\x11\x81R` \x01\x7FERC20_SRC_ADDRESS\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81RPa\x06\x8FV[`@Q\x7F5\rV\xBF\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R` `\x04\x82\x01R`\x11`$\x82\x01R\x7FERC20_DST_ADDRESS\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`D\x82\x01R_\x90sq\tp\x9E\xCF\xA9\x1A\x80bo\xF3\x98\x9Dh\xF6\x7F[\x1D\xD1-\x90c5\rV\xBF\x90`d\x01` `@Q\x80\x83\x03\x81\x86Z\xFA\x15\x80\x15a\x02\xF5W=__>=_\xFD[PPPP`@Q=`\x1F\x19`\x1F\x82\x01\x16\x82\x01\x80`@RP\x81\x01\x90a\x03\x19\x91\x90a\x083V[\x90Pa\x03Z\x81`@Q\x80`@\x01`@R\x80`\x11\x81R` \x01\x7FERC20_DST_ADDRESS\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81RPa\x06\x8FV[`@Q\x7F\xC1\x97\x8D\x1F\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R` `\x04\x82\x01R`\x0C`$\x82\x01R\x7FDST_CHAIN_ID\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`D\x82\x01R_\x90sq\tp\x9E\xCF\xA9\x1A\x80bo\xF3\x98\x9Dh\xF6\x7F[\x1D\xD1-\x90c\xC1\x97\x8D\x1F\x90`d\x01` `@Q\x80\x83\x03\x81\x86Z\xFA\x15\x80\x15a\x03\xF0W=__>=_\xFD[PPPP`@Q=`\x1F\x19`\x1F\x82\x01\x16\x82\x01\x80`@RP\x81\x01\x90a\x04\x14\x91\x90a\x08mV[\x90Pa\x04\x1F\x81a\x07\x0FV[`@\x80Q\x80\x82\x01\x90\x91R`\x1F\x81R\x7FConfiguring router on chain id:\0` \x82\x01R\x84\x90\x84\x90\x84\x90a\x04c\x90Fa\x07{V[sq\tp\x9E\xCF\xA9\x1A\x80bo\xF3\x98\x9Dh\xF6\x7F[\x1D\xD1-s\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x16c\xAF\xC9\x80@`@Q\x81c\xFF\xFF\xFF\xFF\x16`\xE0\x1B\x81R`\x04\x01_`@Q\x80\x83\x03\x81_\x87\x80;\x15\x80\x15a\x04\xBCW__\xFD[PZ\xF1\x15\x80\x15a\x04\xCEW=__>=_\xFD[PP`@Q\x7FD\xD1\xDA\x8C\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R`\x04\x81\x01\x87\x90Rs\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x86\x16\x92PcD\xD1\xDA\x8C\x91P`$\x01_`@Q\x80\x83\x03\x81_\x87\x80;\x15\x80\x15a\x057W__\xFD[PZ\xF1\x15\x80\x15a\x05IW=__>=_\xFD[PPPPsq\tp\x9E\xCF\xA9\x1A\x80bo\xF3\x98\x9Dh\xF6\x7F[\x1D\xD1-s\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x16c\xAF\xC9\x80@`@Q\x81c\xFF\xFF\xFF\xFF\x16`\xE0\x1B\x81R`\x04\x01_`@Q\x80\x83\x03\x81_\x87\x80;\x15\x80\x15a\x05\xA6W__\xFD[PZ\xF1\x15\x80\x15a\x05\xB8W=__>=_\xFD[PP`@Q\x7F\x96\x95\xEC!\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R`\x04\x81\x01\x87\x90Rs\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x84\x81\x16`$\x83\x01R\x85\x81\x16`D\x83\x01R\x86\x16\x92Pc\x96\x95\xEC!\x91P`d\x01_`@Q\x80\x83\x03\x81_\x87\x80;\x15\x80\x15a\x061W__\xFD[PZ\xF1\x15\x80\x15a\x06CW=__>=_\xFD[PPPPa\x06\x86`@Q\x80`@\x01`@R\x80`\x1E\x81R` \x01\x7FRouter configured on chain id:\0\0\x81RPFa\x07{V[PPPPPPPV[`@Qs\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x83\x16\x15\x15\x90a\x06\xBA\x90\x83\x90` \x01a\x08\x84V[`@Q` \x81\x83\x03\x03\x81R\x90`@R\x90a\x07\nW`@Q\x7F\x08\xC3y\xA0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R`\x04\x01a\x07\x01\x91\x90a\t\tV[`@Q\x80\x91\x03\x90\xFD[PPPV[\x80_\x03a\x07xW`@Q\x7F\x08\xC3y\xA0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x81R` `\x04\x82\x01R`\x13`$\x82\x01R\x7FChain ID is invalid\0\0\0\0\0\0\0\0\0\0\0\0\0`D\x82\x01R`d\x01a\x07\x01V[PV[a\x08\x0C\x82\x82`@Q`$\x01a\x07\x91\x92\x91\x90a\t\x1BV[`@\x80Q\x7F\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xE0\x81\x84\x03\x01\x81R\x91\x90R` \x81\x01\x80Q{\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x16\x7F\xB6\x0Er\xCC\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x17\x90Ra\x08\x10V[PPV[a\x07x\x81_jconsole.log\x90P__\x83Q` \x85\x01\x84Z\xFAPPPV[_` \x82\x84\x03\x12\x15a\x08CW__\xFD[\x81Qs\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x81\x16\x81\x14a\x08fW__\xFD[\x93\x92PPPV[_` \x82\x84\x03\x12\x15a\x08}W__\xFD[PQ\x91\x90PV[_\x82Q\x80` \x85\x01\x84^\x7F is zero\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x92\x01\x91\x82RP`\x08\x01\x91\x90PV[_\x81Q\x80\x84R\x80` \x84\x01` \x86\x01^_` \x82\x86\x01\x01R` \x7F\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xE0`\x1F\x83\x01\x16\x85\x01\x01\x91PP\x92\x91PPV[` \x81R_a\x08f` \x83\x01\x84a\x08\xBDV[`@\x81R_a\t-`@\x83\x01\x85a\x08\xBDV[\x90P\x82` \x83\x01R\x93\x92PPPV\xFE\xA2dipfsX\"\x12 8Bn\x85\x04\x8D\xC9\xE8!r\x07y9\x7F\xE9\x9Ce\xBDH\xA4c\x8C\xBC\xAF\x8D@\x9E\xD4\x99\xB4\x87\xBAdsolcC\0\x08\x1E\x003",
     );
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `IS_SCRIPT()` and selector `0xf8ccbf47`.
-    ```solidity
-    function IS_SCRIPT() external view returns (bool);
-    ```*/
+```solidity
+function IS_SCRIPT() external view returns (bool);
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct IS_SCRIPTCall;
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     ///Container type for the return parameters of the [`IS_SCRIPT()`](IS_SCRIPTCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -94,7 +96,9 @@ pub mod ConfigureRouterScript {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -123,7 +127,9 @@ pub mod ConfigureRouterScript {
             type UnderlyingRustTuple<'a> = (bool,);
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -148,10 +154,14 @@ pub mod ConfigureRouterScript {
         #[automatically_derived]
         impl alloy_sol_types::SolCall for IS_SCRIPTCall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = bool;
             type ReturnTuple<'a> = (alloy::sol_types::sol_data::Bool,);
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "IS_SCRIPT()";
             const SELECTOR: [u8; 4] = [248u8, 204u8, 191u8, 71u8];
             #[inline]
@@ -166,34 +176,42 @@ pub mod ConfigureRouterScript {
             }
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
-                (<alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(ret),)
+                (
+                    <alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(
+                        ret,
+                    ),
+                )
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data).map(
-                    |r| {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
                         let r: IS_SCRIPTReturn = r.into();
                         r._0
-                    },
-                )
+                    })
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(|r| {
-                    let r: IS_SCRIPTReturn = r.into();
-                    r._0
-                })
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: IS_SCRIPTReturn = r.into();
+                        r._0
+                    })
             }
         }
     };
-    #[derive(serde::Serialize, serde::Deserialize, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `run()` and selector `0xc0406226`.
-    ```solidity
-    function run() external;
-    ```*/
+```solidity
+function run() external;
+```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct runCall;
@@ -216,7 +234,9 @@ pub mod ConfigureRouterScript {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -245,7 +265,9 @@ pub mod ConfigureRouterScript {
             type UnderlyingRustTuple<'a> = ();
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
-            fn _type_assertion(_t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>) {
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
                 match _t {
                     alloy_sol_types::private::AssertTypeEq::<
                         <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
@@ -268,17 +290,23 @@ pub mod ConfigureRouterScript {
             }
         }
         impl runReturn {
-            fn _tokenize(&self) -> <runCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
+            fn _tokenize(
+                &self,
+            ) -> <runCall as alloy_sol_types::SolCall>::ReturnToken<'_> {
                 ()
             }
         }
         #[automatically_derived]
         impl alloy_sol_types::SolCall for runCall {
             type Parameters<'a> = ();
-            type Token<'a> = <Self::Parameters<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             type Return = runReturn;
             type ReturnTuple<'a> = ();
-            type ReturnToken<'a> = <Self::ReturnTuple<'a> as alloy_sol_types::SolType>::Token<'a>;
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
             const SIGNATURE: &'static str = "run()";
             const SELECTOR: [u8; 4] = [192u8, 64u8, 98u8, 38u8];
             #[inline]
@@ -297,20 +325,25 @@ pub mod ConfigureRouterScript {
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
                     .map(Into::into)
             }
             #[inline]
-            fn abi_decode_returns_validate(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
-                <Self::ReturnTuple<'_> as alloy_sol_types::SolType>::abi_decode_sequence_validate(
-                    data,
-                )
-                .map(Into::into)
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
             }
         }
     };
     ///Container for all the [`ConfigureRouterScript`](self) function calls.
     #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive()]
     pub enum ConfigureRouterScriptCalls {
         #[allow(missing_docs)]
         IS_SCRIPT(IS_SCRIPTCall),
@@ -325,8 +358,10 @@ pub mod ConfigureRouterScript {
         /// No guarantees are made about the order of the selectors.
         ///
         /// Prefer using `SolInterface` methods instead.
-        pub const SELECTORS: &'static [[u8; 4usize]] =
-            &[[192u8, 64u8, 98u8, 38u8], [248u8, 204u8, 191u8, 71u8]];
+        pub const SELECTORS: &'static [[u8; 4usize]] = &[
+            [192u8, 64u8, 98u8, 38u8],
+            [248u8, 204u8, 191u8, 71u8],
+        ];
     }
     #[automatically_derived]
     impl alloy_sol_types::SolInterface for ConfigureRouterScriptCalls {
@@ -336,7 +371,9 @@ pub mod ConfigureRouterScript {
         #[inline]
         fn selector(&self) -> [u8; 4] {
             match self {
-                Self::IS_SCRIPT(_) => <IS_SCRIPTCall as alloy_sol_types::SolCall>::SELECTOR,
+                Self::IS_SCRIPT(_) => {
+                    <IS_SCRIPTCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::run(_) => <runCall as alloy_sol_types::SolCall>::SELECTOR,
             }
         }
@@ -350,13 +387,17 @@ pub mod ConfigureRouterScript {
         }
         #[inline]
         #[allow(non_snake_case)]
-        fn abi_decode_raw(selector: [u8; 4], data: &[u8]) -> alloy_sol_types::Result<Self> {
+        fn abi_decode_raw(
+            selector: [u8; 4],
+            data: &[u8],
+        ) -> alloy_sol_types::Result<Self> {
             static DECODE_SHIMS: &[fn(
                 &[u8],
-            )
-                -> alloy_sol_types::Result<ConfigureRouterScriptCalls>] = &[
+            ) -> alloy_sol_types::Result<ConfigureRouterScriptCalls>] = &[
                 {
-                    fn run(data: &[u8]) -> alloy_sol_types::Result<ConfigureRouterScriptCalls> {
+                    fn run(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<ConfigureRouterScriptCalls> {
                         <runCall as alloy_sol_types::SolCall>::abi_decode_raw(data)
                             .map(ConfigureRouterScriptCalls::run)
                     }
@@ -373,10 +414,12 @@ pub mod ConfigureRouterScript {
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_SHIMS[idx](data)
         }
@@ -388,12 +431,14 @@ pub mod ConfigureRouterScript {
         ) -> alloy_sol_types::Result<Self> {
             static DECODE_VALIDATE_SHIMS: &[fn(
                 &[u8],
-            ) -> alloy_sol_types::Result<
-                ConfigureRouterScriptCalls,
-            >] = &[
+            ) -> alloy_sol_types::Result<ConfigureRouterScriptCalls>] = &[
                 {
-                    fn run(data: &[u8]) -> alloy_sol_types::Result<ConfigureRouterScriptCalls> {
-                        <runCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                    fn run(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<ConfigureRouterScriptCalls> {
+                        <runCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(ConfigureRouterScriptCalls::run)
                     }
                     run
@@ -402,17 +447,21 @@ pub mod ConfigureRouterScript {
                     fn IS_SCRIPT(
                         data: &[u8],
                     ) -> alloy_sol_types::Result<ConfigureRouterScriptCalls> {
-                        <IS_SCRIPTCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(data)
+                        <IS_SCRIPTCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
                             .map(ConfigureRouterScriptCalls::IS_SCRIPT)
                     }
                     IS_SCRIPT
                 },
             ];
             let Ok(idx) = Self::SELECTORS.binary_search(&selector) else {
-                return Err(alloy_sol_types::Error::unknown_selector(
-                    <Self as alloy_sol_types::SolInterface>::NAME,
-                    selector,
-                ));
+                return Err(
+                    alloy_sol_types::Error::unknown_selector(
+                        <Self as alloy_sol_types::SolInterface>::NAME,
+                        selector,
+                    ),
+                );
             };
             DECODE_VALIDATE_SHIMS[idx](data)
         }
@@ -422,14 +471,19 @@ pub mod ConfigureRouterScript {
                 Self::IS_SCRIPT(inner) => {
                     <IS_SCRIPTCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
                 }
-                Self::run(inner) => <runCall as alloy_sol_types::SolCall>::abi_encoded_size(inner),
+                Self::run(inner) => {
+                    <runCall as alloy_sol_types::SolCall>::abi_encoded_size(inner)
+                }
             }
         }
         #[inline]
         fn abi_encode_raw(&self, out: &mut alloy_sol_types::private::Vec<u8>) {
             match self {
                 Self::IS_SCRIPT(inner) => {
-                    <IS_SCRIPTCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
+                    <IS_SCRIPTCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
                 }
                 Self::run(inner) => {
                     <runCall as alloy_sol_types::SolCall>::abi_encode_raw(inner, out)
@@ -440,7 +494,7 @@ pub mod ConfigureRouterScript {
     use alloy::contract as alloy_contract;
     /**Creates a new wrapper around an on-chain [`ConfigureRouterScript`](self) contract instance.
 
-    See the [wrapper's documentation](`ConfigureRouterScriptInstance`) for more details.*/
+See the [wrapper's documentation](`ConfigureRouterScriptInstance`) for more details.*/
     #[inline]
     pub const fn new<
         P: alloy_contract::private::Provider<N>,
@@ -453,41 +507,43 @@ pub mod ConfigureRouterScript {
     }
     /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-    Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-    For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
     #[inline]
-    pub fn deploy<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>(
-        provider: P,
-    ) -> impl ::core::future::Future<Output = alloy_contract::Result<ConfigureRouterScriptInstance<P, N>>>
-    {
-        ConfigureRouterScriptInstance::<P, N>::deploy(provider)
-    }
-    /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-    and constructor arguments, if any.
-
-    This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-    the bytecode concatenated with the constructor's ABI-encoded arguments.*/
-    #[inline]
-    pub fn deploy_builder<
+    pub fn deploy<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
     >(
         provider: P,
-    ) -> alloy_contract::RawCallBuilder<P, N> {
+    ) -> impl ::core::future::Future<
+        Output = alloy_contract::Result<ConfigureRouterScriptInstance<P, N>>,
+    > {
+        ConfigureRouterScriptInstance::<P, N>::deploy(provider)
+    }
+    /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
+and constructor arguments, if any.
+
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+    #[inline]
+    pub fn deploy_builder<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    >(provider: P) -> alloy_contract::RawCallBuilder<P, N> {
         ConfigureRouterScriptInstance::<P, N>::deploy_builder(provider)
     }
     /**A [`ConfigureRouterScript`](self) instance.
 
-    Contains type-safe methods for interacting with an on-chain instance of the
-    [`ConfigureRouterScript`](self) contract located at a given `address`, using a given
-    provider `P`.
+Contains type-safe methods for interacting with an on-chain instance of the
+[`ConfigureRouterScript`](self) contract located at a given `address`, using a given
+provider `P`.
 
-    If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
-    documentation on how to provide it), the `deploy` and `deploy_builder` methods can
-    be used to deploy a new instance of the contract.
+If the contract bytecode is available (see the [`sol!`](alloy_sol_types::sol!)
+documentation on how to provide it), the `deploy` and `deploy_builder` methods can
+be used to deploy a new instance of the contract.
 
-    See the [module-level documentation](self) for all the available methods.*/
+See the [module-level documentation](self) for all the available methods.*/
     #[derive(Clone)]
     pub struct ConfigureRouterScriptInstance<P, N = alloy_contract::private::Ethereum> {
         address: alloy_sol_types::private::Address,
@@ -498,21 +554,23 @@ pub mod ConfigureRouterScript {
     impl<P, N> ::core::fmt::Debug for ConfigureRouterScriptInstance<P, N> {
         #[inline]
         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-            f.debug_tuple("ConfigureRouterScriptInstance")
-                .field(&self.address)
-                .finish()
+            f.debug_tuple("ConfigureRouterScriptInstance").field(&self.address).finish()
         }
     }
     /// Instantiation and getters/setters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        ConfigureRouterScriptInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > ConfigureRouterScriptInstance<P, N> {
         /**Creates a new wrapper around an on-chain [`ConfigureRouterScript`](self) contract instance.
 
-        See the [wrapper's documentation](`ConfigureRouterScriptInstance`) for more details.*/
+See the [wrapper's documentation](`ConfigureRouterScriptInstance`) for more details.*/
         #[inline]
-        pub const fn new(address: alloy_sol_types::private::Address, provider: P) -> Self {
+        pub const fn new(
+            address: alloy_sol_types::private::Address,
+            provider: P,
+        ) -> Self {
             Self {
                 address,
                 provider,
@@ -521,9 +579,9 @@ pub mod ConfigureRouterScript {
         }
         /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
-        Returns a new instance of the contract, if the deployment was successful.
+Returns a new instance of the contract, if the deployment was successful.
 
-        For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
+For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
         #[inline]
         pub async fn deploy(
             provider: P,
@@ -533,10 +591,10 @@ pub mod ConfigureRouterScript {
             Ok(Self::new(contract_address, call_builder.provider))
         }
         /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
-        and constructor arguments, if any.
+and constructor arguments, if any.
 
-        This is a simple wrapper around creating a `RawCallBuilder` with the data set to
-        the bytecode concatenated with the constructor's ABI-encoded arguments.*/
+This is a simple wrapper around creating a `RawCallBuilder` with the data set to
+the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         #[inline]
         pub fn deploy_builder(provider: P) -> alloy_contract::RawCallBuilder<P, N> {
             alloy_contract::RawCallBuilder::new_raw_deploy(
@@ -578,9 +636,10 @@ pub mod ConfigureRouterScript {
     }
     /// Function calls.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        ConfigureRouterScriptInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > ConfigureRouterScriptInstance<P, N> {
         /// Creates a new call builder using this contract instance's provider and address.
         ///
         /// Note that the call can be any function call, not just those defined in this
@@ -602,9 +661,10 @@ pub mod ConfigureRouterScript {
     }
     /// Event filters.
     #[automatically_derived]
-    impl<P: alloy_contract::private::Provider<N>, N: alloy_contract::private::Network>
-        ConfigureRouterScriptInstance<P, N>
-    {
+    impl<
+        P: alloy_contract::private::Provider<N>,
+        N: alloy_contract::private::Network,
+    > ConfigureRouterScriptInstance<P, N> {
         /// Creates a new event filter using this contract instance's provider and address.
         ///
         /// Note that the type can be any event, not just those defined in this contract.
