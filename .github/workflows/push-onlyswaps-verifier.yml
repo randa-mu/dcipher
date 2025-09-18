@@ -97,7 +97,7 @@ jobs:
         run  : |
           docker pull ghcr.io/randa-mu/dcipher/onlyswaps-verifier:${{ env.SHORT_SHA }}
           container=$(docker create ghcr.io/randa-mu/dcipher/onlyswaps-verifier:${{ env.SHORT_SHA }})
-          docker cp $container:usr/local/bin/onlyswaps-verifier ./onlyswaps-verifier
+          docker cp $container:usr/local/bin/onlyswaps-verifier /tmp/onlyswaps-verifier
           docker rm $container
 
       - name: upload binary to release
@@ -106,4 +106,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload ${{ github.ref_name }} ./onlyswaps-verifier
+          gh release create ${{ github.ref_name }} --generate-notes || true
+          gh release upload ${{ github.ref_name }} /tmp/onlyswaps-verifier
