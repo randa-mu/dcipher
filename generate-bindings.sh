@@ -18,6 +18,9 @@ forge bind --bindings-path $ROOT_DIR/generated/src/randomness --skip-cargo-toml 
 --select RandomnessSender \
 --select TypesLib \
 --select SignatureSender
+--force
+
+git --no-pager diff
 
 cd $ROOT_DIR/blocklock-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/blocklock --skip-cargo-toml --module \
@@ -29,7 +32,6 @@ forge bind --bindings-path $ROOT_DIR/generated/src/blocklock --skip-cargo-toml -
 --select BlocklockSignatureScheme \
 --select UUPSProxy \
 --select MockBlocklockReceiver
-
 
 cd $ROOT_DIR/onlyswaps-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/onlyswaps --skip-cargo-toml --module \
