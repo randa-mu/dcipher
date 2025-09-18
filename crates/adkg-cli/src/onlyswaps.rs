@@ -47,7 +47,7 @@ pub struct GenerateOnlyswapsConfig {
 
     #[arg(
         long = "multiaddr",
-        help = "the multiaddr your node shoudl bind locally to receive packets from peers. It may differ from the one you shared with them."
+        help = "the multiaddr your node should bind locally to receive packets from peers. It may differ from the one you shared with them."
     )]
     pub multiaddr: Multiaddr,
 
