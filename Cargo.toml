@@ -6,7 +6,6 @@ members = [
     "dcipher-agents",
     "generated",
     "omnievent",
-    "signer",
 ]
 
 [workspace.package]
@@ -18,7 +17,7 @@ edition = "2024"
 adkg = { path = "./crates/adkg" }
 config = { path = "./crates/config" }
 dcipher-agents = { path = "./dcipher-agents" }
-dcipher-signer = { path = "./signer" }
+dcipher-signer = { path = "./crates/signer" }
 dcipher-network = { path = "./crates/network" }
 generated = { path = "./generated" }
 omnievent = { path = "./omnievent" }
