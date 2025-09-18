@@ -10,12 +10,12 @@ ENV PATH="/root/.foundry/bin:${PATH}"
 RUN foundryup
 
 FROM sol_builder AS sol_randomness
-WORKDIR /app/randomness-solidity
-COPY ./randomness-solidity/package.json ./
-COPY ./randomness-solidity/package-lock.json ./
+WORKDIR /app/modules/randomness-solidity
+COPY ./modules/randomness-solidity/package.json ./
+COPY ./modules/randomness-solidity/package-lock.json ./
 RUN npm install
 
-COPY ./randomness-solidity ./
+COPY ./modules/randomness-solidity ./
 RUN FOUNDRY_PROFILE=build forge soldeer install && FOUNDRY_PROFILE=build forge build
 
 # Base image for rust
@@ -33,7 +33,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
-COPY --from=sol_randomness /app/randomness-solidity/out ./randomness-solidity/out
+COPY --from=sol_randomness /app/modules/randomness-solidity/out ./modules/randomness-solidity/out
 COPY . .
 RUN cargo build --release -p randomness-agent --example randomness
 

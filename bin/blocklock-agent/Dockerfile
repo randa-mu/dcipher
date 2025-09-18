@@ -10,12 +10,12 @@ ENV PATH="/root/.foundry/bin:${PATH}"
 RUN foundryup
 
 FROM sol_builder AS sol_blocklock
-WORKDIR /app/blocklock-solidity
-COPY ./blocklock-solidity/package.json ./
-COPY ./blocklock-solidity/package-lock.json ./
+WORKDIR /app/modules/blocklock-solidity
+COPY ./modules/blocklock-solidity/package.json ./
+COPY ./modules/blocklock-solidity/package-lock.json ./
 RUN npm install
 
-COPY ./blocklock-solidity ./
+COPY ./modules/blocklock-solidity ./
 RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
 
 # Base image for rust
@@ -33,7 +33,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
-COPY --from=sol_blocklock /app/blocklock-solidity/out ./blocklock-solidity/out
+COPY --from=sol_blocklock /app/modules/blocklock-solidity/out ./modules/blocklock-solidity/out
 COPY . .
 RUN cargo build --release -p blocklock-agent --example blocklock
 
