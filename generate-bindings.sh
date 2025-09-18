@@ -24,8 +24,11 @@ forge bind --bindings-path $ROOT_DIR/generated/src/randomness \
 --use $SOLC_VERSION \
 --select RandomnessSender \
 --select TypesLib \
---select SignatureSender
+--select SignatureSender \
+--overwrite
 popd
+
+git --no-pager diff
 
 pushd $ROOT_DIR/blocklock-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/blocklock \
