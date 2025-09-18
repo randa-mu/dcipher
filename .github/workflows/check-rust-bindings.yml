@@ -20,38 +20,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: 'v1.3.5'
-
-      - name: Cache npm blocklock-solidity
-        uses: actions/cache@v3
-        with:
-          path: blocklock-solidity/node_modules
-          key: ${{ runner.os }}-npm-blocklock-solidity-${{ hashFiles('blocklock-solidity/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-blocklock-solidity-
-
-      - name: Cache npm randomness-solidity
-        uses: actions/cache@v3
-        with:
-          path: randomness-solidity/node_modules
-          key: ${{ runner.os }}-npm-randomness-solidity-${{ hashFiles('randomness-solidity/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-randomness-solidity-
-
-      - name: Cache Solidity blocklock-solidity
-        uses: actions/cache@v3
-        with:
-          path: blocklock-solidity/out
-          key: ${{ runner.os }}-sol-blocklock-solidity-${{ hashFiles('blocklock-solidity/src/**/*.sol', 'blocklock-solidity/lib/**/*.sol') }}
-          restore-keys: |
-            ${{ runner.os }}-sol-blocklock-solidity-
-
-      - name: Cache Solidity randomness-solidity
-        uses: actions/cache@v3
-        with:
-          path: randomness-solidity/out
-          key: ${{ runner.os }}-sol-randomness-solidity-${{ hashFiles('randomness-solidity/src/**/*.sol', 'randomness-solidity/lib/**/*.sol') }}
-          restore-keys: |
-            ${{ runner.os }}-sol-randomness-solidity-
+          cache: false
 
       # 1. Compile blocklock-solidity
       - name: blocklock-solidity - Install dependencies
@@ -60,7 +29,7 @@ jobs:
 
       - name: blocklock-solidity - Build Solidity contracts
         working-directory: ./blocklock-solidity
-        run: npm run build:forge
+        run: npm run build
 
       # 2. Compile randomness-solidity
       - name: randomness-solidity - Install dependencies
@@ -69,7 +38,7 @@ jobs:
 
       - name: randomness-solidity - Build Solidity contracts
         working-directory: ./randomness-solidity
-        run: npm run build:forge
+        run: npm run build
 
       # 3. Compile onlyswaps-solidity
       - name: onlyswaps-solidity - Install dependencies
