@@ -14,7 +14,6 @@ members = [
     "onlyswaps-verifier",
     "signer",
     "superalloy",
-    "tools/gen-keys"
 ]
 
 [workspace.package]
