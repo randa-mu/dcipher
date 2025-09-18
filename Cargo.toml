@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-    "blocklock-agent",
+    "bin/*",
     "crates/adkg",
     "crates/adkg-cli",
     "crates/config",
