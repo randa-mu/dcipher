@@ -44,4 +44,4 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libssl3 dnsutils
 WORKDIR /app
 COPY --from=builder /app/target/release/onlyswaps-verifier /usr/local/bin
-ENTRYPOINT ["/usr/local/bin/onlyswaps-verifier"]
+ENTRYPOINT ["/usr/local/bin/onlyswaps-verifier", "start"]
