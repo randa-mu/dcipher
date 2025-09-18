@@ -25,10 +25,8 @@ forge bind --bindings-path $ROOT_DIR/generated/src/randomness \
 --select RandomnessSender \
 --select TypesLib \
 --select SignatureSender \
---overwrite
+--no-metadata
 popd
-
-git --no-pager diff
 
 pushd $ROOT_DIR/blocklock-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/blocklock \
@@ -42,7 +40,8 @@ forge bind --bindings-path $ROOT_DIR/generated/src/blocklock \
 --select SignatureSchemeAddressProvider \
 --select BlocklockSignatureScheme \
 --select UUPSProxy \
---select MockBlocklockReceiver
+--select MockBlocklockReceiver \
+--no-metadata
 popd
 
 pushd $ROOT_DIR/onlyswaps-solidity
@@ -54,4 +53,5 @@ forge bind --bindings-path $ROOT_DIR/generated/src/onlyswaps \
 --select IRouter \
 --select ERC20FaucetToken \
 --select SwapRequestParameters \
---select SwapRequestReceipt
+--select SwapRequestReceipt \
+--no-metadata

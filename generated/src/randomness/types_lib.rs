@@ -22,22 +22,22 @@ pub mod TypesLib {
     /// The creation / init bytecode of the contract.
     ///
     /// ```text
-    ///0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea264697066735822122039f93aba58df53339dba7e3d33b0f40d023670d13ad172ae462d5edd269cb37264736f6c634300081e0033
+    ///0x601f6032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffd
     /// ```
     #[rustfmt::skip]
     #[allow(clippy::all)]
     pub static BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
-        b"`U`2`\x0B\x82\x82\x829\x80Q_\x1A`s\x14`&WcNH{q`\xE0\x1B_R_`\x04R`$_\xFD[0_R`s\x81S\x82\x81\xF3\xFEs\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD\xFE\xA2dipfsX\"\x12 9\xF9:\xBAX\xDFS3\x9D\xBA~=3\xB0\xF4\r\x026p\xD1:\xD1r\xAEF-^\xDD&\x9C\xB3rdsolcC\0\x08\x1E\x003",
+        b"`\x1F`2`\x0B\x82\x82\x829\x80Q_\x1A`s\x14`&WcNH{q`\xE0\x1B_R_`\x04R`$_\xFD[0_R`s\x81S\x82\x81\xF3\xFEs\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD",
     );
     /// The runtime bytecode of the contract, as deployed on the network.
     ///
     /// ```text
-    ///0x730000000000000000000000000000000000000000301460806040525f5ffdfea264697066735822122039f93aba58df53339dba7e3d33b0f40d023670d13ad172ae462d5edd269cb37264736f6c634300081e0033
+    ///0x730000000000000000000000000000000000000000301460806040525f5ffd
     /// ```
     #[rustfmt::skip]
     #[allow(clippy::all)]
     pub static DEPLOYED_BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
-        b"s\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD\xFE\xA2dipfsX\"\x12 9\xF9:\xBAX\xDFS3\x9D\xBA~=3\xB0\xF4\r\x026p\xD1:\xD1r\xAEF-^\xDD&\x9C\xB3rdsolcC\0\x08\x1E\x003",
+        b"s\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD",
     );
     use alloy::contract as alloy_contract;
     /**Creates a new wrapper around an on-chain [`TypesLib`](self) contract instance.

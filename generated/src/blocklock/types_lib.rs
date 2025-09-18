@@ -22,22 +22,22 @@ pub mod TypesLib {
     /// The creation / init bytecode of the contract.
     ///
     /// ```text
-    ///0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea264697066735822122087a51ae472f6a88ba819e5f41cf9f644ca2ca5755af3d963a9aee163ef3fb6c364736f6c634300081c0033
+    ///0x601f6032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffd
     /// ```
     #[rustfmt::skip]
     #[allow(clippy::all)]
     pub static BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
-        b"`U`2`\x0B\x82\x82\x829\x80Q_\x1A`s\x14`&WcNH{q`\xE0\x1B_R_`\x04R`$_\xFD[0_R`s\x81S\x82\x81\xF3\xFEs\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD\xFE\xA2dipfsX\"\x12 \x87\xA5\x1A\xE4r\xF6\xA8\x8B\xA8\x19\xE5\xF4\x1C\xF9\xF6D\xCA,\xA5uZ\xF3\xD9c\xA9\xAE\xE1c\xEF?\xB6\xC3dsolcC\0\x08\x1C\x003",
+        b"`\x1F`2`\x0B\x82\x82\x829\x80Q_\x1A`s\x14`&WcNH{q`\xE0\x1B_R_`\x04R`$_\xFD[0_R`s\x81S\x82\x81\xF3\xFEs\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD",
     );
     /// The runtime bytecode of the contract, as deployed on the network.
     ///
     /// ```text
-    ///0x730000000000000000000000000000000000000000301460806040525f5ffdfea264697066735822122087a51ae472f6a88ba819e5f41cf9f644ca2ca5755af3d963a9aee163ef3fb6c364736f6c634300081c0033
+    ///0x730000000000000000000000000000000000000000301460806040525f5ffd
     /// ```
     #[rustfmt::skip]
     #[allow(clippy::all)]
     pub static DEPLOYED_BYTECODE: alloy_sol_types::private::Bytes = alloy_sol_types::private::Bytes::from_static(
-        b"s\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD\xFE\xA2dipfsX\"\x12 \x87\xA5\x1A\xE4r\xF6\xA8\x8B\xA8\x19\xE5\xF4\x1C\xF9\xF6D\xCA,\xA5uZ\xF3\xD9c\xA9\xAE\xE1c\xEF?\xB6\xC3dsolcC\0\x08\x1C\x003",
+        b"s\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x000\x14`\x80`@R__\xFD",
     );
     use alloy::contract as alloy_contract;
     /**Creates a new wrapper around an on-chain [`TypesLib`](self) contract instance.
