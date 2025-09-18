@@ -33,7 +33,7 @@ runs:
 
     - name: Check formatting
       working-directory: ${{ inputs.working-directory }}
-      run: cargo fmt --workspace --exclude generated --check ${{ inputs.additional-flags }}
+      run: cargo fmt -check ${{ inputs.additional-flags }}
       shell: bash
 
     - name: Check clippy
