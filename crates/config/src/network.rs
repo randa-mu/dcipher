@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::time::Duration;
 use url::Url;
+use libp2p::Multiaddr;
+use crate::keys::Libp2pKeyWrapper;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -15,6 +17,13 @@ pub struct NetworkConfig {
     pub should_write: bool,
     #[serde(with = "humantime_serde", default = "default_request_timeout")]
     pub request_timeout: Duration,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Libp2pConfig {
+    pub secret_key: Libp2pKeyWrapper,
+    pub multiaddr: Multiaddr,
 }
 
 fn default_should_write() -> bool {

@@ -139,3 +139,30 @@ pub mod serde_to_string_from_str {
         T::from_str(&level).map_err(D::Error::custom)
     }
 }
+
+pub mod libp2p_keypair_serde {
+    use base64::prelude::*;
+    use libp2p::identity;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(v: &identity::Keypair, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::Error;
+
+        let bytes = v.to_protobuf_encoding().map_err(Error::custom)?;
+        s.serialize_str(&BASE64_STANDARD.encode(&bytes))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<identity::Keypair, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let base64_str = String::deserialize(deserializer)?;
+        let bytes = BASE64_STANDARD.decode(base64_str).map_err(Error::custom)?;
+        identity::Keypair::from_protobuf_encoding(&bytes).map_err(Error::custom)
+    }
+}

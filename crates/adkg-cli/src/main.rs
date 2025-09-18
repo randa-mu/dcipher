@@ -2,7 +2,6 @@
 
 mod adkg_dxkr23;
 mod cli;
-mod config;
 mod keygen;
 #[cfg(feature = "metrics")]
 mod metrics;
@@ -15,14 +14,14 @@ use crate::adkg_dxkr23::{
     adkg_dxkr23_bn254_g1_keccak256_out_g2, adkg_dxkr23_bn254_g1_keccak256_out_g2_rescue,
 };
 use crate::cli::{AdkgRunCommon, Cli, Commands, Generate, NewScheme, Rescue, RunAdkg};
-use crate::config::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
-use crate::keygen::{PrivateKeyMaterial, keygen};
+use config::adkg::{AdkgNodePk, AdkgPublic, AdkgSecret, GroupConfig};
+use crate::keygen::keygen;
 use crate::onlyswaps::generate_onlyswaps_config;
-use crate::scheme::{AdkgCliSchemeConfig, SupportedAdkgScheme, new_scheme_config};
+use crate::scheme::{new_scheme_config, AdkgCliSchemeConfig, SupportedAdkgScheme};
 use crate::transcripts::EncryptedAdkgTranscript;
 use adkg::helpers::PartyId;
 use adkg::rand::AdkgStdRng;
-use anyhow::{Context, anyhow};
+use anyhow::{anyhow, Context};
 use ark_ec::CurveGroup;
 use ark_std::rand;
 use clap::Parser;
@@ -44,6 +43,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use utils::serialize::fq::FqSerialize;
 use utils::serialize::point::PointSerializeCompressed;
+use config::adkg::PrivateKeyMaterial;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -545,79 +545,4 @@ async fn get_libp2p_transports(
         topic_dispatcher,
         writer,
     })
-}
-
-impl FromStr for GroupConfig {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut group_config: Self = toml::from_str(s).context("failed to parse group config")?;
-
-        if group_config.n < group_config.t {
-            Err(anyhow!("n cannot be smaller than t"))?;
-        }
-
-        if group_config.t_reconstruction < group_config.t {
-            Err(anyhow!("reconstruction threshold cannot be smaller than t"))?;
-        }
-
-        if group_config.nodes.len() != group_config.n.get() {
-            Err(anyhow!("number of nodes does not match n"))?;
-        }
-
-        if let Some(id) = group_config.nodes.iter().map(|n| n.id).duplicates().next() {
-            Err(anyhow!("found node id {id} more than once"))?;
-        }
-
-        if let Some(peer_id) = group_config
-            .nodes
-            .iter()
-            .map(|n| &n.public_key_material.peer_id)
-            .duplicates()
-            .next()
-        {
-            Err(anyhow!("found peer_id {peer_id} more than once"))?;
-        }
-
-        if let Some(adkg_pk) = group_config
-            .nodes
-            .iter()
-            .map(|n| &n.public_key_material.adkg_pk)
-            .duplicates()
-            .next()
-        {
-            Err(anyhow!("found adkg_pk {adkg_pk} more than once"))?;
-        }
-
-        if let Some(multiaddr) = group_config
-            .nodes
-            .iter()
-            .map(|n| &n.multiaddr)
-            .duplicates()
-            .next()
-        {
-            Err(anyhow!("found multiaddr {multiaddr} more than once"))?;
-        }
-
-        // Sort the nodes
-        group_config.nodes.sort_by(|p1, p2| p1.id.cmp(&p2.id));
-
-        Ok(group_config)
-    }
-}
-
-impl GroupConfig {
-    pub fn aligned_start_datetime(&self) -> anyhow::Result<chrono::DateTime<chrono::Utc>> {
-        // Align the group config to a unix timestamp ending in 00
-        let timestamp = self.start_time.timestamp();
-        let timestamp_mod = timestamp % 100;
-        let next_timestamp = if timestamp_mod == 0 {
-            timestamp
-        } else {
-            timestamp + (100 - timestamp_mod)
-        };
-
-        chrono::DateTime::<chrono::Utc>::from_timestamp(next_timestamp, 0)
-            .ok_or(anyhow!("failed to align unix timestamp"))
-    }
 }

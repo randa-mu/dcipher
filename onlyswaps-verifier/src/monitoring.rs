@@ -1,4 +1,4 @@
-use config::app::AppConfig;
+use config::file::AppConfig;
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;

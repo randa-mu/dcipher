@@ -1,4 +1,4 @@
-use crate::keygen::PrivateKeyMaterial;
+use config::adkg::PrivateKeyMaterial;
 use crate::{AdkgPublic, AdkgSecret, GroupConfig};
 use alloy::hex;
 use alloy::primitives::FixedBytes;
@@ -8,7 +8,6 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use clap::Parser;
 use config::agent::AgentConfig;
-use config::app::{AppConfig, Libp2pConfig};
 use config::keys::{Bn254SecretKey, Libp2pKeyWrapper};
 use config::network::NetworkConfig;
 use config::signing::{CommitteeConfig, MemberConfig};

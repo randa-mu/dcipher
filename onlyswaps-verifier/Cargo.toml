@@ -18,6 +18,7 @@ dcipher-signer = { workspace = true, features = ["rayon", "bn254", "sha3"] }
 futures.workspace = true
 libp2p.workspace = true
 omnievent.workspace = true
+serde.workspace = true
 superalloy.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
 tracing.workspace = true
@@ -25,3 +26,4 @@ tracing-subscriber = { workspace = true, features = ["json", "env-filter"] }
 
 [dev-dependencies]
 speculoos = "0.13.0"
+tempfile = "3.22.0"

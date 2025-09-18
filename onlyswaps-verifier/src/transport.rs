@@ -1,4 +1,4 @@
-use config::app::AppConfig;
+use config::file::AppConfig;
 use dcipher_network::transports::libp2p::Libp2pNodeConfig;
 
 pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp2pNodeConfig<u16>> {
@@ -26,7 +26,7 @@ mod test {
     use alloy::transports::http::reqwest::Url;
     use ark_bn254::G2Affine;
     use config::agent::AgentConfig;
-    use config::app::{AppConfig, Libp2pConfig};
+    use config::file::{AppConfig, Libp2pConfig};
     use config::keys::{Bn254SecretKey, Libp2pKeyWrapper};
     use config::network::NetworkConfig;
     use config::signing::{CommitteeConfig, MemberConfig};

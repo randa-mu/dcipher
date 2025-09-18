@@ -2,7 +2,7 @@
 //! the scheme described in [Practical Asynchronous High-threshold Distributed Key Generation and Distributed Polynomial Sampling](https://www.usenix.org/system/files/usenixsecurity23-das.pdf)
 //! by Das et al.
 
-use crate::config::GroupConfig;
+use config::adkg::GroupConfig;
 use crate::scheme::AdkgCliSchemeConfig;
 use crate::transcripts::{
     BroadcastMessages, DirectMessages, EncryptedAdkgTranscript, SerializedBytes,

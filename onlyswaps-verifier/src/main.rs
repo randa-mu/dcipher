@@ -11,7 +11,7 @@ mod monitoring;
 mod threshold;
 mod transport;
 
-use crate::config::CliConfig;
+use crate::config::{AppConfig, CliConfig, ConfigFile};
 use crate::eth::NetworkBus;
 use crate::events::{EventManagement, create_omnievent_management};
 use crate::healthcheck_server::HealthcheckServer;
@@ -20,7 +20,7 @@ use crate::pending::{RequestId, Verification};
 use crate::signing::OnlySwapsSigner;
 use crate::threshold::create_bn254_signer;
 use crate::transport::create_libp2p_transport;
-use ::config::app::{AppConfig, load_app_config};
+use ::config::file::{load_mapped_config_file};
 use clap::Parser;
 use futures::StreamExt;
 
@@ -28,7 +28,7 @@ use futures::StreamExt;
 async fn main() -> anyhow::Result<()> {
     // load config files and set up all the agent plumbing
     let cli_config = CliConfig::parse();
-    let app_config = load_app_config(cli_config.config_path)?;
+    let app_config = load_mapped_config_file::<ConfigFile, AppConfig>(cli_config.config_path)?;
     let healthcheck_server = HealthcheckServer::new(
         app_config.agent.healthcheck_listen_addr,
         app_config.agent.healthcheck_port,
