@@ -1,5 +1,9 @@
 # dcipher
 
+## Prerequisites
+- foundry 1.3.5-stable
+- rust 1.89.0+
+ 
 ## Building
 
 ### To run it with minimum effort
