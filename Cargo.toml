@@ -12,7 +12,6 @@ members = [
     "generated",
     "omnievent",
     "onlyswaps-verifier",
-    "randomness-agent",
     "signer",
     "superalloy",
     "tools/gen-keys"
