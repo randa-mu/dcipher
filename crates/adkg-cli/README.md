@@ -42,12 +42,12 @@ The former is used for the ADKG, while the latter to authenticate and encrypt ne
 
 The `generate` command is used as follows and requires a `scheme.toml` file:
 ```bash
-adkg-cli generate --scheme scheme.toml --priv-out adkg.priv --pub-out adkg.pub
+adkg-cli generate --scheme scheme.toml --priv-out longterm.priv --pub-out longterm.pub
 ```
 
-The command writes the private key material to the `adkg.priv` file, and the public key material to `adkg.pub`.
+The command writes the private key material to the `longterm.priv` file, and the public key material to `longterm.pub`.
 Only the public key material must be forwarded to the rest of the participants.
-As explained above, `adkg.pub` contains two different values:
+As explained above, `longterm.pub` contains two different values:
 ```toml
 adkg_pk = "6xBXHRXOlmPcfV2LqeEKEDAOGOoAH2pIYBnuG/h1w8s="
 peer_id = "12D3KooWRLzVJSS2EYpc9Tm4BfV5HEdXc8DiKvQkFqWhEwXcJ8eP"
@@ -94,7 +94,7 @@ Once this group file has been obtained and save, we can proceed to the final ste
 ## Executing the ADKG
 Finally, to execute the ADKG, we must gather various piece of information:  
  - the scheme configuration file (`scheme.toml`)
- - the long-term private key file (`adkg.priv`)
+ - the long-term private key file (`longterm.priv`)
  - the node's identifier (`1`) 
  - the group configuration (`group.toml`)
  - the libp2p listen address (`/ip4/0.0.0.0/tcp/7777`)
@@ -104,12 +104,12 @@ With those details, we can use the `run` command as follows:
 adkg-cli run                                \
   --scheme ./scheme.toml                    \
   --group ./group.toml                      \
-  --priv adkg.priv                          \
+  --priv longterm.priv                          \
   --id 1                                    \
   --listen-address "/ip4/0.0.0.0/tcp/7777"  \
   --transcript-out adkg.transcript          \
-  --priv-out adkg.ceremony.priv             \
-  --pub-out adkg.ceremony.pub 
+  --priv-out keyshare.priv             \
+  --pub-out keyshare.pub 
 ```
 
 Notice that we also include two output files used to store the private and public output of the ADKG.
@@ -139,10 +139,10 @@ The `rescue` command is run as follows:
 adkg-cli rescue                             \
   --scheme ./scheme.toml                    \
   --group ./group.toml                      \
-  --priv adkg.priv                          \
+  --priv longterm.priv                      \
   --id 1                                    \
-  --priv-out adkg.ceremony.priv             \
-  --pub-out adkg.ceremony.pub               \
+  --priv-out keyshare.priv                  \
+  --pub-out keyshare.pub                    \
   ./transcripts/*
 ```
 
