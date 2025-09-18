@@ -17,8 +17,8 @@ cd $ROOT_DIR/randomness-solidity
 forge bind --bindings-path $ROOT_DIR/generated/src/randomness --skip-cargo-toml --module \
 --select RandomnessSender \
 --select TypesLib \
---select SignatureSender
---force
+--select SignatureSender \
+--overwrite
 
 git --no-pager diff
 
