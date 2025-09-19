@@ -303,6 +303,17 @@ mod svdw {
         sign
     }
 
+    // https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-10.html#section-4-4.6.1
+    // inv0(x)
+    //
+    // Input: x, an element of GF(p^m).
+    // Output: x^{q - 2}
+    //
+    pub(crate) fn inv0<C: SWCurveConfig>(x: &C::BaseField) -> C::BaseField {
+        use {ark_ec::AdditiveGroup, ark_ff::Field};
+        x.inverse().unwrap_or(C::BaseField::ZERO)
+    }
+
     pub(super) fn map_to_curve_const_a_zero<C: SWCurveConfig>(
         u: C::BaseField,
         c: [C::BaseField; 4],
@@ -335,7 +346,7 @@ mod svdw {
         //    5.  tv3 = tv1 * tv2
         let mut tv3 = tv1 * tv2;
         //    6.  tv3 = inv0(tv3)
-        tv3 = tv3.inverse().unwrap();
+        tv3 = inv0::<C>(&tv3);
         //    7.  tv4 = u * tv1
         let mut tv4 = u * tv1;
         //    8.  tv4 = tv4 * tv3
