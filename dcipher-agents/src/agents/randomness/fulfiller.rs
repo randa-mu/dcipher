@@ -4,15 +4,16 @@
 
 use crate::agents::payment::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
 use crate::agents::payment::fulfiller::{GenericFulfiller, GenericFulfillerError};
-use crate::agents::randomness::contracts::RandomnessSender;
 use crate::agents::randomness::metrics::Metrics;
 use crate::fulfiller::TransactionFulfiller;
 use crate::signature_sender::SignedSignatureRequest;
-use crate::signature_sender::contracts::SignatureSender;
 use alloy::network::{Ethereum, Network};
 use alloy::providers::{Provider, WalletProvider};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
+use generated::randomness::randomness_sender::RandomnessSender;
+use generated::randomness::randomness_sender::RandomnessSender::RandomnessSenderInstance;
+use generated::randomness::signature_sender::SignatureSender;
 use std::time::Duration;
 
 pub type RandomnessFulfillerError = GenericFulfillerError;
@@ -20,7 +21,7 @@ pub type RandomnessFulfillerError = GenericFulfillerError;
 /// Implementation of [`TransactionFulfiller`] where each call is done in a separate transaction.
 #[derive(Clone)]
 pub struct RandomnessFulfiller<P, N = Ethereum> {
-    fulfiller: GenericFulfiller<P, N, RandomnessSender::RandomnessSenderInstance<P, N>>,
+    fulfiller: GenericFulfiller<P, N, RandomnessSenderInstance<P, N>>,
 }
 
 impl<P, N> RandomnessFulfiller<P, N>

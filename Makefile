@@ -8,6 +8,9 @@ git:
 install_solidity_node_deps:
 	@npm install
 
+generate_rust_bindings:
+	./generate_rust_bindings.sh;
+
 build_forge_all:
 	@npm run build:forge --ws
 
@@ -25,9 +28,13 @@ build_cargo: deps
 run_%: deps
 	cargo run --bin $* -- $(ARGS)
 
-
 clean_dcipher:
 	@rm -rf ./target
+
+clean_generated:
+	@rm -rf ./generated/src/blocklock;
+	@rm -rf ./generated/src/randomness;
+	@rm -rf ./generated/src/onlyswaps;
 
 clean_solidity_out:
 	@for dir in $(SOLIDITY_DIRS); do \
@@ -37,6 +44,6 @@ clean_solidity_out:
 clean_node_modules:
 	@find . -name node_modules -maxdepth 2 -exec rm -rf {} \;
 
-clean: clean_node_modules clean_solidity_out clean_dcipher
-deps: install_solidity_node_deps build_forge_all
+clean: clean_node_modules clean_solidity_out clean_dcipher clean_generated
+deps: install_solidity_node_deps build_forge_all generate_rust_bindings
 all: git deps build_cargo

@@ -1,0 +1,54 @@
+name: check-rust-bindings
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check-rust-bindings:
+    name: Build and test rust crates
+    runs-on: ["ubuntu-latest"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      # who knows what version is on our runners
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: 'v1.3.5'
+          cache: false
+
+      # 1. Compile blocklock-solidity
+      - name: blocklock-solidity - Install dependencies
+        working-directory: ./blocklock-solidity
+        run: npm ci
+
+      - name: blocklock-solidity - Build Solidity contracts
+        working-directory: ./blocklock-solidity
+        run: npm run build
+
+      # 2. Compile randomness-solidity
+      - name: randomness-solidity - Install dependencies
+        working-directory: ./randomness-solidity
+        run: npm ci
+
+      - name: randomness-solidity - Build Solidity contracts
+        working-directory: ./randomness-solidity
+        run: npm run build
+
+      # 3. Compile onlyswaps-solidity
+      - name: onlyswaps-solidity - Install dependencies
+        working-directory: ./onlyswaps-solidity
+        run: npm ci
+
+      - name: onlyswaps-solidity - Build Solidity contracts
+        working-directory: ./onlyswaps-solidity
+        run: npm run build
+
+      # 4. Actually check the bindings against the generated code
+      - name: Check the bindings match
+        run: ./generate-bindings.sh

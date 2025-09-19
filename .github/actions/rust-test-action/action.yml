@@ -38,7 +38,7 @@ runs:
 
     - name: Check clippy
       working-directory: ${{ inputs.working-directory }}
-      run: cargo hack clippy --each-feature --all-targets --target-dir ${{ inputs.target-folder }} -- -Dwarnings ${{ inputs.additional-flags }}
+      run: cargo hack clippy --workspace --exclude generated --each-feature --all-targets --target-dir ${{ inputs.target-folder }} -- -Dwarnings ${{ inputs.additional-flags }}
       shell: bash
 
     - name: Run all tests

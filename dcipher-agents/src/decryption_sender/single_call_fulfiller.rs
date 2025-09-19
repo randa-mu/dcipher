@@ -3,12 +3,12 @@
 //! per fulfillment.
 
 use crate::decryption_sender::SignedDecryptionRequest;
-use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::TransactionFulfiller;
 use alloy::primitives::TxHash;
 use alloy::providers::Provider;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
+use generated::blocklock::decryption_sender::DecryptionSender;
 use std::time::Duration;
 
 #[derive(thiserror::Error, Debug)]

@@ -4,11 +4,11 @@ use alloy::providers::Provider;
 use anyhow::anyhow;
 use dcipher_agents::agents::blocklock::agent::BlocklockAgent;
 use dcipher_agents::decryption_sender::DecryptionRequest;
-use dcipher_agents::decryption_sender::contracts::DecryptionSender;
-use dcipher_agents::decryption_sender::contracts::DecryptionSender::DecryptionRequested;
 use dcipher_agents::fulfiller::{RequestChannel, Ticker};
 use futures::Stream;
 use futures_util::StreamExt;
+use generated::blocklock::decryption_sender::DecryptionSender;
+use generated::blocklock::decryption_sender::DecryptionSender::DecryptionRequested;
 use std::future::Future;
 use std::sync::Arc;
 

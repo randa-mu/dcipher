@@ -2,17 +2,17 @@
 //! [`BlocklockFulfiller`] attempts to fulfil decryption requests sequentially with a transaction
 //! per fulfillment.
 
-use crate::agents::blocklock::contracts::BlocklockSender;
 use crate::agents::blocklock::metrics::Metrics;
 use crate::agents::payment::estimator::{PaymentEstimatorCostError, RequestFulfillmentEstimator};
 use crate::agents::payment::fulfiller::{GenericFulfiller, GenericFulfillerError};
 use crate::decryption_sender::SignedDecryptionRequest;
-use crate::decryption_sender::contracts::DecryptionSender;
 use crate::fulfiller::TransactionFulfiller;
 use alloy::network::{Ethereum, Network};
 use alloy::providers::{Provider, WalletProvider};
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
+use generated::blocklock::blocklock_sender::BlocklockSender;
+use generated::blocklock::decryption_sender::DecryptionSender;
 use std::time::Duration;
 
 pub type BlocklockFulfillerError = GenericFulfillerError;

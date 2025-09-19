@@ -8,11 +8,9 @@ use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::pairing::Pairing;
 use dcipher_agents::agents::randomness::RandomnessAgent;
-use dcipher_agents::agents::randomness::contracts::RandomnessSender;
 use dcipher_agents::agents::randomness::fulfiller::RandomnessFulfiller;
 use dcipher_agents::fulfiller::ticker::OneshotStopper;
 use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
-use dcipher_agents::signature_sender::contracts::SignatureSender;
 use dcipher_agents::signature_sender::{SignatureRequest, SignatureSenderFulfillerConfig};
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use dcipher_signer::bls::{BlsPairingSigner, BlsSigner, BlsThresholdSigner};
@@ -20,6 +18,8 @@ use dcipher_signer::dsigner::{
     ApplicationArgs, ApplicationRandomnessArgs, BlsSignatureAlgorithm, BlsSignatureCurve,
     BlsSignatureHash, SignatureAlgorithm,
 };
+use generated::randomness::randomness_sender::RandomnessSender;
+use generated::randomness::signature_sender::SignatureSender;
 use randomness_agent::{
     BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID, BLS12_381_RANDOMNESS_SCHEME_ID,
     BN254_RANDOMNESS_SCHEME_ID, NotifyTicker, run_agent,
@@ -30,7 +30,6 @@ use superalloy::retry::RetryStrategy;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::Layer;
 use tracing_subscriber::prelude::*;
-
 use utils::serialize::point::{
     PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
 };

@@ -1,5 +1,3 @@
-use crate::eth::IRouter::SwapRequestParameters;
-use crate::eth::Router::RouterInstance;
 use crate::parsing::TransferReceipt;
 use crate::pending::{RequestId, Verification, extract_pending_verifications};
 use crate::signing::{ChainService, VerifiedSwap};
@@ -7,30 +5,15 @@ use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes, U256};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
-use alloy::sol;
 use anyhow::anyhow;
 use async_trait::async_trait;
 use config::network::NetworkConfig;
 use futures::future::{try_join, try_join_all};
+use generated::onlyswaps::router::IRouter::SwapRequestParameters;
+use generated::onlyswaps::router::Router::RouterInstance;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::time::Duration;
-
-sol!(
-    #[allow(clippy::too_many_arguments)]
-    #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-    #[sol(rpc)]
-    Router,
-    "../onlyswaps-solidity/out/Router.sol/Router.json"
-);
-
-sol!(
-    #[allow(clippy::too_many_arguments)]
-    #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-    #[sol(rpc)]
-    ERC20FaucetToken,
-    "../onlyswaps-solidity/out/ERC20.sol/ERC20.json"
-);
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ChainState<ID> {

@@ -1,5 +1,5 @@
-use crate::eth::IRouter::SwapRequestParameters;
 use alloy::primitives::{Address, FixedBytes, U256};
+use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 
 // this isn't exported from the bindings because it's not used in a func
 // signature, boooo

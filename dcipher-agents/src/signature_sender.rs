@@ -1,16 +1,15 @@
 //! Module with structs used for the signature sender contract.
 
 mod async_signer;
-pub mod contracts;
 pub mod fulfiller;
 
 use crate::fulfiller::ticker::TickerFulfiller;
 use crate::fulfiller::{Identifier, RetryStrategy, TransactionFulfiller};
 use crate::signature_sender::async_signer::SignatureSenderAsyncSigner;
-use crate::signature_sender::contracts::SignatureSender;
 use crate::signer::AsynchronousSigner;
 use alloy::primitives::{Bytes, U256};
 use dcipher_signer::dsigner::{ApplicationArgs, DSignerSchemeSigner, SignatureAlgorithm};
+use generated::randomness::signature_sender::SignatureSender;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
