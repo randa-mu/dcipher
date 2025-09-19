@@ -44,10 +44,10 @@ pub struct GenerateConfigArgs {
     #[arg(long = "group", help = "the group file used to run the DKG")]
     pub group: PathBuf,
 
-    #[arg(long = "adkg-public", help = "the ADKG public output file")]
+    #[arg(long = "public-share", help = "the ADKG public output file")]
     pub adkg_public: PathBuf,
 
-    #[arg(long = "adkg-private", help = "the ADKG private output file")]
+    #[arg(long = "private-share", help = "the ADKG private output file")]
     pub adkg_private: PathBuf,
 
     #[arg(
