@@ -16,7 +16,7 @@ config = { path = "./crates/config" }
 dcipher-agents = { path = "./crates/dcipher-agents" }
 dcipher-signer = { path = "./crates/signer" }
 dcipher-network = { path = "./crates/network" }
-generated = { path = "./generated" }
+generated = { path = "./crates/generated" }
 omnievent = { path = "./crates/omnievent" }
 superalloy = { path = "./crates/superalloy" }
 utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
