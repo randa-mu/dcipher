@@ -24,29 +24,29 @@ jobs:
 
       # 1. Compile blocklock-solidity
       - name: blocklock-solidity - Install dependencies
-        working-directory: ./blocklock-solidity
+        working-directory: ./modules/blocklock-solidity
         run: npm ci
 
       - name: blocklock-solidity - Build Solidity contracts
-        working-directory: ./blocklock-solidity
+        working-directory: ./modules/blocklock-solidity
         run: npm run build
 
       # 2. Compile randomness-solidity
       - name: randomness-solidity - Install dependencies
-        working-directory: ./randomness-solidity
+        working-directory: ./modules/randomness-solidity
         run: npm ci
 
       - name: randomness-solidity - Build Solidity contracts
-        working-directory: ./randomness-solidity
+        working-directory: ./modules/randomness-solidity
         run: npm run build
 
       # 3. Compile onlyswaps-solidity
       - name: onlyswaps-solidity - Install dependencies
-        working-directory: ./onlyswaps-solidity
+        working-directory: ./modules/onlyswaps-solidity
         run: npm ci
 
       - name: onlyswaps-solidity - Build Solidity contracts
-        working-directory: ./onlyswaps-solidity
+        working-directory: ./modules/onlyswaps-solidity
         run: npm run build
 
       # 4. Actually check the bindings against the generated code
