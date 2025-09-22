@@ -20,7 +20,7 @@ pub struct ConfigFile {
     pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
-    pub committee: UnvalidatedCommitteeConfig,
+    pub committee: UnvalidatedCommitteeConfig<ark_bn254::G2Affine>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -28,7 +28,7 @@ pub struct AppConfig {
     pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
-    pub committee: CommitteeConfig,
+    pub committee: CommitteeConfig<ark_bn254::G2Affine>,
 }
 
 impl TryFrom<ConfigFile> for AppConfig {

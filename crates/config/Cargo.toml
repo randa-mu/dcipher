@@ -7,6 +7,7 @@ edition.workspace = true
 alloy = { workspace = true, features = ["serde"] }
 anyhow.workspace = true
 ark-bn254.workspace = true
+ark-ec.workspace = true
 ark-ff.workspace = true
 base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
