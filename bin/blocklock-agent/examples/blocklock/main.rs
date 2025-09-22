@@ -1,13 +1,14 @@
 mod arguments_parser;
 mod healthcheck;
 
-use crate::arguments_parser::{BlocklockArgs, BlocklockConfig, NodesConfiguration};
+use crate::arguments_parser::{BlocklockArgs, BlocklockConfig};
 use crate::healthcheck::start_api;
 use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::{AffineRepr, CurveGroup};
 use blocklock_agent::{BN254_BLOCKLOCK_SCHEME_ID, NotifyTicker, run_agent};
+use config::signing::CommitteeConfig;
 use dcipher_agents::agents::blocklock::agent::{BlocklockAgent, BlocklockAgentSavedState};
 use dcipher_agents::agents::blocklock::fulfiller::BlocklockFulfiller;
 use dcipher_agents::decryption_sender::{DecryptionRequest, DecryptionSenderFulfillerConfig};
@@ -32,7 +33,7 @@ use tracing_subscriber::prelude::*;
 async fn main() -> anyhow::Result<()> {
     let BlocklockConfig {
         mut config,
-        nodes_config,
+        committee_config,
     } = BlocklockConfig::parse()?;
 
     // Set logging options
@@ -73,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
     // Create a fulfiller
     let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
         &config,
-        &nodes_config.unwrap_or_default(),
+        &committee_config,
         decryption_sender_contract.clone(),
         blocklock_sender_contract,
     )?;
@@ -146,7 +147,7 @@ async fn main() -> anyhow::Result<()> {
 
 fn create_threshold_fulfiller<'lt_in, 'lt_out, P>(
     args: &'lt_in BlocklockArgs,
-    nodes_config: &'lt_in NodesConfiguration,
+    committee_config: &'lt_in CommitteeConfig<ark_bn254::G2Affine>,
     decryption_sender_contract: DecryptionSender::DecryptionSenderInstance<P>,
     blocklock_sender_contract: BlocklockSender::BlocklockSenderInstance<P>,
 ) -> anyhow::Result<(
@@ -160,28 +161,28 @@ where
     P: Provider + WalletProvider + Clone + 'static,
 {
     // Parse key
-    let sk: ark_bn254::Fr = args.key_config.bls_key.to_owned().0;
+    let sk: ark_bn254::Fr = committee_config.secret_key.to_owned().0;
 
     // Get per-nodes config
     let (mut pks_g2, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
-        nodes_config
-            .nodes
+        committee_config
+            .members
             .iter()
             .cloned()
             .map(|c| {
                 (
-                    (c.node_id.get(), c.bls_pk),
+                    (c.member_id.get(), c.bls_pk),
                     c.address,
                     c.peer_id,
-                    c.node_id.get(),
+                    c.member_id.get(),
                 )
             })
             .collect();
 
     // Add own pk to the list if required
-    if pks_g2.len() == usize::from(args.key_config.n.get() - 1) {
+    if pks_g2.len() == usize::from(committee_config.n.get() - 1) {
         let pk = ark_bn254::G2Affine::generator() * sk;
-        pks_g2.push((args.key_config.node_id.get(), pk.into_affine()));
+        pks_g2.push((committee_config.member_id.get(), pk.into_affine()));
     }
 
     // Create a threshold signer
@@ -195,7 +196,7 @@ where
     // Create a libp2p transport and start it
     let mut node = Libp2pNodeConfig::new(
         args.libp2p.libp2p_key.clone().into(),
-        args.key_config.node_id.get(),
+        committee_config.member_id.get(),
         addresses,
         peer_ids,
         short_ids,
@@ -205,9 +206,9 @@ where
     let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(sk);
     let signer = BlsThresholdSigner::new(
         signer,
-        args.key_config.n.get(),
-        args.key_config.t.get(),
-        args.key_config.node_id.get(),
+        committee_config.n.get(),
+        committee_config.t.get(),
+        committee_config.member_id.get(),
         Default::default(),
         pks_g2.into_iter().collect(),
     );

@@ -50,6 +50,7 @@ libp2p = { workspace = true, features = ["serde"] }
 
 # serde
 serde_json = { workspace = true }
+toml.workspace = true
 
 # misc
 clap = { workspace = true }

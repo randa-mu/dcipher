@@ -1,12 +1,13 @@
 mod arguments_parser;
 mod healthcheck;
 
-use crate::arguments_parser::{NodesConfiguration, RandomnessAgentArgs, RandomnessAgentConfig};
+use crate::arguments_parser::{RandomnessAgentArgs, RandomnessAgentConfig};
 use crate::healthcheck::start_api;
 use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
 use alloy::signers::local::PrivateKeySigner;
 use ark_ec::pairing::Pairing;
+use config::signing::CommitteeConfig;
 use dcipher_agents::agents::randomness::RandomnessAgent;
 use dcipher_agents::agents::randomness::fulfiller::RandomnessFulfiller;
 use dcipher_agents::fulfiller::ticker::OneshotStopper;
@@ -38,8 +39,8 @@ use utils::serialize::point::{
 async fn main() -> anyhow::Result<()> {
     let RandomnessAgentConfig {
         mut config,
-        bn254_nodes_config,
-        bls12_381_nodes_config,
+        bn254_committee_config,
+        bls12_381_committee_config,
     } = RandomnessAgentConfig::parse()?;
 
     // Set logging options
@@ -90,13 +91,13 @@ async fn main() -> anyhow::Result<()> {
         // Create a fulfiller
         let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
             &config,
-            BlsPairingSigner::new_bn254(config.key_config.bn254_key.0),
+            BlsPairingSigner::new_bn254(bn254_committee_config.secret_key.0),
             SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
                 compression: false,
             }),
-            &bn254_nodes_config.unwrap_or_default(),
+            &bn254_committee_config,
             signature_sender_contract.clone(),
             randomness_sender_contract.clone(),
         )?;
@@ -122,13 +123,13 @@ async fn main() -> anyhow::Result<()> {
         // Create a fulfiller
         let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
             &config,
-            BlsPairingSigner::new_bls12_381(config.key_config.bls12_381_key.0),
+            BlsPairingSigner::new_bls12_381(bls12_381_committee_config.secret_key.0),
             SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bls12_381G1,
                 hash: BlsSignatureHash::Sha256,
                 compression: false,
             }),
-            &bls12_381_nodes_config.clone().unwrap_or_default(),
+            &bls12_381_committee_config.clone(),
             signature_sender_contract.clone(),
             randomness_sender_contract.clone(),
         )?;
@@ -154,13 +155,13 @@ async fn main() -> anyhow::Result<()> {
         // Create a fulfiller
         let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
             &config,
-            BlsPairingSigner::new_bls12_381(config.key_config.bls12_381_key.0),
+            BlsPairingSigner::new_bls12_381(bls12_381_committee_config.secret_key.0),
             SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
                 curve: BlsSignatureCurve::Bls12_381G1,
                 hash: BlsSignatureHash::Sha256,
                 compression: true,
             }),
-            &bls12_381_nodes_config.unwrap_or_default(),
+            &bls12_381_committee_config,
             signature_sender_contract.clone(),
             randomness_sender_contract.clone(),
         )?;
@@ -249,7 +250,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P, BLS>(
     args: &'lt_in RandomnessAgentArgs,
     signer: BLS,
     algorithm: SignatureAlgorithm,
-    nodes_config: &'lt_in NodesConfiguration<<BLS::E as Pairing>::G2Affine>,
+    committee_config: &'lt_in CommitteeConfig<<BLS::E as Pairing>::G2Affine>,
     signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
     randomness_sender_contract: RandomnessSender::RandomnessSenderInstance<P>,
 ) -> anyhow::Result<(
@@ -269,30 +270,30 @@ where
 {
     // Get per-nodes config
     let (mut pks_g2, addresses, peer_ids, short_ids): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
-        nodes_config
-            .nodes
+        committee_config
+            .members
             .iter()
             .cloned()
             .map(|c| {
                 (
-                    (c.node_id.get(), c.bls_pk),
+                    (c.member_id.get(), c.bls_pk),
                     c.address,
                     c.peer_id,
-                    c.node_id.get(),
+                    c.member_id.get(),
                 )
             })
             .collect();
 
     // Add own pk to the list if required
-    if pks_g2.len() == usize::from(args.key_config.n.get() - 1) {
+    if pks_g2.len() == usize::from(committee_config.n.get() - 1) {
         let pk = signer.g2_public_key();
-        pks_g2.push((args.key_config.node_id.get(), pk));
+        pks_g2.push((committee_config.member_id.get(), pk));
     }
 
     // Create a libp2p transport and start it
     let mut libp2p_node = Libp2pNodeConfig::new(
         args.libp2p.libp2p_key.clone().into(),
-        args.key_config.node_id.get(),
+        committee_config.member_id.get(),
         addresses,
         peer_ids,
         short_ids,
@@ -301,9 +302,9 @@ where
 
     let signer = BlsThresholdSigner::new(
         signer,
-        args.key_config.n.get(),
-        args.key_config.t.get(),
-        args.key_config.node_id.get(),
+        committee_config.n.get(),
+        committee_config.t.get(),
+        committee_config.member_id.get(),
         Default::default(),
         pks_g2.into_iter().collect(),
     );

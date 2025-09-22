@@ -1,15 +1,14 @@
 use alloy::transports::http::reqwest;
-use anyhow::anyhow;
+use anyhow::Context;
 use clap::Parser;
-use config::keys::{Libp2pKeyWrapper, SecretKey, serde_to_string_from_str};
+use config::keys::{Libp2pKeyWrapper, serde_to_string_from_str};
+use config::signing::CommitteeConfig;
 use dcipher_agents::fulfiller::RetryStrategy;
 use figment::Figment;
 use figment::providers::{Format, Serialized, Toml};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
-use std::num::NonZeroU16;
 use std::path::PathBuf;
-use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -26,8 +25,16 @@ pub struct RandomnessAgentArgs {
     #[arg(long, env = "RANDOMNESS_HEALTHCHECK_PORT", default_value = "8080")]
     pub healthcheck_port: u16,
 
-    #[command(flatten)]
-    pub key_config: KeyConfigArgs,
+    /// The bn254 committee config
+    #[arg(long = "committee-config", env = "RANDOMNESS_COMMITTEE_CONFIG")]
+    pub bn254_committee_config: PathBuf,
+
+    /// The bls12-381 committee config
+    #[arg(
+        long = "committee-config-bls12-381",
+        env = "RANDOMNESS_COMMITTEE_CONFIG_BLS12-381"
+    )]
+    pub bls12_381_committee_config: PathBuf,
 
     #[command(flatten)]
     pub chain: ChainArgs,
@@ -129,32 +136,6 @@ pub struct ChainArgs {
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
 #[command(author, version, about, long_about = None)]
-pub struct KeyConfigArgs {
-    /// BLS private key for signing
-    #[arg(long, env = "RANDOMNESS_BN254_KEY")]
-    pub bn254_key: SecretKey<ark_bn254::Fr>,
-    #[arg(long, env = "RANDOMNESS_BLS12_381_KEY")]
-    pub bls12_381_key: SecretKey<ark_bls12_381::Fr>,
-
-    /// Identifier of the node
-    #[arg(long, env = "RANDOMNESS_NODE_ID", default_value = "1")]
-    pub node_id: NonZeroU16,
-
-    /// Number of parties in the threshold network
-    #[arg(short, env = "RANDOMNESS_N_PARTIES", default_value = "1")]
-    pub n: NonZeroU16,
-
-    /// Threshold of nodes required to sign
-    #[arg(short, env = "RANDOMNESS_THRESHOLD", default_value = "1")]
-    pub t: NonZeroU16,
-
-    /// Nodes configuration file
-    #[arg(long, env = "RANDOMNESS_NODES_CONFIG", required = false)]
-    pub nodes_config: Option<PathBuf>,
-}
-
-#[derive(Parser, Serialize, Deserialize, Debug)]
-#[command(author, version, about, long_about = None)]
 pub struct Libp2pArgs {
     /// Libp2p private key
     #[arg(long, env = "RANDOMNESS_LIBP2P_KEY")]
@@ -170,40 +151,10 @@ pub struct Libp2pArgs {
     pub libp2p_listen_addr: ::libp2p::Multiaddr,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug)]
-#[serde(bound(
-    serialize = "G2: PointSerializeCompressed",
-    deserialize = "G2: PointDeserializeCompressed"
-))]
-#[derive(Clone)]
-pub struct NodesConfiguration<G2> {
-    pub nodes: Vec<NodeConfiguration<G2>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(bound(
-    serialize = "G2: PointSerializeCompressed",
-    deserialize = "G2: PointDeserializeCompressed"
-))]
-pub struct NodeConfiguration<G2> {
-    /// Node identifier used in the threshold scheme
-    pub node_id: NonZeroU16,
-
-    /// BN254 public key of the node
-    #[serde(with = "utils::serialize::point::base64")]
-    pub bls_pk: G2,
-
-    /// Libp2p peer address
-    pub address: libp2p::Multiaddr,
-
-    /// Peer id
-    pub peer_id: libp2p::PeerId,
-}
-
 pub struct RandomnessAgentConfig {
     pub config: RandomnessAgentArgs,
-    pub bn254_nodes_config: Option<NodesConfiguration<ark_bn254::G2Affine>>,
-    pub bls12_381_nodes_config: Option<NodesConfiguration<ark_bls12_381::G2Affine>>,
+    pub bn254_committee_config: CommitteeConfig<ark_bn254::G2Affine>,
+    pub bls12_381_committee_config: CommitteeConfig<ark_bls12_381::G2Affine>,
 }
 
 impl RandomnessAgentConfig {
@@ -213,77 +164,20 @@ impl RandomnessAgentConfig {
             .merge(Toml::file("config.toml"))
             .extract()?;
 
-        if c.key_config.t > c.key_config.n {
-            Err(anyhow!("t cannot be greater than n"))?
-        }
+        let bn254_committee_config = std::fs::read_to_string(&c.bn254_committee_config)
+            .context("failed to read bn254 committee config")?;
+        let bn254_committee_config = toml::from_str(&bn254_committee_config)
+            .context("failed to parse bn254 committee config")?;
 
-        if c.key_config.t.get() > 1 && c.key_config.nodes_config.is_none() {
-            Err(anyhow!("nodes configuration required when t > 1"))?
-        }
-
-        let bn254_nodes_config = if c.key_config.t.get() == 1 {
-            None
-        } else {
-            Some(Self::parse_nodes_config(&c)?)
-        };
-
-        // FIXME: to make BLS12 work with multiple nodes, implement the parsing logic
-        let bls12_381_nodes_config = None;
+        let bls12_381_committee_config = std::fs::read_to_string(&c.bls12_381_committee_config)
+            .context("failed to read bls12-381 committee config")?;
+        let bls12_381_committee_config = toml::from_str(&bls12_381_committee_config)
+            .context("failed to parse bls12-381 committee config")?;
 
         Ok(Self {
             config: c,
-            bn254_nodes_config,
-            bls12_381_nodes_config,
-        })
-    }
-
-    fn parse_nodes_config<G2>(
-        config: &RandomnessAgentArgs,
-    ) -> anyhow::Result<NodesConfiguration<G2>>
-    where
-        G2: PointDeserializeCompressed + PointSerializeCompressed,
-    {
-        let nodes_config: NodesConfiguration<G2> = Figment::new()
-            .merge(Toml::file(config.key_config.nodes_config.clone().unwrap()))
-            .extract()?;
-
-        // Nodes config should contain n - 1 nodes
-        let nodes_config_excluding_own: Vec<_> = {
-            let mut nodes: Vec<_> = nodes_config
-                .nodes
-                .into_iter()
-                .filter(|n| n.node_id != config.key_config.node_id)
-                .collect();
-            // Sort it by node id
-            nodes.sort_by(|a, b| a.node_id.cmp(&b.node_id));
-            nodes
-        };
-        if nodes_config_excluding_own.len() != usize::from(config.key_config.n.get()) - 1 {
-            Err(anyhow!(
-                "nodes config excluding own should have n - 1 nodes"
-            ))?
-        }
-
-        // Verify that each node's index is valid
-        if !nodes_config_excluding_own
-            .iter()
-            .all(|n| n.node_id <= config.key_config.n)
-        {
-            Err(anyhow!("node with index greater than n"))?
-        }
-
-        // Verify that each node's index is unique
-        let mut unique_ids: Vec<_> = nodes_config_excluding_own
-            .iter()
-            .map(|n| n.node_id)
-            .collect();
-        unique_ids.dedup(); // vec is already sorted, can simply dedup
-        if unique_ids.len() != usize::from(config.key_config.n.get()) - 1 {
-            Err(anyhow!("nodes config contains duplicated nodes"))?
-        }
-
-        Ok(NodesConfiguration {
-            nodes: nodes_config_excluding_own,
+            bn254_committee_config,
+            bls12_381_committee_config,
         })
     }
 }
