@@ -1,3 +1,5 @@
+# Image must be built from the root
+
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
 

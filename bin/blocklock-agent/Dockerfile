@@ -1,23 +1,5 @@
 # Image must be built from the root
 
-# Image building solidity contracts
-ARG NODE_VERSION=22.3
-FROM europe-west1-docker.pkg.dev/randamu-prod/candyland/node:${NODE_VERSION} AS sol_builder
-WORKDIR /app
-
-RUN curl -L https://foundry.paradigm.xyz | bash
-ENV PATH="/root/.foundry/bin:${PATH}"
-RUN foundryup
-
-FROM sol_builder AS sol_blocklock
-WORKDIR /app/modules/blocklock-solidity
-COPY ./modules/blocklock-solidity/package.json ./
-COPY ./modules/blocklock-solidity/package-lock.json ./
-RUN npm install
-
-COPY ./modules/blocklock-solidity ./
-RUN FOUNDRY_PROFILE=build forge install --no-git && FOUNDRY_PROFILE=build forge build
-
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
@@ -33,7 +15,6 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
-COPY --from=sol_blocklock /app/modules/blocklock-solidity/out ./modules/blocklock-solidity/out
 COPY . .
 RUN cargo build --release -p blocklock-agent --example blocklock
 
