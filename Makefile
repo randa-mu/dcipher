@@ -1,6 +1,6 @@
 .PHONY= git solidity-deps build-forge-all build-forge-all-concurrent clean-node-modules clean-solidity-out clean_dcipher $(addprefix run_,$(DIRS))
 DCIPHER_MODULE_DIRS := onlyswaps-verifier dsigner
-SOLIDITY_DIRS := $(wildcard *-solidity/)
+SOLIDITY_DIRS := modules/$(wildcard *-solidity/)
 
 git:
 	@git submodule update --init --recursive --verbose --progress -j 8
@@ -32,9 +32,9 @@ clean_dcipher:
 	@rm -rf ./target
 
 clean_generated:
-	@rm -rf ./generated/src/blocklock;
-	@rm -rf ./generated/src/randomness;
-	@rm -rf ./generated/src/onlyswaps;
+	@rm -rf ./crates/generated/src/blocklock;
+	@rm -rf ./crates/generated/src/randomness;
+	@rm -rf ./crates/generated/src/onlyswaps;
 
 clean_solidity_out:
 	@for dir in $(SOLIDITY_DIRS); do \

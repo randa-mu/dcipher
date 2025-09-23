@@ -85,7 +85,7 @@ jobs:
             ghcr.io/randa-mu/dcipher/onlyswaps-verifier:${{ env.SHORT_SHA }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
-          file: ./onlyswaps-verifier/Dockerfile
+          file: ./bin/onlyswaps-verifier/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:${{ steps.meta.outputs.version }}
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:main-latest

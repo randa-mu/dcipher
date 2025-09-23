@@ -1,12 +1,12 @@
 [submodule "blocklock-solidity"]
-	path = blocklock-solidity
+	path = modules/blocklock-solidity
 	url = ../blocklock-solidity.git
 [submodule "randomness-solidity"]
-	path = randomness-solidity
+	path = modules/randomness-solidity
 	url = ../randomness-solidity.git
 [submodule "dcipher-proto"]
-	path = dcipher-proto
+	path = modules/dcipher-proto
 	url = ../dcipher-proto.git
 [submodule "onlyswaps-solidity"]
-	path = onlyswaps-solidity
+	path = modules/onlyswaps-solidity
 	url = https://github.com/randa-mu/onlyswaps-solidity

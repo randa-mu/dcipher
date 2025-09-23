@@ -25,7 +25,7 @@ jobs:
       - name: Cache npm blocklock-solidity
         uses: actions/cache@v3
         with:
-          path: blocklock-solidity/node_modules
+          path: modules/blocklock-solidity/node_modules
           key: ${{ runner.os }}-npm-blocklock-solidity-${{ hashFiles('blocklock-solidity/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-blocklock-solidity-
@@ -33,7 +33,7 @@ jobs:
       - name: Cache npm randomness-solidity
         uses: actions/cache@v3
         with:
-          path: randomness-solidity/node_modules
+          path: modules/randomness-solidity/node_modules
           key: ${{ runner.os }}-npm-randomness-solidity-${{ hashFiles('randomness-solidity/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-randomness-solidity-
@@ -41,7 +41,7 @@ jobs:
       - name: Cache Solidity blocklock-solidity
         uses: actions/cache@v3
         with:
-          path: blocklock-solidity/out
+          path: modules/blocklock-solidity/out
           key: ${{ runner.os }}-sol-blocklock-solidity-${{ hashFiles('blocklock-solidity/src/**/*.sol', 'blocklock-solidity/lib/**/*.sol') }}
           restore-keys: |
             ${{ runner.os }}-sol-blocklock-solidity-
@@ -49,36 +49,36 @@ jobs:
       - name: Cache Solidity randomness-solidity
         uses: actions/cache@v3
         with:
-          path: randomness-solidity/out
+          path: modules/randomness-solidity/out
           key: ${{ runner.os }}-sol-randomness-solidity-${{ hashFiles('randomness-solidity/src/**/*.sol', 'randomness-solidity/lib/**/*.sol') }}
           restore-keys: |
             ${{ runner.os }}-sol-randomness-solidity-
 
       # 1. Compile blocklock-solidity
       - name: blocklock-solidity - Install dependencies
-        working-directory: ./blocklock-solidity
+        working-directory: ./modules/blocklock-solidity
         run: npm ci
 
       - name: blocklock-solidity - Build Solidity contracts
-        working-directory: ./blocklock-solidity
+        working-directory: ./modules/blocklock-solidity
         run: npm run build:forge
 
       # 2. Compile randomness-solidity
       - name: randomness-solidity - Install dependencies
-        working-directory: ./randomness-solidity
+        working-directory: ./modules/randomness-solidity
         run: npm ci
 
       - name: randomness-solidity - Build Solidity contracts
-        working-directory: ./randomness-solidity
+        working-directory: ./modules/randomness-solidity
         run: npm run build:forge
 
       # 3. Compile onlyswaps-solidity
       - name: onlyswaps-solidity - Install dependencies
-        working-directory: ./onlyswaps-solidity
+        working-directory: ./modules/onlyswaps-solidity
         run: npm ci
 
       - name: onlyswaps-solidity - Build Solidity contracts
-        working-directory: ./onlyswaps-solidity
+        working-directory: ./modules/onlyswaps-solidity
         run: npm run build
 
       # 4. Build and test workspace packages

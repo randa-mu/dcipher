@@ -70,7 +70,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
-          file: ./dsigner/examples/dsigner_legacy_http/Dockerfile
+          file: ./bin/dsigner/examples/dsigner_legacy_http/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/dsigner-cache:${{ steps.meta.outputs.version }}
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/dsigner-cache:main-latest
