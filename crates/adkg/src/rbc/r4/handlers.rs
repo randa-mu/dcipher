@@ -33,7 +33,7 @@ pub(super) async fn rbc_receive_proposal<T>(
         // Not the expected sender
         warn!(
             ?expected_sender,
-            "Node `{}` refused proposal: unexpected sender", st.id
+            "Node `{}` refused proposal: unexpected sender `{sender}`", st.id
         );
         return;
     }
