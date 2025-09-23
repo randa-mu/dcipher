@@ -240,7 +240,7 @@ where
         SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
             curve: BlsSignatureCurve::Bn254G1,
             hash: BlsSignatureHash::Keccak256,
-            compression: false,
+            compression: true, // uses compressed representations internally
         }),
         ApplicationArgs::Blocklock(ApplicationBlocklockArgs {
             chain_id: args
