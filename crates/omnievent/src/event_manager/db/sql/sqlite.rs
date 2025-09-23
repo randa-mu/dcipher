@@ -38,7 +38,7 @@ impl SqliteEventDatabase {
     /// #[tokio::main]
     /// async fn main() {
     ///     let db = SqliteEventDatabase::connect("sqlite::memory:").await.expect("failed to connect");
-    ///     db.maybe_initialize_schema().expect("failed to init schema");
+    ///     db.maybe_initialize_schema().await.expect("failed to init schema");
     /// }
     /// ```
     ///
@@ -49,7 +49,7 @@ impl SqliteEventDatabase {
     /// #[tokio::main]
     /// async fn main() {
     ///     let db = SqliteEventDatabase::connect("sqlite:://path/to/my/db").await.expect("failed to connect");
-    ///     db.maybe_initialize_schema().expect("failed to init schema");
+    ///     db.maybe_initialize_schema().await.expect("failed to init schema");
     /// }
     /// ```
     pub async fn connect(url: &str) -> Result<Self, SqliteEventDatabaseError> {

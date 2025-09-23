@@ -1,0 +1,17 @@
+[package]
+name = "onlyswaps-omnievent-agent"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+agent-utils.workspace = true
+alloy = { workspace = true, features = ["default", "provider-ws"] }
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+config = { workspace = true }
+futures = { workspace = true}
+omnievent = { workspace = true, features = ["sql", "sqlite"] }
+serde = { workspace = true, features = ["derive"] }
+superalloy.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
+url = { version = "2.5.7", features = ["serde"] }

@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+agent-utils.workspace = true
 alloy = { workspace = true, features = ["default", "provider-ws"] }
 anyhow.workspace = true
 ark-bn254.workspace = true

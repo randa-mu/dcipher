@@ -2,12 +2,12 @@ use crate::cli::StartArgs;
 use crate::config::{AppConfig, ConfigFile};
 use crate::eth::NetworkBus;
 use crate::events::{EventManagement, create_omnievent_management};
-use crate::healthcheck_server::HealthcheckServer;
-use crate::monitoring::init_monitoring;
 use crate::pending::{RequestId, Verification};
 use crate::signing::OnlySwapsSigner;
 use crate::threshold::create_bn254_signer;
 use crate::transport::create_libp2p_transport;
+use agent_utils::healthcheck_server::HealthcheckServer;
+use agent_utils::monitoring::init_monitoring;
 use config::file::load_mapped_config_file;
 use futures::StreamExt;
 
@@ -18,7 +18,7 @@ pub async fn start_daemon(args: StartArgs) -> anyhow::Result<()> {
         app_config.agent.healthcheck_port,
     )
     .await?;
-    init_monitoring(&app_config)?;
+    init_monitoring(&app_config.agent)?;
 
     // listen for OS signals or any of the tasks closing and shut down either gracefully
     // or noisily with errors
