@@ -29,15 +29,12 @@ pub(crate) fn create_fee_updated_event(network_config: &NetworkConfig) -> Regist
         chain_id: network_config.chain_id,
         address: network_config.router_address.to_vec().into(),
         event_name: "SwapRequestSolverFeeUpdated".to_string(),
-        fields: vec![
-            EventField {
-                sol_type: "bytes32".to_string(),
-                indexed: true,
-            },
-        ],
+        fields: vec![EventField {
+            sol_type: "bytes32".to_string(),
+            indexed: true,
+        }],
         block_safety: BlockSafety::Latest.into(),
     }
-
 }
 pub(crate) fn create_swap_fulfilled(network_config: &NetworkConfig) -> RegisterNewEventRequest {
     RegisterNewEventRequest {
