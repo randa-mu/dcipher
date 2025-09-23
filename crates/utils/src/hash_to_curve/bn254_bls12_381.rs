@@ -303,6 +303,17 @@ mod svdw {
         sign
     }
 
+    // https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-10.html#section-4-4.6.1
+    // inv0(x)
+    //
+    // Input: x, an element of GF(p^m).
+    // Output: x^{q - 2}
+    //
+    pub(crate) fn inv0<C: SWCurveConfig>(x: &C::BaseField) -> C::BaseField {
+        use {ark_ec::AdditiveGroup, ark_ff::Field};
+        x.inverse().unwrap_or(C::BaseField::ZERO)
+    }
+
     pub(super) fn map_to_curve_const_a_zero<C: SWCurveConfig>(
         u: C::BaseField,
         c: [C::BaseField; 4],
@@ -335,7 +346,7 @@ mod svdw {
         //    5.  tv3 = tv1 * tv2
         let mut tv3 = tv1 * tv2;
         //    6.  tv3 = inv0(tv3)
-        tv3 = tv3.inverse().unwrap();
+        tv3 = inv0::<C>(&tv3);
         //    7.  tv4 = u * tv1
         let mut tv4 = u * tv1;
         //    8.  tv4 = tv4 * tv3
@@ -413,13 +424,57 @@ mod svdw {
 mod tests {
     #[cfg(feature = "bn254")]
     mod bn254 {
-        use crate::hash_to_curve::bn254_bls12_381::svdw::sgn0;
+        use crate::hash_to_curve::bn254_bls12_381::svdw::{map_to_curve_const_a_zero, sgn0};
         use crate::hash_to_curve::CustomPairingHashToCurve;
         use ark_bn254::{Fq, Fq2};
         use ark_ec::short_weierstrass::SWCurveConfig;
         use ark_ec::{short_weierstrass::Affine, CurveGroup};
+        use ark_ff::BigInt;
+        use ark_ff::Field;
+        use ark_ff::MontFp;
         use ark_ff::PrimeField;
         use rstest::*;
+
+        #[test]
+        fn test_inv0_regression() {
+            // ensure inv0() returns 0 on input 0.
+            // this input works because the expression is inv0(tv1 * tv2), and tv1 * tv2 = 1 - (4u^2)^2
+            // so with u = 2^-1, we have 4u^2 = 1, and thus tv1 * tv2 = 0.
+            const Z: Fq = Fq::ONE;
+
+            const C: [Fq; 4] = [
+                MontFp!("4"),
+                MontFp!(
+                    "10944121435919637611123202872628637544348155578648911831344518947322613104291"
+                ),
+                MontFp!("8815841940592487685674414971303048083897117035520822607866"),
+                MontFp!(
+                    "7296080957279758407415468581752425029565437052432607887563012631548408736189"
+                ),
+            ];
+            let u: Fq = MontFp!("2").inverse().unwrap();
+            let r = map_to_curve_const_a_zero::<ark_bn254::g1::Config>(u, C, Z);
+            assert_eq!(
+                r.x,
+                BigInt([
+                    11389680472494603939,
+                    14681934109093717318,
+                    15863968012492123182,
+                    1743499133401485332
+                ])
+                .into()
+            );
+            assert_eq!(
+                r.y,
+                BigInt([
+                    5912843033038583732,
+                    13018452156251680787,
+                    18315244615680547370,
+                    751716899383612316
+                ])
+                .into()
+            );
+        }
 
         fn hex64_to_g1_bn254<C: SWCurveConfig>(hex_str_x: &str, hex_str_y: &str) -> Affine<C>
         where
