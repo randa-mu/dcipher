@@ -37,7 +37,7 @@ use tokio::sync::oneshot;
 use tokio::task;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use types::{
     AdkgMessage, CompletedAcssSessions, LazyCoinKeys, NotifyMap, NotifyPredicate, SharedState,
 };
@@ -346,31 +346,31 @@ where
 
         // Try to join ABAs task, and obtain the final list of parties.
         info!(
-            "self main thread of node `{}` waiting on ABA task to complete",
+            "ADKG main thread of node `{}` waiting on ABA task to complete",
             self.id
         );
         let abas_task_result = abas_task.await;
         let final_sessions = match abas_task_result {
             Ok(Ok(final_parties)) => {
                 info!(
-                    "self main thread of node `{}` obtained the final list of parties: {final_parties:?}",
+                    "ADKG main thread of node `{}` obtained the final list of parties: {final_parties:?}",
                     self.id
                 );
                 final_parties
             }
             Ok(Err(e)) => {
                 error!(
-                    "self main thread of node `{}` failed to obtain the final list of parties: {e:?}",
+                    "ADKG main thread of node `{}` failed to obtain the final list of parties: {e:?}",
                     self.id
                 );
                 panic!(
-                    "self main thread of node `{}` failed to obtain the final list of parties: {e:?}",
+                    "ADKG main thread of node `{}` failed to obtain the final list of parties: {e:?}",
                     self.id
                 );
             }
             Err(e) => {
                 panic!(
-                    "self main thread of node `{}` failed to join ABA task: {e:?}",
+                    "ADKG main thread of node `{}` failed to join ABA task: {e:?}",
                     self.id
                 );
             }
@@ -784,15 +784,16 @@ where
                         .expect("cannot enter condition twice")
                         .send(
                             bson::to_vec(&CompletedAcssSessions {
-                                v: completed_acss_ids.into_iter().collect(),
+                                v: completed_acss_ids.clone().into_iter().collect(),
                             })
                             .unwrap(),
                         )
                         .is_ok()
                     {
-                        info!("Node {} set its own RBC input", state.id);
+                        info!(rbc_input = ?completed_acss_ids, "Node {} set its own RBC input", state.id);
                     } else {
                         error!(
+                            rbc_input = ?completed_acss_ids,
                             "Node {} failed to send input to RBC, receiver dropped",
                             state.id
                         );
@@ -867,6 +868,8 @@ where
                         continue;
                     }
                 };
+
+                info!(rbc_output = ?rbc_parties, "Node {} completed RBC with sid `{j}`", state.id);
 
                 // Store the RBC output in the state machine
                 state.rbc_outputs.insert(j, rbc_parties.clone());
@@ -1065,14 +1068,14 @@ where
 
         tokio::select! {
             _ = cancel.cancelled_owned() => {
-                info!(
+                debug!(
                     "ADKG CoinKeys provider of node `{id}` for ABA {j} exiting due to CancellationToken"
                 );
             }
 
             _ = inner_fn => {
-                info!(
-                    "ADKG CoinKeys provider of node `{id}` for ABA {j} exiting due to CancellationToken"
+                debug!(
+                    "ADKG CoinKeys provider of node `{id}` for ABA {j} exiting: keys transmitted"
                 );
             }
         }

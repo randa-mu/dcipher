@@ -81,14 +81,14 @@ where
                         (
                             sid,
                             rbc.start(&m, cancel)
-                                .instrument(tracing::info_span!("RBC::start", ?sid))
+                                .instrument(tracing::warn_span!("RBC::start", ?sid))
                                 .await,
                         )
                     } else {
                         (
                             sid,
                             rbc.listen(&predicate, sid.into(), cancel)
-                                .instrument(tracing::info_span!("RBC::listen", ?sid))
+                                .instrument(tracing::warn_span!("RBC::listen", ?sid))
                                 .await,
                         )
                     }
