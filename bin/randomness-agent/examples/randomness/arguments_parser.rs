@@ -25,16 +25,13 @@ pub struct RandomnessAgentArgs {
     #[arg(long, env = "RANDOMNESS_HEALTHCHECK_PORT", default_value = "8080")]
     pub healthcheck_port: u16,
 
-    /// The bn254 committee config
-    #[arg(long = "committee-config", env = "RANDOMNESS_COMMITTEE_CONFIG")]
-    pub bn254_committee_config: PathBuf,
+    /// The committee config
+    #[arg(long, env = "RANDOMNESS_COMMITTEE_CONFIG")]
+    pub committee_config: PathBuf,
 
-    /// The bls12-381 committee config
-    #[arg(
-        long = "committee-config-bls12-381",
-        env = "RANDOMNESS_COMMITTEE_CONFIG_BLS12-381"
-    )]
-    pub bls12_381_committee_config: PathBuf,
+    /// Whether to enable signature compression or not
+    #[arg(long, env = "RANDOMNESS_SIG_COMPRESSION", default_value = "false")]
+    pub sig_compression: bool,
 
     #[command(flatten)]
     pub chain: ChainArgs,
@@ -153,8 +150,14 @@ pub struct Libp2pArgs {
 
 pub struct RandomnessAgentConfig {
     pub config: RandomnessAgentArgs,
-    pub bn254_committee_config: CommitteeConfig<ark_bn254::G2Affine>,
-    pub bls12_381_committee_config: CommitteeConfig<ark_bls12_381::G2Affine>,
+    pub committee_config: SupportedConfig,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)] // try to deserialize against each variant
+pub enum SupportedConfig {
+    Bn254(CommitteeConfig<ark_bn254::G2Affine>),
+    Bls12_381(CommitteeConfig<ark_bls12_381::G2Affine>),
 }
 
 impl RandomnessAgentConfig {
@@ -164,20 +167,14 @@ impl RandomnessAgentConfig {
             .merge(Toml::file("config.toml"))
             .extract()?;
 
-        let bn254_committee_config = std::fs::read_to_string(&c.bn254_committee_config)
-            .context("failed to read bn254 committee config")?;
-        let bn254_committee_config = toml::from_str(&bn254_committee_config)
-            .context("failed to parse bn254 committee config")?;
-
-        let bls12_381_committee_config = std::fs::read_to_string(&c.bls12_381_committee_config)
-            .context("failed to read bls12-381 committee config")?;
-        let bls12_381_committee_config = toml::from_str(&bls12_381_committee_config)
-            .context("failed to parse bls12-381 committee config")?;
+        let committee_config = std::fs::read_to_string(&c.committee_config)
+            .context("failed to read committee config")?;
+        let committee_config =
+            toml::from_str(&committee_config).context("failed to parse committee config")?;
 
         Ok(Self {
             config: c,
-            bn254_committee_config,
-            bls12_381_committee_config,
+            committee_config,
         })
     }
 }

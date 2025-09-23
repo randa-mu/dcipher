@@ -1,7 +1,7 @@
 mod arguments_parser;
 mod healthcheck;
 
-use crate::arguments_parser::{RandomnessAgentArgs, RandomnessAgentConfig};
+use crate::arguments_parser::{RandomnessAgentArgs, RandomnessAgentConfig, SupportedConfig};
 use crate::healthcheck::start_api;
 use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WalletProvider};
@@ -10,8 +10,8 @@ use ark_ec::pairing::Pairing;
 use config::signing::CommitteeConfig;
 use dcipher_agents::agents::randomness::RandomnessAgent;
 use dcipher_agents::agents::randomness::fulfiller::RandomnessFulfiller;
-use dcipher_agents::fulfiller::ticker::OneshotStopper;
-use dcipher_agents::fulfiller::{RequestChannel, Stopper, TickerBasedFulfiller};
+use dcipher_agents::fulfiller::ticker::{OneshotStopper, UnboundedRequestChannel};
+use dcipher_agents::fulfiller::{Stopper, TickerBasedFulfiller};
 use dcipher_agents::signature_sender::{SignatureRequest, SignatureSenderFulfillerConfig};
 use dcipher_network::transports::libp2p::{Libp2pNode, Libp2pNodeConfig};
 use dcipher_signer::bls::{BlsPairingSigner, BlsSigner, BlsThresholdSigner};
@@ -39,8 +39,7 @@ use utils::serialize::point::{
 async fn main() -> anyhow::Result<()> {
     let RandomnessAgentConfig {
         mut config,
-        bn254_committee_config,
-        bls12_381_committee_config,
+        committee_config,
     } = RandomnessAgentConfig::parse()?;
 
     // Set logging options
@@ -86,99 +85,78 @@ async fn main() -> anyhow::Result<()> {
         agent: RandomnessAgent<BLS, P>,
     }
 
-    // BN254 agent using uncompressed points
-    let mut bn254 = {
-        // Create a fulfiller
-        let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
-            &config,
-            BlsPairingSigner::new_bn254(bn254_committee_config.secret_key.0),
-            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+    macro_rules! create_service_components {
+        (
+            committee_config: $committee_config:expr,
+            signer_fn: $signer_fn:expr,
+            curve: $curve:expr,
+            hash: $hash:expr,
+            compression: $compression:expr,
+            randomness_scheme_id: $randomness_scheme_id:expr,
+        ) => {{
+            let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
+                &config,
+                $signer_fn($committee_config.secret_key.0),
+                SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+                    curve: $curve,
+                    hash: $hash,
+                    compression: $compression,
+                }),
+                &$committee_config,
+                signature_sender_contract.clone(),
+                randomness_sender_contract.clone(),
+            )?;
+
+            // Create a new randomness agent
+            let agent = RandomnessAgent::new(
+                $randomness_scheme_id,
+                config.chain.sync_batch_size,
+                channel,
+                signature_sender_contract_ro.clone(),
+            );
+            ServiceComponents {
+                ticker,
+                libp2p_node,
+                ts_stopper,
+                stopper,
+                agent,
+            }
+        }};
+    }
+
+    let mut service = match (config.sig_compression, committee_config) {
+        (false, SupportedConfig::Bn254(bn254_config)) => {
+            create_service_components!(
+                committee_config: bn254_config,
+                signer_fn: BlsPairingSigner::new_bn254,
                 curve: BlsSignatureCurve::Bn254G1,
                 hash: BlsSignatureHash::Keccak256,
                 compression: false,
-            }),
-            &bn254_committee_config,
-            signature_sender_contract.clone(),
-            randomness_sender_contract.clone(),
-        )?;
-
-        // Create a new randomness agent
-        let agent = RandomnessAgent::new(
-            BN254_RANDOMNESS_SCHEME_ID,
-            config.chain.sync_batch_size,
-            channel,
-            signature_sender_contract_ro.clone(),
-        );
-        ServiceComponents {
-            ticker,
-            libp2p_node,
-            ts_stopper,
-            stopper,
-            agent,
+                randomness_scheme_id: BN254_RANDOMNESS_SCHEME_ID,
+            )
         }
-    };
-
-    // BLS12-381 agent using uncompressed points
-    let mut bls12_381 = {
-        // Create a fulfiller
-        let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
-            &config,
-            BlsPairingSigner::new_bls12_381(bls12_381_committee_config.secret_key.0),
-            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+        (false, SupportedConfig::Bls12_381(bls12_381_config)) => {
+            create_service_components!(
+                committee_config: bls12_381_config,
+                signer_fn: BlsPairingSigner::new_bls12_381,
                 curve: BlsSignatureCurve::Bls12_381G1,
                 hash: BlsSignatureHash::Sha256,
                 compression: false,
-            }),
-            &bls12_381_committee_config.clone(),
-            signature_sender_contract.clone(),
-            randomness_sender_contract.clone(),
-        )?;
-
-        // Create a new randomness agent
-        let agent = RandomnessAgent::new(
-            BLS12_381_RANDOMNESS_SCHEME_ID,
-            config.chain.sync_batch_size,
-            channel,
-            signature_sender_contract_ro.clone(),
-        );
-        ServiceComponents {
-            ticker,
-            libp2p_node,
-            ts_stopper,
-            stopper,
-            agent,
+                randomness_scheme_id: BLS12_381_RANDOMNESS_SCHEME_ID,
+            )
         }
-    };
-
-    // BLS12-381 agent using compressed points
-    let mut bls12_381_c = {
-        // Create a fulfiller
-        let (ticker, libp2p_node, ts_stopper, stopper, channel) = create_threshold_fulfiller(
-            &config,
-            BlsPairingSigner::new_bls12_381(bls12_381_committee_config.secret_key.0),
-            SignatureAlgorithm::Bls(BlsSignatureAlgorithm {
+        (true, SupportedConfig::Bls12_381(bls12_381_config)) => {
+            create_service_components!(
+                committee_config: bls12_381_config,
+                signer_fn: BlsPairingSigner::new_bls12_381,
                 curve: BlsSignatureCurve::Bls12_381G1,
                 hash: BlsSignatureHash::Sha256,
                 compression: true,
-            }),
-            &bls12_381_committee_config,
-            signature_sender_contract.clone(),
-            randomness_sender_contract.clone(),
-        )?;
-
-        // Create a new randomness agent
-        let agent = RandomnessAgent::new(
-            BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID,
-            config.chain.sync_batch_size,
-            channel,
-            signature_sender_contract_ro.clone(),
-        );
-        ServiceComponents {
-            ticker,
-            libp2p_node,
-            ts_stopper,
-            stopper,
-            agent,
+                randomness_scheme_id: BLS12_381_COMPRESSED_RANDOMNESS_SCHEME_ID,
+            )
+        }
+        _ => {
+            anyhow::bail!("Unsupported signature sig_compression / algorithm combination");
         }
     };
 
@@ -203,18 +181,8 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         },
 
-        err = run_agent(&mut bn254.agent, bn254.ticker, signature_sender_contract_ro.clone()) => {
-            eprintln!("bn254 agent stopped unexpectedly...");
-            err // return Result
-        },
-
-        err = run_agent(&mut bls12_381.agent, bls12_381.ticker, signature_sender_contract_ro.clone()) => {
-            eprintln!("bls12_381 agent stopped unexpectedly...");
-            err // return Result
-        },
-
-        err = run_agent(&mut bls12_381_c.agent, bls12_381_c.ticker, signature_sender_contract_ro.clone()) => {
-            eprintln!("bls12_381_c agent stopped unexpectedly...");
+        err = run_agent(&mut service.agent, service.ticker, signature_sender_contract_ro.clone()) => {
+            eprintln!("agent stopped unexpectedly...");
             err // return Result
         },
 
@@ -225,32 +193,21 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Stop the various components
-    if let Err(e) = bn254.libp2p_node.stop().await {
-        tracing::error!(error = ?e, "Failed to stop bn254 libp2p node");
+    if let Err(e) = service.libp2p_node.stop().await {
+        tracing::error!(error = ?e, "Failed to stop libp2p node");
     }
-    bn254.ts_stopper.cancel();
-    bn254.stopper.stop().await;
-
-    if let Err(e) = bls12_381.libp2p_node.stop().await {
-        tracing::error!(error = ?e, "Failed to stop bls12_381 libp2p node");
-    }
-    bls12_381.ts_stopper.cancel();
-    bls12_381.stopper.stop().await;
-
-    if let Err(e) = bls12_381_c.libp2p_node.stop().await {
-        tracing::error!(error = ?e, "Failed to stop bls12_381_c libp2p node");
-    }
-    bls12_381_c.ts_stopper.cancel();
-    bls12_381_c.stopper.stop().await;
+    service.ts_stopper.cancel();
+    service.stopper.stop().await;
 
     res
 }
 
-fn create_threshold_fulfiller<'lt_in, 'lt_out, P, BLS>(
-    args: &'lt_in RandomnessAgentArgs,
+#[allow(clippy::type_complexity)]
+fn create_threshold_fulfiller<P, BLS>(
+    args: &RandomnessAgentArgs,
     signer: BLS,
     algorithm: SignatureAlgorithm,
-    committee_config: &'lt_in CommitteeConfig<<BLS::E as Pairing>::G2Affine>,
+    committee_config: &CommitteeConfig<<BLS::E as Pairing>::G2Affine>,
     signature_sender_contract: SignatureSender::SignatureSenderInstance<P>,
     randomness_sender_contract: RandomnessSender::RandomnessSenderInstance<P>,
 ) -> anyhow::Result<(
@@ -258,7 +215,7 @@ fn create_threshold_fulfiller<'lt_in, 'lt_out, P, BLS>(
     Libp2pNode<u16>,
     CancellationToken,
     OneshotStopper,
-    impl RequestChannel<Request = SignatureRequest> + 'lt_out,
+    UnboundedRequestChannel<SignatureRequest>,
 )>
 where
     P: Provider + WalletProvider + Clone + 'static,
