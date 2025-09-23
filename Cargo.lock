@@ -4860,11 +4860,13 @@ dependencies = [
  "clap",
  "config",
  "futures",
+ "generated",
  "omnievent",
  "serde",
  "superalloy",
  "tokio",
- "url",
+ "tokio-stream",
+ "tracing",
 ]
 
 [[package]]

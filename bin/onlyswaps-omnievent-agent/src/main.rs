@@ -8,7 +8,9 @@ use clap::Parser;
 mod app;
 mod config;
 mod events;
+mod network_bus;
 mod omnievent;
+mod state;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
