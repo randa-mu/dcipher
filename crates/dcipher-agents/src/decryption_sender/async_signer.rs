@@ -72,7 +72,10 @@ where
             .await
             .map_err(DecryptionSenderAsyncSignerError::UnderlyingAsyncSigner)?;
 
-        let sig = CS::IdentityGroup::deser_compressed(&sig)?;
+        let sig = CS::IdentityGroup::deser_compressed(&sig).map_err(|e| {
+            tracing::error!(error = ?e, alg = ?self.algorithm, args = ?self.application_args, "Failed to deserialize dsigner scheme signature. Algorithm / compression mismatch?");
+            e
+        })?;
         let sig_bytes = Cow::Owned(sig.ser_uncompressed()?.into());
         // Preprocess decryption keys using the signature and the ciphertext's ephemeral public key
         let request_id = req.id;

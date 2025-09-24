@@ -1,32 +1,49 @@
-use crate::keys::Bn254SecretKey;
+use crate::keys::SecretKey;
+use ark_ec::AffineRepr;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU16;
+use utils::serialize::point::PointDeserializeCompressed;
+use utils::serialize::point::PointSerializeCompressed;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CommitteeConfig {
+// Deserialize as a UnvalidatedCommitteeConfig first, and call try_from to get Self
+#[serde(try_from = "UnvalidatedCommitteeConfig<G>")]
+#[serde(bound(
+    serialize = "G: PointSerializeCompressed",
+    deserialize = "G: PointDeserializeCompressed"
+))]
+pub struct CommitteeConfig<G: AffineRepr> {
     pub member_id: NonZeroU16,
-    pub secret_key: Bn254SecretKey,
+    pub secret_key: SecretKey<G::ScalarField>,
     pub t: NonZeroU16,
     pub n: NonZeroU16,
-    pub members: Vec<MemberConfig>,
+    pub members: Vec<MemberConfig<G>>,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct UnvalidatedCommitteeConfig {
+#[serde(bound(
+    serialize = "G: PointSerializeCompressed",
+    deserialize = "G: PointDeserializeCompressed"
+))]
+pub struct UnvalidatedCommitteeConfig<G: AffineRepr> {
     pub member_id: NonZeroU16,
-    pub secret_key: Bn254SecretKey,
+    pub secret_key: SecretKey<G::ScalarField>,
     pub t: NonZeroU16,
     pub n: NonZeroU16,
-    pub members: Vec<MemberConfig>,
+    pub members: Vec<MemberConfig<G>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MemberConfig {
+#[serde(bound(
+    serialize = "G: PointSerializeCompressed",
+    deserialize = "G: PointDeserializeCompressed"
+))]
+pub struct MemberConfig<G> {
     /// Node identifier used in the threshold scheme
     pub member_id: NonZeroU16,
 
     /// BN254 public key of the node
     #[serde(with = "utils::serialize::point::base64")]
-    pub bls_pk: ark_bn254::G2Affine,
+    pub bls_pk: G,
 
     /// Libp2p peer address
     pub address: libp2p::Multiaddr,
@@ -35,8 +52,8 @@ pub struct MemberConfig {
     pub peer_id: libp2p::PeerId,
 }
 
-impl UnvalidatedCommitteeConfig {
-    pub fn parse(mut self) -> anyhow::Result<CommitteeConfig> {
+impl<G: AffineRepr> UnvalidatedCommitteeConfig<G> {
+    pub fn parse(mut self) -> anyhow::Result<CommitteeConfig<G>> {
         let member_count = self.members.len();
         let n = self.n.get() as usize;
         let t = self.t.get() as usize;
@@ -77,5 +94,13 @@ impl UnvalidatedCommitteeConfig {
             t: self.t,
             members: self.members,
         })
+    }
+}
+
+impl<G: AffineRepr> TryFrom<UnvalidatedCommitteeConfig<G>> for CommitteeConfig<G> {
+    type Error = anyhow::Error;
+
+    fn try_from(value: UnvalidatedCommitteeConfig<G>) -> Result<Self, Self::Error> {
+        value.parse()
     }
 }
