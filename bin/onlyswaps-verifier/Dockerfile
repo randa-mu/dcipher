@@ -1,20 +1,4 @@
-# Image building solidity contracts
-ARG NODE_VERSION=22.3
-FROM europe-west1-docker.pkg.dev/randamu-prod/candyland/node:${NODE_VERSION} AS sol_builder
-WORKDIR /app
-
-RUN curl -L https://foundry.paradigm.xyz | bash
-ENV PATH="/root/.foundry/bin:${PATH}"
-RUN foundryup
-
-FROM sol_builder AS sol_onlyswaps
-WORKDIR /app/modules/onlyswaps-solidity
-COPY ./modules/onlyswaps-solidity/package.json ./
-COPY ./modules/onlyswaps-solidity/package-lock.json ./
-RUN npm install
-
-COPY ./modules/onlyswaps-solidity ./
-RUN npm run build
+# Image must be built from the root
 
 # Base image for rust
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
@@ -36,7 +20,6 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-COPY --from=sol_onlyswaps /app/modules/onlyswaps-solidity/out ./modules/onlyswaps-solidity/out
 RUN cargo build --release -p onlyswaps-verifier
 
 # We do not need the Rust toolchain to run the binary!
