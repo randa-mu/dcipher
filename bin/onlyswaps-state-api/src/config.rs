@@ -9,8 +9,8 @@ pub(crate) struct CliConfig {
     #[arg(
         short = 'c',
         long = "config",
-        env = "ONLYSWAPS_OMNIEVENT_CONFIG",
-        default_value = "~/.onlyswaps-omnievent/config.toml"
+        env = "ONLYSWAPS_STATE_API_CONFIG",
+        default_value = "~/.onlyswaps-state-api/config.toml"
     )]
     pub config_path: String,
 }

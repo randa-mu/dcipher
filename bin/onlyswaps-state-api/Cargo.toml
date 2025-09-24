@@ -1,5 +1,5 @@
 [package]
-name = "onlyswaps-omnievent-agent"
+name = "onlyswaps-state-api"
 version.workspace = true
 edition.workspace = true
 
@@ -10,12 +10,12 @@ anyhow.workspace = true
 axum.workspace = true
 clap = { workspace = true, features = ["derive"] }
 config = { workspace = true }
-futures = { workspace = true}
+futures = { workspace = true }
 generated = { workspace = true }
 omnievent = { workspace = true, features = ["sql", "sqlite"] }
 serde = { workspace = true, features = ["derive"] }
 superalloy.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
-tokio-stream = { workspace = true, features = ["sync"]}
+tokio-stream = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
 url.workspace = true

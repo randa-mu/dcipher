@@ -6,7 +6,6 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-
 FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
@@ -19,11 +18,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-RUN cargo build --release -p onlyswaps-omnievent-agent
+RUN cargo build --release -p onlyswaps-state-api
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libssl3 dnsutils
 WORKDIR /app
-COPY --from=builder /app/target/release/onlyswaps-omnievent-agent /usr/local/bin
-ENTRYPOINT ["/usr/local/bin/onlyswaps-omnievent-agent"]
+COPY --from=builder /app/target/release/onlyswaps-state-api /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/onlyswaps-state-api"]
