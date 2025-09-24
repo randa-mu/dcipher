@@ -1,6 +1,6 @@
 use crate::network_bus::NetworkBus;
 use crate::omnievent::StateUpdate;
-use alloy::primitives::FixedBytes;
+use alloy::primitives::{FixedBytes, U256};
 use alloy::providers::DynProvider;
 
 pub(crate) struct StateMachine {
@@ -10,8 +10,10 @@ pub(crate) struct StateMachine {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Transaction {
-    request_id: FixedBytes<32>,
-    state: String,
+    pub request_id: FixedBytes<32>,
+    pub amount: U256,
+    pub solver_fee: U256,
+    pub state: String,
 }
 
 impl StateMachine {
@@ -22,19 +24,37 @@ impl StateMachine {
         }
     }
 
-    pub async fn apply_state(&mut self, update: StateUpdate) -> Vec<Transaction> {
+    pub async fn apply_state(&mut self, update: StateUpdate) -> anyhow::Result<Vec<Transaction>> {
         match update {
             StateUpdate::Requested {
                 request_id,
                 chain_id,
             } => {
+                let client = self.network_bus.networks.get(&chain_id).expect(
+                    "got a chain_id for a network we don't support - this shouldn't be possible",
+                );
+                let params = client.fetch_parameters(request_id).await?;
                 self.transactions.push(Transaction {
                     request_id,
+                    amount: params.amountOut,
+                    solver_fee: params.solverFee,
                     state: "requested".to_string(),
                 });
             }
-            StateUpdate::FeeUpdated { .. } => {
-                // do nothing for now
+            StateUpdate::FeeUpdated {
+                chain_id,
+                request_id,
+            } => {
+                let client = self.network_bus.networks.get(&chain_id).expect(
+                    "got a chain_id for a network we don't support - this shouldn't be possible",
+                );
+                let params = client.fetch_parameters(request_id).await?;
+
+                for t in &mut self.transactions {
+                    if t.request_id == request_id {
+                        t.solver_fee = params.solverFee
+                    }
+                }
             }
             StateUpdate::Fulfilled { request_id } => {
                 for t in &mut self.transactions {
@@ -52,6 +72,6 @@ impl StateMachine {
             }
         }
 
-        self.transactions.clone()
+        Ok(self.transactions.clone())
     }
 }

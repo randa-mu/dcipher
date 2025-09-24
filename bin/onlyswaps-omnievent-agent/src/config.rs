@@ -2,6 +2,7 @@ use clap::Parser;
 use config::agent::AgentConfig;
 use config::network::NetworkConfig;
 use serde::Deserialize;
+use url::Url;
 
 #[derive(Parser, Debug)]
 pub(crate) struct CliConfig {
@@ -17,5 +18,11 @@ pub(crate) struct CliConfig {
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AppConfig {
     pub agent: AgentConfig,
+    pub db: DbConfig,
     pub networks: Vec<NetworkConfig>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct DbConfig {
+    pub url: Url,
 }

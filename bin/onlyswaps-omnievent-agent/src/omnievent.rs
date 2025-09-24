@@ -1,3 +1,4 @@
+use crate::config::DbConfig;
 use crate::events::{
     create_fee_updated_event, create_swap_fulfilled, create_swap_requested, create_swap_verified,
 };
@@ -28,6 +29,7 @@ pub(crate) struct ChainRegistration {
 }
 
 pub(crate) async fn create_event_manager(
+    db_config: &DbConfig,
     networks: &Vec<NetworkConfig>,
 ) -> anyhow::Result<OmnieventManager> {
     let mut event_requests: HashMap<u64, ChainRegistration> = HashMap::new();
@@ -42,10 +44,9 @@ pub(crate) async fn create_event_manager(
     }
 
     // then we start the event DB with it
-    let db = SqliteEventDatabase::connect("sqlite::memory:").await?;
-    db.maybe_initialize_schema()
-        .await
-        .context("failed to initialise sqlite schema")?;
+    tracing::debug!(path = db_config.url.as_str(), "loading sqlite database");
+    let db = SqliteEventDatabase::connect(db_config.url.as_str()).await?;
+    // let _ = db.maybe_initialize_schema().await;
 
     let mut events = EventManager::new(mp, db);
     events.start();
@@ -140,7 +141,10 @@ impl ChainRegistration {
                 request_id,
             })
         } else if self.fee_updated == event_id {
-            Ok(StateUpdate::FeeUpdated { request_id })
+            Ok(StateUpdate::FeeUpdated {
+                chain_id,
+                request_id,
+            })
         } else if self.fulfilled == event_id {
             Ok(StateUpdate::Fulfilled { request_id })
         } else if self.verified == event_id {
@@ -172,6 +176,7 @@ pub(crate) enum StateUpdate {
         request_id: FixedBytes<32>,
     },
     FeeUpdated {
+        chain_id: u64,
         request_id: FixedBytes<32>,
     },
     Fulfilled {

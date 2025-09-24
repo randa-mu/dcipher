@@ -15,7 +15,7 @@ impl App {
         let OmnieventManager {
             registered_by_chain_id,
             omnievent,
-        } = create_event_manager(&config.networks).await?;
+        } = create_event_manager(&config.db, &config.networks).await?;
 
         let (next_transition_tx, mut next_transition_rx) =
             tokio::sync::mpsc::unbounded_channel::<StateUpdate>();
@@ -47,7 +47,11 @@ impl App {
         let state_machine_task = tokio::spawn(async move {
             while let Some(state_update) = next_transition_rx.recv().await {
                 tracing::info!("received state update: {:?}", state_update);
-                let next = state_machine.apply_state(state_update).await;
+                // TODO: we should probably do retries or something here rather than blowing up the app
+                let next = state_machine
+                    .apply_state(state_update)
+                    .await
+                    .expect("we failed to apply a state!");
                 let _ = next_state_tx
                     .send(next)
                     .map_err(|e| tracing::error!("error making state transition: {}", e));
@@ -58,7 +62,13 @@ impl App {
         // set up a shitty printing task - really this should be an API that serves the latest state
         let state_printer_task = tokio::spawn(async move {
             while let Some(state) = next_state_rx.recv().await {
-                tracing::info!("{:?}", state);
+                for tx in state {
+                    tracing::info!(
+                        amount = ?tx.amount,
+                        fee = ?tx.solver_fee,
+                        "trade"
+                    );
+                }
             }
         });
         tracing::info!("started state printer");

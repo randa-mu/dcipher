@@ -21,7 +21,7 @@ shellexpand = "3.1.1"
 serde_json.workspace = true
 serde_with.workspace = true
 toml.workspace = true
-url = { version = "2.5.4", features = ["serde"] }
+url.workspace = true
 utils.workspace = true
 
 [dev-dependencies]

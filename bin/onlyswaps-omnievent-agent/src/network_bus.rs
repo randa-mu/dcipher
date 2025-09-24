@@ -1,21 +1,14 @@
 use alloy::network::EthereumWallet;
-use alloy::primitives::Address;
+use alloy::primitives::{Address, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use config::network::NetworkConfig;
+use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use generated::onlyswaps::router::Router::RouterInstance;
 use std::collections::HashMap;
-use std::time::Duration;
 
 pub(crate) struct NetworkBus<P> {
     pub networks: HashMap<u64, Network<P>>,
-}
-
-pub(crate) struct Network<P> {
-    chain_id: u64,
-    should_write: bool,
-    request_timeout: Duration,
-    router: RouterInstance<P>,
 }
 
 impl NetworkBus<DynProvider> {
@@ -31,6 +24,9 @@ impl NetworkBus<DynProvider> {
     }
 }
 
+pub(crate) struct Network<P> {
+    router: RouterInstance<P>,
+}
 impl Network<DynProvider> {
     pub async fn new(config: &NetworkConfig) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
@@ -50,10 +46,18 @@ impl Network<DynProvider> {
         );
 
         Ok(Self {
-            chain_id: config.chain_id,
-            should_write: config.should_write,
-            request_timeout: config.request_timeout,
             router: RouterInstance::new(Address(config.router_address), provider.clone()),
         })
+    }
+
+    pub async fn fetch_parameters(
+        &self,
+        request_id: FixedBytes<32>,
+    ) -> anyhow::Result<SwapRequestParameters> {
+        Ok(self
+            .router
+            .getSwapRequestParameters(request_id)
+            .call()
+            .await?)
     }
 }

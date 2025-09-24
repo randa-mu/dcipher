@@ -55,6 +55,7 @@ tracing-subscriber = { version = "0.3" }
 
 # network
 libp2p = { version = "0.55", features = ["serde"] }
+url = { version = "2.5.7", features = ["serde"]}
 
 # api / rpc
 axum = "0.8"

@@ -4,6 +4,7 @@ use crate::event_manager::db::EventsDatabase;
 use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEventSpec};
 use alloy::primitives::Address;
 use chrono::{DateTime, Utc};
+use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{FromRow, QueryBuilder, Row, Sqlite, SqlitePool};
 use std::str::FromStr;
 use uuid::Uuid;
@@ -53,7 +54,11 @@ impl SqliteEventDatabase {
     /// }
     /// ```
     pub async fn connect(url: &str) -> Result<Self, SqliteEventDatabaseError> {
-        let pool = SqlitePool::connect(url)
+        let opts = SqliteConnectOptions::from_str(url)
+            .map_err(|e| SqliteEventDatabaseError::Sqlx(e, "failed to create options"))?
+            .create_if_missing(true);
+
+        let pool = SqlitePool::connect_with(opts)
             .await
             .map_err(|e| (e, "failed to connect"))?;
 
@@ -95,6 +100,12 @@ impl EventsDatabase for SqliteEventDatabase {
             r#"
                 INSERT INTO registered_events (id, chain_id, address, block_safety, event_name, fields_json)
                 VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT(id) DO UPDATE SET
+                    chain_id     = $2,
+                    address      = $3,
+                    block_safety = $4,
+                    event_name   = $5,
+                    fields_json  = $6;
             "#,
             event_id,
             event_chain_id,
