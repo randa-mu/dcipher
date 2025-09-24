@@ -2,6 +2,7 @@ use clap::Parser;
 use config::agent::AgentConfig;
 use config::network::NetworkConfig;
 use serde::Deserialize;
+use std::net::Ipv4Addr;
 use url::Url;
 
 #[derive(Parser, Debug)]
@@ -34,13 +35,13 @@ pub(crate) struct DbConfig {
 
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct ApiConfig {
-    pub hostname: String,
+    pub hostname: Ipv4Addr,
     pub port: u16,
 }
 impl Default for ApiConfig {
     fn default() -> Self {
         Self {
-            hostname: "0.0.0.0".into(),
+            hostname: Ipv4Addr::new(0, 0, 0, 0),
             port: 8080,
         }
     }
