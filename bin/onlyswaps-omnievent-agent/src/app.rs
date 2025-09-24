@@ -1,9 +1,10 @@
+use crate::api::HttpApi;
 use crate::config::AppConfig;
 use crate::network_bus::NetworkBus;
 use crate::omnievent::{
     OmnieventManager, StateUpdate, create_event_manager, stream_from_beginning,
 };
-use crate::state::{StateMachine, Transaction};
+use crate::state::{AppState, StateMachine};
 use anyhow::anyhow;
 use futures::StreamExt;
 use tokio::try_join;
@@ -40,37 +41,25 @@ impl App {
 
         let network_bus = NetworkBus::create(&config.networks).await?;
         let mut state_machine = StateMachine::new(network_bus);
-        let (next_state_tx, mut next_state_rx) =
-            tokio::sync::mpsc::unbounded_channel::<Vec<Transaction>>();
+        let (next_state_tx, next_state_rx) = tokio::sync::watch::channel(AppState::default());
 
         // set up a state_update -> next_state stream
         let state_machine_task = tokio::spawn(async move {
             while let Some(state_update) = next_transition_rx.recv().await {
-                tracing::info!("received state update: {:?}", state_update);
                 // TODO: we should probably do retries or something here rather than blowing up the app
                 let next = state_machine
                     .apply_state(state_update)
                     .await
                     .expect("we failed to apply a state!");
-                let _ = next_state_tx
+                next_state_tx
                     .send(next)
-                    .map_err(|e| tracing::error!("error making state transition: {}", e));
+                    .expect("error sending a state transition");
             }
         });
         tracing::info!("started state machine");
 
-        // set up a shitty printing task - really this should be an API that serves the latest state
-        let state_printer_task = tokio::spawn(async move {
-            while let Some(state) = next_state_rx.recv().await {
-                for tx in state {
-                    tracing::info!(
-                        amount = ?tx.amount,
-                        fee = ?tx.solver_fee,
-                        "trade"
-                    );
-                }
-            }
-        });
+        let api = HttpApi::new(&config.api, next_state_rx).await?;
+        let state_printer_task = tokio::spawn(async { api.start().await.expect("API died") });
         tracing::info!("started state printer");
 
         try_join!(stream_task, state_machine_task, state_printer_task)?;

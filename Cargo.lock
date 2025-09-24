@@ -4857,6 +4857,7 @@ dependencies = [
  "agent-utils",
  "alloy",
  "anyhow",
+ "axum",
  "clap",
  "config",
  "futures",

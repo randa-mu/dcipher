@@ -2,6 +2,7 @@ use crate::config::DbConfig;
 use crate::events::{
     create_fee_updated_event, create_swap_fulfilled, create_swap_requested, create_swap_verified,
 };
+use crate::omnievent::StateType::{FeeUpdated, Fulfilled, Verified};
 use alloy::primitives::FixedBytes;
 use alloy::providers::Provider;
 use anyhow::Context;
@@ -134,21 +135,23 @@ impl ChainRegistration {
         }
         // this assumes that all events start with the `requestId`
         let request_id = parse_request_id(&fields[0])?;
+        let mut update = StateUpdate {
+            chain_id,
+            request_id,
+            state_type: StateType::Requested,
+        };
 
         if self.requested == event_id {
-            Ok(StateUpdate::Requested {
-                chain_id,
-                request_id,
-            })
+            Ok(update)
         } else if self.fee_updated == event_id {
-            Ok(StateUpdate::FeeUpdated {
-                chain_id,
-                request_id,
-            })
+            update.state_type = FeeUpdated;
+            Ok(update)
         } else if self.fulfilled == event_id {
-            Ok(StateUpdate::Fulfilled { request_id })
+            update.state_type = Fulfilled;
+            Ok(update)
         } else if self.verified == event_id {
-            Ok(StateUpdate::Verified { request_id })
+            update.state_type = Verified;
+            Ok(update)
         } else {
             anyhow::bail!("unknown event type, uhoh")
         }
@@ -169,20 +172,16 @@ fn parse_request_id(field: &EventFieldData) -> anyhow::Result<FixedBytes<32>> {
     Ok(ret)
 }
 
-#[derive(Debug, Clone)]
-pub(crate) enum StateUpdate {
-    Requested {
-        chain_id: u64,
-        request_id: FixedBytes<32>,
-    },
-    FeeUpdated {
-        chain_id: u64,
-        request_id: FixedBytes<32>,
-    },
-    Fulfilled {
-        request_id: FixedBytes<32>,
-    },
-    Verified {
-        request_id: FixedBytes<32>,
-    },
+pub(crate) struct StateUpdate {
+    pub chain_id: u64,
+    pub request_id: FixedBytes<32>,
+    pub state_type: StateType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum StateType {
+    Requested,
+    FeeUpdated,
+    Fulfilled,
+    Verified,
 }

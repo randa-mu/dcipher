@@ -5,11 +5,13 @@ use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
 use clap::Parser;
 
+mod api;
 mod app;
 mod config;
 mod events;
 mod network_bus;
 mod omnievent;
+mod serde;
 mod state;
 
 #[tokio::main]

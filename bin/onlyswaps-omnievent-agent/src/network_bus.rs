@@ -4,7 +4,7 @@ use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use config::network::NetworkConfig;
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::RouterInstance;
+use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
 use std::collections::HashMap;
 
 pub(crate) struct NetworkBus<P> {
@@ -59,5 +59,12 @@ impl Network<DynProvider> {
             .getSwapRequestParameters(request_id)
             .call()
             .await?)
+    }
+
+    pub async fn fetch_receipt(
+        &self,
+        request_id: FixedBytes<32>,
+    ) -> anyhow::Result<getSwapRequestReceiptReturn> {
+        Ok(self.router.getSwapRequestReceipt(request_id).call().await?)
     }
 }

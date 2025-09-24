@@ -17,12 +17,31 @@ pub(crate) struct CliConfig {
 
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AppConfig {
+    #[serde(default)]
     pub agent: AgentConfig,
+
+    #[serde(default)]
+    pub api: ApiConfig,
+
     pub db: DbConfig,
+
     pub networks: Vec<NetworkConfig>,
 }
-
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct DbConfig {
     pub url: Url,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) struct ApiConfig {
+    pub hostname: String,
+    pub port: u16,
+}
+impl Default for ApiConfig {
+    fn default() -> Self {
+        Self {
+            hostname: "0.0.0.0".into(),
+            port: 8080,
+        }
+    }
 }
