@@ -10,7 +10,8 @@ pub struct TransferReceipt {
     pub request_id: FixedBytes<32>,
     pub recipient: Address,
     pub src_chain_id: U256,
-    pub token: Address,
+    pub token_in: Address,
+    pub token_out: Address,
     pub fulfilled: bool,
     pub solver: Address,
     pub amount_out: U256,
@@ -35,7 +36,7 @@ pub fn reconcile_transfer_params(
 
     // right now this relies on the fact that tokens have the same address
     // on multiple chains which could be a bug
-    if dest_receipt.token != src_params.tokenOut {
+    if dest_receipt.token_out != src_params.tokenOut {
         anyhow::bail!("funds were sent from the wrong token")
     }
 
@@ -117,7 +118,7 @@ mod tests {
         let params = base_params();
         let expected_out = params.amountOut;
         let mut dest = receipt_from(&params, expected_out);
-        dest.token = Address::from_str("cafebabecD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(); // different from params.token
+        dest.token_out = Address::from_str("cafebabecD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(); // different from params.token
 
         let _ = reconcile_transfer_params(params, dest).expect_err("should fail on token mismatch");
     }
@@ -164,7 +165,8 @@ mod tests {
         TransferReceipt {
             chain_id: params.dstChainId,
             request_id: b32(0x11),
-            token: params.tokenOut,
+            token_in: params.tokenIn,
+            token_out: params.tokenOut,
             src_chain_id: params.srcChainId,
             fulfilled: true,
             solver: Address::from_str("1111cAb3cD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(),

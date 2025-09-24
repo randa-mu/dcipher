@@ -22,7 +22,10 @@ interface IRouter {
     event DestinationChainIdBlocked(uint256 chainId);
     event DestinationChainIdPermitted(uint256 chainId);
     event SolverPayoutFulfilled(bytes32 indexed requestId);
+    event SwapRequestCancellationStaged(bytes32 indexed requestId, address indexed user, uint256 initiatedAt);
+    event SwapRequestCancellationWindowUpdated(uint256 newSwapRequestCancellationWindow);
     event SwapRequestFulfilled(bytes32 indexed requestId, uint256 indexed srcChainId, uint256 indexed dstChainId);
+    event SwapRequestRefundClaimed(bytes32 indexed requestId, address indexed user, address indexed recipient, uint256 amount);
     event SwapRequestSolverFeeUpdated(bytes32 indexed requestId);
     event SwapRequested(bytes32 indexed requestId, uint256 indexed srcChainId, uint256 indexed dstChainId);
     event TokenMappingAdded(uint256 dstChainId, address dstToken, address srcToken);
@@ -32,9 +35,11 @@ interface IRouter {
 
     function blockDestinationChainId(uint256 chainId) external;
     function buildSwapRequestParameters(address tokenIn, address tokenOut, uint256 amount, uint256 verificationFeeAmount, uint256 solverFeeAmount, uint256 dstChainId, address recipient, uint256 nonce) external view returns (SwapRequestParameters memory swapRequestParams);
+    function cancelSwapRequestAndRefund(bytes32 requestId, address refundRecipient) external;
     function cancelUpgrade(bytes memory signature) external;
     function executeUpgrade() external;
     function getAllowedDstChainId(uint256 chainId) external view returns (bool);
+    function getCancelledSwapRequests() external view returns (bytes32[] memory);
     function getChainID() external view returns (uint256);
     function getContractUpgradeBlsValidator() external view returns (address);
     function getFulfilledSolverRefunds() external view returns (bytes32[] memory);
@@ -43,7 +48,7 @@ interface IRouter {
     function getSwapRequestBlsValidator() external view returns (address);
     function getSwapRequestId(SwapRequestParameters memory p) external view returns (bytes32);
     function getSwapRequestParameters(bytes32 requestId) external view returns (SwapRequestParameters memory swapRequestParams);
-    function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes32 requestId, uint256 srcChainId, uint256 dstChainId, address token, bool fulfilled, address solver, address recipient, uint256 amountOut, uint256 fulfilledAt);
+    function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes32 requestId, uint256 srcChainId, uint256 dstChainId, address tokenIn, address tokenOut, bool fulfilled, address solver, address recipient, uint256 amountOut, uint256 fulfilledAt);
     function getTokenMapping(address srcToken, uint256 dstChainId) external view returns (address[] memory);
     function getTotalVerificationFeeBalance(address token) external view returns (uint256);
     function getUnfulfilledSolverRefunds() external view returns (bytes32[] memory);
@@ -53,15 +58,17 @@ interface IRouter {
     function isDstTokenMapped(address srcToken, uint256 dstChainId, address dstToken) external view returns (bool);
     function permitDestinationChainId(uint256 chainId) external;
     function rebalanceSolver(address solver, bytes32 requestId, bytes memory signature) external;
-    function relayTokens(address token, address recipient, uint256 amountOut, bytes32 requestId, uint256 srcChainId) external;
+    function relayTokens(address solverRefundAddress, bytes32 requestId, address sender, address recipient, address tokenIn, address tokenOut, uint256 amountOut, uint256 srcChainId, uint256 nonce) external;
     function removeTokenMapping(uint256 dstChainId, address dstToken, address srcToken) external;
     function requestCrossChainSwap(address tokenIn, address tokenOut, uint256 amount, uint256 fee, uint256 dstChainId, address recipient) external returns (bytes32 requestId);
     function scheduleUpgrade(address _newImplementation, bytes memory _upgradeCalldata, uint256 _upgradeTime, bytes memory signature) external;
+    function setCancellationWindow(uint256 newSwapRequestCancellationWindow, bytes memory signature) external;
     function setContractUpgradeBlsValidator(address _contractUpgradeBlsValidator, bytes memory signature) external;
-    function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) external;
+    function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay, bytes memory signature) external;
     function setSwapRequestBlsValidator(address _swapRequestBlsValidator, bytes memory signature) external;
     function setTokenMapping(uint256 dstChainId, address dstToken, address srcToken) external;
     function setVerificationFeeBps(uint256 _verificationFeeBps) external;
+    function stageSwapRequestCancellation(bytes32 requestId) external;
     function swapRequestParametersToBytes(bytes32 requestId, address solver) external view returns (bytes memory message, bytes memory messageAsG1Bytes);
     function updateSolverFeesIfUnfulfilled(bytes32 requestId, uint256 newFee) external;
     function withdrawVerificationFee(address token, address to) external;
@@ -202,6 +209,24 @@ interface IRouter {
   },
   {
     "type": "function",
+    "name": "cancelSwapRequestAndRefund",
+    "inputs": [
+      {
+        "name": "requestId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "refundRecipient",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "cancelUpgrade",
     "inputs": [
       {
@@ -235,6 +260,19 @@ interface IRouter {
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getCancelledSwapRequests",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
       }
     ],
     "stateMutability": "view"
@@ -506,7 +544,12 @@ interface IRouter {
         "internalType": "uint256"
       },
       {
-        "name": "token",
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOut",
         "type": "address",
         "internalType": "address"
       },
@@ -714,7 +757,17 @@ interface IRouter {
     "name": "relayTokens",
     "inputs": [
       {
-        "name": "token",
+        "name": "solverRefundAddress",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "requestId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "sender",
         "type": "address",
         "internalType": "address"
       },
@@ -724,17 +777,27 @@ interface IRouter {
         "internalType": "address"
       },
       {
+        "name": "tokenIn",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenOut",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "amountOut",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "requestId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "name": "srcChainId",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "name": "srcChainId",
+        "name": "nonce",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -839,6 +902,24 @@ interface IRouter {
   },
   {
     "type": "function",
+    "name": "setCancellationWindow",
+    "inputs": [
+      {
+        "name": "newSwapRequestCancellationWindow",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "signature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setContractUpgradeBlsValidator",
     "inputs": [
       {
@@ -863,6 +944,11 @@ interface IRouter {
         "name": "_minimumContractUpgradeDelay",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "signature",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [],
@@ -917,6 +1003,19 @@ interface IRouter {
         "name": "_verificationFeeBps",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "stageSwapRequestCancellation",
+    "inputs": [
+      {
+        "name": "requestId",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [],
@@ -1041,6 +1140,44 @@ interface IRouter {
   },
   {
     "type": "event",
+    "name": "SwapRequestCancellationStaged",
+    "inputs": [
+      {
+        "name": "requestId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "initiatedAt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SwapRequestCancellationWindowUpdated",
+    "inputs": [
+      {
+        "name": "newSwapRequestCancellationWindow",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "SwapRequestFulfilled",
     "inputs": [
       {
@@ -1059,6 +1196,37 @@ interface IRouter {
         "name": "dstChainId",
         "type": "uint256",
         "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SwapRequestRefundClaimed",
+    "inputs": [
+      {
+        "name": "requestId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
         "internalType": "uint256"
       }
     ],
@@ -2103,6 +2271,244 @@ event SolverPayoutFulfilled(bytes32 indexed requestId);
     };
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    /**Event with signature `SwapRequestCancellationStaged(bytes32,address,uint256)` and selector `0x2d21c8505b48b08cf178a20d2a670179e26cfbb49ffcff651632395215b6afb8`.
+```solidity
+event SwapRequestCancellationStaged(bytes32 indexed requestId, address indexed user, uint256 initiatedAt);
+```*/
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    #[derive(Clone)]
+    pub struct SwapRequestCancellationStaged {
+        #[allow(missing_docs)]
+        pub requestId: alloy::sol_types::private::FixedBytes<32>,
+        #[allow(missing_docs)]
+        pub user: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub initiatedAt: alloy::sol_types::private::primitives::aliases::U256,
+    }
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    const _: () = {
+        use alloy::sol_types as alloy_sol_types;
+        #[automatically_derived]
+        impl alloy_sol_types::SolEvent for SwapRequestCancellationStaged {
+            type DataTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
+            type DataToken<'a> = <Self::DataTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            type TopicList = (
+                alloy_sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Address,
+            );
+            const SIGNATURE: &'static str = "SwapRequestCancellationStaged(bytes32,address,uint256)";
+            const SIGNATURE_HASH: alloy_sol_types::private::B256 = alloy_sol_types::private::B256::new([
+                45u8, 33u8, 200u8, 80u8, 91u8, 72u8, 176u8, 140u8, 241u8, 120u8, 162u8,
+                13u8, 42u8, 103u8, 1u8, 121u8, 226u8, 108u8, 251u8, 180u8, 159u8, 252u8,
+                255u8, 101u8, 22u8, 50u8, 57u8, 82u8, 21u8, 182u8, 175u8, 184u8,
+            ]);
+            const ANONYMOUS: bool = false;
+            #[allow(unused_variables)]
+            #[inline]
+            fn new(
+                topics: <Self::TopicList as alloy_sol_types::SolType>::RustType,
+                data: <Self::DataTuple<'_> as alloy_sol_types::SolType>::RustType,
+            ) -> Self {
+                Self {
+                    requestId: topics.1,
+                    user: topics.2,
+                    initiatedAt: data.0,
+                }
+            }
+            #[inline]
+            fn check_signature(
+                topics: &<Self::TopicList as alloy_sol_types::SolType>::RustType,
+            ) -> alloy_sol_types::Result<()> {
+                if topics.0 != Self::SIGNATURE_HASH {
+                    return Err(
+                        alloy_sol_types::Error::invalid_event_signature_hash(
+                            Self::SIGNATURE,
+                            topics.0,
+                            Self::SIGNATURE_HASH,
+                        ),
+                    );
+                }
+                Ok(())
+            }
+            #[inline]
+            fn tokenize_body(&self) -> Self::DataToken<'_> {
+                (
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.initiatedAt),
+                )
+            }
+            #[inline]
+            fn topics(&self) -> <Self::TopicList as alloy_sol_types::SolType>::RustType {
+                (Self::SIGNATURE_HASH.into(), self.requestId.clone(), self.user.clone())
+            }
+            #[inline]
+            fn encode_topics_raw(
+                &self,
+                out: &mut [alloy_sol_types::abi::token::WordToken],
+            ) -> alloy_sol_types::Result<()> {
+                if out.len() < <Self::TopicList as alloy_sol_types::TopicList>::COUNT {
+                    return Err(alloy_sol_types::Error::Overrun);
+                }
+                out[0usize] = alloy_sol_types::abi::token::WordToken(
+                    Self::SIGNATURE_HASH,
+                );
+                out[1usize] = <alloy::sol_types::sol_data::FixedBytes<
+                    32,
+                > as alloy_sol_types::EventTopic>::encode_topic(&self.requestId);
+                out[2usize] = <alloy::sol_types::sol_data::Address as alloy_sol_types::EventTopic>::encode_topic(
+                    &self.user,
+                );
+                Ok(())
+            }
+        }
+        #[automatically_derived]
+        impl alloy_sol_types::private::IntoLogData for SwapRequestCancellationStaged {
+            fn to_log_data(&self) -> alloy_sol_types::private::LogData {
+                From::from(self)
+            }
+            fn into_log_data(self) -> alloy_sol_types::private::LogData {
+                From::from(&self)
+            }
+        }
+        #[automatically_derived]
+        impl From<&SwapRequestCancellationStaged> for alloy_sol_types::private::LogData {
+            #[inline]
+            fn from(
+                this: &SwapRequestCancellationStaged,
+            ) -> alloy_sol_types::private::LogData {
+                alloy_sol_types::SolEvent::encode_log_data(this)
+            }
+        }
+    };
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    /**Event with signature `SwapRequestCancellationWindowUpdated(uint256)` and selector `0x4d8212c5562fd1dd6ba92403efc18ca21cc3f3ac0069ff4395650bd2a4613a52`.
+```solidity
+event SwapRequestCancellationWindowUpdated(uint256 newSwapRequestCancellationWindow);
+```*/
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    #[derive(Clone)]
+    pub struct SwapRequestCancellationWindowUpdated {
+        #[allow(missing_docs)]
+        pub newSwapRequestCancellationWindow: alloy::sol_types::private::primitives::aliases::U256,
+    }
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    const _: () = {
+        use alloy::sol_types as alloy_sol_types;
+        #[automatically_derived]
+        impl alloy_sol_types::SolEvent for SwapRequestCancellationWindowUpdated {
+            type DataTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
+            type DataToken<'a> = <Self::DataTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            type TopicList = (alloy_sol_types::sol_data::FixedBytes<32>,);
+            const SIGNATURE: &'static str = "SwapRequestCancellationWindowUpdated(uint256)";
+            const SIGNATURE_HASH: alloy_sol_types::private::B256 = alloy_sol_types::private::B256::new([
+                77u8, 130u8, 18u8, 197u8, 86u8, 47u8, 209u8, 221u8, 107u8, 169u8, 36u8,
+                3u8, 239u8, 193u8, 140u8, 162u8, 28u8, 195u8, 243u8, 172u8, 0u8, 105u8,
+                255u8, 67u8, 149u8, 101u8, 11u8, 210u8, 164u8, 97u8, 58u8, 82u8,
+            ]);
+            const ANONYMOUS: bool = false;
+            #[allow(unused_variables)]
+            #[inline]
+            fn new(
+                topics: <Self::TopicList as alloy_sol_types::SolType>::RustType,
+                data: <Self::DataTuple<'_> as alloy_sol_types::SolType>::RustType,
+            ) -> Self {
+                Self {
+                    newSwapRequestCancellationWindow: data.0,
+                }
+            }
+            #[inline]
+            fn check_signature(
+                topics: &<Self::TopicList as alloy_sol_types::SolType>::RustType,
+            ) -> alloy_sol_types::Result<()> {
+                if topics.0 != Self::SIGNATURE_HASH {
+                    return Err(
+                        alloy_sol_types::Error::invalid_event_signature_hash(
+                            Self::SIGNATURE,
+                            topics.0,
+                            Self::SIGNATURE_HASH,
+                        ),
+                    );
+                }
+                Ok(())
+            }
+            #[inline]
+            fn tokenize_body(&self) -> Self::DataToken<'_> {
+                (
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(
+                        &self.newSwapRequestCancellationWindow,
+                    ),
+                )
+            }
+            #[inline]
+            fn topics(&self) -> <Self::TopicList as alloy_sol_types::SolType>::RustType {
+                (Self::SIGNATURE_HASH.into(),)
+            }
+            #[inline]
+            fn encode_topics_raw(
+                &self,
+                out: &mut [alloy_sol_types::abi::token::WordToken],
+            ) -> alloy_sol_types::Result<()> {
+                if out.len() < <Self::TopicList as alloy_sol_types::TopicList>::COUNT {
+                    return Err(alloy_sol_types::Error::Overrun);
+                }
+                out[0usize] = alloy_sol_types::abi::token::WordToken(
+                    Self::SIGNATURE_HASH,
+                );
+                Ok(())
+            }
+        }
+        #[automatically_derived]
+        impl alloy_sol_types::private::IntoLogData
+        for SwapRequestCancellationWindowUpdated {
+            fn to_log_data(&self) -> alloy_sol_types::private::LogData {
+                From::from(self)
+            }
+            fn into_log_data(self) -> alloy_sol_types::private::LogData {
+                From::from(&self)
+            }
+        }
+        #[automatically_derived]
+        impl From<&SwapRequestCancellationWindowUpdated>
+        for alloy_sol_types::private::LogData {
+            #[inline]
+            fn from(
+                this: &SwapRequestCancellationWindowUpdated,
+            ) -> alloy_sol_types::private::LogData {
+                alloy_sol_types::SolEvent::encode_log_data(this)
+            }
+        }
+    };
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Event with signature `SwapRequestFulfilled(bytes32,uint256,uint256)` and selector `0x5819a5ec71a56682e3e8a46c40394c82de95e50a8d4aac7c7e2039d83feec174`.
 ```solidity
 event SwapRequestFulfilled(bytes32 indexed requestId, uint256 indexed srcChainId, uint256 indexed dstChainId);
@@ -2225,6 +2631,143 @@ event SwapRequestFulfilled(bytes32 indexed requestId, uint256 indexed srcChainId
         impl From<&SwapRequestFulfilled> for alloy_sol_types::private::LogData {
             #[inline]
             fn from(this: &SwapRequestFulfilled) -> alloy_sol_types::private::LogData {
+                alloy_sol_types::SolEvent::encode_log_data(this)
+            }
+        }
+    };
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    /**Event with signature `SwapRequestRefundClaimed(bytes32,address,address,uint256)` and selector `0xbd3be89f6ca546f02b67ddd193d4f0e64f580f3c776e942e77a45093bd16da0c`.
+```solidity
+event SwapRequestRefundClaimed(bytes32 indexed requestId, address indexed user, address indexed recipient, uint256 amount);
+```*/
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    #[derive(Clone)]
+    pub struct SwapRequestRefundClaimed {
+        #[allow(missing_docs)]
+        pub requestId: alloy::sol_types::private::FixedBytes<32>,
+        #[allow(missing_docs)]
+        pub user: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub recipient: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub amount: alloy::sol_types::private::primitives::aliases::U256,
+    }
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    const _: () = {
+        use alloy::sol_types as alloy_sol_types;
+        #[automatically_derived]
+        impl alloy_sol_types::SolEvent for SwapRequestRefundClaimed {
+            type DataTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
+            type DataToken<'a> = <Self::DataTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            type TopicList = (
+                alloy_sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::Address,
+            );
+            const SIGNATURE: &'static str = "SwapRequestRefundClaimed(bytes32,address,address,uint256)";
+            const SIGNATURE_HASH: alloy_sol_types::private::B256 = alloy_sol_types::private::B256::new([
+                189u8, 59u8, 232u8, 159u8, 108u8, 165u8, 70u8, 240u8, 43u8, 103u8, 221u8,
+                209u8, 147u8, 212u8, 240u8, 230u8, 79u8, 88u8, 15u8, 60u8, 119u8, 110u8,
+                148u8, 46u8, 119u8, 164u8, 80u8, 147u8, 189u8, 22u8, 218u8, 12u8,
+            ]);
+            const ANONYMOUS: bool = false;
+            #[allow(unused_variables)]
+            #[inline]
+            fn new(
+                topics: <Self::TopicList as alloy_sol_types::SolType>::RustType,
+                data: <Self::DataTuple<'_> as alloy_sol_types::SolType>::RustType,
+            ) -> Self {
+                Self {
+                    requestId: topics.1,
+                    user: topics.2,
+                    recipient: topics.3,
+                    amount: data.0,
+                }
+            }
+            #[inline]
+            fn check_signature(
+                topics: &<Self::TopicList as alloy_sol_types::SolType>::RustType,
+            ) -> alloy_sol_types::Result<()> {
+                if topics.0 != Self::SIGNATURE_HASH {
+                    return Err(
+                        alloy_sol_types::Error::invalid_event_signature_hash(
+                            Self::SIGNATURE,
+                            topics.0,
+                            Self::SIGNATURE_HASH,
+                        ),
+                    );
+                }
+                Ok(())
+            }
+            #[inline]
+            fn tokenize_body(&self) -> Self::DataToken<'_> {
+                (
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.amount),
+                )
+            }
+            #[inline]
+            fn topics(&self) -> <Self::TopicList as alloy_sol_types::SolType>::RustType {
+                (
+                    Self::SIGNATURE_HASH.into(),
+                    self.requestId.clone(),
+                    self.user.clone(),
+                    self.recipient.clone(),
+                )
+            }
+            #[inline]
+            fn encode_topics_raw(
+                &self,
+                out: &mut [alloy_sol_types::abi::token::WordToken],
+            ) -> alloy_sol_types::Result<()> {
+                if out.len() < <Self::TopicList as alloy_sol_types::TopicList>::COUNT {
+                    return Err(alloy_sol_types::Error::Overrun);
+                }
+                out[0usize] = alloy_sol_types::abi::token::WordToken(
+                    Self::SIGNATURE_HASH,
+                );
+                out[1usize] = <alloy::sol_types::sol_data::FixedBytes<
+                    32,
+                > as alloy_sol_types::EventTopic>::encode_topic(&self.requestId);
+                out[2usize] = <alloy::sol_types::sol_data::Address as alloy_sol_types::EventTopic>::encode_topic(
+                    &self.user,
+                );
+                out[3usize] = <alloy::sol_types::sol_data::Address as alloy_sol_types::EventTopic>::encode_topic(
+                    &self.recipient,
+                );
+                Ok(())
+            }
+        }
+        #[automatically_derived]
+        impl alloy_sol_types::private::IntoLogData for SwapRequestRefundClaimed {
+            fn to_log_data(&self) -> alloy_sol_types::private::LogData {
+                From::from(self)
+            }
+            fn into_log_data(self) -> alloy_sol_types::private::LogData {
+                From::from(&self)
+            }
+        }
+        #[automatically_derived]
+        impl From<&SwapRequestRefundClaimed> for alloy_sol_types::private::LogData {
+            #[inline]
+            fn from(
+                this: &SwapRequestRefundClaimed,
+            ) -> alloy_sol_types::private::LogData {
                 alloy_sol_types::SolEvent::encode_log_data(this)
             }
         }
@@ -3330,6 +3873,171 @@ function buildSwapRequestParameters(address tokenIn, address tokenOut, uint256 a
     };
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    /**Function with signature `cancelSwapRequestAndRefund(bytes32,address)` and selector `0xb21eac9e`.
+```solidity
+function cancelSwapRequestAndRefund(bytes32 requestId, address refundRecipient) external;
+```*/
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct cancelSwapRequestAndRefundCall {
+        #[allow(missing_docs)]
+        pub requestId: alloy::sol_types::private::FixedBytes<32>,
+        #[allow(missing_docs)]
+        pub refundRecipient: alloy::sol_types::private::Address,
+    }
+    ///Container type for the return parameters of the [`cancelSwapRequestAndRefund(bytes32,address)`](cancelSwapRequestAndRefundCall) function.
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct cancelSwapRequestAndRefundReturn {}
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    const _: () = {
+        use alloy::sol_types as alloy_sol_types;
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = (
+                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Address,
+            );
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = (
+                alloy::sol_types::private::FixedBytes<32>,
+                alloy::sol_types::private::Address,
+            );
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<cancelSwapRequestAndRefundCall>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: cancelSwapRequestAndRefundCall) -> Self {
+                    (value.requestId, value.refundRecipient)
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for cancelSwapRequestAndRefundCall {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self {
+                        requestId: tuple.0,
+                        refundRecipient: tuple.1,
+                    }
+                }
+            }
+        }
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = ();
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = ();
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<cancelSwapRequestAndRefundReturn>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: cancelSwapRequestAndRefundReturn) -> Self {
+                    ()
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for cancelSwapRequestAndRefundReturn {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self {}
+                }
+            }
+        }
+        impl cancelSwapRequestAndRefundReturn {
+            fn _tokenize(
+                &self,
+            ) -> <cancelSwapRequestAndRefundCall as alloy_sol_types::SolCall>::ReturnToken<
+                '_,
+            > {
+                ()
+            }
+        }
+        #[automatically_derived]
+        impl alloy_sol_types::SolCall for cancelSwapRequestAndRefundCall {
+            type Parameters<'a> = (
+                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Address,
+            );
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            type Return = cancelSwapRequestAndRefundReturn;
+            type ReturnTuple<'a> = ();
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            const SIGNATURE: &'static str = "cancelSwapRequestAndRefund(bytes32,address)";
+            const SELECTOR: [u8; 4] = [178u8, 30u8, 172u8, 158u8];
+            #[inline]
+            fn new<'a>(
+                tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
+            ) -> Self {
+                tuple.into()
+            }
+            #[inline]
+            fn tokenize(&self) -> Self::Token<'_> {
+                (
+                    <alloy::sol_types::sol_data::FixedBytes<
+                        32,
+                    > as alloy_sol_types::SolType>::tokenize(&self.requestId),
+                    <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
+                        &self.refundRecipient,
+                    ),
+                )
+            }
+            #[inline]
+            fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
+                cancelSwapRequestAndRefundReturn::_tokenize(ret)
+            }
+            #[inline]
+            fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(Into::into)
+            }
+            #[inline]
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
+            }
+        }
+    };
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `cancelUpgrade(bytes)` and selector `0x34473af1`.
 ```solidity
 function cancelUpgrade(bytes memory signature) external;
@@ -3758,6 +4466,169 @@ function getAllowedDstChainId(uint256 chainId) external view returns (bool);
                 > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
                     .map(|r| {
                         let r: getAllowedDstChainIdReturn = r.into();
+                        r._0
+                    })
+            }
+        }
+    };
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    /**Function with signature `getCancelledSwapRequests()` and selector `0x5ed8b9d3`.
+```solidity
+function getCancelledSwapRequests() external view returns (bytes32[] memory);
+```*/
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct getCancelledSwapRequestsCall;
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    ///Container type for the return parameters of the [`getCancelledSwapRequests()`](getCancelledSwapRequestsCall) function.
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct getCancelledSwapRequestsReturn {
+        #[allow(missing_docs)]
+        pub _0: alloy::sol_types::private::Vec<
+            alloy::sol_types::private::FixedBytes<32>,
+        >,
+    }
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    const _: () = {
+        use alloy::sol_types as alloy_sol_types;
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = ();
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = ();
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<getCancelledSwapRequestsCall>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: getCancelledSwapRequestsCall) -> Self {
+                    ()
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getCancelledSwapRequestsCall {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self
+                }
+            }
+        }
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = (
+                alloy::sol_types::sol_data::Array<
+                    alloy::sol_types::sol_data::FixedBytes<32>,
+                >,
+            );
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = (
+                alloy::sol_types::private::Vec<
+                    alloy::sol_types::private::FixedBytes<32>,
+                >,
+            );
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<getCancelledSwapRequestsReturn>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: getCancelledSwapRequestsReturn) -> Self {
+                    (value._0,)
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for getCancelledSwapRequestsReturn {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self { _0: tuple.0 }
+                }
+            }
+        }
+        #[automatically_derived]
+        impl alloy_sol_types::SolCall for getCancelledSwapRequestsCall {
+            type Parameters<'a> = ();
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            type Return = alloy::sol_types::private::Vec<
+                alloy::sol_types::private::FixedBytes<32>,
+            >;
+            type ReturnTuple<'a> = (
+                alloy::sol_types::sol_data::Array<
+                    alloy::sol_types::sol_data::FixedBytes<32>,
+                >,
+            );
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            const SIGNATURE: &'static str = "getCancelledSwapRequests()";
+            const SELECTOR: [u8; 4] = [94u8, 216u8, 185u8, 211u8];
+            #[inline]
+            fn new<'a>(
+                tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
+            ) -> Self {
+                tuple.into()
+            }
+            #[inline]
+            fn tokenize(&self) -> Self::Token<'_> {
+                ()
+            }
+            #[inline]
+            fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
+                (
+                    <alloy::sol_types::sol_data::Array<
+                        alloy::sol_types::sol_data::FixedBytes<32>,
+                    > as alloy_sol_types::SolType>::tokenize(ret),
+                )
+            }
+            #[inline]
+            fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(|r| {
+                        let r: getCancelledSwapRequestsReturn = r.into();
+                        r._0
+                    })
+            }
+            #[inline]
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(|r| {
+                        let r: getCancelledSwapRequestsReturn = r.into();
                         r._0
                     })
             }
@@ -4985,7 +5856,7 @@ function getSwapRequestParameters(bytes32 requestId) external view returns (Swap
     #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `getSwapRequestReceipt(bytes32)` and selector `0xf16dea82`.
 ```solidity
-function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes32 requestId, uint256 srcChainId, uint256 dstChainId, address token, bool fulfilled, address solver, address recipient, uint256 amountOut, uint256 fulfilledAt);
+function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes32 requestId, uint256 srcChainId, uint256 dstChainId, address tokenIn, address tokenOut, bool fulfilled, address solver, address recipient, uint256 amountOut, uint256 fulfilledAt);
 ```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
@@ -5006,7 +5877,9 @@ function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes3
         #[allow(missing_docs)]
         pub dstChainId: alloy::sol_types::private::primitives::aliases::U256,
         #[allow(missing_docs)]
-        pub token: alloy::sol_types::private::Address,
+        pub tokenIn: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub tokenOut: alloy::sol_types::private::Address,
         #[allow(missing_docs)]
         pub fulfilled: bool,
         #[allow(missing_docs)]
@@ -5066,6 +5939,7 @@ function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes3
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Bool,
                 alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Address,
@@ -5077,6 +5951,7 @@ function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes3
                 alloy::sol_types::private::FixedBytes<32>,
                 alloy::sol_types::private::primitives::aliases::U256,
                 alloy::sol_types::private::primitives::aliases::U256,
+                alloy::sol_types::private::Address,
                 alloy::sol_types::private::Address,
                 bool,
                 alloy::sol_types::private::Address,
@@ -5104,7 +5979,8 @@ function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes3
                         value.requestId,
                         value.srcChainId,
                         value.dstChainId,
-                        value.token,
+                        value.tokenIn,
+                        value.tokenOut,
                         value.fulfilled,
                         value.solver,
                         value.recipient,
@@ -5122,12 +5998,13 @@ function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes3
                         requestId: tuple.0,
                         srcChainId: tuple.1,
                         dstChainId: tuple.2,
-                        token: tuple.3,
-                        fulfilled: tuple.4,
-                        solver: tuple.5,
-                        recipient: tuple.6,
-                        amountOut: tuple.7,
-                        fulfilledAt: tuple.8,
+                        tokenIn: tuple.3,
+                        tokenOut: tuple.4,
+                        fulfilled: tuple.5,
+                        solver: tuple.6,
+                        recipient: tuple.7,
+                        amountOut: tuple.8,
+                        fulfilledAt: tuple.9,
                     }
                 }
             }
@@ -5149,7 +6026,10 @@ function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes3
                         256,
                     > as alloy_sol_types::SolType>::tokenize(&self.dstChainId),
                     <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
-                        &self.token,
+                        &self.tokenIn,
+                    ),
+                    <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
+                        &self.tokenOut,
                     ),
                     <alloy::sol_types::sol_data::Bool as alloy_sol_types::SolType>::tokenize(
                         &self.fulfilled,
@@ -5180,6 +6060,7 @@ function getSwapRequestReceipt(bytes32 _requestId) external view returns (bytes3
                 alloy::sol_types::sol_data::FixedBytes<32>,
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Uint<256>,
+                alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Bool,
                 alloy::sol_types::sol_data::Address,
@@ -6691,25 +7572,33 @@ function rebalanceSolver(address solver, bytes32 requestId, bytes memory signatu
     };
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive(Default, Debug, PartialEq, Eq, Hash)]
-    /**Function with signature `relayTokens(address,address,uint256,bytes32,uint256)` and selector `0xc91ba4f5`.
+    /**Function with signature `relayTokens(address,bytes32,address,address,address,address,uint256,uint256,uint256)` and selector `0xf04cd277`.
 ```solidity
-function relayTokens(address token, address recipient, uint256 amountOut, bytes32 requestId, uint256 srcChainId) external;
+function relayTokens(address solverRefundAddress, bytes32 requestId, address sender, address recipient, address tokenIn, address tokenOut, uint256 amountOut, uint256 srcChainId, uint256 nonce) external;
 ```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct relayTokensCall {
         #[allow(missing_docs)]
-        pub token: alloy::sol_types::private::Address,
-        #[allow(missing_docs)]
-        pub recipient: alloy::sol_types::private::Address,
-        #[allow(missing_docs)]
-        pub amountOut: alloy::sol_types::private::primitives::aliases::U256,
+        pub solverRefundAddress: alloy::sol_types::private::Address,
         #[allow(missing_docs)]
         pub requestId: alloy::sol_types::private::FixedBytes<32>,
         #[allow(missing_docs)]
+        pub sender: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub recipient: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub tokenIn: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub tokenOut: alloy::sol_types::private::Address,
+        #[allow(missing_docs)]
+        pub amountOut: alloy::sol_types::private::primitives::aliases::U256,
+        #[allow(missing_docs)]
         pub srcChainId: alloy::sol_types::private::primitives::aliases::U256,
+        #[allow(missing_docs)]
+        pub nonce: alloy::sol_types::private::primitives::aliases::U256,
     }
-    ///Container type for the return parameters of the [`relayTokens(address,address,uint256,bytes32,uint256)`](relayTokensCall) function.
+    ///Container type for the return parameters of the [`relayTokens(address,bytes32,address,address,address,address,uint256,uint256,uint256)`](relayTokensCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct relayTokensReturn {}
@@ -6725,17 +7614,25 @@ function relayTokens(address token, address recipient, uint256 amountOut, bytes3
             #[doc(hidden)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Uint<256>,
-                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Uint<256>,
             );
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
                 alloy::sol_types::private::Address,
+                alloy::sol_types::private::FixedBytes<32>,
+                alloy::sol_types::private::Address,
+                alloy::sol_types::private::Address,
+                alloy::sol_types::private::Address,
                 alloy::sol_types::private::Address,
                 alloy::sol_types::private::primitives::aliases::U256,
-                alloy::sol_types::private::FixedBytes<32>,
+                alloy::sol_types::private::primitives::aliases::U256,
                 alloy::sol_types::private::primitives::aliases::U256,
             );
             #[cfg(test)]
@@ -6754,11 +7651,15 @@ function relayTokens(address token, address recipient, uint256 amountOut, bytes3
             impl ::core::convert::From<relayTokensCall> for UnderlyingRustTuple<'_> {
                 fn from(value: relayTokensCall) -> Self {
                     (
-                        value.token,
-                        value.recipient,
-                        value.amountOut,
+                        value.solverRefundAddress,
                         value.requestId,
+                        value.sender,
+                        value.recipient,
+                        value.tokenIn,
+                        value.tokenOut,
+                        value.amountOut,
                         value.srcChainId,
+                        value.nonce,
                     )
                 }
             }
@@ -6767,11 +7668,15 @@ function relayTokens(address token, address recipient, uint256 amountOut, bytes3
             impl ::core::convert::From<UnderlyingRustTuple<'_>> for relayTokensCall {
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self {
-                        token: tuple.0,
-                        recipient: tuple.1,
-                        amountOut: tuple.2,
-                        requestId: tuple.3,
-                        srcChainId: tuple.4,
+                        solverRefundAddress: tuple.0,
+                        requestId: tuple.1,
+                        sender: tuple.2,
+                        recipient: tuple.3,
+                        tokenIn: tuple.4,
+                        tokenOut: tuple.5,
+                        amountOut: tuple.6,
+                        srcChainId: tuple.7,
+                        nonce: tuple.8,
                     }
                 }
             }
@@ -6818,9 +7723,13 @@ function relayTokens(address token, address recipient, uint256 amountOut, bytes3
         impl alloy_sol_types::SolCall for relayTokensCall {
             type Parameters<'a> = (
                 alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::Address,
+                alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Address,
                 alloy::sol_types::sol_data::Uint<256>,
-                alloy::sol_types::sol_data::FixedBytes<32>,
+                alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Uint<256>,
             );
             type Token<'a> = <Self::Parameters<
@@ -6831,8 +7740,8 @@ function relayTokens(address token, address recipient, uint256 amountOut, bytes3
             type ReturnToken<'a> = <Self::ReturnTuple<
                 'a,
             > as alloy_sol_types::SolType>::Token<'a>;
-            const SIGNATURE: &'static str = "relayTokens(address,address,uint256,bytes32,uint256)";
-            const SELECTOR: [u8; 4] = [201u8, 27u8, 164u8, 245u8];
+            const SIGNATURE: &'static str = "relayTokens(address,bytes32,address,address,address,address,uint256,uint256,uint256)";
+            const SELECTOR: [u8; 4] = [240u8, 76u8, 210u8, 119u8];
             #[inline]
             fn new<'a>(
                 tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
@@ -6843,20 +7752,32 @@ function relayTokens(address token, address recipient, uint256 amountOut, bytes3
             fn tokenize(&self) -> Self::Token<'_> {
                 (
                     <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
-                        &self.token,
+                        &self.solverRefundAddress,
+                    ),
+                    <alloy::sol_types::sol_data::FixedBytes<
+                        32,
+                    > as alloy_sol_types::SolType>::tokenize(&self.requestId),
+                    <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
+                        &self.sender,
                     ),
                     <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
                         &self.recipient,
                     ),
+                    <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
+                        &self.tokenIn,
+                    ),
+                    <alloy::sol_types::sol_data::Address as alloy_sol_types::SolType>::tokenize(
+                        &self.tokenOut,
+                    ),
                     <alloy::sol_types::sol_data::Uint<
                         256,
                     > as alloy_sol_types::SolType>::tokenize(&self.amountOut),
-                    <alloy::sol_types::sol_data::FixedBytes<
-                        32,
-                    > as alloy_sol_types::SolType>::tokenize(&self.requestId),
                     <alloy::sol_types::sol_data::Uint<
                         256,
                     > as alloy_sol_types::SolType>::tokenize(&self.srcChainId),
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(&self.nonce),
                 )
             }
             #[inline]
@@ -7453,6 +8374,173 @@ function scheduleUpgrade(address _newImplementation, bytes memory _upgradeCallda
     };
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    /**Function with signature `setCancellationWindow(uint256,bytes)` and selector `0x2a2d17bc`.
+```solidity
+function setCancellationWindow(uint256 newSwapRequestCancellationWindow, bytes memory signature) external;
+```*/
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct setCancellationWindowCall {
+        #[allow(missing_docs)]
+        pub newSwapRequestCancellationWindow: alloy::sol_types::private::primitives::aliases::U256,
+        #[allow(missing_docs)]
+        pub signature: alloy::sol_types::private::Bytes,
+    }
+    ///Container type for the return parameters of the [`setCancellationWindow(uint256,bytes)`](setCancellationWindowCall) function.
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct setCancellationWindowReturn {}
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    const _: () = {
+        use alloy::sol_types as alloy_sol_types;
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = (
+                alloy::sol_types::sol_data::Uint<256>,
+                alloy::sol_types::sol_data::Bytes,
+            );
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = (
+                alloy::sol_types::private::primitives::aliases::U256,
+                alloy::sol_types::private::Bytes,
+            );
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<setCancellationWindowCall>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: setCancellationWindowCall) -> Self {
+                    (value.newSwapRequestCancellationWindow, value.signature)
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for setCancellationWindowCall {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self {
+                        newSwapRequestCancellationWindow: tuple.0,
+                        signature: tuple.1,
+                    }
+                }
+            }
+        }
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = ();
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = ();
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<setCancellationWindowReturn>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: setCancellationWindowReturn) -> Self {
+                    ()
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for setCancellationWindowReturn {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self {}
+                }
+            }
+        }
+        impl setCancellationWindowReturn {
+            fn _tokenize(
+                &self,
+            ) -> <setCancellationWindowCall as alloy_sol_types::SolCall>::ReturnToken<
+                '_,
+            > {
+                ()
+            }
+        }
+        #[automatically_derived]
+        impl alloy_sol_types::SolCall for setCancellationWindowCall {
+            type Parameters<'a> = (
+                alloy::sol_types::sol_data::Uint<256>,
+                alloy::sol_types::sol_data::Bytes,
+            );
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            type Return = setCancellationWindowReturn;
+            type ReturnTuple<'a> = ();
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            const SIGNATURE: &'static str = "setCancellationWindow(uint256,bytes)";
+            const SELECTOR: [u8; 4] = [42u8, 45u8, 23u8, 188u8];
+            #[inline]
+            fn new<'a>(
+                tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
+            ) -> Self {
+                tuple.into()
+            }
+            #[inline]
+            fn tokenize(&self) -> Self::Token<'_> {
+                (
+                    <alloy::sol_types::sol_data::Uint<
+                        256,
+                    > as alloy_sol_types::SolType>::tokenize(
+                        &self.newSwapRequestCancellationWindow,
+                    ),
+                    <alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(
+                        &self.signature,
+                    ),
+                )
+            }
+            #[inline]
+            fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
+                setCancellationWindowReturn::_tokenize(ret)
+            }
+            #[inline]
+            fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(Into::into)
+            }
+            #[inline]
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
+            }
+        }
+    };
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
     /**Function with signature `setContractUpgradeBlsValidator(address,bytes)` and selector `0xf1863713`.
 ```solidity
 function setContractUpgradeBlsValidator(address _contractUpgradeBlsValidator, bytes memory signature) external;
@@ -7618,17 +8706,19 @@ function setContractUpgradeBlsValidator(address _contractUpgradeBlsValidator, by
     };
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive(Default, Debug, PartialEq, Eq, Hash)]
-    /**Function with signature `setMinimumContractUpgradeDelay(uint256)` and selector `0xb5655677`.
+    /**Function with signature `setMinimumContractUpgradeDelay(uint256,bytes)` and selector `0x98772ea2`.
 ```solidity
-function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) external;
+function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay, bytes memory signature) external;
 ```*/
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct setMinimumContractUpgradeDelayCall {
         #[allow(missing_docs)]
         pub _minimumContractUpgradeDelay: alloy::sol_types::private::primitives::aliases::U256,
+        #[allow(missing_docs)]
+        pub signature: alloy::sol_types::private::Bytes,
     }
-    ///Container type for the return parameters of the [`setMinimumContractUpgradeDelay(uint256)`](setMinimumContractUpgradeDelayCall) function.
+    ///Container type for the return parameters of the [`setMinimumContractUpgradeDelay(uint256,bytes)`](setMinimumContractUpgradeDelayCall) function.
     #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
     #[derive(Clone)]
     pub struct setMinimumContractUpgradeDelayReturn {}
@@ -7642,10 +8732,14 @@ function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) ex
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
+            type UnderlyingSolTuple<'a> = (
+                alloy::sol_types::sol_data::Uint<256>,
+                alloy::sol_types::sol_data::Bytes,
+            );
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
                 alloy::sol_types::private::primitives::aliases::U256,
+                alloy::sol_types::private::Bytes,
             );
             #[cfg(test)]
             #[allow(dead_code, unreachable_patterns)]
@@ -7663,7 +8757,7 @@ function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) ex
             impl ::core::convert::From<setMinimumContractUpgradeDelayCall>
             for UnderlyingRustTuple<'_> {
                 fn from(value: setMinimumContractUpgradeDelayCall) -> Self {
-                    (value._minimumContractUpgradeDelay,)
+                    (value._minimumContractUpgradeDelay, value.signature)
                 }
             }
             #[automatically_derived]
@@ -7673,6 +8767,7 @@ function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) ex
                 fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
                     Self {
                         _minimumContractUpgradeDelay: tuple.0,
+                        signature: tuple.1,
                     }
                 }
             }
@@ -7721,7 +8816,10 @@ function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) ex
         }
         #[automatically_derived]
         impl alloy_sol_types::SolCall for setMinimumContractUpgradeDelayCall {
-            type Parameters<'a> = (alloy::sol_types::sol_data::Uint<256>,);
+            type Parameters<'a> = (
+                alloy::sol_types::sol_data::Uint<256>,
+                alloy::sol_types::sol_data::Bytes,
+            );
             type Token<'a> = <Self::Parameters<
                 'a,
             > as alloy_sol_types::SolType>::Token<'a>;
@@ -7730,8 +8828,8 @@ function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) ex
             type ReturnToken<'a> = <Self::ReturnTuple<
                 'a,
             > as alloy_sol_types::SolType>::Token<'a>;
-            const SIGNATURE: &'static str = "setMinimumContractUpgradeDelay(uint256)";
-            const SELECTOR: [u8; 4] = [181u8, 101u8, 86u8, 119u8];
+            const SIGNATURE: &'static str = "setMinimumContractUpgradeDelay(uint256,bytes)";
+            const SELECTOR: [u8; 4] = [152u8, 119u8, 46u8, 162u8];
             #[inline]
             fn new<'a>(
                 tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
@@ -7745,6 +8843,9 @@ function setMinimumContractUpgradeDelay(uint256 _minimumContractUpgradeDelay) ex
                         256,
                     > as alloy_sol_types::SolType>::tokenize(
                         &self._minimumContractUpgradeDelay,
+                    ),
+                    <alloy::sol_types::sol_data::Bytes as alloy_sol_types::SolType>::tokenize(
+                        &self.signature,
                     ),
                 )
             }
@@ -8238,6 +9339,154 @@ function setVerificationFeeBps(uint256 _verificationFeeBps) external;
             #[inline]
             fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
                 setVerificationFeeBpsReturn::_tokenize(ret)
+            }
+            #[inline]
+            fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence(data)
+                    .map(Into::into)
+            }
+            #[inline]
+            fn abi_decode_returns_validate(
+                data: &[u8],
+            ) -> alloy_sol_types::Result<Self::Return> {
+                <Self::ReturnTuple<
+                    '_,
+                > as alloy_sol_types::SolType>::abi_decode_sequence_validate(data)
+                    .map(Into::into)
+            }
+        }
+    };
+    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(Default, Debug, PartialEq, Eq, Hash)]
+    /**Function with signature `stageSwapRequestCancellation(bytes32)` and selector `0x19d257bf`.
+```solidity
+function stageSwapRequestCancellation(bytes32 requestId) external;
+```*/
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct stageSwapRequestCancellationCall {
+        #[allow(missing_docs)]
+        pub requestId: alloy::sol_types::private::FixedBytes<32>,
+    }
+    ///Container type for the return parameters of the [`stageSwapRequestCancellation(bytes32)`](stageSwapRequestCancellationCall) function.
+    #[allow(non_camel_case_types, non_snake_case, clippy::pub_underscore_fields)]
+    #[derive(Clone)]
+    pub struct stageSwapRequestCancellationReturn {}
+    #[allow(
+        non_camel_case_types,
+        non_snake_case,
+        clippy::pub_underscore_fields,
+        clippy::style
+    )]
+    const _: () = {
+        use alloy::sol_types as alloy_sol_types;
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::FixedBytes<32>,);
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = (alloy::sol_types::private::FixedBytes<32>,);
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<stageSwapRequestCancellationCall>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: stageSwapRequestCancellationCall) -> Self {
+                    (value.requestId,)
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for stageSwapRequestCancellationCall {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self { requestId: tuple.0 }
+                }
+            }
+        }
+        {
+            #[doc(hidden)]
+            type UnderlyingSolTuple<'a> = ();
+            #[doc(hidden)]
+            type UnderlyingRustTuple<'a> = ();
+            #[cfg(test)]
+            #[allow(dead_code, unreachable_patterns)]
+            fn _type_assertion(
+                _t: alloy_sol_types::private::AssertTypeEq<UnderlyingRustTuple>,
+            ) {
+                match _t {
+                    alloy_sol_types::private::AssertTypeEq::<
+                        <UnderlyingSolTuple as alloy_sol_types::SolType>::RustType,
+                    >(_) => {}
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<stageSwapRequestCancellationReturn>
+            for UnderlyingRustTuple<'_> {
+                fn from(value: stageSwapRequestCancellationReturn) -> Self {
+                    ()
+                }
+            }
+            #[automatically_derived]
+            #[doc(hidden)]
+            impl ::core::convert::From<UnderlyingRustTuple<'_>>
+            for stageSwapRequestCancellationReturn {
+                fn from(tuple: UnderlyingRustTuple<'_>) -> Self {
+                    Self {}
+                }
+            }
+        }
+        impl stageSwapRequestCancellationReturn {
+            fn _tokenize(
+                &self,
+            ) -> <stageSwapRequestCancellationCall as alloy_sol_types::SolCall>::ReturnToken<
+                '_,
+            > {
+                ()
+            }
+        }
+        #[automatically_derived]
+        impl alloy_sol_types::SolCall for stageSwapRequestCancellationCall {
+            type Parameters<'a> = (alloy::sol_types::sol_data::FixedBytes<32>,);
+            type Token<'a> = <Self::Parameters<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            type Return = stageSwapRequestCancellationReturn;
+            type ReturnTuple<'a> = ();
+            type ReturnToken<'a> = <Self::ReturnTuple<
+                'a,
+            > as alloy_sol_types::SolType>::Token<'a>;
+            const SIGNATURE: &'static str = "stageSwapRequestCancellation(bytes32)";
+            const SELECTOR: [u8; 4] = [25u8, 210u8, 87u8, 191u8];
+            #[inline]
+            fn new<'a>(
+                tuple: <Self::Parameters<'a> as alloy_sol_types::SolType>::RustType,
+            ) -> Self {
+                tuple.into()
+            }
+            #[inline]
+            fn tokenize(&self) -> Self::Token<'_> {
+                (
+                    <alloy::sol_types::sol_data::FixedBytes<
+                        32,
+                    > as alloy_sol_types::SolType>::tokenize(&self.requestId),
+                )
+            }
+            #[inline]
+            fn tokenize_returns(ret: &Self::Return) -> Self::ReturnToken<'_> {
+                stageSwapRequestCancellationReturn::_tokenize(ret)
             }
             #[inline]
             fn abi_decode_returns(data: &[u8]) -> alloy_sol_types::Result<Self::Return> {
@@ -8787,11 +10036,15 @@ function withdrawVerificationFee(address token, address to) external;
         #[allow(missing_docs)]
         buildSwapRequestParameters(buildSwapRequestParametersCall),
         #[allow(missing_docs)]
+        cancelSwapRequestAndRefund(cancelSwapRequestAndRefundCall),
+        #[allow(missing_docs)]
         cancelUpgrade(cancelUpgradeCall),
         #[allow(missing_docs)]
         executeUpgrade(executeUpgradeCall),
         #[allow(missing_docs)]
         getAllowedDstChainId(getAllowedDstChainIdCall),
+        #[allow(missing_docs)]
+        getCancelledSwapRequests(getCancelledSwapRequestsCall),
         #[allow(missing_docs)]
         getChainID(getChainIDCall),
         #[allow(missing_docs)]
@@ -8837,6 +10090,8 @@ function withdrawVerificationFee(address token, address to) external;
         #[allow(missing_docs)]
         scheduleUpgrade(scheduleUpgradeCall),
         #[allow(missing_docs)]
+        setCancellationWindow(setCancellationWindowCall),
+        #[allow(missing_docs)]
         setContractUpgradeBlsValidator(setContractUpgradeBlsValidatorCall),
         #[allow(missing_docs)]
         setMinimumContractUpgradeDelay(setMinimumContractUpgradeDelayCall),
@@ -8846,6 +10101,8 @@ function withdrawVerificationFee(address token, address to) external;
         setTokenMapping(setTokenMappingCall),
         #[allow(missing_docs)]
         setVerificationFeeBps(setVerificationFeeBpsCall),
+        #[allow(missing_docs)]
+        stageSwapRequestCancellation(stageSwapRequestCancellationCall),
         #[allow(missing_docs)]
         swapRequestParametersToBytes(swapRequestParametersToBytesCall),
         #[allow(missing_docs)]
@@ -8866,6 +10123,8 @@ function withdrawVerificationFee(address token, address to) external;
             [3u8, 243u8, 125u8, 62u8],
             [7u8, 239u8, 233u8, 48u8],
             [13u8, 142u8, 110u8, 44u8],
+            [25u8, 210u8, 87u8, 191u8],
+            [42u8, 45u8, 23u8, 188u8],
             [52u8, 71u8, 58u8, 241u8],
             [52u8, 117u8, 191u8, 143u8],
             [58u8, 222u8, 144u8, 233u8],
@@ -8874,12 +10133,14 @@ function withdrawVerificationFee(address token, address to) external;
             [72u8, 116u8, 157u8, 23u8],
             [75u8, 145u8, 129u8, 25u8],
             [86u8, 75u8, 129u8, 239u8],
+            [94u8, 216u8, 185u8, 211u8],
             [99u8, 112u8, 214u8, 88u8],
             [122u8, 30u8, 26u8, 5u8],
             [122u8, 229u8, 22u8, 34u8],
             [126u8, 137u8, 98u8, 20u8],
             [136u8, 134u8, 229u8, 6u8],
             [150u8, 149u8, 236u8, 33u8],
+            [152u8, 119u8, 46u8, 162u8],
             [153u8, 214u8, 18u8, 14u8],
             [162u8, 77u8, 52u8, 97u8],
             [163u8, 109u8, 21u8, 236u8],
@@ -8888,12 +10149,12 @@ function withdrawVerificationFee(address token, address to) external;
             [169u8, 238u8, 15u8, 194u8],
             [170u8, 21u8, 224u8, 41u8],
             [176u8, 115u8, 116u8, 140u8],
+            [178u8, 30u8, 172u8, 158u8],
             [180u8, 68u8, 150u8, 76u8],
-            [181u8, 101u8, 86u8, 119u8],
-            [201u8, 27u8, 164u8, 245u8],
             [206u8, 18u8, 53u8, 128u8],
             [218u8, 173u8, 254u8, 195u8],
             [223u8, 145u8, 152u8, 19u8],
+            [240u8, 76u8, 210u8, 119u8],
             [241u8, 109u8, 234u8, 130u8],
             [241u8, 134u8, 55u8, 19u8],
             [248u8, 74u8, 227u8, 169u8],
@@ -8903,7 +10164,7 @@ function withdrawVerificationFee(address token, address to) external;
     impl alloy_sol_types::SolInterface for IRouterCalls {
         const NAME: &'static str = "IRouterCalls";
         const MIN_DATA_LENGTH: usize = 0usize;
-        const COUNT: usize = 35usize;
+        const COUNT: usize = 39usize;
         #[inline]
         fn selector(&self) -> [u8; 4] {
             match self {
@@ -8913,6 +10174,9 @@ function withdrawVerificationFee(address token, address to) external;
                 Self::buildSwapRequestParameters(_) => {
                     <buildSwapRequestParametersCall as alloy_sol_types::SolCall>::SELECTOR
                 }
+                Self::cancelSwapRequestAndRefund(_) => {
+                    <cancelSwapRequestAndRefundCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::cancelUpgrade(_) => {
                     <cancelUpgradeCall as alloy_sol_types::SolCall>::SELECTOR
                 }
@@ -8921,6 +10185,9 @@ function withdrawVerificationFee(address token, address to) external;
                 }
                 Self::getAllowedDstChainId(_) => {
                     <getAllowedDstChainIdCall as alloy_sol_types::SolCall>::SELECTOR
+                }
+                Self::getCancelledSwapRequests(_) => {
+                    <getCancelledSwapRequestsCall as alloy_sol_types::SolCall>::SELECTOR
                 }
                 Self::getChainID(_) => {
                     <getChainIDCall as alloy_sol_types::SolCall>::SELECTOR
@@ -8988,6 +10255,9 @@ function withdrawVerificationFee(address token, address to) external;
                 Self::scheduleUpgrade(_) => {
                     <scheduleUpgradeCall as alloy_sol_types::SolCall>::SELECTOR
                 }
+                Self::setCancellationWindow(_) => {
+                    <setCancellationWindowCall as alloy_sol_types::SolCall>::SELECTOR
+                }
                 Self::setContractUpgradeBlsValidator(_) => {
                     <setContractUpgradeBlsValidatorCall as alloy_sol_types::SolCall>::SELECTOR
                 }
@@ -9002,6 +10272,9 @@ function withdrawVerificationFee(address token, address to) external;
                 }
                 Self::setVerificationFeeBps(_) => {
                     <setVerificationFeeBpsCall as alloy_sol_types::SolCall>::SELECTOR
+                }
+                Self::stageSwapRequestCancellation(_) => {
+                    <stageSwapRequestCancellationCall as alloy_sol_types::SolCall>::SELECTOR
                 }
                 Self::swapRequestParametersToBytes(_) => {
                     <swapRequestParametersToBytesCall as alloy_sol_types::SolCall>::SELECTOR
@@ -9070,6 +10343,28 @@ function withdrawVerificationFee(address token, address to) external;
                             .map(IRouterCalls::getVersion)
                     }
                     getVersion
+                },
+                {
+                    fn stageSwapRequestCancellation(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <stageSwapRequestCancellationCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
+                            .map(IRouterCalls::stageSwapRequestCancellation)
+                    }
+                    stageSwapRequestCancellation
+                },
+                {
+                    fn setCancellationWindow(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <setCancellationWindowCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
+                            .map(IRouterCalls::setCancellationWindow)
+                    }
+                    setCancellationWindow
                 },
                 {
                     fn cancelUpgrade(
@@ -9158,6 +10453,17 @@ function withdrawVerificationFee(address token, address to) external;
                     getChainID
                 },
                 {
+                    fn getCancelledSwapRequests(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <getCancelledSwapRequestsCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
+                            .map(IRouterCalls::getCancelledSwapRequests)
+                    }
+                    getCancelledSwapRequests
+                },
+                {
                     fn blockDestinationChainId(
                         data: &[u8],
                     ) -> alloy_sol_types::Result<IRouterCalls> {
@@ -9222,6 +10528,17 @@ function withdrawVerificationFee(address token, address to) external;
                             .map(IRouterCalls::setTokenMapping)
                     }
                     setTokenMapping
+                },
+                {
+                    fn setMinimumContractUpgradeDelay(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <setMinimumContractUpgradeDelayCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
+                            .map(IRouterCalls::setMinimumContractUpgradeDelay)
+                    }
+                    setMinimumContractUpgradeDelay
                 },
                 {
                     fn getTotalVerificationFeeBalance(
@@ -9312,6 +10629,17 @@ function withdrawVerificationFee(address token, address to) external;
                     setVerificationFeeBps
                 },
                 {
+                    fn cancelSwapRequestAndRefund(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <cancelSwapRequestAndRefundCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
+                            .map(IRouterCalls::cancelSwapRequestAndRefund)
+                    }
+                    cancelSwapRequestAndRefund
+                },
+                {
                     fn getSwapRequestBlsValidator(
                         data: &[u8],
                     ) -> alloy_sol_types::Result<IRouterCalls> {
@@ -9321,28 +10649,6 @@ function withdrawVerificationFee(address token, address to) external;
                             .map(IRouterCalls::getSwapRequestBlsValidator)
                     }
                     getSwapRequestBlsValidator
-                },
-                {
-                    fn setMinimumContractUpgradeDelay(
-                        data: &[u8],
-                    ) -> alloy_sol_types::Result<IRouterCalls> {
-                        <setMinimumContractUpgradeDelayCall as alloy_sol_types::SolCall>::abi_decode_raw(
-                                data,
-                            )
-                            .map(IRouterCalls::setMinimumContractUpgradeDelay)
-                    }
-                    setMinimumContractUpgradeDelay
-                },
-                {
-                    fn relayTokens(
-                        data: &[u8],
-                    ) -> alloy_sol_types::Result<IRouterCalls> {
-                        <relayTokensCall as alloy_sol_types::SolCall>::abi_decode_raw(
-                                data,
-                            )
-                            .map(IRouterCalls::relayTokens)
-                    }
-                    relayTokens
                 },
                 {
                     fn swapRequestParametersToBytes(
@@ -9376,6 +10682,17 @@ function withdrawVerificationFee(address token, address to) external;
                             .map(IRouterCalls::setSwapRequestBlsValidator)
                     }
                     setSwapRequestBlsValidator
+                },
+                {
+                    fn relayTokens(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <relayTokensCall as alloy_sol_types::SolCall>::abi_decode_raw(
+                                data,
+                            )
+                            .map(IRouterCalls::relayTokens)
+                    }
+                    relayTokens
                 },
                 {
                     fn getSwapRequestReceipt(
@@ -9473,6 +10790,28 @@ function withdrawVerificationFee(address token, address to) external;
                     getVersion
                 },
                 {
+                    fn stageSwapRequestCancellation(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <stageSwapRequestCancellationCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
+                            .map(IRouterCalls::stageSwapRequestCancellation)
+                    }
+                    stageSwapRequestCancellation
+                },
+                {
+                    fn setCancellationWindow(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <setCancellationWindowCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
+                            .map(IRouterCalls::setCancellationWindow)
+                    }
+                    setCancellationWindow
+                },
+                {
                     fn cancelUpgrade(
                         data: &[u8],
                     ) -> alloy_sol_types::Result<IRouterCalls> {
@@ -9559,6 +10898,17 @@ function withdrawVerificationFee(address token, address to) external;
                     getChainID
                 },
                 {
+                    fn getCancelledSwapRequests(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <getCancelledSwapRequestsCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
+                            .map(IRouterCalls::getCancelledSwapRequests)
+                    }
+                    getCancelledSwapRequests
+                },
+                {
                     fn blockDestinationChainId(
                         data: &[u8],
                     ) -> alloy_sol_types::Result<IRouterCalls> {
@@ -9623,6 +10973,17 @@ function withdrawVerificationFee(address token, address to) external;
                             .map(IRouterCalls::setTokenMapping)
                     }
                     setTokenMapping
+                },
+                {
+                    fn setMinimumContractUpgradeDelay(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <setMinimumContractUpgradeDelayCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
+                            .map(IRouterCalls::setMinimumContractUpgradeDelay)
+                    }
+                    setMinimumContractUpgradeDelay
                 },
                 {
                     fn getTotalVerificationFeeBalance(
@@ -9713,6 +11074,17 @@ function withdrawVerificationFee(address token, address to) external;
                     setVerificationFeeBps
                 },
                 {
+                    fn cancelSwapRequestAndRefund(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <cancelSwapRequestAndRefundCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
+                            .map(IRouterCalls::cancelSwapRequestAndRefund)
+                    }
+                    cancelSwapRequestAndRefund
+                },
+                {
                     fn getSwapRequestBlsValidator(
                         data: &[u8],
                     ) -> alloy_sol_types::Result<IRouterCalls> {
@@ -9722,28 +11094,6 @@ function withdrawVerificationFee(address token, address to) external;
                             .map(IRouterCalls::getSwapRequestBlsValidator)
                     }
                     getSwapRequestBlsValidator
-                },
-                {
-                    fn setMinimumContractUpgradeDelay(
-                        data: &[u8],
-                    ) -> alloy_sol_types::Result<IRouterCalls> {
-                        <setMinimumContractUpgradeDelayCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
-                                data,
-                            )
-                            .map(IRouterCalls::setMinimumContractUpgradeDelay)
-                    }
-                    setMinimumContractUpgradeDelay
-                },
-                {
-                    fn relayTokens(
-                        data: &[u8],
-                    ) -> alloy_sol_types::Result<IRouterCalls> {
-                        <relayTokensCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
-                                data,
-                            )
-                            .map(IRouterCalls::relayTokens)
-                    }
-                    relayTokens
                 },
                 {
                     fn swapRequestParametersToBytes(
@@ -9777,6 +11127,17 @@ function withdrawVerificationFee(address token, address to) external;
                             .map(IRouterCalls::setSwapRequestBlsValidator)
                     }
                     setSwapRequestBlsValidator
+                },
+                {
+                    fn relayTokens(
+                        data: &[u8],
+                    ) -> alloy_sol_types::Result<IRouterCalls> {
+                        <relayTokensCall as alloy_sol_types::SolCall>::abi_decode_raw_validate(
+                                data,
+                            )
+                            .map(IRouterCalls::relayTokens)
+                    }
+                    relayTokens
                 },
                 {
                     fn getSwapRequestReceipt(
@@ -9835,6 +11196,11 @@ function withdrawVerificationFee(address token, address to) external;
                         inner,
                     )
                 }
+                Self::cancelSwapRequestAndRefund(inner) => {
+                    <cancelSwapRequestAndRefundCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
+                }
                 Self::cancelUpgrade(inner) => {
                     <cancelUpgradeCall as alloy_sol_types::SolCall>::abi_encoded_size(
                         inner,
@@ -9847,6 +11213,11 @@ function withdrawVerificationFee(address token, address to) external;
                 }
                 Self::getAllowedDstChainId(inner) => {
                     <getAllowedDstChainIdCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
+                }
+                Self::getCancelledSwapRequests(inner) => {
+                    <getCancelledSwapRequestsCall as alloy_sol_types::SolCall>::abi_encoded_size(
                         inner,
                     )
                 }
@@ -9956,6 +11327,11 @@ function withdrawVerificationFee(address token, address to) external;
                         inner,
                     )
                 }
+                Self::setCancellationWindow(inner) => {
+                    <setCancellationWindowCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
+                }
                 Self::setContractUpgradeBlsValidator(inner) => {
                     <setContractUpgradeBlsValidatorCall as alloy_sol_types::SolCall>::abi_encoded_size(
                         inner,
@@ -9978,6 +11354,11 @@ function withdrawVerificationFee(address token, address to) external;
                 }
                 Self::setVerificationFeeBps(inner) => {
                     <setVerificationFeeBpsCall as alloy_sol_types::SolCall>::abi_encoded_size(
+                        inner,
+                    )
+                }
+                Self::stageSwapRequestCancellation(inner) => {
+                    <stageSwapRequestCancellationCall as alloy_sol_types::SolCall>::abi_encoded_size(
                         inner,
                     )
                 }
@@ -10013,6 +11394,12 @@ function withdrawVerificationFee(address token, address to) external;
                         out,
                     )
                 }
+                Self::cancelSwapRequestAndRefund(inner) => {
+                    <cancelSwapRequestAndRefundCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
+                }
                 Self::cancelUpgrade(inner) => {
                     <cancelUpgradeCall as alloy_sol_types::SolCall>::abi_encode_raw(
                         inner,
@@ -10027,6 +11414,12 @@ function withdrawVerificationFee(address token, address to) external;
                 }
                 Self::getAllowedDstChainId(inner) => {
                     <getAllowedDstChainIdCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
+                }
+                Self::getCancelledSwapRequests(inner) => {
+                    <getCancelledSwapRequestsCall as alloy_sol_types::SolCall>::abi_encode_raw(
                         inner,
                         out,
                     )
@@ -10163,6 +11556,12 @@ function withdrawVerificationFee(address token, address to) external;
                         out,
                     )
                 }
+                Self::setCancellationWindow(inner) => {
+                    <setCancellationWindowCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
+                }
                 Self::setContractUpgradeBlsValidator(inner) => {
                     <setContractUpgradeBlsValidatorCall as alloy_sol_types::SolCall>::abi_encode_raw(
                         inner,
@@ -10189,6 +11588,12 @@ function withdrawVerificationFee(address token, address to) external;
                 }
                 Self::setVerificationFeeBps(inner) => {
                     <setVerificationFeeBpsCall as alloy_sol_types::SolCall>::abi_encode_raw(
+                        inner,
+                        out,
+                    )
+                }
+                Self::stageSwapRequestCancellation(inner) => {
+                    <stageSwapRequestCancellationCall as alloy_sol_types::SolCall>::abi_encode_raw(
                         inner,
                         out,
                     )
@@ -10227,7 +11632,13 @@ function withdrawVerificationFee(address token, address to) external;
         #[allow(missing_docs)]
         SolverPayoutFulfilled(SolverPayoutFulfilled),
         #[allow(missing_docs)]
+        SwapRequestCancellationStaged(SwapRequestCancellationStaged),
+        #[allow(missing_docs)]
+        SwapRequestCancellationWindowUpdated(SwapRequestCancellationWindowUpdated),
+        #[allow(missing_docs)]
         SwapRequestFulfilled(SwapRequestFulfilled),
+        #[allow(missing_docs)]
+        SwapRequestRefundClaimed(SwapRequestRefundClaimed),
         #[allow(missing_docs)]
         SwapRequestSolverFeeUpdated(SwapRequestSolverFeeUpdated),
         #[allow(missing_docs)]
@@ -10266,6 +11677,16 @@ function withdrawVerificationFee(address token, address to) external;
                 53u8, 106u8, 215u8, 53u8, 46u8, 128u8, 69u8, 113u8, 144u8, 147u8,
             ],
             [
+                45u8, 33u8, 200u8, 80u8, 91u8, 72u8, 176u8, 140u8, 241u8, 120u8, 162u8,
+                13u8, 42u8, 103u8, 1u8, 121u8, 226u8, 108u8, 251u8, 180u8, 159u8, 252u8,
+                255u8, 101u8, 22u8, 50u8, 57u8, 82u8, 21u8, 182u8, 175u8, 184u8,
+            ],
+            [
+                77u8, 130u8, 18u8, 197u8, 86u8, 47u8, 209u8, 221u8, 107u8, 169u8, 36u8,
+                3u8, 239u8, 193u8, 140u8, 162u8, 28u8, 195u8, 243u8, 172u8, 0u8, 105u8,
+                255u8, 67u8, 149u8, 101u8, 11u8, 210u8, 164u8, 97u8, 58u8, 82u8,
+            ],
+            [
                 88u8, 25u8, 165u8, 236u8, 113u8, 165u8, 102u8, 130u8, 227u8, 232u8,
                 164u8, 108u8, 64u8, 57u8, 76u8, 130u8, 222u8, 149u8, 229u8, 10u8, 141u8,
                 74u8, 172u8, 124u8, 126u8, 32u8, 57u8, 216u8, 63u8, 238u8, 193u8, 116u8,
@@ -10291,6 +11712,11 @@ function withdrawVerificationFee(address token, address to) external;
                 111u8, 149u8, 140u8, 25u8, 172u8, 203u8, 8u8, 212u8, 128u8,
             ],
             [
+                189u8, 59u8, 232u8, 159u8, 108u8, 165u8, 70u8, 240u8, 43u8, 103u8, 221u8,
+                209u8, 147u8, 212u8, 240u8, 230u8, 79u8, 88u8, 15u8, 60u8, 119u8, 110u8,
+                148u8, 46u8, 119u8, 164u8, 80u8, 147u8, 189u8, 22u8, 218u8, 12u8,
+            ],
+            [
                 195u8, 127u8, 202u8, 211u8, 54u8, 116u8, 37u8, 27u8, 171u8, 161u8, 203u8,
                 193u8, 107u8, 46u8, 142u8, 56u8, 131u8, 255u8, 37u8, 230u8, 16u8, 89u8,
                 115u8, 188u8, 122u8, 127u8, 155u8, 215u8, 250u8, 252u8, 33u8, 153u8,
@@ -10310,7 +11736,7 @@ function withdrawVerificationFee(address token, address to) external;
     #[automatically_derived]
     impl alloy_sol_types::SolEventInterface for IRouterEvents {
         const NAME: &'static str = "IRouterEvents";
-        const COUNT: usize = 11usize;
+        const COUNT: usize = 14usize;
         fn decode_raw_log(
             topics: &[alloy_sol_types::Word],
             data: &[u8],
@@ -10353,6 +11779,24 @@ function withdrawVerificationFee(address token, address to) external;
                         .map(Self::SolverPayoutFulfilled)
                 }
                 Some(
+                    <SwapRequestCancellationStaged as alloy_sol_types::SolEvent>::SIGNATURE_HASH,
+                ) => {
+                    <SwapRequestCancellationStaged as alloy_sol_types::SolEvent>::decode_raw_log(
+                            topics,
+                            data,
+                        )
+                        .map(Self::SwapRequestCancellationStaged)
+                }
+                Some(
+                    <SwapRequestCancellationWindowUpdated as alloy_sol_types::SolEvent>::SIGNATURE_HASH,
+                ) => {
+                    <SwapRequestCancellationWindowUpdated as alloy_sol_types::SolEvent>::decode_raw_log(
+                            topics,
+                            data,
+                        )
+                        .map(Self::SwapRequestCancellationWindowUpdated)
+                }
+                Some(
                     <SwapRequestFulfilled as alloy_sol_types::SolEvent>::SIGNATURE_HASH,
                 ) => {
                     <SwapRequestFulfilled as alloy_sol_types::SolEvent>::decode_raw_log(
@@ -10360,6 +11804,15 @@ function withdrawVerificationFee(address token, address to) external;
                             data,
                         )
                         .map(Self::SwapRequestFulfilled)
+                }
+                Some(
+                    <SwapRequestRefundClaimed as alloy_sol_types::SolEvent>::SIGNATURE_HASH,
+                ) => {
+                    <SwapRequestRefundClaimed as alloy_sol_types::SolEvent>::decode_raw_log(
+                            topics,
+                            data,
+                        )
+                        .map(Self::SwapRequestRefundClaimed)
                 }
                 Some(
                     <SwapRequestSolverFeeUpdated as alloy_sol_types::SolEvent>::SIGNATURE_HASH,
@@ -10443,7 +11896,16 @@ function withdrawVerificationFee(address token, address to) external;
                 Self::SolverPayoutFulfilled(inner) => {
                     alloy_sol_types::private::IntoLogData::to_log_data(inner)
                 }
+                Self::SwapRequestCancellationStaged(inner) => {
+                    alloy_sol_types::private::IntoLogData::to_log_data(inner)
+                }
+                Self::SwapRequestCancellationWindowUpdated(inner) => {
+                    alloy_sol_types::private::IntoLogData::to_log_data(inner)
+                }
                 Self::SwapRequestFulfilled(inner) => {
+                    alloy_sol_types::private::IntoLogData::to_log_data(inner)
+                }
+                Self::SwapRequestRefundClaimed(inner) => {
                     alloy_sol_types::private::IntoLogData::to_log_data(inner)
                 }
                 Self::SwapRequestSolverFeeUpdated(inner) => {
@@ -10480,7 +11942,16 @@ function withdrawVerificationFee(address token, address to) external;
                 Self::SolverPayoutFulfilled(inner) => {
                     alloy_sol_types::private::IntoLogData::into_log_data(inner)
                 }
+                Self::SwapRequestCancellationStaged(inner) => {
+                    alloy_sol_types::private::IntoLogData::into_log_data(inner)
+                }
+                Self::SwapRequestCancellationWindowUpdated(inner) => {
+                    alloy_sol_types::private::IntoLogData::into_log_data(inner)
+                }
                 Self::SwapRequestFulfilled(inner) => {
+                    alloy_sol_types::private::IntoLogData::into_log_data(inner)
+                }
+                Self::SwapRequestRefundClaimed(inner) => {
                     alloy_sol_types::private::IntoLogData::into_log_data(inner)
                 }
                 Self::SwapRequestSolverFeeUpdated(inner) => {
@@ -10696,6 +12167,19 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
                 },
             )
         }
+        ///Creates a new call builder for the [`cancelSwapRequestAndRefund`] function.
+        pub fn cancelSwapRequestAndRefund(
+            &self,
+            requestId: alloy::sol_types::private::FixedBytes<32>,
+            refundRecipient: alloy::sol_types::private::Address,
+        ) -> alloy_contract::SolCallBuilder<&P, cancelSwapRequestAndRefundCall, N> {
+            self.call_builder(
+                &cancelSwapRequestAndRefundCall {
+                    requestId,
+                    refundRecipient,
+                },
+            )
+        }
         ///Creates a new call builder for the [`cancelUpgrade`] function.
         pub fn cancelUpgrade(
             &self,
@@ -10719,6 +12203,12 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
                     chainId,
                 },
             )
+        }
+        ///Creates a new call builder for the [`getCancelledSwapRequests`] function.
+        pub fn getCancelledSwapRequests(
+            &self,
+        ) -> alloy_contract::SolCallBuilder<&P, getCancelledSwapRequestsCall, N> {
+            self.call_builder(&getCancelledSwapRequestsCall)
         }
         ///Creates a new call builder for the [`getChainID`] function.
         pub fn getChainID(
@@ -10882,19 +12372,27 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         ///Creates a new call builder for the [`relayTokens`] function.
         pub fn relayTokens(
             &self,
-            token: alloy::sol_types::private::Address,
-            recipient: alloy::sol_types::private::Address,
-            amountOut: alloy::sol_types::private::primitives::aliases::U256,
+            solverRefundAddress: alloy::sol_types::private::Address,
             requestId: alloy::sol_types::private::FixedBytes<32>,
+            sender: alloy::sol_types::private::Address,
+            recipient: alloy::sol_types::private::Address,
+            tokenIn: alloy::sol_types::private::Address,
+            tokenOut: alloy::sol_types::private::Address,
+            amountOut: alloy::sol_types::private::primitives::aliases::U256,
             srcChainId: alloy::sol_types::private::primitives::aliases::U256,
+            nonce: alloy::sol_types::private::primitives::aliases::U256,
         ) -> alloy_contract::SolCallBuilder<&P, relayTokensCall, N> {
             self.call_builder(
                 &relayTokensCall {
-                    token,
-                    recipient,
-                    amountOut,
+                    solverRefundAddress,
                     requestId,
+                    sender,
+                    recipient,
+                    tokenIn,
+                    tokenOut,
+                    amountOut,
                     srcChainId,
+                    nonce,
                 },
             )
         }
@@ -10951,6 +12449,19 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
                 },
             )
         }
+        ///Creates a new call builder for the [`setCancellationWindow`] function.
+        pub fn setCancellationWindow(
+            &self,
+            newSwapRequestCancellationWindow: alloy::sol_types::private::primitives::aliases::U256,
+            signature: alloy::sol_types::private::Bytes,
+        ) -> alloy_contract::SolCallBuilder<&P, setCancellationWindowCall, N> {
+            self.call_builder(
+                &setCancellationWindowCall {
+                    newSwapRequestCancellationWindow,
+                    signature,
+                },
+            )
+        }
         ///Creates a new call builder for the [`setContractUpgradeBlsValidator`] function.
         pub fn setContractUpgradeBlsValidator(
             &self,
@@ -10968,10 +12479,12 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         pub fn setMinimumContractUpgradeDelay(
             &self,
             _minimumContractUpgradeDelay: alloy::sol_types::private::primitives::aliases::U256,
+            signature: alloy::sol_types::private::Bytes,
         ) -> alloy_contract::SolCallBuilder<&P, setMinimumContractUpgradeDelayCall, N> {
             self.call_builder(
                 &setMinimumContractUpgradeDelayCall {
                     _minimumContractUpgradeDelay,
+                    signature,
                 },
             )
         }
@@ -11011,6 +12524,17 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
             self.call_builder(
                 &setVerificationFeeBpsCall {
                     _verificationFeeBps,
+                },
+            )
+        }
+        ///Creates a new call builder for the [`stageSwapRequestCancellation`] function.
+        pub fn stageSwapRequestCancellation(
+            &self,
+            requestId: alloy::sol_types::private::FixedBytes<32>,
+        ) -> alloy_contract::SolCallBuilder<&P, stageSwapRequestCancellationCall, N> {
+            self.call_builder(
+                &stageSwapRequestCancellationCall {
+                    requestId,
                 },
             )
         }
@@ -11093,11 +12617,29 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         ) -> alloy_contract::Event<&P, SolverPayoutFulfilled, N> {
             self.event_filter::<SolverPayoutFulfilled>()
         }
+        ///Creates a new event filter for the [`SwapRequestCancellationStaged`] event.
+        pub fn SwapRequestCancellationStaged_filter(
+            &self,
+        ) -> alloy_contract::Event<&P, SwapRequestCancellationStaged, N> {
+            self.event_filter::<SwapRequestCancellationStaged>()
+        }
+        ///Creates a new event filter for the [`SwapRequestCancellationWindowUpdated`] event.
+        pub fn SwapRequestCancellationWindowUpdated_filter(
+            &self,
+        ) -> alloy_contract::Event<&P, SwapRequestCancellationWindowUpdated, N> {
+            self.event_filter::<SwapRequestCancellationWindowUpdated>()
+        }
         ///Creates a new event filter for the [`SwapRequestFulfilled`] event.
         pub fn SwapRequestFulfilled_filter(
             &self,
         ) -> alloy_contract::Event<&P, SwapRequestFulfilled, N> {
             self.event_filter::<SwapRequestFulfilled>()
+        }
+        ///Creates a new event filter for the [`SwapRequestRefundClaimed`] event.
+        pub fn SwapRequestRefundClaimed_filter(
+            &self,
+        ) -> alloy_contract::Event<&P, SwapRequestRefundClaimed, N> {
+            self.event_filter::<SwapRequestRefundClaimed>()
         }
         ///Creates a new event filter for the [`SwapRequestSolverFeeUpdated`] event.
         pub fn SwapRequestSolverFeeUpdated_filter(
