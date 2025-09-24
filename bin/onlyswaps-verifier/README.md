@@ -44,7 +44,7 @@ An annotated, sample TOML configuration can be found below.
         [committee]
         member_id = 1                                                                     # your index in the `committee.nodes` vector.
         secret_key = "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d" # your BLS BN254 secret key share encoded as `0x` prefixed hex
-        t = 2                                                                             # the honest threshold required for reconstruction. This is *different* to the malicious threshold output by the [ADKG CLI](../crates/adkg-cli)
+        t = 2                                                                             # the honest threshold required for reconstruction. This is *different* to the malicious threshold output by the [ADKG CLI](../bin/adkg-cli)
         n = 3                                                                             # the total count of members in the committee, including yourself.
         
         # `committee.nodes` should contain as many entries as `n` above, and should contain one for your own node.
