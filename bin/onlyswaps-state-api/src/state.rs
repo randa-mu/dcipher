@@ -40,6 +40,9 @@ impl StateMachine {
         }
     }
 
+    // apply state calls the RPCs to get the relevant params to update details about a transaction.
+    // if we had perfect consumption of events, we could simply mutate transactions, but we can't be
+    // sure of that so we rewrite the full tx details on each event just to ensure a full dataset
     pub async fn apply_state(&mut self, update: StateUpdate) -> anyhow::Result<AppState> {
         let StateUpdate {
             chain_id,
@@ -60,7 +63,10 @@ impl StateMachine {
 
         let params = client.fetch_parameters(request_id).await?;
         match state_type {
-            StateType::Requested => {
+            StateType::Requested | StateType::FeeUpdated => {
+                self.state
+                    .transactions
+                    .retain(|t| t.request_id != request_id);
                 self.state.transactions.push(Transaction {
                     request_id,
                     src_chain_id: params.srcChainId.into(),
@@ -75,19 +81,23 @@ impl StateMachine {
                     solved_time: None,
                 });
             }
-            StateType::FeeUpdated => {
-                for t in &mut self.state.transactions {
-                    if t.request_id == request_id {
-                        t.solver_fee = params.solverFee.into()
-                    }
-                }
-            }
             StateType::Verified => {
-                for t in &mut self.state.transactions {
-                    if t.request_id == request_id {
-                        t.state = "verified".to_string();
-                    }
-                }
+                self.state
+                    .transactions
+                    .retain(|t| t.request_id != request_id);
+                self.state.transactions.push(Transaction {
+                    request_id,
+                    src_chain_id: params.srcChainId.into(),
+                    dest_chain_id: params.dstChainId.into(),
+                    sender: params.sender,
+                    recipient: params.recipient,
+                    amount: params.amountOut.into(),
+                    solver_fee: params.solverFee.into(),
+                    state: "verified".to_string(),
+                    solver: None,
+                    requested_time: params.requestedAt.into(),
+                    solved_time: None,
+                });
             }
             StateType::Fulfilled => {} // impossible because we handle it early
         }
@@ -100,18 +110,39 @@ impl StateMachine {
         chain_id: u64,
         request_id: FixedBytes<32>,
     ) -> anyhow::Result<AppState> {
-        let client =
+        // we get details from the dest chain first
+        let dest_chain_client =
             self.network_bus.networks.get(&chain_id).expect(
                 "got a chain_id for a network we don't support - this shouldn't be possible",
             );
-        let receipt = client.fetch_receipt(request_id).await?;
-        for t in &mut self.state.transactions {
-            if t.request_id == request_id {
-                t.state = "fulfilled".to_string();
-                t.solver = Some(receipt.solver);
-                t.solved_time = Some(receipt.fulfilledAt.into());
-            }
-        }
+        let receipt = dest_chain_client.fetch_receipt(request_id).await?;
+
+        // and use them to get the src chain details
+        let src_client = self
+            .network_bus
+            .networks
+            .get(&receipt.srcChainId.as_limbs()[0])
+            .expect("got a chain_id for a network we don't support - this shouldn't be possible");
+        let params = src_client.fetch_parameters(request_id).await?;
+
+        // then build the transaction
+        self.state
+            .transactions
+            .retain(|t| t.request_id != request_id);
+        self.state.transactions.push(Transaction {
+            request_id,
+            src_chain_id: params.srcChainId.into(),
+            dest_chain_id: params.dstChainId.into(),
+            sender: params.sender,
+            recipient: params.recipient,
+            amount: params.amountOut.into(),
+            solver_fee: params.solverFee.into(),
+            requested_time: params.requestedAt.into(),
+            state: "fulfilled".to_string(),
+            solver: Some(receipt.solver),
+            solved_time: Some(receipt.fulfilledAt.into()),
+        });
+
         Ok(self.state.clone())
     }
 }

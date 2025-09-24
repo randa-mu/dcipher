@@ -11,7 +11,7 @@ use futures::TryStreamExt;
 use futures::future::try_join4;
 use omnievent::event_manager::EventManager;
 use omnievent::event_manager::db::sql::sqlite::SqliteEventDatabase;
-use omnievent::types::{EventFieldData, EventId, EventOccurrence, ParsedRegisterNewEventRequest};
+use omnievent::types::{EventFieldData, EventId, EventOccurrence};
 use std::collections::HashMap;
 use std::pin::Pin;
 use superalloy::provider::{MultiProvider, create_provider_with_retry};
@@ -47,34 +47,32 @@ pub(crate) async fn create_event_manager(
     // then we start the event DB with it
     tracing::debug!(path = db_config.url.as_str(), "loading sqlite database");
     let db = SqliteEventDatabase::connect(db_config.url.as_str()).await?;
-    // let _ = db.maybe_initialize_schema().await;
+    db.maybe_initialize_schema().await?;
 
+    tracing::debug!("starting event manager");
     let mut events = EventManager::new(mp, db);
     events.start();
 
     // then we register all the types of events we want to listen to
     // and add each of their IDs per chainID for easy use later
     for n in networks {
-        let requested: ParsedRegisterNewEventRequest = create_swap_requested(n).try_into()?;
-        let fee_updated: ParsedRegisterNewEventRequest = create_fee_updated_event(n).try_into()?;
-        let fulfilled: ParsedRegisterNewEventRequest = create_swap_fulfilled(n).try_into()?;
-        let verified: ParsedRegisterNewEventRequest = create_swap_verified(n).try_into()?;
-
-        let (requested_id, fee_updated_id, fulfilled_id, verified_id) = try_join4(
-            events.register_ethereum_event(requested),
-            events.register_ethereum_event(fee_updated),
-            events.register_ethereum_event(fulfilled),
-            events.register_ethereum_event(verified),
+        let (requested, fee_updated, fulfilled, verified) = try_join4(
+            events.register_ethereum_event(create_swap_requested(n).try_into()?),
+            events.register_ethereum_event(create_fee_updated_event(n).try_into()?),
+            events.register_ethereum_event(create_swap_fulfilled(n).try_into()?),
+            events.register_ethereum_event(create_swap_verified(n).try_into()?),
         )
         .await?;
 
-        let registration = ChainRegistration {
-            requested: requested_id,
-            fee_updated: fee_updated_id,
-            fulfilled: fulfilled_id,
-            verified: verified_id,
-        };
-        event_requests.insert(n.chain_id, registration);
+        event_requests.insert(
+            n.chain_id,
+            ChainRegistration {
+                requested,
+                fee_updated,
+                fulfilled,
+                verified,
+            },
+        );
     }
 
     Ok(OmnieventManager {
@@ -100,13 +98,12 @@ pub(crate) async fn stream_from_beginning(
         .map_err(|e| eprintln!("very unexpected error! {}", e))
         .map_while(|it| it.ok());
 
-    // FIXME: this only looks 1 block in the past because we don't pass a filter
-    // that looks further
+    // FIXME: this only looks 1 block in the past because we don't pass a filter that looks further
     let historical_stream = omnievent
         .get_historical_event_occurrences(events_ids.clone(), None)
         .await?;
 
-    // combine the two streams, starting with historical events for good ordering
+    // combine the two streams, starting with historical events so we build state in the right order
     Ok(Box::pin(
         tokio_stream::iter(historical_stream).chain(stream),
     ))
