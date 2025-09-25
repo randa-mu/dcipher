@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO registered_events (id, chain_id, address, block_safety, event_name, fields_json)\n                VALUES ($1, $2, $3, $4, $5, $6)\n                ON CONFLICT(id) DO UPDATE SET\n                    chain_id     = $2,\n                    address      = $3,\n                    block_safety = $4,\n                    event_name   = $5,\n                    fields_json  = $6;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "f2c9a8b76b6742fd875ebcb404e55967bab084554f3b71aa0a4f9ad9a8df8dfc"
+}

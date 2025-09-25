@@ -1,6 +1,7 @@
 use figment::Figment;
 use figment::providers::{Format, Json, Toml};
 use serde::Deserialize;
+use shellexpand::tilde;
 use std::path::Path;
 
 pub fn load_mapped_config_file<'de, ConfigFile, AppConfig>(
@@ -18,8 +19,8 @@ pub fn load_config_file<'de, ConfigFile: Deserialize<'de>>(
     config_path: String,
 ) -> anyhow::Result<ConfigFile> {
     println!("Loading app config from {}", config_path);
-
-    let path = Path::new(&config_path);
+    let path_str = tilde(&config_path);
+    let path = Path::new(path_str.as_ref());
     let config_file = match path.extension().and_then(|s| s.to_str()) {
         Some("toml") => Figment::new().merge(Toml::file(path)),
         Some("json") => Figment::new().merge(Json::file(path)),

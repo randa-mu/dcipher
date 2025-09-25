@@ -28,7 +28,7 @@ pub struct StartArgs {
         short = 'c',
         long = "config",
         env = "ONLYSWAPS_VERIFIER_CONFIG",
-        default_value = "~/.verifier/config.json"
+        default_value = "~/.config/onlyswaps/verifier/config.json"
     )]
     pub config_path: String,
 }

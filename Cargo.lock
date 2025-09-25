@@ -128,6 +128,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "agent-utils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "config",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4841,9 +4853,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
 
 [[package]]
+name = "onlyswaps-state-api"
+version = "0.1.0"
+dependencies = [
+ "agent-utils",
+ "alloy",
+ "anyhow",
+ "axum",
+ "clap",
+ "config",
+ "futures",
+ "generated",
+ "omnievent",
+ "serde",
+ "superalloy",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "onlyswaps-verifier"
 version = "0.1.0"
 dependencies = [
+ "agent-utils",
  "alloy",
  "anyhow",
  "ark-bn254",

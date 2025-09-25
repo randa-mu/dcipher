@@ -263,7 +263,7 @@ where
     /// from the database, and then applies filters on top. This needs to be reworked once we have
     /// more concrete usage, to know which filters are the most important so that they can be offloaded
     /// to the database implementation.
-    pub(crate) async fn get_historical_event_occurrences(
+    pub async fn get_historical_event_occurrences(
         &self,
         event_ids: impl IntoIterator<Item = EventId> + Send,
         filter: Option<EventOccurrenceFilter>,

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS event_occurrences (
 );
 
 -- View that combines event_occurrences with registered_events data
-CREATE VIEW event_occurrences_with_context AS
+CREATE VIEW IF NOT EXISTS event_occurrences_with_context AS
 SELECT
     occurrence.id,
     occurrence.event_id,

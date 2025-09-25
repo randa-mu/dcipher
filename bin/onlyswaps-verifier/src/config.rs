@@ -1,19 +1,7 @@
 use alloy::consensus::private::serde::{Deserialize, Serialize};
-use clap::Parser;
 use config::agent::AgentConfig;
 use config::network::{Libp2pConfig, NetworkConfig};
 use config::signing::{CommitteeConfig, UnvalidatedCommitteeConfig};
-
-#[derive(Parser, Debug)]
-pub(crate) struct CliConfig {
-    #[arg(
-        short = 'c',
-        long = "config",
-        env = "ONLYSWAPS_VERIFIER_CONFIG",
-        default_value = "~/.verifier/config.json"
-    )]
-    pub config_path: String,
-}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConfigFile {

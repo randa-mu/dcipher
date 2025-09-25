@@ -9,8 +9,6 @@ mod config;
 mod config_generate;
 mod daemon;
 mod events;
-mod healthcheck_server;
-mod monitoring;
 mod threshold;
 mod transport;
 
