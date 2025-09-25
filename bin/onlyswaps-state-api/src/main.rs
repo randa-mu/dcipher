@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
 
         res = App::start(&app_config) => {
            match res {
-                Ok(()) => anyhow::bail!("swap loop stopped unexpectedly with an error"),
+                Ok(()) => anyhow::bail!("swap loop stopped unexpectedly without an error"),
                 Err(e) => anyhow::bail!("swap loop stopped unexpectedly: {}", e),
            }
         }
