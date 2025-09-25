@@ -52,7 +52,6 @@ jobs:
             prefix=
             suffix=
           tags: |
-            type=sha,prefix=
             type=ref,event=branch,suffix=-latest,enable=${{ startsWith(github.ref, 'refs/heads/') }}
             type=semver,pattern={{version}},event=tag,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
