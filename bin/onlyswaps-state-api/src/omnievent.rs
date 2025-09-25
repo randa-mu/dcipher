@@ -98,7 +98,7 @@ pub(crate) async fn stream_from_beginning(
         .map_err(|e| eprintln!("very unexpected error! {}", e))
         .map_while(|it| it.ok());
 
-    // FIXME: this only looks 1 block in the past because we don't pass a filter that looks further
+    // FIXME: currently fetches historical events from the database's perspective - not from the RPC provider / chain logs
     let historical_stream = omnievent
         .get_historical_event_occurrences(events_ids.clone(), None)
         .await?;
