@@ -82,12 +82,13 @@ impl StateMachine {
                 });
             }
             StateType::Verified => {
-                let maybe_solved_time = self
+                let (maybe_solver, maybe_solved_time) = self
                     .state
                     .transactions
                     .iter()
                     .find(|t| t.request_id == request_id)
-                    .and_then(|it| it.solved_time.clone());
+                    .map(|it| (it.solver.clone(), it.solved_time.clone()))
+                    .unwrap_or((None, None));
 
                 self.state
                     .transactions
@@ -101,9 +102,9 @@ impl StateMachine {
                     amount: params.amountOut.into(),
                     solver_fee: params.solverFee.into(),
                     state: "verified".to_string(),
-                    solver: None,
                     requested_time: params.requestedAt.into(),
                     solved_time: maybe_solved_time,
+                    solver: maybe_solver,
                 });
             }
             StateType::Fulfilled => unreachable!("impossible because we handle it early"),
