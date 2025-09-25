@@ -36,14 +36,14 @@ pub async fn start_daemon(args: StartArgs) -> anyhow::Result<()> {
 
         res = healthcheck_server.start() =>  {
            match res {
-                Ok(()) => anyhow::bail!("healthcheck stopped unexpectedly with an error"),
+                Ok(()) => anyhow::bail!("healthcheck stopped unexpectedly without an error"),
                 Err(e) => anyhow::bail!("healthcheck stopped unexpectedly: {}", e),
            }
         }
 
         res = run_onlyswaps(&app_config) => {
            match res {
-                Ok(()) => anyhow::bail!("swap loop stopped unexpectedly with an error"),
+                Ok(()) => anyhow::bail!("swap loop stopped unexpectedly without an error"),
                 Err(e) => anyhow::bail!("swap loop stopped unexpectedly: {}", e),
            }
         }

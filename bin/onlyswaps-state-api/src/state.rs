@@ -82,6 +82,13 @@ impl StateMachine {
                 });
             }
             StateType::Verified => {
+                let maybe_solved_time = self
+                    .state
+                    .transactions
+                    .iter()
+                    .find(|t| t.request_id == request_id)
+                    .and_then(|it| it.solved_time.clone());
+
                 self.state
                     .transactions
                     .retain(|t| t.request_id != request_id);
@@ -96,10 +103,10 @@ impl StateMachine {
                     state: "verified".to_string(),
                     solver: None,
                     requested_time: params.requestedAt.into(),
-                    solved_time: None,
+                    solved_time: maybe_solved_time,
                 });
             }
-            StateType::Fulfilled => {} // impossible because we handle it early
+            StateType::Fulfilled => unreachable!("impossible because we handle it early"),
         }
 
         Ok(self.state.clone())
@@ -121,7 +128,7 @@ impl StateMachine {
         let src_client = self
             .network_bus
             .networks
-            .get(&receipt.srcChainId.as_limbs()[0])
+            .get(&receipt.srcChainId.try_into()?)
             .expect("got a chain_id for a network we don't support - this shouldn't be possible");
         let params = src_client.fetch_parameters(request_id).await?;
 

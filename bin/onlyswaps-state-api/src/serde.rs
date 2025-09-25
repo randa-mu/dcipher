@@ -1,4 +1,5 @@
 use alloy::primitives::U256;
+use serde::ser::Error;
 use serde::{Serialize, Serializer};
 
 // this is a u256 in disguise
@@ -29,7 +30,7 @@ impl Serialize for ShortNumber {
     where
         S: Serializer,
     {
-        serializer.serialize_u64(self.0.as_limbs()[0])
+        serializer.serialize_u64(self.0.try_into().map_err(S::Error::custom)?)
     }
 }
 
