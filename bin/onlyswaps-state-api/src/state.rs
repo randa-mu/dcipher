@@ -87,7 +87,7 @@ impl StateMachine {
                     .transactions
                     .iter()
                     .find(|t| t.request_id == request_id)
-                    .map(|it| (it.solver.clone(), it.solved_time.clone()))
+                    .map(|it| (it.solver, it.solved_time.clone()))
                     .unwrap_or((None, None));
 
                 self.state

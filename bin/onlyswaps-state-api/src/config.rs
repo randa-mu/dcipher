@@ -11,7 +11,7 @@ pub(crate) struct CliConfig {
         short = 'c',
         long = "config",
         env = "ONLYSWAPS_STATE_API_CONFIG",
-        default_value = "~/.onlyswaps-state-api/config.toml"
+        default_value = "~/.config/onlyswaps/state-api/config.toml"
     )]
     pub config_path: String,
 }

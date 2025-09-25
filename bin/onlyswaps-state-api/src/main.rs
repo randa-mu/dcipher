@@ -31,14 +31,10 @@ async fn main() -> anyhow::Result<()> {
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
     tokio::select! {
-        _ = sigterm.recv() =>
-            Ok(()),
-
-        _ = sigint.recv() =>
-            Ok(()),
-
-        _ = tokio::signal::ctrl_c() =>
-            Ok(()),
+        // graceful shutdown signals
+        _ = sigterm.recv() => Ok(()),
+        _ = sigint.recv() => Ok(()),
+        _ = tokio::signal::ctrl_c() => Ok(()),
 
         res = healthcheck_server.start() =>  {
            match res {
