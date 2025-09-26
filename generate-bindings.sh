@@ -18,7 +18,7 @@ SOLC_VERSION=0.8.28
 # and there are weird conflicts with the `Factory` CREATE2 deployer stuff that presently break with foundry
 # see: https://github.com/foundry-rs/foundry/issues/11705
 pushd $ROOT_DIR/modules/randomness-solidity
-forge bind --bindings-path $ROOT_DIR/generated/src/randomness \
+forge bind --bindings-path $ROOT_DIR/crates/generated/src/randomness \
 --skip-cargo-toml \
 --module \
 --use $SOLC_VERSION \
@@ -29,7 +29,7 @@ forge bind --bindings-path $ROOT_DIR/generated/src/randomness \
 popd
 
 pushd $ROOT_DIR/modules/blocklock-solidity
-forge bind --bindings-path $ROOT_DIR/generated/src/blocklock \
+forge bind --bindings-path $ROOT_DIR/crates/generated/src/blocklock \
 --skip-cargo-toml \
 --module \
 --use $SOLC_VERSION \
@@ -45,7 +45,7 @@ forge bind --bindings-path $ROOT_DIR/generated/src/blocklock \
 popd
 
 pushd $ROOT_DIR/modules/onlyswaps-solidity
-forge bind --bindings-path $ROOT_DIR/generated/src/onlyswaps \
+forge bind --bindings-path $ROOT_DIR/crates/generated/src/onlyswaps \
 --skip-cargo-toml \
 --module \
 --use $SOLC_VERSION \
