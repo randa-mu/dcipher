@@ -1,22 +1,20 @@
-use crate::parsing::TransferReceipt;
-use crate::pending::{RequestId, Verification, extract_pending_verifications};
-use crate::signing::{ChainService, VerifiedSwap};
+use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
+use crate::signing::VerifiedSwap;
 use alloy::network::EthereumWallet;
-use alloy::primitives::{Address, Bytes, FixedBytes, U256};
+use alloy::primitives::{Address, Bytes, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
-use async_trait::async_trait;
 use config::network::NetworkConfig;
 use futures::future::{try_join, try_join_all};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::RouterInstance;
+use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct ChainState<ID> {
+pub struct SwapStatus<ID> {
     pub chain_id: u64,
     pub fulfilled: Vec<ID>,
     pub verified: Vec<ID>,
@@ -52,15 +50,11 @@ impl NetworkBus<DynProvider> {
         let states = try_join_all(futs).await?;
         Ok(extract_pending_verifications(states))
     }
-}
-
-#[async_trait]
-impl<P: Provider> ChainService for NetworkBus<P> {
-    async fn fetch_transfer_receipt(
+    pub(crate) async fn fetch_swap_receipt(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferReceipt> {
+    ) -> anyhow::Result<getSwapRequestReceiptReturn> {
         let transport = self
             .networks
             .get(&chain_id)
@@ -69,7 +63,7 @@ impl<P: Provider> ChainService for NetworkBus<P> {
         transport.fetch_transfer_receipt(request_id).await
     }
 
-    async fn fetch_transfer_params(
+    pub(crate) async fn fetch_swap_params(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
@@ -82,15 +76,15 @@ impl<P: Provider> ChainService for NetworkBus<P> {
         transport.fetch_transfer_params(request_id).await
     }
 
-    async fn submit_verification(
+    pub(crate) async fn submit_verification(
         &self,
-        chain_id: u64,
         verified_swap: &VerifiedSwap,
     ) -> anyhow::Result<()> {
-        let transport = self
-            .networks
-            .get(&chain_id)
-            .ok_or(anyhow!("No chain transport for {}", chain_id))?;
+        let chain_id: u64 = verified_swap.src_chain_id.try_into()?;
+        let transport = self.networks.get(&chain_id).ok_or(anyhow!(
+            "No chain transport for {}",
+            verified_swap.src_chain_id
+        ))?;
 
         transport.submit_verified_swap(verified_swap).await
     }
@@ -122,11 +116,11 @@ impl Network<DynProvider> {
     }
 }
 impl<P: Provider> Network<P> {
-    pub async fn fetch_chain_state(&self) -> anyhow::Result<ChainState<RequestId>> {
+    pub async fn fetch_chain_state(&self) -> anyhow::Result<SwapStatus<RequestId>> {
         let f = self.fetch_fulfilled_transfer_ids();
         let v = self.fetch_verified_transfer_ids();
         let (fulfilled, verified) = try_join(f, v).await?;
-        Ok(ChainState {
+        Ok(SwapStatus {
             chain_id: self.chain_id,
             fulfilled,
             verified,
@@ -146,20 +140,9 @@ impl<P: Provider> Network<P> {
     pub async fn fetch_transfer_receipt(
         &self,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferReceipt> {
+    ) -> anyhow::Result<getSwapRequestReceiptReturn> {
         let receipt = self.router.getSwapRequestReceipt(request_id).call().await?;
-        Ok(TransferReceipt {
-            chain_id: U256::from(self.chain_id),
-            request_id: receipt.requestId,
-            recipient: receipt.recipient,
-            src_chain_id: receipt.srcChainId,
-            token_in: receipt.tokenIn,
-            token_out: receipt.tokenOut,
-            fulfilled: receipt.fulfilled,
-            solver: receipt.solver,
-            amount_out: receipt.amountOut,
-            fulfilled_at: receipt.fulfilledAt,
-        })
+        Ok(receipt)
     }
     pub async fn fetch_fulfilled_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
         Ok(self.router.getFulfilledTransfers().call().await?)
