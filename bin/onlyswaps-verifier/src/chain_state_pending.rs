@@ -1,4 +1,4 @@
-use crate::chain_state::SwapStatuses;
+use crate::chain_state::SwapStatus;
 use alloy::primitives::FixedBytes;
 use anyhow::anyhow;
 use omnievent::types::EventFieldData;
@@ -21,7 +21,7 @@ use std::hash::Hash;
 /// # Returns
 /// A vector of `Verification`s representing the pending requests to be verified.
 pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
-    states: Vec<SwapStatuses<ID>>,
+    states: Vec<SwapStatus<ID>>,
 ) -> Vec<Verification<ID>> {
     let all_states: Vec<RouteStatus<ID>> = states
         .into_iter()
@@ -127,14 +127,14 @@ impl TryFrom<Vec<EventFieldData>> for Verification<FixedBytes<32>> {
 
 #[cfg(test)]
 mod test {
-    use crate::chain_state::SwapStatuses;
+    use crate::chain_state::SwapStatus;
     use crate::chain_state_pending::{Verification, extract_pending_verifications};
     use speculoos::assert_that;
     use speculoos::iter::ContainingIntoIterAssertions;
 
     #[test]
     fn given_fulfilled_and_not_verified_return_it() {
-        let states = vec![SwapStatuses {
+        let states = vec![SwapStatus {
             chain_id: 1,
             fulfilled: vec![1],
             verified: vec![],
@@ -154,12 +154,12 @@ mod test {
     #[test]
     fn given_multiple_chains_we_get_routes_for_each() {
         let states = vec![
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 1,
                 fulfilled: vec![1],
                 verified: vec![],
             },
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 2,
                 fulfilled: vec![2],
                 verified: vec![],
@@ -183,12 +183,12 @@ mod test {
     #[test]
     fn given_verified_already_fulfilled_not_returned() {
         let states = vec![
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 1,
                 fulfilled: vec![1],
                 verified: vec![],
             },
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 2,
                 fulfilled: vec![],
                 verified: vec![1],
@@ -203,12 +203,12 @@ mod test {
     #[test]
     fn given_verified_comes_first_fulfilled_still_filtered() {
         let states = vec![
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 1,
                 fulfilled: vec![],
                 verified: vec![1],
             },
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 2,
                 fulfilled: vec![1],
                 verified: vec![],
@@ -225,12 +225,12 @@ mod test {
         // honestly this shouldn't happen, but perhaps a malicious solver
         // could try it on the wrong chains to confuse dcipher nodes
         let states = vec![
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 1,
                 fulfilled: vec![1],
                 verified: vec![7, 8, 9],
             },
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 2,
                 fulfilled: vec![1],
                 verified: vec![],
@@ -254,17 +254,17 @@ mod test {
     #[test]
     fn mix_of_verified_and_fulfilled_returns_expected() {
         let states = vec![
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 1,
                 fulfilled: vec![1, 2, 3],
                 verified: vec![7, 8, 9, 4],
             },
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 2,
                 fulfilled: vec![3],
                 verified: vec![6],
             },
-            SwapStatuses {
+            SwapStatus {
                 chain_id: 3,
                 fulfilled: vec![4, 5, 6],
                 verified: vec![1],

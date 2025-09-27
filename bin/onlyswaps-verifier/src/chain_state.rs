@@ -15,7 +15,7 @@ use std::hash::Hash;
 use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct SwapStatuses<ID> {
+pub struct SwapStatus<ID> {
     pub chain_id: u64,
     pub fulfilled: Vec<ID>,
     pub verified: Vec<ID>,
@@ -118,11 +118,11 @@ impl Network<DynProvider> {
     }
 }
 impl<P: Provider> Network<P> {
-    pub async fn fetch_chain_state(&self) -> anyhow::Result<SwapStatuses<RequestId>> {
+    pub async fn fetch_chain_state(&self) -> anyhow::Result<SwapStatus<RequestId>> {
         let f = self.fetch_fulfilled_transfer_ids();
         let v = self.fetch_verified_transfer_ids();
         let (fulfilled, verified) = try_join(f, v).await?;
-        Ok(SwapStatuses {
+        Ok(SwapStatus {
             chain_id: self.chain_id,
             fulfilled,
             verified,
