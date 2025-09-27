@@ -21,12 +21,12 @@ pub struct OnlySwapsSigner<C, S> {
 
 #[async_trait]
 pub trait ChainService {
-    async fn fetch_transfer_receipt(
+    async fn fetch_swap_receipt(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
     ) -> anyhow::Result<getSwapRequestReceiptReturn>;
-    async fn fetch_transfer_params(
+    async fn fetch_swap_params(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
@@ -290,7 +290,7 @@ mod test {
 
     #[async_trait]
     impl ChainService for StubbedChainService {
-        async fn fetch_transfer_receipt(
+        async fn fetch_swap_receipt(
             &self,
             _: u64,
             _: FixedBytes<32>,
@@ -301,7 +301,7 @@ mod test {
             Ok(self.receipt.clone())
         }
 
-        async fn fetch_transfer_params(
+        async fn fetch_swap_params(
             &self,
             _: u64,
             _: FixedBytes<32>,

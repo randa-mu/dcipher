@@ -55,7 +55,7 @@ impl NetworkBus<DynProvider> {
 
 #[async_trait]
 impl<P: Provider> ChainService for NetworkBus<P> {
-    async fn fetch_transfer_receipt(
+    async fn fetch_swap_receipt(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
@@ -68,7 +68,7 @@ impl<P: Provider> ChainService for NetworkBus<P> {
         transport.fetch_transfer_receipt(request_id).await
     }
 
-    async fn fetch_transfer_params(
+    async fn fetch_swap_params(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,

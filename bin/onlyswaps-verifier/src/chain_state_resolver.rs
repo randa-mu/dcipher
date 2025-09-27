@@ -19,26 +19,27 @@ pub struct ChainState {
 
 impl ChainStateResolver {
     pub fn new(chain: Arc<NetworkBus<DynProvider>>) -> Self {
-        ChainStateResolver { chain }
+        Self { chain }
     }
+
     pub async fn resolve_state(
         &self,
         verification_job: &Verification<FixedBytes<32>>,
     ) -> anyhow::Result<ChainState> {
         let transfer_receipt = self
             .chain
-            .fetch_transfer_receipt(verification_job.chain_id, verification_job.request_id)
+            .fetch_swap_receipt(verification_job.chain_id, verification_job.request_id)
             .await?;
-        tracing::trace!("transfer receipt received from dest chain");
+        tracing::trace!("swap receipt received from dest chain");
 
         let swap_params = self
             .chain
-            .fetch_transfer_params(
+            .fetch_swap_params(
                 transfer_receipt.srcChainId.try_into()?,
                 verification_job.request_id,
             )
             .await?;
-        tracing::trace!("transfer params received from src chain");
+        tracing::trace!("swap params received from src chain");
 
         Ok(ChainState {
             transfer_receipt,

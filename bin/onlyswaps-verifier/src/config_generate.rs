@@ -101,8 +101,8 @@ fn build_app_config(
                 private_key: empty_private_key,
                 should_write: false,
                 request_timeout: Duration::from_secs(5),
-                // FIXME: THIS IS PROBABLY NOT TRUE
-                finality_duration_secs: Duration::from_secs(1),
+                // AVAX Fuji has instant finality, noice
+                finality_duration_secs: Duration::from_secs(0),
             },
             NetworkConfig {
                 chain_id: 84532,
@@ -111,8 +111,8 @@ fn build_app_config(
                 private_key: empty_private_key,
                 should_write: false,
                 request_timeout: Duration::from_secs(5),
-                // FIXME: THIS IS PROBABLY NOT TRUE
-                finality_duration_secs: Duration::from_secs(1),
+                // Base sepolia is a few seconds
+                finality_duration_secs: Duration::from_secs(3),
             },
         ],
         libp2p: Libp2pConfig {

@@ -59,8 +59,9 @@ impl Evaluator {
         }
 
         // if we haven't crossed the required timestamp the fulfilment tx is
-        // expected to be finalised at, blow up. Strictly speaking, reorgs
-        // in the interim _could_ affect this depending on the consensus algo
+        // expected to be finalised at, blow up. Reorgs could affect this, so
+        // operators are advised to be conservative when setting this in mainnet
+        // so as not to lose funds.
         let finality_duration = self
             .finality_durations
             .get(&transfer_receipt.dstChainId)
