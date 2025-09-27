@@ -101,6 +101,8 @@ fn build_app_config(
                 private_key: empty_private_key,
                 should_write: false,
                 request_timeout: Duration::from_secs(5),
+                // FIXME: THIS IS PROBABLY NOT TRUE
+                finality_duration_secs: Duration::from_secs(1),
             },
             NetworkConfig {
                 chain_id: 84532,
@@ -109,6 +111,8 @@ fn build_app_config(
                 private_key: empty_private_key,
                 should_write: false,
                 request_timeout: Duration::from_secs(5),
+                // FIXME: THIS IS PROBABLY NOT TRUE
+                finality_duration_secs: Duration::from_secs(1),
             },
         ],
         libp2p: Libp2pConfig {

@@ -1,15 +1,17 @@
-use crate::parsing::{TransferReceipt, reconcile_transfer_params};
-use crate::pending::{RequestId, Verification};
-use crate::util::normalise_chain_id;
-use alloy::primitives::{Address, FixedBytes};
+use crate::config::AppConfig;
+use alloy::primitives::{Address, FixedBytes, U256};
 use alloy::sol_types::SolValue;
+use anyhow::anyhow;
 use async_trait::async_trait;
-use dcipher_signer::bls::{AsyncThresholdSigner, BlsPairingSigner, BlsSigner};
+use dcipher_network::transports::libp2p::Libp2pNodeConfig;
+use dcipher_signer::bls::{AsyncThresholdSigner, BlsPairingSigner, BlsSigner, BlsThresholdSigner};
 use dcipher_signer::dsigner::{
     ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash,
     DSignerSchemeSigner, OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
+use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct OnlySwapsSigner<C, S> {
@@ -23,22 +25,19 @@ pub trait ChainService {
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferReceipt>;
+    ) -> anyhow::Result<getSwapRequestReceiptReturn>;
     async fn fetch_transfer_params(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
     ) -> anyhow::Result<SwapRequestParameters>;
 
-    async fn submit_verification(
-        &self,
-        chain_id: u64,
-        verified_swap: &VerifiedSwap,
-    ) -> anyhow::Result<()>;
+    async fn submit_verification(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()>;
 }
 
 #[derive(Clone, Debug)]
 pub struct VerifiedSwap {
+    pub src_chain_id: U256,
     pub request_id: FixedBytes<32>,
     pub solver: Address,
     pub signature: Vec<u8>,
@@ -50,9 +49,9 @@ pub trait Signer {
 }
 
 impl<C, S> OnlySwapsSigner<C, S> {
-    pub fn new(chain: impl Into<Arc<C>>, signer: impl Into<Arc<S>>) -> Self {
+    pub fn new(chain: Arc<C>, signer: impl Into<Arc<S>>) -> Self {
         Self {
-            chain: chain.into(),
+            chain,
             signer: signer.into(),
         }
     }
@@ -63,49 +62,21 @@ where
     C: ChainService + Send + Sync,
     S: Signer + Send + Sync,
 {
-    pub async fn evaluate_and_send(
+    pub async fn sign(
         &self,
-        verification_job: &Verification<RequestId>,
-    ) -> anyhow::Result<VerifiedSwap> {
-        let transfer_receipt = self
-            .chain
-            .fetch_transfer_receipt(verification_job.chain_id, verification_job.request_id)
-            .await?;
-        tracing::trace!("transfer receipt received from dest chain");
-
-        let transfer_params = self
-            .chain
-            .fetch_transfer_params(
-                normalise_chain_id(transfer_receipt.src_chain_id),
-                verification_job.request_id,
-            )
-            .await?;
-        tracing::trace!("transfer params received from src chain");
-
-        let solver = transfer_receipt.solver;
-        let valid_transfer_params = reconcile_transfer_params(transfer_params, transfer_receipt)?;
-        let src_chain_id = normalise_chain_id(valid_transfer_params.srcChainId);
-        let m = create_message(valid_transfer_params, &solver);
-        tracing::trace!("message for signing created");
-
+        solver: &Address,
+        valid_transfer_params: &SwapRequestParameters,
+    ) -> anyhow::Result<Vec<u8>> {
+        let src_chain_id = valid_transfer_params.srcChainId.try_into()?;
+        let m = create_message(valid_transfer_params, solver);
         let signature = self.signer.sign(m, src_chain_id).await?;
-        let verified_swap = VerifiedSwap {
-            request_id: verification_job.request_id,
-            signature,
-            solver,
-        };
-        tracing::trace!("signing complete");
+        tracing::trace!("signing successful");
 
-        self.chain
-            .submit_verification(src_chain_id, &verified_swap)
-            .await?;
-        tracing::trace!("verification submitted successfully");
-
-        Ok(verified_swap)
+        Ok(signature)
     }
 }
 
-pub fn create_message(params: SwapRequestParameters, solver: &Address) -> Vec<u8> {
+pub fn create_message(params: &SwapRequestParameters, solver: &Address) -> Vec<u8> {
     (
         solver,
         params.sender,
@@ -120,18 +91,44 @@ pub fn create_message(params: SwapRequestParameters, solver: &Address) -> Vec<u8
         .abi_encode()
 }
 
-pub struct DsignerWrapper<S: BlsSigner> {
-    s: AsyncThresholdSigner<S>,
+pub struct NetworkedSigner<S: BlsSigner> {
+    threshold_signer: AsyncThresholdSigner<S>,
 }
 
-impl<S: BlsSigner> DsignerWrapper<S> {
-    pub fn new(s: AsyncThresholdSigner<S>) -> Self {
-        Self { s }
+impl NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>> {
+    pub(crate) fn new(
+        config: &AppConfig,
+        libp2p_node: Libp2pNodeConfig<u16>,
+    ) -> anyhow::Result<NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>>> {
+        let bls_secret_key = &config.committee.secret_key;
+        let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(bls_secret_key.clone().0);
+
+        let signer = BlsThresholdSigner::new(
+            signer,
+            config.committee.n.get(),
+            config.committee.t.get(),
+            config.committee.member_id.get(),
+            HashMap::default(), // no keys on g1
+            config
+                .committee
+                .members
+                .iter()
+                .map(|n| (n.member_id.get(), n.bls_pk))
+                .collect(),
+        );
+
+        let transport = libp2p_node
+            .run(config.libp2p.multiaddr.clone())?
+            .get_transport()
+            .ok_or(anyhow!("failed to get libp2p transport"))?;
+        let (_, threshold_signer) = signer.run(transport);
+
+        Ok(Self { threshold_signer })
     }
 }
 
 #[async_trait]
-impl Signer for DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>> {
+impl Signer for NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>> {
     async fn sign(&self, message: Vec<u8>, chain_id: u64) -> anyhow::Result<Vec<u8>> {
         // Sign a message using a dst in the following format:
         //  swap-v1-BN254G1_XMD:KECCAK-256_SVDW_RO_0x0000000000000000000000000000000000000000000000000000000000014a34_
@@ -144,7 +141,7 @@ impl Signer for DsignerWrapper<BlsPairingSigner<ark_bn254::Bn254>> {
                 compression: false,
             }),
         };
-        let point = self.s.async_sign(sig_request).await?;
+        let point = self.threshold_signer.async_sign(sig_request).await?;
         Ok(point.into())
     }
 }
@@ -164,9 +161,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::parsing::TransferReceipt;
-    use crate::pending::Verification;
-    use crate::signing::{ChainService, DsignerWrapper, OnlySwapsSigner, Signer, VerifiedSwap};
+    use crate::signing::{ChainService, NetworkedSigner, OnlySwapsSigner, Signer, VerifiedSwap};
     use alloy::primitives::{Address, FixedBytes, U160, U256};
     use ark_bn254::Fr;
     use ark_ff::MontFp;
@@ -175,6 +170,7 @@ mod test {
     use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
     use speculoos::assert_that;
     use std::collections::HashMap;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn matching_receipt_and_params_create_valid_signature() {
@@ -195,27 +191,24 @@ mod test {
             requestedAt: U256::from(123456),
         };
 
-        let transfer_receipt = TransferReceipt {
-            chain_id: U256::from(destination_chain_id),
-            request_id,
-            src_chain_id: U256::from(2),
-            token_in: Address::from(U160::from(3)),
-            token_out: Address::from(U160::from(4)),
+        let transfer_receipt = getSwapRequestReceiptReturn {
+            dstChainId: U256::from(destination_chain_id),
+            requestId: request_id,
+            srcChainId: U256::from(2),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(4)),
             fulfilled: true,
             solver: Address::from(U160::from(4)),
             recipient: Address::from(U160::from(5)),
-            amount_out: U256::from(10),
-            fulfilled_at: U256::from(8),
+            amountOut: U256::from(10),
+            fulfilledAt: U256::from(8),
         };
 
-        let service = StubbedChainService::new(transfer_receipt, transfer_params);
-        let onlyswaps = OnlySwapsSigner::new(service, StubbedSigner {});
+        let service = StubbedChainService::new(transfer_receipt.clone(), transfer_params.clone());
+        let onlyswaps = OnlySwapsSigner::new(Arc::new(service), StubbedSigner {});
 
         onlyswaps
-            .evaluate_and_send(&Verification {
-                chain_id: 1,
-                request_id,
-            })
+            .sign(&transfer_receipt.solver, &transfer_params)
             .await
             .unwrap();
     }
@@ -239,29 +232,28 @@ mod test {
             requestedAt: U256::from(123456),
         };
 
-        let transfer_receipt = TransferReceipt {
-            chain_id: U256::from(destination_chain_id),
-            request_id,
-            src_chain_id: U256::from(2),
-            token_in: Address::from(U160::from(3)),
-            token_out: Address::from(U160::from(4)),
+        let transfer_receipt = getSwapRequestReceiptReturn {
+            dstChainId: U256::from(destination_chain_id),
+            requestId: request_id,
+            srcChainId: U256::from(2),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(4)),
             fulfilled: true,
-
             recipient: Address::from(U160::from(5)),
             solver: Address::from(U160::from(4)),
-            amount_out: U256::from(5), // amount - swapFee - solverFee
-            fulfilled_at: U256::from(6),
+            amountOut: U256::from(5), // amount - swapFee - solverFee
+            fulfilledAt: U256::from(6),
         };
 
-        let service =
-            StubbedChainService::error(transfer_receipt, transfer_params, "oh shit".to_string());
+        let service = StubbedChainService::error(
+            transfer_receipt.clone(),
+            transfer_params.clone(),
+            "oh shit".to_string(),
+        );
         let stub_signer = StubbedSigner {};
-        let onlyswaps = OnlySwapsSigner::new(service, stub_signer);
+        let onlyswaps = OnlySwapsSigner::new(Arc::new(service), stub_signer);
         let result = onlyswaps
-            .evaluate_and_send(&Verification {
-                chain_id: 1,
-                request_id,
-            })
+            .sign(&transfer_receipt.solver, &transfer_params)
             .await;
 
         assert_that!(result.is_err());
@@ -269,13 +261,13 @@ mod test {
     }
 
     struct StubbedChainService {
-        receipt: TransferReceipt,
+        receipt: getSwapRequestReceiptReturn,
         params: SwapRequestParameters,
         error: Option<String>,
     }
 
     impl StubbedChainService {
-        fn new(receipt: TransferReceipt, params: SwapRequestParameters) -> Self {
+        fn new(receipt: getSwapRequestReceiptReturn, params: SwapRequestParameters) -> Self {
             Self {
                 receipt,
                 params,
@@ -283,7 +275,11 @@ mod test {
             }
         }
 
-        fn error(receipt: TransferReceipt, params: SwapRequestParameters, error: String) -> Self {
+        fn error(
+            receipt: getSwapRequestReceiptReturn,
+            params: SwapRequestParameters,
+            error: String,
+        ) -> Self {
             Self {
                 receipt,
                 params,
@@ -298,7 +294,7 @@ mod test {
             &self,
             _: u64,
             _: FixedBytes<32>,
-        ) -> anyhow::Result<TransferReceipt> {
+        ) -> anyhow::Result<getSwapRequestReceiptReturn> {
             if let Some(e) = &self.error {
                 anyhow::bail!(e.to_string());
             }
@@ -316,7 +312,7 @@ mod test {
             Ok(self.params.clone())
         }
 
-        async fn submit_verification(&self, _: u64, _: &VerifiedSwap) -> anyhow::Result<()> {
+        async fn submit_verification(&self, _: &VerifiedSwap) -> anyhow::Result<()> {
             Ok(())
         }
     }
@@ -333,6 +329,7 @@ mod test {
     use ark_ec::{AffineRepr, CurveGroup};
     use futures::future::try_join_all;
     use generated::onlyswaps::router::IRouter::SwapRequestParameters;
+    use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
 
     #[tokio::test]
     async fn in_memory_test() -> anyhow::Result<()> {
@@ -380,9 +377,15 @@ mod test {
         let (_, ch3) = BlsThresholdSigner::new(cs3, n, t, 3, pks_g1.clone(), pks_g2.clone())
             .run(transports.pop_front().unwrap());
 
-        let s1 = DsignerWrapper::new(ch1);
-        let s2 = DsignerWrapper::new(ch2);
-        let s3 = DsignerWrapper::new(ch3);
+        let s1 = NetworkedSigner {
+            threshold_signer: ch1,
+        };
+        let s2 = NetworkedSigner {
+            threshold_signer: ch2,
+        };
+        let s3 = NetworkedSigner {
+            threshold_signer: ch3,
+        };
         let m = b"hello world";
 
         let futs = vec![
