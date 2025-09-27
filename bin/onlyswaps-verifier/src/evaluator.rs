@@ -1,5 +1,8 @@
 use crate::chain_state_resolver::ChainState;
+use alloy::primitives::U256;
+use std::ops::Add;
 
+type ChainId = U256;
 #[derive(Clone)]
 pub struct Evaluator;
 impl Evaluator {
@@ -43,6 +46,7 @@ impl Evaluator {
 mod tests {
     use super::*;
     use alloy::primitives::{Address, FixedBytes, U160, U256};
+    use chrono::Duration;
     use generated::onlyswaps::router::IRouter::SwapRequestParameters;
     use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
     use std::str::FromStr;

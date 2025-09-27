@@ -2,6 +2,7 @@ use crate::chain_state_pending::Verification;
 use alloy::primitives::FixedBytes;
 use async_stream::stream;
 use chrono::Utc;
+use config::network::NetworkConfig;
 use futures::Stream;
 use std::cmp::{Ordering, Reverse, max};
 use std::collections::BinaryHeap;

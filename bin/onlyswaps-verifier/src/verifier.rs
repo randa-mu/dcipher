@@ -54,7 +54,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     let network_bus =
         Arc::new(NetworkBus::create(&app_config.networks, &app_config.timeout).await?);
 
-    // the `retry_scheduler` receives `Verification`s that have failed and schedules them at a later time
+    // the `retry_scheduler` manages receives `Verification`s that have failed and schedules them at a later time
     // with respect to the retry duration
     let retry_duration = Duration::from_secs(12);
     let retry_scheduler = RetryScheduler::new(retry_duration);
