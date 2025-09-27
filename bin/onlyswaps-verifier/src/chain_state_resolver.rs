@@ -1,6 +1,5 @@
 use crate::chain_state::NetworkBus;
 use crate::chain_state_pending::Verification;
-use crate::signing::ChainService;
 use alloy::primitives::FixedBytes;
 use alloy::providers::DynProvider;
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;

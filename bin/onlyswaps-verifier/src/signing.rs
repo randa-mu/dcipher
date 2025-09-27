@@ -10,29 +10,11 @@ use dcipher_signer::dsigner::{
     DSignerSchemeSigner, OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub struct OnlySwapsSigner<C, S> {
-    chain: Arc<C>,
+pub struct OnlySwapsSigner<S> {
     signer: Arc<S>,
-}
-
-#[async_trait]
-pub trait ChainService {
-    async fn fetch_swap_receipt(
-        &self,
-        chain_id: u64,
-        request_id: FixedBytes<32>,
-    ) -> anyhow::Result<getSwapRequestReceiptReturn>;
-    async fn fetch_swap_params(
-        &self,
-        chain_id: u64,
-        request_id: FixedBytes<32>,
-    ) -> anyhow::Result<SwapRequestParameters>;
-
-    async fn submit_verification(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()>;
 }
 
 #[derive(Clone, Debug)]
@@ -48,18 +30,16 @@ pub trait Signer {
     async fn sign(&self, b: Vec<u8>, chain_id: u64) -> anyhow::Result<Vec<u8>>;
 }
 
-impl<C, S> OnlySwapsSigner<C, S> {
-    pub fn new(chain: Arc<C>, signer: impl Into<Arc<S>>) -> Self {
+impl<S> OnlySwapsSigner<S> {
+    pub fn new(signer: impl Into<Arc<S>>) -> Self {
         Self {
-            chain,
             signer: signer.into(),
         }
     }
 }
 
-impl<C, S> OnlySwapsSigner<C, S>
+impl<S> OnlySwapsSigner<S>
 where
-    C: ChainService + Send + Sync,
     S: Signer + Send + Sync,
 {
     pub async fn sign(
@@ -146,14 +126,12 @@ impl Signer for NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>> {
     }
 }
 
-impl<C, S> Clone for OnlySwapsSigner<C, S>
+impl<S> Clone for OnlySwapsSigner<S>
 where
-    C: ChainService,
     S: Signer,
 {
     fn clone(&self) -> Self {
         Self {
-            chain: self.chain.clone(),
             signer: self.signer.clone(),
         }
     }
@@ -161,7 +139,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::signing::{ChainService, NetworkedSigner, OnlySwapsSigner, Signer, VerifiedSwap};
+    use crate::signing::{NetworkedSigner, OnlySwapsSigner, Signer};
     use alloy::primitives::{Address, FixedBytes, U160, U256};
     use ark_bn254::Fr;
     use ark_ff::MontFp;
@@ -170,7 +148,6 @@ mod test {
     use dcipher_signer::bls::{BlsPairingSigner, BlsThresholdSigner};
     use speculoos::assert_that;
     use std::collections::HashMap;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn matching_receipt_and_params_create_valid_signature() {
@@ -204,8 +181,7 @@ mod test {
             fulfilledAt: U256::from(8),
         };
 
-        let service = StubbedChainService::new(transfer_receipt.clone(), transfer_params.clone());
-        let onlyswaps = OnlySwapsSigner::new(Arc::new(service), StubbedSigner {});
+        let onlyswaps = OnlySwapsSigner::new(StubbedSigner::default());
 
         onlyswaps
             .sign(&transfer_receipt.solver, &transfer_params)
@@ -245,13 +221,8 @@ mod test {
             fulfilledAt: U256::from(6),
         };
 
-        let service = StubbedChainService::error(
-            transfer_receipt.clone(),
-            transfer_params.clone(),
-            "oh shit".to_string(),
-        );
-        let stub_signer = StubbedSigner {};
-        let onlyswaps = OnlySwapsSigner::new(Arc::new(service), stub_signer);
+        let stub_signer = StubbedSigner { should_error: true };
+        let onlyswaps = OnlySwapsSigner::new(stub_signer);
         let result = onlyswaps
             .sign(&transfer_receipt.solver, &transfer_params)
             .await;
@@ -260,68 +231,17 @@ mod test {
         assert_that!(result.unwrap_err().to_string()).is_equal_to("oh shit".to_string());
     }
 
-    struct StubbedChainService {
-        receipt: getSwapRequestReceiptReturn,
-        params: SwapRequestParameters,
-        error: Option<String>,
+    #[derive(Default)]
+    struct StubbedSigner {
+        should_error: bool,
     }
-
-    impl StubbedChainService {
-        fn new(receipt: getSwapRequestReceiptReturn, params: SwapRequestParameters) -> Self {
-            Self {
-                receipt,
-                params,
-                error: None,
-            }
-        }
-
-        fn error(
-            receipt: getSwapRequestReceiptReturn,
-            params: SwapRequestParameters,
-            error: String,
-        ) -> Self {
-            Self {
-                receipt,
-                params,
-                error: Some(error),
-            }
-        }
-    }
-
-    #[async_trait]
-    impl ChainService for StubbedChainService {
-        async fn fetch_swap_receipt(
-            &self,
-            _: u64,
-            _: FixedBytes<32>,
-        ) -> anyhow::Result<getSwapRequestReceiptReturn> {
-            if let Some(e) = &self.error {
-                anyhow::bail!(e.to_string());
-            }
-            Ok(self.receipt.clone())
-        }
-
-        async fn fetch_swap_params(
-            &self,
-            _: u64,
-            _: FixedBytes<32>,
-        ) -> anyhow::Result<SwapRequestParameters> {
-            if let Some(e) = &self.error {
-                anyhow::bail!(e.to_string());
-            }
-            Ok(self.params.clone())
-        }
-
-        async fn submit_verification(&self, _: &VerifiedSwap) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
-    struct StubbedSigner {}
 
     #[async_trait]
     impl Signer for StubbedSigner {
         async fn sign(&self, _: Vec<u8>, _: u64) -> anyhow::Result<Vec<u8>> {
+            if self.should_error {
+                anyhow::bail!("boom!")
+            }
             Ok(vec![0x1, 0x2, 0x3, 0x4])
         }
     }

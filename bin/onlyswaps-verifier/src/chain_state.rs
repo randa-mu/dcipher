@@ -1,11 +1,10 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
-use crate::signing::{ChainService, VerifiedSwap};
+use crate::signing::VerifiedSwap;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
-use async_trait::async_trait;
 use config::network::NetworkConfig;
 use futures::future::{try_join, try_join_all};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
@@ -51,11 +50,7 @@ impl NetworkBus<DynProvider> {
         let states = try_join_all(futs).await?;
         Ok(extract_pending_verifications(states))
     }
-}
-
-#[async_trait]
-impl<P: Provider> ChainService for NetworkBus<P> {
-    async fn fetch_swap_receipt(
+    pub(crate) async fn fetch_swap_receipt(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
@@ -68,7 +63,7 @@ impl<P: Provider> ChainService for NetworkBus<P> {
         transport.fetch_transfer_receipt(request_id).await
     }
 
-    async fn fetch_swap_params(
+    pub(crate) async fn fetch_swap_params(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
@@ -81,7 +76,10 @@ impl<P: Provider> ChainService for NetworkBus<P> {
         transport.fetch_transfer_params(request_id).await
     }
 
-    async fn submit_verification(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
+    pub(crate) async fn submit_verification(
+        &self,
+        verified_swap: &VerifiedSwap,
+    ) -> anyhow::Result<()> {
         let chain_id: u64 = verified_swap.src_chain_id.try_into()?;
         let transport = self.networks.get(&chain_id).ok_or(anyhow!(
             "No chain transport for {}",

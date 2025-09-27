@@ -5,7 +5,7 @@ use crate::cli::StartArgs;
 use crate::config::{AppConfig, ConfigFile};
 use crate::evaluator::Evaluator;
 use crate::retry_runtime::RetryScheduler;
-use crate::signing::{ChainService, NetworkedSigner, OnlySwapsSigner, VerifiedSwap};
+use crate::signing::{NetworkedSigner, OnlySwapsSigner, VerifiedSwap};
 use crate::transport::create_libp2p_transport;
 use crate::verification_bus::VerificationBus;
 use agent_utils::healthcheck_server::HealthcheckServer;
@@ -80,7 +80,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     // signatures using libp2p.
     let transport = create_libp2p_transport(app_config)?;
     let networked_signer = NetworkedSigner::new(app_config, transport)?;
-    let signer = OnlySwapsSigner::new(network_bus.clone(), networked_signer);
+    let signer = OnlySwapsSigner::new(networked_signer);
     tracing::info!(
         multiaddr = app_config.libp2p.multiaddr.to_string(),
         n = app_config.committee.n,
