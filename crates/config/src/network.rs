@@ -17,6 +17,8 @@ pub struct NetworkConfig {
     pub should_write: bool,
     #[serde(with = "humantime_serde", default = "default_request_timeout")]
     pub request_timeout: Duration,
+    #[serde(with = "humantime_serde", default = "default_finality_duration_secs")]
+    pub finality_duration_secs: Duration,
 }
 
 #[serde_as]
@@ -32,6 +34,10 @@ fn default_should_write() -> bool {
 
 fn default_request_timeout() -> Duration {
     Duration::from_secs(30)
+}
+
+fn default_finality_duration_secs() -> Duration {
+    Duration::from_secs(1)
 }
 
 #[cfg(test)]
