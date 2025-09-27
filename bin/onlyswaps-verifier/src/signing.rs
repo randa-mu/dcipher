@@ -190,7 +190,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn contract_errors_propagate() {
+    async fn signing_errors_propagate() {
         let destination_chain_id = 1;
         let request_id = FixedBytes::from(U256::from(1));
         let transfer_params = SwapRequestParameters {
@@ -228,7 +228,7 @@ mod test {
             .await;
 
         assert_that!(result.is_err());
-        assert_that!(result.unwrap_err().to_string()).is_equal_to("oh shit".to_string());
+        assert_that!(result.unwrap_err().to_string()).is_equal_to("boom!".to_string());
     }
 
     #[derive(Default)]
