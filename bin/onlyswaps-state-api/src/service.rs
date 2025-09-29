@@ -64,7 +64,7 @@ fn by_id(txs: &mut Vec<SwapTransaction>, request_id: &FixedBytes<32>) {
     txs.retain(|t| t.request_id == *request_id);
 }
 fn by_chain_id(txs: &mut Vec<SwapTransaction>, chain_id: ShortNumber) {
-    txs.retain(|t| t.src_chain_id != chain_id || t.dest_chain_id != chain_id);
+    txs.retain(|t| t.src_chain_id == chain_id || t.dest_chain_id == chain_id);
 }
 
 fn by_address(txs: &mut Vec<SwapTransaction>, address: Address) {
@@ -157,10 +157,8 @@ mod tests {
         };
 
         let result = service.get_transactions(filter).unwrap();
-        // because by_chain_id retains when src != id OR dest != id,
-        // the (3,3) one should be filtered out.
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].src_chain_id, 1u64.into());
+        assert_eq!(result[0].src_chain_id, 3u64.into());
     }
 
     #[test]
