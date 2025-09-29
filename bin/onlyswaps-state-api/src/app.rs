@@ -1,9 +1,10 @@
-use crate::api::HttpApi;
 use crate::config::AppConfig;
+use crate::http_api::HttpApi;
 use crate::network_bus::NetworkBus;
 use crate::omnievent::{
     OmnieventManager, StateUpdate, create_event_manager, stream_from_beginning,
 };
+use crate::service::ChannelStateService;
 use crate::state::{AppState, StateMachine};
 use anyhow::anyhow;
 use futures::StreamExt;
@@ -64,7 +65,8 @@ impl App {
 
         // set up an HTTP API task that pulls the latest state from the state machine watch channel
         // upon request, and slices and dices it for various query parameters.
-        let api = HttpApi::new(&config.api, next_state_rx).await?;
+        let state_service = ChannelStateService::new(next_state_rx);
+        let api = HttpApi::new(&config.api, state_service).await?;
         let api_task = tokio::spawn(async {
             tracing::info!("started state printer");
             api.start().await.expect("API died")

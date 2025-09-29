@@ -12,11 +12,11 @@ pub(crate) struct StateMachine {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct AppState {
-    pub transactions: Vec<Transaction>,
+    pub transactions: Vec<SwapTransaction>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct Transaction {
+pub(crate) struct SwapTransaction {
     pub request_id: FixedBytes<32>,
     pub src_chain_id: ShortNumber,
     pub dest_chain_id: ShortNumber,
@@ -67,7 +67,7 @@ impl StateMachine {
                 self.state
                     .transactions
                     .retain(|t| t.request_id != request_id);
-                self.state.transactions.push(Transaction {
+                self.state.transactions.push(SwapTransaction {
                     request_id,
                     src_chain_id: params.srcChainId.into(),
                     dest_chain_id: params.dstChainId.into(),
@@ -93,7 +93,7 @@ impl StateMachine {
                 self.state
                     .transactions
                     .retain(|t| t.request_id != request_id);
-                self.state.transactions.push(Transaction {
+                self.state.transactions.push(SwapTransaction {
                     request_id,
                     src_chain_id: params.srcChainId.into(),
                     dest_chain_id: params.dstChainId.into(),
@@ -137,7 +137,7 @@ impl StateMachine {
         self.state
             .transactions
             .retain(|t| t.request_id != request_id);
-        self.state.transactions.push(Transaction {
+        self.state.transactions.push(SwapTransaction {
             request_id,
             src_chain_id: params.srcChainId.into(),
             dest_chain_id: params.dstChainId.into(),
