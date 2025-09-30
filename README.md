@@ -1,58 +1,145 @@
 # dcipher
 
-## Prerequisites
-- foundry 1.3.5-stable
-- rust 1.89.0+
- 
-## Building
+[![Build](https://img.shields.io/github/actions/workflow/status/randa-mu/dcipher/rust-build-and-tests.yml?branch=main)](https://github.com/randa-mu/dcipher/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/randa-mu/dcipher?style=social)](https://github.com/randa-mu/dcipher)
 
-### To run it with minimum effort
+---
+
+## Overview
+
+**dcipher** is a modular protocol for [threshold cryptography](https://en.wikipedia.org/wiki/Threshold_cryptosystem).  
+It combines smart contracts and off-chain node operators to enable:
+
+- Asynchronous Distributed Key Generation
+- Threshold signing
+- Identity-based encryption
+- Chain abstraction
+
+The repository is organized into:
+
+- **Binaries (`bin/`)** – runnable agents, CLIs, and services.
+- **Crates (`crates/`)** – Rust libraries used across the project.
+- **Modules (`modules/`)** – **Git submodule dependencies** that pull in protocol-specific logic or external components.
+
+---
+
+## Repository Structure
+
+### Binaries (`bin/`)
+
+| Binary                | Purpose                                                                                                |
+|-----------------------|--------------------------------------------------------------------------------------------------------|
+| `adkg-cli`            | CLI for running and testing Asynchronous Distributed Key Generation ceremonies                         |
+| `blocklock-agent`     | Agent for the Blocklock protocol (time-lock / conditional decryption)                                  |
+| `dsigner`             | Threshold signing daemon, allowing operators to separate condition evaluation and signing for security |
+| `gen-keys`            | Utility for key generation (testing / setup)                                                           |
+| `onlyswaps-state-api` | API for caching and serving state related to ONLYSwaps                                                 |
+| `onlyswaps-verifier`  | A dcipher protocol implementation called ONLYSwaps for enabling cross-chain token swaps                |
+| `randomness-agent`    | A dcipher protocol implementation for providing verifiable randomness on-chain                         |                                                                                                       |
+
+---
+
+### Crates (`crates/`)
+
+| Crate            | Purpose                                                                                                                                                   |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `adkg`           | Core Asynchronous Distributed Key Generation implementation                                                                                               |
+| `agent-utils`    | Utilities shared by dcipher agents                                                                                                                        |
+| `config`         | Shared configuration handling for agents that use networking, threshold signing, or load config files (TOML, env, etc.)                                   |
+| `dcipher-agents` | Common agent framework code                                                                                                                               |
+| `generated`      | Auto-generated Rust bindings from Solidity (kept in sync via `generate-bindings.sh`)                                                                      |
+| `network`        | Networking primitives and libp2p integrations                                                                                                             |
+| `omnievent`      | A library for streaming contract events sources into database sinks, and back into filterable streams for apps built on top of [alloy](https://alloy.rs/) |
+| `signer`         | Signing logic (BLS / threshold compatible)                                                                                                                |
+| `superalloy`     | A crate providing multiplexing logic for combining [alloy](https://alloy.rs/) providers                                                                   |
+| `utils`          | General helper utilities                                                                                                                                  |
+
+---
+
+### Modules (`modules/`)
+
+These are **Git submodule dependencies**, not local crates.  
+They typically include protocol-specific or external components maintained in separate repositories.  
+Update them with:
+
 ```bash
-make git run_dsigner
-```
-or
-```bash
-make git run_onlyswaps-verifier ARGS="--port=8080"
+git submodule update --init --recursive
 ```
 
-## To just build without running
-Init submodules, fetch npm deps, and build forge contracts with:
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Rust `1.89.0+`
+- Node.js & npm
+- `make`
+- Foundry (if running the tests)
+
+### Quickstart
+
+Build everything, including solidity and tests:
+
 ```bash
 make all
 ```
-You'll get binaries produced in ./target/debug/
 
+Build the repo (but not the tests):
 
-## Less automagic process
-If you prefer a granular process, you can run:
 ```bash
-make clean                      # Remove node_modules
-make git
-make install_solidity_node_dep
-# Either:
-make build_forge_all_parallel   # Parallel build
-# OR
-make build_forge_all            # Linear build
-make build_cargo
+cargo build
 ```
 
-### Cleaning
-Remove all node_modules and forge outputs with:
+Build a specific binary (e.g. adkg-cli):
+
+```bash
+cargo build  --release -p adkg-cli
+```
+
+
+Clean artifacts:
+
 ```bash
 make clean
-```
-
-just node_modules:
-```bash
 make clean_node_modules
-```
-
-just forge outputs:
-```bash
 make clean_forge
 ```
 
+---
+
 ## Bindings
-If any of the solidity code is updated, you must generate new Rust bindings before committing. 
-This can be done by running `./generate-bindings.sh`.
-Any mismatch in the generated bindings and those in the repo will cause a build failure.
+
+If Solidity contracts change, regenerate Rust bindings:
+
+```bash
+./generate-bindings.sh
+```
+
+CI will fail if bindings are out of sync.
+
+---
+
+## Testing
+
+- Rust crates:
+
+```bash
+cargo test --workspace
+```
+
+---
+
+## Contributing
+
+1. Fork & clone the repo
+2. Create a feature branch
+3. Run `cargo test` and `forge test` before pushing
+4. Open a PR and ensure CI passes
+
+---
+
+## License
+
+Licensed under [MIT](LICENSE).

@@ -1,6 +1,6 @@
 .PHONY= git solidity-deps build-forge-all build-forge-all-concurrent clean-node-modules clean-solidity-out clean_dcipher $(addprefix run_,$(DIRS))
 DCIPHER_MODULE_DIRS := onlyswaps-verifier dsigner
-SOLIDITY_DIRS := modules/$(wildcard *-solidity/)
+SOLIDITY_DIRS := $(wildcard modules/*-solidity/)
 
 git:
 	@git submodule update --init --recursive --verbose --progress -j 8
@@ -9,11 +9,14 @@ install_solidity_node_deps:
 	@npm install
 
 generate_rust_bindings:
-	./generate_rust_bindings.sh;
+	./generate-bindings.sh;
 
 build_forge_all:
-	@npm run build:forge --ws
-
+	@echo $(SOLIDITY_DIRS)
+	@for dir in $(SOLIDITY_DIRS); do \
+		(cd $$dir && npm run build:forge) \
+	done; \
+	wait
 build_forge_all_concurrent:
 	@for dir in $(SOLIDITY_DIRS); do \
 		(cd $$dir && npm run build:forge) & \
