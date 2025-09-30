@@ -1,4 +1,5 @@
 use crate::scheme::SupportedAdkgScheme;
+use crate::transmogrify::TransmogrifyArgs;
 use clap::{Parser, Subcommand};
 use libp2p::Multiaddr;
 use std::num::NonZeroUsize;
@@ -39,6 +40,9 @@ pub enum Commands {
         about = "Recover your own share by relying on the ADKG transcripts from n - t participants"
     )]
     Rescue(Rescue),
+
+    #[command(about = "Turn dcipher keys into formats for other applications")]
+    Transmogrify(TransmogrifyArgs),
 }
 
 /// Generate a new scheme configuration
