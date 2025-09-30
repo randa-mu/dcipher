@@ -34,7 +34,7 @@ The repository is organized into:
 | `blocklock-agent`     | Agent for the Blocklock protocol (time-lock / conditional decryption)                                  |
 | `dsigner`             | Threshold signing daemon, allowing operators to separate condition evaluation and signing for security |
 | `gen-keys`            | Utility for key generation (testing / setup)                                                           |
-| `onlyswaps-state-api` | API for caching and serviceexposing state related to ONLYSwaps                                         |
+| `onlyswaps-state-api` | API for caching and serving state related to ONLYSwaps                                                 |
 | `onlyswaps-verifier`  | A dcipher protocol implementation called ONLYSwaps for enabling cross-chain token swaps                |
 | `randomness-agent`    | A dcipher protocol implementation for providing verifiable randomness on-chain                         |                                                                                                       |
 
@@ -74,11 +74,17 @@ git submodule update --init --recursive
 ### Prerequisites
 
 - Rust `1.89.0+`
-- Foundry (Forge)
 - Node.js & npm
 - `make`
+- Foundry (if running the tests)
 
 ### Quickstart
+
+Build everything, including solidity and tests:
+
+```bash
+make all
+```
 
 Build the repo (but not the tests):
 
@@ -86,16 +92,10 @@ Build the repo (but not the tests):
 cargo build
 ```
 
-Build a specific bin (e.g. adkg-cli):
+Build a specific binary (e.g. adkg-cli):
 
 ```bash
 cargo build  --release -p adkg-cli
-```
-
-Build everything, including solidity and tests:
-
-```bash
-make all
 ```
 
 
