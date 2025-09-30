@@ -12,7 +12,7 @@ use config::network::{Libp2pConfig, NetworkConfig};
 use config::signing::{CommitteeConfig, MemberConfig};
 use std::fs;
 use std::net::Ipv4Addr;
-use std::num::NonZeroU16;
+use std::num::{NonZero, NonZeroU16};
 use std::str::FromStr;
 use std::time::Duration;
 use utils::serialize::point::PointDeserializeCompressed;
@@ -53,10 +53,6 @@ fn build_app_config(
         environment,
         ..
     } = args;
-    // reformat a few of the relevant fields
-    let shared_secret_key_hex = parse_shared_secret_key(shared_priv)?;
-
-    let members = build_members_config(shared_pub)?;
 
     let networks = if environment == Environment::Mainnet {
         create_mainnet_config(router_address)
@@ -64,10 +60,9 @@ fn build_app_config(
         create_testnet_config(router_address)
     }?;
 
-    let threshold = group
-        .t_reconstruction
-        .checked_add(1)
-        .ok_or(anyhow!("getting threshold overflowed"))?;
+    let shared_secret_key_hex = parse_shared_secret_key(shared_priv)?;
+    let members = create_members_config(shared_pub)?;
+    let threshold = calculate_threshold(&group)?;
 
     let agent = AgentConfig {
         healthcheck_listen_addr: Ipv4Addr::new(0, 0, 0, 0),
@@ -95,7 +90,14 @@ fn build_app_config(
     })
 }
 
-fn build_members_config(shared_pub: AdkgPublic) -> anyhow::Result<Vec<MemberConfig<G2Affine>>> {
+fn calculate_threshold(group: &GroupConfig) -> anyhow::Result<NonZero<usize>> {
+    group
+        .t_reconstruction
+        .checked_add(1)
+        .ok_or(anyhow!("getting threshold overflowed"))
+}
+
+fn create_members_config(shared_pub: AdkgPublic) -> anyhow::Result<Vec<MemberConfig<G2Affine>>> {
     let mut members = Vec::with_capacity(shared_pub.node_pks.len());
     for n in shared_pub.node_pks {
         let config = MemberConfig {
@@ -112,14 +114,11 @@ fn build_members_config(shared_pub: AdkgPublic) -> anyhow::Result<Vec<MemberConf
 }
 
 fn parse_shared_secret_key(shared_priv: AdkgSecret) -> anyhow::Result<String> {
-    Ok(format!(
-        "0x{}",
-        hex::encode(
-            BASE64_STANDARD
-                .decode(shared_priv.sk.as_str())
-                .context("failed to decode shared private key - is it valid base64?")?
-        )
-    ))
+    let bytes = BASE64_STANDARD
+        .decode(shared_priv.sk.as_str())
+        .context("failed to decode shared private key - is it valid base64?")?;
+
+    Ok(format!("0x{}", hex::encode(bytes)))
 }
 
 fn create_mainnet_config(
@@ -127,14 +126,12 @@ fn create_mainnet_config(
 ) -> anyhow::Result<Vec<NetworkConfig>> {
     let contract_addr =
         router_address.unwrap_or("0x4cB630aAEA9e152db83A846f4509d83053F21078".parse()?);
-    let empty_private_key: FixedBytes<32> =
-        "0x0000000000000000000000000000000000000000000000000000000000000001".parse()?;
     Ok(vec![
         NetworkConfig {
             chain_id: 43114,
             rpc_url: Url::parse("wss://api.avax.network/ext/bc/C/ws")?,
             router_address: contract_addr,
-            private_key: empty_private_key,
+            private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
         },
@@ -142,7 +139,7 @@ fn create_mainnet_config(
             chain_id: 8453,
             rpc_url: Url::parse("wss://base-rpc.publicnode.com")?,
             router_address: contract_addr,
-            private_key: empty_private_key,
+            private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
         },
@@ -154,14 +151,12 @@ fn create_testnet_config(
 ) -> anyhow::Result<Vec<NetworkConfig>> {
     let contract_addr =
         router_address.unwrap_or("0x4cB630aAEA9e152db83A846f4509d83053F21078".parse()?);
-    let empty_private_key: FixedBytes<32> =
-        "0x0000000000000000000000000000000000000000000000000000000000000001".parse()?;
     Ok(vec![
         NetworkConfig {
             chain_id: 43113,
             rpc_url: Url::parse("wss://avalanche-fuji-c-chain-rpc.publicnode.com")?,
             router_address: contract_addr,
-            private_key: empty_private_key,
+            private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
         },
@@ -169,12 +164,14 @@ fn create_testnet_config(
             chain_id: 84532,
             rpc_url: Url::parse("wss://base-sepolia-rpc.publicnode.com")?,
             router_address: contract_addr,
-            private_key: empty_private_key,
+            private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
         },
     ])
 }
+
+const EMPTY_PRIVATE_KEY: FixedBytes<32> = FixedBytes([0u8; 32]);
 
 #[cfg(test)]
 mod tests {
