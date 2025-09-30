@@ -4896,6 +4896,7 @@ dependencies = [
  "omnievent",
  "serde",
  "speculoos",
+ "strum",
  "superalloy",
  "tempfile",
  "tokio",

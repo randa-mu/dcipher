@@ -4,6 +4,7 @@ use libp2p::Multiaddr;
 use std::fmt;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
+use strum::EnumString;
 
 #[derive(Parser)]
 #[command(name = "onlyswaps-verifier")]
@@ -70,7 +71,8 @@ pub struct GenerateConfigArgs {
     pub environment: Environment,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug, EnumString)]
+#[strum(ascii_case_insensitive)]
 pub enum Environment {
     Mainnet,
     Testnet,
