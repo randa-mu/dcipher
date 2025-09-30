@@ -68,7 +68,7 @@ n = 3                                                                           
 [[committee.members]]
 member_id = 1
 bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg==" # BLS BN254 public key in standard base64 encoding
-address = "/dns/example.org/tcp/8080"                                                                 # a libp2p multiaddr 
+address = "/dns/example.org/tcp/8080"                                                               # a libp2p multiaddr 
 peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"                                    # a Peer ID as per the [libp2p spec](https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#peer-ids)
 
 [[committee.members]]
