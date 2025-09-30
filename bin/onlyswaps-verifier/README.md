@@ -92,10 +92,10 @@ Running configuration generation can be done as follows:
 
 ```bash
 onlyswaps-verifier generate-config \
-  --private /path/to/longterm/private/key \       
+  --private /path/to/private/longterm.priv \       
   --group /path/to/group.toml \
-  --public-share /path/to/public/keyshare \
-  --private-share /path/to/private/keyshare \
+  --public-share /path/to/public/keyshare.pub \
+  --private-share /path/to/private/keyshare.priv \
   --multiaddr "/ip4/0.0.0.0/tcp/1234" \
   --member-id 1 \
   --contract-addr "0x4cB630aAEA9e152db83A846f4509d83053F21078" \
