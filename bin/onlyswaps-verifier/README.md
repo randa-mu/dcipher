@@ -62,7 +62,7 @@ secret_key = "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d
 t = 2                                                                             # the honest threshold required for reconstruction. This is *different* to the malicious threshold output by the [ADKG CLI](../bin/adkg-cli)
 n = 3                                                                             # the total count of members in the committee, including yourself.
 
-# `committee.nodes` should contain as many entries as `n` above, and should contain one for your own node.
+# `committee.members` should contain as many entries as `n` above, and should contain one for your own node.
 # `address` and `peer_id` aren't bound to the public key, so different dcipher nodes can connect via different routes.
 # `member_id`s should be monotonically increasing from 1-n and unique, though can be out of order in this list.
 [[committee.members]]
