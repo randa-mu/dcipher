@@ -52,7 +52,7 @@ should_write = false
 # You should follow the operator guide to creating a secret key to get all the details here
 [libp2p]
 secret_key = "Q0FFU1FOZU5VaVN0MjZNVlVlcTBtRjF6ZVpZZWgybVRVc0NMVjJrZUpGMEVkNStIVkxlQlBXTahsR9dVaUJacVh2eFVfOFpWbk1CVnlDenFtaUFtRzVBRW5Mcz0" # secret_key should be base-64 encoded in the protobuf format specified in the [libp2p spec](https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#keys)
-multiaddr = "/dns/example.org/tcp/8080"                                                                                                      # dns and other multiaddr protocols are supported as you'd expect
+multiaddr = "/ip4/0.0.0.0/tcp/8080"                                                                                                        # you have to bind this address, so it may be different to the one you share to others. Avoid `/dns/*` for this.
 
 # `committee` contains everything related to the BLS BN254 keyshare and associated group of dcipher operators. 
 # You ought to have run a DKG protocol (or shamir-secret-sharing) to retrieve the `secret_key` here.
@@ -68,7 +68,7 @@ n = 3                                                                           
 [[committee.members]]
 member_id = 1
 bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg==" # BLS BN254 public key in standard base64 encoding
-address = "/dns/example.org/tcp/8080"                                                               # a libp2p multiaddr 
+address = "/ip4/0.0.0.0/tcp/8080"                                                                 # a libp2p multiaddr 
 peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"                                    # a Peer ID as per the [libp2p spec](https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#peer-ids)
 
 [[committee.members]]
