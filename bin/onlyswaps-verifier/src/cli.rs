@@ -1,6 +1,7 @@
 use alloy::primitives::FixedBytes;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use libp2p::Multiaddr;
+use std::fmt;
 use std::num::NonZeroU16;
 use std::path::PathBuf;
 
@@ -64,4 +65,22 @@ pub struct GenerateConfigArgs {
 
     #[arg(long, help = "the address of the router contract on each chain")]
     pub router_address: Option<FixedBytes<20>>,
+
+    #[arg(help = "Whether these should be for mainnet or testnet", default_value_t = Environment::Testnet)]
+    pub environment: Environment,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+pub enum Environment {
+    Mainnet,
+    Testnet,
+}
+
+impl fmt::Display for Environment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Environment::Mainnet => write!(f, "mainnet"),
+            Environment::Testnet => write!(f, "testnet"),
+        }
+    }
 }

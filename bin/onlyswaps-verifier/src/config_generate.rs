@@ -10,7 +10,6 @@ use config::agent::AgentConfig;
 use config::keys::Bn254SecretKey;
 use config::network::{Libp2pConfig, NetworkConfig};
 use config::signing::{CommitteeConfig, MemberConfig};
-use libp2p::Multiaddr;
 use std::fs;
 use std::net::Ipv4Addr;
 use std::num::NonZeroU16;
@@ -18,10 +17,15 @@ use std::str::FromStr;
 use std::time::Duration;
 use utils::serialize::point::PointDeserializeCompressed;
 
-use crate::cli::GenerateConfigArgs;
+use crate::cli::{Environment, GenerateConfigArgs};
 use crate::config::AppConfig;
 
 pub(crate) fn generate_onlyswaps_config(args: GenerateConfigArgs) -> anyhow::Result<()> {
+    let app_config = generate_app_config(args)?;
+    println!("{}", toml::to_string(&app_config)?);
+    Ok(())
+}
+fn generate_app_config(args: GenerateConfigArgs) -> anyhow::Result<AppConfig> {
     let secret_key: PrivateKeyMaterial =
         toml::from_str(&fs::read_to_string(&args.operator_private)?)
             .context("failed to read operator private key")?;
@@ -32,17 +36,7 @@ pub(crate) fn generate_onlyswaps_config(args: GenerateConfigArgs) -> anyhow::Res
     let shared_priv: AdkgSecret = toml::from_str(&fs::read_to_string(&args.adkg_private)?)
         .context("failed to read adkg private key")?;
 
-    let app_config = build_app_config(
-        secret_key,
-        group,
-        shared_pub,
-        shared_priv,
-        args.router_address,
-        args.multiaddr,
-        args.member_id,
-    )?;
-    println!("{}", toml::to_string(&app_config)?);
-    Ok(())
+    build_app_config(secret_key, group, shared_pub, shared_priv, args)
 }
 
 fn build_app_config(
@@ -50,24 +44,58 @@ fn build_app_config(
     group: GroupConfig,
     shared_pub: AdkgPublic,
     shared_priv: AdkgSecret,
-    router_address: Option<FixedBytes<20>>,
-    multiaddr: Multiaddr,
-    member_id: NonZeroU16,
+    args: GenerateConfigArgs,
 ) -> anyhow::Result<AppConfig> {
+    let GenerateConfigArgs {
+        router_address,
+        multiaddr,
+        member_id,
+        environment,
+        ..
+    } = args;
     // reformat a few of the relevant fields
-    let contract_addr =
-        router_address.unwrap_or("0x3dD1a497846d060Dce130B67b22E1F9DeE18c051".parse()?);
-    let empty_private_key: FixedBytes<32> =
-        "0x0000000000000000000000000000000000000000000000000000000000000001".parse()?;
-    let shared_secret_key_hex = format!(
-        "0x{}",
-        hex::encode(
-            BASE64_STANDARD
-                .decode(shared_priv.sk.as_str())
-                .context("failed to decode shared private key - is it valid base64?")?
-        )
-    );
+    let shared_secret_key_hex = parse_shared_secret_key(shared_priv)?;
 
+    let members = build_members_config(shared_pub)?;
+
+    let networks = if environment == Environment::Mainnet {
+        create_mainnet_config(router_address)
+    } else {
+        create_testnet_config(router_address)
+    }?;
+
+    let threshold = group
+        .t_reconstruction
+        .checked_add(1)
+        .ok_or(anyhow!("getting threshold overflowed"))?;
+
+    let agent = AgentConfig {
+        healthcheck_listen_addr: Ipv4Addr::new(0, 0, 0, 0),
+        healthcheck_port: 8081,
+        log_level: "debug".to_string(),
+        log_json: true,
+    };
+    let libp2p = Libp2pConfig {
+        secret_key: secret_key.libp2p_sk,
+        multiaddr,
+    };
+    let committee = CommitteeConfig {
+        member_id,
+        secret_key: Bn254SecretKey::from_str(shared_secret_key_hex.as_str())?,
+        t: threshold.try_into()?,
+        n: group.n.try_into()?,
+        members,
+    };
+
+    Ok(AppConfig {
+        agent,
+        networks,
+        libp2p,
+        committee,
+    })
+}
+
+fn build_members_config(shared_pub: AdkgPublic) -> anyhow::Result<Vec<MemberConfig<G2Affine>>> {
     let mut members = Vec::with_capacity(shared_pub.node_pks.len());
     for n in shared_pub.node_pks {
         let config = MemberConfig {
@@ -80,57 +108,82 @@ fn build_app_config(
         };
         members.push(config);
     }
+    Ok(members)
+}
 
-    let threshold = group
-        .t_reconstruction
-        .checked_add(1)
-        .ok_or(anyhow!("getting threshold overflowed"))?;
+fn parse_shared_secret_key(shared_priv: AdkgSecret) -> anyhow::Result<String> {
+    Ok(format!(
+        "0x{}",
+        hex::encode(
+            BASE64_STANDARD
+                .decode(shared_priv.sk.as_str())
+                .context("failed to decode shared private key - is it valid base64?")?
+        )
+    ))
+}
 
-    Ok(AppConfig {
-        agent: AgentConfig {
-            healthcheck_listen_addr: Ipv4Addr::new(0, 0, 0, 0),
-            healthcheck_port: 8081,
-            log_level: "debug".to_string(),
-            log_json: true,
+fn create_mainnet_config(
+    router_address: Option<FixedBytes<20>>,
+) -> anyhow::Result<Vec<NetworkConfig>> {
+    let contract_addr =
+        router_address.unwrap_or("0x4cB630aAEA9e152db83A846f4509d83053F21078".parse()?);
+    let empty_private_key: FixedBytes<32> =
+        "0x0000000000000000000000000000000000000000000000000000000000000001".parse()?;
+    Ok(vec![
+        NetworkConfig {
+            chain_id: 43114,
+            rpc_url: Url::parse("wss://api.avax.network/ext/bc/C/ws")?,
+            router_address: contract_addr,
+            private_key: empty_private_key,
+            should_write: false,
+            request_timeout: Duration::from_secs(5),
         },
-        networks: vec![
-            NetworkConfig {
-                chain_id: 43113,
-                rpc_url: Url::parse("wss://avalanche-fuji-c-chain-rpc.publicnode.com")?,
-                router_address: contract_addr,
-                private_key: empty_private_key,
-                should_write: false,
-                request_timeout: Duration::from_secs(5),
-            },
-            NetworkConfig {
-                chain_id: 84532,
-                rpc_url: Url::parse("wss://base-sepolia-rpc.publicnode.com")?,
-                router_address: contract_addr,
-                private_key: empty_private_key,
-                should_write: false,
-                request_timeout: Duration::from_secs(5),
-            },
-        ],
-        libp2p: Libp2pConfig {
-            secret_key: secret_key.libp2p_sk,
-            multiaddr,
+        NetworkConfig {
+            chain_id: 8453,
+            rpc_url: Url::parse("wss://base-rpc.publicnode.com")?,
+            router_address: contract_addr,
+            private_key: empty_private_key,
+            should_write: false,
+            request_timeout: Duration::from_secs(5),
         },
-        committee: CommitteeConfig {
-            member_id,
-            secret_key: Bn254SecretKey::from_str(shared_secret_key_hex.as_str())?,
-            t: threshold.try_into()?,
-            n: group.n.try_into()?,
-            members,
+    ])
+}
+
+fn create_testnet_config(
+    router_address: Option<FixedBytes<20>>,
+) -> anyhow::Result<Vec<NetworkConfig>> {
+    let contract_addr =
+        router_address.unwrap_or("0x4cB630aAEA9e152db83A846f4509d83053F21078".parse()?);
+    let empty_private_key: FixedBytes<32> =
+        "0x0000000000000000000000000000000000000000000000000000000000000001".parse()?;
+    Ok(vec![
+        NetworkConfig {
+            chain_id: 43113,
+            rpc_url: Url::parse("wss://avalanche-fuji-c-chain-rpc.publicnode.com")?,
+            router_address: contract_addr,
+            private_key: empty_private_key,
+            should_write: false,
+            request_timeout: Duration::from_secs(5),
         },
-    })
+        NetworkConfig {
+            chain_id: 84532,
+            rpc_url: Url::parse("wss://base-sepolia-rpc.publicnode.com")?,
+            router_address: contract_addr,
+            private_key: empty_private_key,
+            should_write: false,
+            request_timeout: Duration::from_secs(5),
+        },
+    ])
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::cli::GenerateConfigArgs;
-    use crate::config_generate::generate_onlyswaps_config;
+    use crate::cli::{Environment, GenerateConfigArgs};
+    use crate::config_generate::{generate_app_config, generate_onlyswaps_config};
     use alloy::primitives::{Address, U160};
     use libp2p::Multiaddr;
+    use speculoos::assert_that;
+    use speculoos::iter::MappingIterAssertions;
     use std::io::Write;
     use std::num::NonZeroU16;
     use std::str::FromStr;
@@ -159,6 +212,7 @@ mod tests {
             multiaddr,
             router_address: Some(router_address.0),
             member_id: NonZeroU16::new(member_id).unwrap(),
+            environment: Environment::Testnet,
         })?;
 
         Ok(())
@@ -186,7 +240,40 @@ mod tests {
             multiaddr,
             router_address: None,
             member_id: NonZeroU16::new(member_id).unwrap(),
+            environment: Environment::Testnet,
         })?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn passing_mainnet_uses_mainnet_chain_id() -> anyhow::Result<()> {
+        let mut priv_file = NamedTempFile::new()?;
+        let mut group_file = NamedTempFile::new()?;
+        let mut adkg_public = NamedTempFile::new()?;
+        let mut adkg_private = NamedTempFile::new()?;
+        let multiaddr = Multiaddr::from_str("/ip4/127.0.0.1/tcp/5150")?;
+        let member_id = 1;
+        let router_address = Address::from(U160::from(16));
+
+        let _ = priv_file.write(PRIV_KEY_FILE_CONTENT.as_bytes())?;
+        let _ = group_file.write(GROUP_FILE_CONTENT.as_bytes())?;
+        let _ = adkg_public.write(ADKG_PUBLIC_CONTENT.as_bytes())?;
+        let _ = adkg_private.write(ADKG_PRIVATE_CONTENT.as_bytes())?;
+
+        let output = generate_app_config(GenerateConfigArgs {
+            operator_private: priv_file.path().to_path_buf(),
+            group: group_file.path().to_path_buf(),
+            adkg_public: adkg_public.path().to_path_buf(),
+            adkg_private: adkg_private.path().to_path_buf(),
+            multiaddr,
+            router_address: Some(router_address.0),
+            member_id: NonZeroU16::new(member_id).unwrap(),
+            environment: Environment::Mainnet,
+        })?;
+
+        assert_that!(output.networks).matching_contains(|v| v.chain_id == 8453);
+        assert_that!(output.networks).matching_contains(|v| v.chain_id == 43114);
 
         Ok(())
     }
