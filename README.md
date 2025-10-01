@@ -28,15 +28,15 @@ The repository is organized into:
 
 ### Binaries (`bin/`)
 
-| Binary                | Purpose                                                                                                |
-|-----------------------|--------------------------------------------------------------------------------------------------------|
-| `adkg-cli`            | CLI for running and testing Asynchronous Distributed Key Generation ceremonies                         |
-| `blocklock-agent`     | Agent for the Blocklock protocol (time-lock / conditional decryption)                                  |
-| `dsigner`             | Threshold signing daemon, allowing operators to separate condition evaluation and signing for security |
-| `gen-keys`            | Utility for key generation (testing / setup)                                                           |
-| `onlyswaps-state-api` | API for caching and serving state related to ONLYSwaps                                                 |
-| `onlyswaps-verifier`  | A dcipher protocol implementation called ONLYSwaps for enabling cross-chain token swaps                |
-| `randomness-agent`    | A dcipher protocol implementation for providing verifiable randomness on-chain                         |                                                                                                       |
+| Binary                | Purpose                                                                                                | Documentation                                |
+|-----------------------|--------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| `adkg-cli`            | CLI for running and testing Asynchronous Distributed Key Generation ceremonies                         | [README](./bin/adkg-cli/README.md)           |
+| `blocklock-agent`     | Agent for the Blocklock protocol (time-lock / conditional decryption)                                  |                                              | 
+| `dsigner`             | Threshold signing daemon, allowing operators to separate condition evaluation and signing for security | [README](./bin/dsigner/README.md)            |
+| `gen-keys`            | Utility for key generation (testing / setup)                                                           | [README](./bin/gen-keys/README.md)           |
+| `onlyswaps-state-api` | API for caching and serving state related to ONLYSwaps                                                 |                                              |
+| `onlyswaps-verifier`  | A dcipher protocol implementation called ONLYSwaps for enabling cross-chain token swaps                | [README](./bin/onlyswaps-verifier/README.md) |
+| `randomness-agent`    | A dcipher protocol implementation for providing verifiable randomness on-chain                         |                                              |                                                                                                     |
 
 ---
 
