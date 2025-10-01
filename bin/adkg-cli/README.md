@@ -217,7 +217,7 @@ Options:
 
 | Variant    | Meaning                                                                                 |
 |------------|-----------------------------------------------------------------------------------------|
-| `Solidity` | A hex-encoded, uncompressed point suitable for inclusion in on-chain Solidity contracts |
+| `Solidity` | A hex-encoded, uncompressed point suitable for inclusion in on-chain Solidity contracts by using `g2Unmarshal` from our [bls-solidity](https://github.com/randa-mu/bls-solidity) library |
 
 Both input and output formats are parsed case-insensitively, so you can pass `g2` or `G2`.
 
