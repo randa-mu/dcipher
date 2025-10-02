@@ -1,30 +1,86 @@
 use alloy::consensus::private::serde::{Deserialize, Serialize};
+use alloy::primitives::FixedBytes;
+use ark_bn254::G2Affine;
+use config::adkg::{AdkgPublic, AdkgSecret, GroupConfig, PrivateKeyMaterial};
 use config::agent::AgentConfig;
-use config::network::{Libp2pConfig, NetworkConfig};
-use config::signing::{CommitteeConfig, UnvalidatedCommitteeConfig};
+use config::cli::FileArg;
+use config::network::NetworkConfig;
+use config::signing::{CommitteeConfig, CommitteeConfigFiles};
+use libp2p::Multiaddr;
 use omnievent::proto_types::BlockSafety;
+use serde::Deserializer;
+use serde::de::Error;
+use std::fs;
+use std::num::NonZeroU16;
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::Duration;
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct ConfigFile {
+pub struct AppConfigFile {
     #[serde(default)]
     pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
-    pub libp2p: Libp2pConfig,
-    pub committee: UnvalidatedCommitteeConfig<ark_bn254::G2Affine>,
-    #[serde(default)]
     pub timeout: TimeoutConfig,
+    pub longterm_secret_path: FileArg<PrivateKeyMaterial>,
+    pub adkg_public_path: FileArg<AdkgPublic>,
+    pub adkg_secret_path: FileArg<AdkgSecret>,
+    pub group_path: FileArg<GroupConfig>,
+    pub eth_private_key: EthPrivateKey,
+    pub member_id: NonZeroU16,
+    pub listen_addr: Multiaddr,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum EthPrivateKey {
+    Path(PathBuf),
+    Value(FixedBytes<32>),
+}
+
+impl<'de> Deserialize<'de> for EthPrivateKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if s.starts_with("0x") {
+            Ok(EthPrivateKey::Value(
+                FixedBytes::from_str(&s).map_err(D::Error::custom)?,
+            ))
+        } else {
+            Ok(EthPrivateKey::Path(
+                PathBuf::from_str(&s).map_err(D::Error::custom)?,
+            ))
+        }
+    }
+}
+
+impl TryInto<FixedBytes<32>> for EthPrivateKey {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<FixedBytes<32>, Self::Error> {
+        let result = match self {
+            EthPrivateKey::Path(path) => {
+                let contents = fs::read_to_string(path)?;
+                FixedBytes::from_str(&contents)?
+            }
+            EthPrivateKey::Value(s) => s,
+        };
+        Ok(result)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
     #[serde(default)]
     pub agent: AgentConfig,
-    pub networks: Vec<NetworkConfig>,
-    pub libp2p: Libp2pConfig,
-    pub committee: CommitteeConfig<ark_bn254::G2Affine>,
     #[serde(default)]
     pub timeout: TimeoutConfig,
+    pub networks: Vec<NetworkConfig>,
+    pub committee_config: CommitteeConfig<G2Affine>,
+    pub eth_private_key: FixedBytes<32>,
+    pub listen_addr: Multiaddr,
+    pub longterm_secret: PrivateKeyMaterial,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -57,185 +113,28 @@ const fn default_request_timeout() -> Duration {
 const fn default_retry_duration() -> Duration {
     Duration::from_secs(12)
 }
-impl TryFrom<ConfigFile> for AppConfig {
+impl TryFrom<AppConfigFile> for AppConfig {
     type Error = anyhow::Error;
 
-    fn try_from(file: ConfigFile) -> anyhow::Result<Self> {
-        Ok(Self {
+    fn try_from(file: AppConfigFile) -> Result<Self, Self::Error> {
+        let longterm_secret = file.longterm_secret_path.0;
+        let eth_private_key = file.eth_private_key.try_into()?;
+        let committee_config = CommitteeConfigFiles {
+            adkg_public: file.adkg_public_path.0,
+            adkg_secret: file.adkg_secret_path.0,
+            group: file.group_path.0,
+            member_id: file.member_id,
+        }
+        .try_into()?;
+
+        Ok(AppConfig {
             agent: file.agent,
             networks: file.networks,
-            libp2p: file.libp2p,
-            committee: file.committee.parse()?,
+            listen_addr: file.listen_addr,
+            longterm_secret,
+            eth_private_key,
+            committee_config,
             timeout: file.timeout,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::config::{AppConfig, ConfigFile};
-    use config::file::load_mapped_config_file;
-    use speculoos::assert_that;
-    use std::io::Write;
-    use std::net::Ipv4Addr;
-    use tempfile::NamedTempFile;
-
-    #[test]
-    fn test_load_valid_toml_config() -> anyhow::Result<()> {
-        let mut tmp = NamedTempFile::with_suffix(".toml")?;
-        let toml_cfg = r#"
-        [agent]
-        healthcheck_listen_addr = "0.0.0.0"
-        healthcheck_port = 9999
-        log_level = "debug"
-        log_json = true
-
-        [[networks]]
-        chain_id = 31337
-        rpc_url = "ws://localhost:31337"
-        router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
-        private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
-        should_write = false
-
-        [[networks]]
-        chain_id = 1338
-        rpc_url = "ws://localhost:1338"
-        router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
-        private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
-        should_write = false
-
-        [libp2p]
-        secret_key = "CAESQBUpjjiWNdGyX0Ffj7TccV+JUsnoFJXE71lgmsCAGqyzsnUME7bynuS2cDA7Wom8s/PhDjJRfrj+SxO9+mdtClk="
-        multiaddr = "/ip4/127.0.0.1/tcp/8881"
-
-        [committee]
-        member_id = 1
-        secret_key = "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d"
-        t = 1
-        n = 1
-
-        [[committee.members]]
-        member_id = 1
-        bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg=="
-        address = "/ip4/127.0.0.1/tcp/8080"
-        peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
-
-        [timeout]
-        block_safety = "BLOCK_SAFETY_LATEST"
-        retry_duration = "5s"
-        request_timeout = "1m"
-        "#;
-
-        writeln!(tmp, "{}", toml_cfg)?;
-
-        let config_path = tmp.path().to_str().unwrap().to_string();
-        let config = load_mapped_config_file::<ConfigFile, AppConfig>(config_path)?;
-        assert_that!(config.agent.healthcheck_listen_addr).is_equal_to(Ipv4Addr::new(0, 0, 0, 0));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_load_valid_toml_config_without_optional() -> anyhow::Result<()> {
-        let mut tmp = NamedTempFile::with_suffix(".toml")?;
-        let toml_cfg = r#"
-        [[networks]]
-        chain_id = 31337
-        rpc_url = "ws://localhost:31337"
-        router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
-        private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
-        should_write = false
-
-        [[networks]]
-        chain_id = 1338
-        rpc_url = "ws://localhost:1338"
-        router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
-        private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
-        should_write = false
-
-        [libp2p]
-        secret_key = "CAESQBUpjjiWNdGyX0Ffj7TccV+JUsnoFJXE71lgmsCAGqyzsnUME7bynuS2cDA7Wom8s/PhDjJRfrj+SxO9+mdtClk="
-        multiaddr = "/ip4/127.0.0.1/tcp/8881"
-
-        [committee]
-        member_id = 1
-        secret_key = "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d"
-        t = 1
-        n = 1
-
-        [[committee.members]]
-        member_id = 1
-        bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg=="
-        address = "/ip4/127.0.0.1/tcp/8080"
-        peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
-        "#;
-
-        writeln!(tmp, "{}", toml_cfg)?;
-
-        let config_path = tmp.path().to_str().unwrap().to_string();
-        let config = load_mapped_config_file::<ConfigFile, AppConfig>(config_path)?;
-        assert_that!(config.agent.healthcheck_listen_addr).is_equal_to(Ipv4Addr::new(0, 0, 0, 0));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_load_valid_json_config() -> anyhow::Result<()> {
-        let mut tmp = NamedTempFile::with_suffix(".json")?;
-        let json_cfg = r#"
-        {
-          "agent": {
-            "healthcheck_listen_addr": "0.0.0.0",
-            "healthcheck_port": 9999,
-            "log_level": "debug",
-            "log_json": true
-          },
-
-          "networks": [{
-            "chain_id": 31337,
-            "rpc_url": "ws://localhost:31337",
-            "router_address": "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd",
-            "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2",
-            "should_write": false
-          }, {
-            "chain_id": 1338,
-            "rpc_url": "ws://localhost:1338",
-            "router_address": "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd",
-            "private_key": "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2",
-            "should_write": false
-          }],
-
-          "libp2p": {
-            "secret_key": "CAESQBUpjjiWNdGyX0Ffj7TccV+JUsnoFJXE71lgmsCAGqyzsnUME7bynuS2cDA7Wom8s/PhDjJRfrj+SxO9+mdtClk=",
-            "multiaddr": "/ip4/127.0.0.1/tcp/8881"
-          },
-
-          "committee": {
-            "member_id": 1,
-            "secret_key": "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d",
-            "t": 1,
-            "n": 1,
-            "members": [{
-              "member_id": 1,
-              "bls_pk": "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg==",
-              "address": "/ip4/127.0.0.1/tcp/8080",
-              "peer_id": "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
-            }]
-          },
-          "timeout": {
-            "block_safety": "BLOCK_SAFETY_LATEST",
-            "retry_duration" : "5s",
-            "request_timeout": "1m"
-          }
-        }
-        "#;
-
-        writeln!(tmp, "{}", json_cfg)?;
-
-        let config_path = tmp.path().to_str().unwrap().to_string();
-        let config = load_mapped_config_file::<ConfigFile, AppConfig>(config_path)?;
-        assert_that!(config.agent.healthcheck_listen_addr).is_equal_to(Ipv4Addr::new(0, 0, 0, 0));
-
-        Ok(())
     }
 }

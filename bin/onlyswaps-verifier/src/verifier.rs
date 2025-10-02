@@ -2,7 +2,7 @@ use crate::chain_state::NetworkBus;
 use crate::chain_state_pending::{RequestId, Verification};
 use crate::chain_state_resolver::ChainStateResolver;
 use crate::cli::StartArgs;
-use crate::config::{AppConfig, ConfigFile};
+use crate::config::{AppConfig, AppConfigFile};
 use crate::evaluator::Evaluator;
 use crate::retry_runtime::RetryScheduler;
 use crate::signing::{NetworkedSigner, OnlySwapsSigner, VerifiedSwap};
@@ -10,13 +10,14 @@ use crate::transport::create_libp2p_transport;
 use crate::verification_bus::VerificationBus;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
+use alloy::signers::local::PrivateKeySigner;
 use config::file::load_mapped_config_file;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio_stream::StreamExt;
 
 pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
-    let app_config = load_mapped_config_file::<ConfigFile, AppConfig>(args.config_path)?;
+    let app_config = load_mapped_config_file::<AppConfigFile, AppConfig>(args.config_path)?;
     let healthcheck_server = HealthcheckServer::new(
         app_config.agent.healthcheck_listen_addr,
         app_config.agent.healthcheck_port,
@@ -51,8 +52,9 @@ pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
 
 async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     // the `network_bus` manages access to all the chains at once for pulling state or submitting txs
+    let eth_signer = PrivateKeySigner::from_slice(app_config.eth_private_key.as_slice())?;
     let network_bus =
-        Arc::new(NetworkBus::create(&app_config.networks, &app_config.timeout).await?);
+        Arc::new(NetworkBus::new(eth_signer, &app_config.networks, &app_config.timeout).await?);
 
     // the `retry_scheduler` manages receives `Verification`s that have failed and schedules them at a later time
     // with respect to the retry duration
@@ -71,13 +73,16 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
 
     // the `signer` encapsulates everything related to gossiping, verifying, and aggregating partial
     // signatures using libp2p.
-    let transport = create_libp2p_transport(app_config)?;
+    let transport = create_libp2p_transport(
+        &app_config.longterm_secret.libp2p_sk,
+        &app_config.committee_config,
+    )?;
     let networked_signer = NetworkedSigner::new(app_config, transport)?;
     let signer = OnlySwapsSigner::new(networked_signer);
     tracing::info!(
-        multiaddr = app_config.libp2p.multiaddr.to_string(),
-        n = app_config.committee.n,
-        t = app_config.committee.t,
+        multiaddr = app_config.listen_addr.to_string(),
+        n = app_config.committee_config.n,
+        t = app_config.committee_config.t,
         "threshold signer created"
     );
 

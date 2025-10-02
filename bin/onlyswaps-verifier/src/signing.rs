@@ -81,15 +81,15 @@ impl NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>> {
         libp2p_node: Libp2pNodeConfig<u16>,
     ) -> anyhow::Result<NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>>> {
         let pairing_signer =
-            BlsPairingSigner::<ark_bn254::Bn254>::new(config.committee.secret_key.clone().0);
+            BlsPairingSigner::<ark_bn254::Bn254>::new(config.committee_config.secret_key.clone().0);
         let signer = BlsThresholdSigner::new(
             pairing_signer,
-            config.committee.n.get(),
-            config.committee.t.get(),
-            config.committee.member_id.get(),
+            config.committee_config.n.get(),
+            config.committee_config.t.get(),
+            config.committee_config.member_id.get(),
             HashMap::default(), // no keys on g1
             config
-                .committee
+                .committee_config
                 .members
                 .iter()
                 .map(|n| (n.member_id.get(), n.bls_pk))
@@ -97,7 +97,7 @@ impl NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>> {
         );
 
         let transport = libp2p_node
-            .run(config.libp2p.multiaddr.clone())?
+            .run(config.listen_addr.clone())?
             .get_transport()
             .ok_or(anyhow!("failed to get libp2p transport"))?;
         let (_, threshold_signer) = signer.run(transport);
