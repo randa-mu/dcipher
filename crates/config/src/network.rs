@@ -11,7 +11,6 @@ use url::Url;
 pub struct NetworkConfig {
     pub chain_id: u64,
     pub rpc_url: Url,
-    pub private_key: FixedBytes<32>,
     pub router_address: FixedBytes<20>,
     #[serde(default = "default_should_write")]
     pub should_write: bool,
@@ -46,7 +45,6 @@ mod tests {
     use serde_json as json;
 
     // handy fixtures (valid 32-byte key and 20-byte address)
-    const PRIVKEY_32: &str = "0x1111111111111111111111111111111111111111111111111111111111111111"; // 32 bytes
     const ADDRESS_20: &str = "0x2222222222222222222222222222222222222222"; // 20 bytes
 
     #[test]
@@ -55,7 +53,6 @@ mod tests {
             r#"{{
             "chain_id": 84532,
             "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}",
             "should_write": false,
             "request_timeout": "45s"
@@ -69,7 +66,6 @@ mod tests {
         assert_eq!(cfg.request_timeout, Duration::from_secs(45));
 
         // sanity: lengths
-        assert_eq!(cfg.private_key.len(), 32);
         assert_eq!(cfg.router_address.len(), 20);
     }
 
@@ -80,7 +76,6 @@ mod tests {
             r#"{{
             "chain_id": 1,
             "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}"
         }}"#
         ))
@@ -96,7 +91,6 @@ mod tests {
             r#"{{
             "chain_id": 10,
             "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}",
             "request_timeout": "500ms"
         }}"#
@@ -113,7 +107,6 @@ mod tests {
             r#"{{
             "chain_id": 1,
             "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}",
             "should_write": null
         }}"#
@@ -124,7 +117,6 @@ mod tests {
             r#"{{
             "chain_id": 1,
             "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}",
             "request_timeout": null
         }}"#
@@ -150,7 +142,6 @@ mod tests {
             r#"{{
             "chain_id": 1,
             "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}",
             "request_timeout": 30
         }}"#
@@ -170,7 +161,6 @@ mod tests {
         let err = json::from_str::<NetworkConfig>(&format!(
             r#"{{
             "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}"
         }}"#
         ))

@@ -42,7 +42,7 @@ pub fn keygen(
             let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config.adkg_config)?;
             let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
             let sk = PrivateKeyMaterial {
-                adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
+                adkg_sk: adkg_sk.ser_base64().expect("failed to deserialize adkg sk"),
                 libp2p_sk: Libp2pKeyWrapper(libp2p_sk),
             };
 

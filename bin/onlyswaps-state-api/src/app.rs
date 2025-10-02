@@ -44,7 +44,7 @@ impl App {
         // and applies them to a starting state to build up a view of the world.
         // It maintains a `watch` channel of the most recent state. Technically this will
         // lag behind at app startup until it's processed all the DB historical states.
-        let network_bus = NetworkBus::create(&config.networks).await?;
+        let network_bus = NetworkBus::new(&config.networks).await?;
         let mut state_machine = StateMachine::new(network_bus);
         let (next_state_tx, next_state_rx) = tokio::sync::watch::channel(AppState::default());
 
