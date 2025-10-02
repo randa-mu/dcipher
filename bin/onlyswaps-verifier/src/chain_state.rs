@@ -11,6 +11,7 @@ use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -32,11 +33,15 @@ pub(crate) struct Network<P> {
 }
 
 impl NetworkBus<DynProvider> {
-    pub async fn create(network_configs: &[NetworkConfig]) -> anyhow::Result<Self> {
+    pub async fn new(
+        eth_private_key: impl Into<Arc<PrivateKeySigner>>,
+        network_configs: &[NetworkConfig],
+    ) -> anyhow::Result<Self> {
+        let eth_private_key = eth_private_key.into();
         let mut networks = HashMap::new();
 
         for config in network_configs.iter() {
-            let network = Network::new(config).await?;
+            let network = Network::new(eth_private_key.clone(), config).await?;
             networks.insert(config.chain_id, network);
         }
 
@@ -91,13 +96,16 @@ impl NetworkBus<DynProvider> {
 }
 
 impl Network<DynProvider> {
-    pub async fn new(config: &NetworkConfig) -> anyhow::Result<Self> {
+    pub async fn new(
+        signer: impl Into<Arc<PrivateKeySigner>>,
+        config: &NetworkConfig,
+    ) -> anyhow::Result<Self> {
+        let signer = signer.into();
         let url = config.rpc_url.clone();
-        let signer = PrivateKeySigner::from_slice(config.private_key.as_slice())?;
         let own_addr = signer.address();
         let provider = ProviderBuilder::new()
             .with_gas_estimation()
-            .wallet(EthereumWallet::new(signer))
+            .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?
             .erased();
