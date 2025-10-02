@@ -10,9 +10,9 @@ use crate::transport::create_libp2p_transport;
 use crate::verification_bus::VerificationBus;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
+use alloy::signers::local::PrivateKeySigner;
 use config::file::load_mapped_config_file;
 use std::sync::Arc;
-use alloy::signers::local::PrivateKeySigner;
 use tokio_stream::StreamExt;
 
 pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
@@ -75,7 +75,10 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
 
     // the `signer` encapsulates everything related to gossiping, verifying, and aggregating partial
     // signatures using libp2p.
-    let transport = create_libp2p_transport(&app_config.longterm_secret.libp2p_sk, &app_config.committee_config)?;
+    let transport = create_libp2p_transport(
+        &app_config.longterm_secret.libp2p_sk,
+        &app_config.committee_config,
+    )?;
     let networked_signer = NetworkedSigner::new(app_config, transport)?;
     let signer = OnlySwapsSigner::new(networked_signer);
     tracing::info!(
