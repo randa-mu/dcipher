@@ -51,6 +51,7 @@ mod test {
                 private_key: FixedBytes::from(U256::from(1)),
                 should_write: false,
                 request_timeout: Duration::from_secs(1),
+                finality_duration_secs: Duration::from_secs(10),
             }],
             libp2p: Libp2pConfig {
                 secret_key: Libp2pKeyWrapper::from_str(

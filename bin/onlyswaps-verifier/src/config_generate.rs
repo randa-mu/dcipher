@@ -134,6 +134,7 @@ fn create_mainnet_config(
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
+            finality_duration_secs: Duration::from_secs(1),
         },
         NetworkConfig {
             chain_id: 8453,
@@ -142,6 +143,7 @@ fn create_mainnet_config(
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
+            finality_duration_secs: Duration::from_secs(12),
         },
     ])
 }
@@ -159,6 +161,8 @@ fn create_testnet_config(
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
+            // AVAX Fuji has instant finality, noice
+            finality_duration_secs: Duration::from_secs(0),
         },
         NetworkConfig {
             chain_id: 84532,
@@ -167,10 +171,11 @@ fn create_testnet_config(
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
             request_timeout: Duration::from_secs(5),
+            // Base sepolia is a few seconds
+            finality_duration_secs: Duration::from_secs(3),
         },
     ])
 }
-
 const EMPTY_PRIVATE_KEY: FixedBytes<32> = FixedBytes([0u8; 32]);
 
 #[cfg(test)]
