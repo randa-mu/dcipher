@@ -14,11 +14,10 @@ use std::fs;
 use std::net::Ipv4Addr;
 use std::num::{NonZero, NonZeroU16};
 use std::str::FromStr;
-use std::time::Duration;
 use utils::serialize::point::PointDeserializeCompressed;
 
 use crate::cli::{Environment, GenerateConfigArgs};
-use crate::config::AppConfig;
+use crate::config::{AppConfig, TimeoutConfig};
 
 pub(crate) fn generate_onlyswaps_config(args: GenerateConfigArgs) -> anyhow::Result<()> {
     let app_config = generate_app_config(args)?;
@@ -87,6 +86,7 @@ fn build_app_config(
         networks,
         libp2p,
         committee,
+        timeout: TimeoutConfig::default(),
     })
 }
 
@@ -133,8 +133,6 @@ fn create_mainnet_config(
             router_address: contract_addr,
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
-            request_timeout: Duration::from_secs(5),
-            finality_duration_secs: Duration::from_secs(1),
         },
         NetworkConfig {
             chain_id: 8453,
@@ -142,8 +140,6 @@ fn create_mainnet_config(
             router_address: contract_addr,
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
-            request_timeout: Duration::from_secs(5),
-            finality_duration_secs: Duration::from_secs(12),
         },
     ])
 }
@@ -160,9 +156,6 @@ fn create_testnet_config(
             router_address: contract_addr,
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
-            request_timeout: Duration::from_secs(5),
-            // AVAX Fuji has instant finality, noice
-            finality_duration_secs: Duration::from_secs(0),
         },
         NetworkConfig {
             chain_id: 84532,
@@ -170,9 +163,6 @@ fn create_testnet_config(
             router_address: contract_addr,
             private_key: EMPTY_PRIVATE_KEY,
             should_write: false,
-            request_timeout: Duration::from_secs(5),
-            // Base sepolia is a few seconds
-            finality_duration_secs: Duration::from_secs(3),
         },
     ])
 }

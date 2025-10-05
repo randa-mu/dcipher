@@ -42,7 +42,7 @@ pub(crate) async fn create_omnievent_management(
                     indexed: true,
                 },
             ],
-            block_safety: BlockSafety::Latest.into(),
+            block_safety: BlockSafety::Safe.into(),
         });
     }
 

@@ -1,30 +1,9 @@
 use crate::chain_state_resolver::ChainState;
-use alloy::primitives::U256;
-use anyhow::anyhow;
-use chrono::{DateTime, TimeDelta, Utc};
-use config::network::NetworkConfig;
-use std::collections::HashMap;
-use std::ops::Add;
 
-type ChainId = U256;
 #[derive(Clone)]
-pub struct Evaluator {
-    finality_durations: HashMap<ChainId, TimeDelta>,
-}
+pub struct Evaluator;
 impl Evaluator {
-    pub fn new(finalisation_durations: &[NetworkConfig]) -> anyhow::Result<Self> {
-        let mut finality_durations = HashMap::new();
-
-        for config in finalisation_durations {
-            finality_durations.insert(
-                U256::from(config.chain_id),
-                TimeDelta::from_std(config.finality_duration_secs)?,
-            );
-        }
-
-        Ok(Self { finality_durations })
-    }
-    pub fn evaluate(&self, chain_state: ChainState) -> anyhow::Result<ChainState> {
+    pub fn evaluate(chain_state: ChainState) -> anyhow::Result<ChainState> {
         let ChainState {
             swap_params,
             transfer_receipt,
@@ -56,23 +35,6 @@ impl Evaluator {
             );
         }
 
-        // if we haven't crossed the required timestamp the fulfilment tx is
-        // expected to be finalised at, blow up. Reorgs could affect this, so
-        // operators are advised to be conservative when setting this in mainnet
-        // so as not to lose funds.
-        let finality_duration = self
-            .finality_durations
-            .get(&transfer_receipt.dstChainId)
-            .expect("cannot get a chainID that doesn't exist");
-        let fulfilled_time = DateTime::from_timestamp(transfer_receipt.fulfilledAt.try_into()?, 0)
-            .ok_or(anyhow!("invalid fulfilled time"))?;
-
-        let earliest_finalisation_time = fulfilled_time.add(*finality_duration);
-
-        if Utc::now() < earliest_finalisation_time {
-            anyhow::bail!("fulfillment hasn't yet finalised")
-        }
-
         Ok(chain_state)
     }
 }
@@ -81,7 +43,6 @@ impl Evaluator {
 mod tests {
     use super::*;
     use alloy::primitives::{Address, FixedBytes, U160, U256};
-    use chrono::Duration;
     use generated::onlyswaps::router::IRouter::SwapRequestParameters;
     use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
     use std::str::FromStr;
@@ -89,9 +50,6 @@ mod tests {
     #[test]
     fn ok_when_everything_matches_exactly() {
         let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1))]),
-        };
         let expected_out = params.amountOut;
         let dest = receipt_from(&params, expected_out);
         let chain_state = ChainState {
@@ -99,7 +57,7 @@ mod tests {
             swap_params: params.clone(),
         };
 
-        let out_state = evaluator.evaluate(chain_state).expect("should be ok");
+        let out_state = Evaluator::evaluate(chain_state).expect("should be ok");
 
         let out = out_state.swap_params;
 
@@ -119,9 +77,6 @@ mod tests {
     #[test]
     fn err_if_wrong_destination_chain() {
         let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1))]),
-        };
         let expected_out = params.amountOut;
         let mut dest = receipt_from(&params, expected_out);
         dest.dstChainId = params.dstChainId + U256::from(1);
@@ -131,17 +86,13 @@ mod tests {
             swap_params: params.clone(),
         };
 
-        let _ = evaluator
-            .evaluate(chain_state)
-            .expect_err("should fail on wrong destination chain");
+        let _ =
+            Evaluator::evaluate(chain_state).expect_err("should fail on wrong destination chain");
     }
 
     #[test]
     fn err_if_wrong_source_chain_in_receipt() {
         let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1))]),
-        };
         let expected_out = params.amountOut;
         let mut dest = receipt_from(&params, expected_out);
         dest.srcChainId = params.srcChainId + U256::from(1);
@@ -151,17 +102,12 @@ mod tests {
             swap_params: params.clone(),
         };
 
-        let _ = evaluator
-            .evaluate(chain_state)
-            .expect_err("should fail on wrong source chain");
+        let _ = Evaluator::evaluate(chain_state).expect_err("should fail on wrong source chain");
     }
 
     #[test]
     fn err_if_wrong_recipient_receipt() {
         let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1))]),
-        };
         let expected_out = params.amountOut;
         let mut dest = receipt_from(&params, expected_out);
         dest.recipient = Address::from(U160::from(123142));
@@ -171,17 +117,12 @@ mod tests {
             swap_params: params.clone(),
         };
 
-        let _ = evaluator
-            .evaluate(chain_state)
-            .expect_err("should fail on wrong recipient");
+        let _ = Evaluator::evaluate(chain_state).expect_err("should fail on wrong recipient");
     }
 
     #[test]
     fn err_if_token_mismatch() {
         let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1))]),
-        };
         let expected_out = params.amountOut;
         let mut dest = receipt_from(&params, expected_out);
         dest.tokenOut = Address::from_str("cafebabecD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(); // different from params.token
@@ -191,17 +132,12 @@ mod tests {
             swap_params: params.clone(),
         };
 
-        let _ = evaluator
-            .evaluate(chain_state)
-            .expect_err("should fail on token mismatch");
+        let _ = Evaluator::evaluate(chain_state).expect_err("should fail on token mismatch");
     }
 
     #[test]
     fn err_if_amount_out_too_low() {
         let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1))]),
-        };
         let expected_out = params.amountOut;
         let dest = receipt_from(&params, expected_out - U256::from(1));
         let chain_state = ChainState {
@@ -209,17 +145,12 @@ mod tests {
             swap_params: params.clone(),
         };
 
-        let _ = evaluator
-            .evaluate(chain_state)
-            .expect_err("should fail on underpayment");
+        let _ = Evaluator::evaluate(chain_state).expect_err("should fail on underpayment");
     }
 
     #[test]
     fn err_if_amount_out_too_high_overpay_not_allowed() {
         let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1))]),
-        };
         let expected_out = params.amountOut;
         let dest = receipt_from(&params, expected_out + U256::from(1));
         let chain_state = ChainState {
@@ -227,29 +158,7 @@ mod tests {
             swap_params: params.clone(),
         };
 
-        let _ = evaluator
-            .evaluate(chain_state)
-            .expect_err("should fail on overpayment");
-    }
-
-    #[test]
-    fn err_if_not_yet_finalised() {
-        let params = base_params();
-        let evaluator = Evaluator {
-            finality_durations: HashMap::from([(params.dstChainId, Duration::seconds(1000))]),
-        };
-        let expected_out = params.amountOut;
-        let mut dest = receipt_from(&params, expected_out);
-        dest.fulfilledAt = U256::from(Utc::now().timestamp() as u64).add(U256::from(1000000));
-
-        let chain_state = ChainState {
-            transfer_receipt: dest.clone(),
-            swap_params: params.clone(),
-        };
-
-        let _ = evaluator
-            .evaluate(chain_state)
-            .expect_err("not finalised should fail");
+        let _ = Evaluator::evaluate(chain_state).expect_err("should fail on overpayment");
     }
 
     fn b32(byte: u8) -> FixedBytes<32> {

@@ -21,7 +21,7 @@ pub(crate) fn create_libp2p_transport(config: &AppConfig) -> anyhow::Result<Libp
 
 #[cfg(test)]
 mod test {
-    use crate::config::AppConfig;
+    use crate::config::{AppConfig, TimeoutConfig};
     use crate::transport::create_libp2p_transport;
     use alloy::primitives::{FixedBytes, U160, U256};
     use alloy::transports::http::reqwest::Url;
@@ -33,7 +33,6 @@ mod test {
     use libp2p::PeerId;
     use std::num::NonZeroU16;
     use std::str::FromStr;
-    use std::time::Duration;
 
     #[test]
     fn test_builds_with_valid_config() -> anyhow::Result<()> {
@@ -50,8 +49,6 @@ mod test {
                 router_address: FixedBytes::from(U160::from(1)),
                 private_key: FixedBytes::from(U256::from(1)),
                 should_write: false,
-                request_timeout: Duration::from_secs(1),
-                finality_duration_secs: Duration::from_secs(10),
             }],
             libp2p: Libp2pConfig {
                 secret_key: Libp2pKeyWrapper::from_str(
@@ -73,6 +70,7 @@ mod test {
                     bls_pk: G2Affine::default(),
                 }],
             },
+            timeout: TimeoutConfig::default(),
         };
 
         let _ = create_libp2p_transport(&config)?;

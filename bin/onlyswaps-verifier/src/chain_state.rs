@@ -1,4 +1,5 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
+use crate::config::TimeoutConfig;
 use crate::signing::VerifiedSwap;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
@@ -11,7 +12,6 @@ use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SwapStatus<ID> {
@@ -27,16 +27,19 @@ pub(crate) struct NetworkBus<P> {
 pub(crate) struct Network<P> {
     chain_id: u64,
     should_write: bool,
-    request_timeout: Duration,
     router: RouterInstance<P>,
+    timeout_config: TimeoutConfig,
 }
 
 impl NetworkBus<DynProvider> {
-    pub async fn create(network_configs: &[NetworkConfig]) -> anyhow::Result<Self> {
+    pub async fn create(
+        network_configs: &[NetworkConfig],
+        timeout_config: &TimeoutConfig,
+    ) -> anyhow::Result<Self> {
         let mut networks = HashMap::new();
 
         for config in network_configs.iter() {
-            let network = Network::new(config).await?;
+            let network = Network::new(config, timeout_config.clone()).await?;
             networks.insert(config.chain_id, network);
         }
 
@@ -91,7 +94,10 @@ impl NetworkBus<DynProvider> {
 }
 
 impl Network<DynProvider> {
-    pub async fn new(config: &NetworkConfig) -> anyhow::Result<Self> {
+    pub async fn new(
+        config: &NetworkConfig,
+        timeout_config: TimeoutConfig,
+    ) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
         let signer = PrivateKeySigner::from_slice(config.private_key.as_slice())?;
         let own_addr = signer.address();
@@ -110,8 +116,8 @@ impl Network<DynProvider> {
         Ok(Self {
             chain_id: config.chain_id,
             should_write: config.should_write,
-            request_timeout: config.request_timeout,
             router: RouterInstance::new(Address(config.router_address), provider.clone()),
+            timeout_config,
         })
     }
 }
@@ -133,6 +139,7 @@ impl<P: Provider> Network<P> {
         Ok(self
             .router
             .getSwapRequestParameters(request_id)
+            .block(self.timeout_config.block_safety.into())
             .call()
             .await?)
     }
@@ -141,15 +148,30 @@ impl<P: Provider> Network<P> {
         &self,
         request_id: FixedBytes<32>,
     ) -> anyhow::Result<getSwapRequestReceiptReturn> {
-        let receipt = self.router.getSwapRequestReceipt(request_id).call().await?;
+        let receipt = self
+            .router
+            .getSwapRequestReceipt(request_id)
+            .block(self.timeout_config.block_safety.into())
+            .call()
+            .await?;
         Ok(receipt)
     }
     pub async fn fetch_fulfilled_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
-        Ok(self.router.getFulfilledTransfers().call().await?)
+        Ok(self
+            .router
+            .getFulfilledTransfers()
+            .block(self.timeout_config.block_safety.into())
+            .call()
+            .await?)
     }
 
     pub async fn fetch_verified_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
-        Ok(self.router.getFulfilledSolverRefunds().call().await?)
+        Ok(self
+            .router
+            .getFulfilledSolverRefunds()
+            .block(self.timeout_config.block_safety.into())
+            .call()
+            .await?)
     }
 
     pub async fn submit_verified_swap(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
@@ -158,7 +180,12 @@ impl<P: Provider> Network<P> {
             return Ok(());
         }
 
-        match tokio::time::timeout(self.request_timeout, self.rebalance(verified_swap)).await {
+        match tokio::time::timeout(
+            self.timeout_config.request_timeout,
+            self.rebalance(verified_swap),
+        )
+        .await
+        {
             Ok(Ok(_)) => Ok(()),
             Ok(Err(e)) => anyhow::bail!("error submitting swap: {:?}", e),
             Err(_) => anyhow::bail!("request timed out"),
@@ -173,12 +200,13 @@ impl<P: Provider> Network<P> {
                 verified_swap.request_id,
                 Bytes::from(verified_swap.signature.clone()),
             )
+            .block(self.timeout_config.block_safety.into())
             .send()
             .await?;
 
         let tx_hash = tx
             .with_required_confirmations(1)
-            .with_timeout(Some(self.request_timeout))
+            .with_timeout(Some(self.timeout_config.request_timeout))
             .watch()
             .await?;
         tracing::info!(tx_hash = tx_hash.to_string(), "verified swap");

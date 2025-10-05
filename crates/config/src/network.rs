@@ -3,7 +3,6 @@ use alloy::primitives::FixedBytes;
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::time::Duration;
 use url::Url;
 
 #[serde_as]
@@ -15,10 +14,6 @@ pub struct NetworkConfig {
     pub router_address: FixedBytes<20>,
     #[serde(default = "default_should_write")]
     pub should_write: bool,
-    #[serde(with = "humantime_serde", default = "default_request_timeout")]
-    pub request_timeout: Duration,
-    #[serde(with = "humantime_serde", default = "default_finality_duration_secs")]
-    pub finality_duration_secs: Duration,
 }
 
 #[serde_as]
@@ -30,14 +25,6 @@ pub struct Libp2pConfig {
 
 fn default_should_write() -> bool {
     true
-}
-
-fn default_request_timeout() -> Duration {
-    Duration::from_secs(30)
-}
-
-fn default_finality_duration_secs() -> Duration {
-    Duration::from_secs(1)
 }
 
 #[cfg(test)]
@@ -66,7 +53,6 @@ mod tests {
         assert_eq!(cfg.chain_id, 84532);
         assert_eq!(cfg.rpc_url, Url::parse("wss://example.org").unwrap());
         assert!(!cfg.should_write);
-        assert_eq!(cfg.request_timeout, Duration::from_secs(45));
 
         // sanity: lengths
         assert_eq!(cfg.private_key.len(), 32);
@@ -87,23 +73,6 @@ mod tests {
         .unwrap();
 
         assert_eq!(cfg.should_write, default_should_write());
-        assert_eq!(cfg.request_timeout, default_request_timeout());
-    }
-
-    #[test]
-    fn timeout_parses_humantime_strings() {
-        let cfg: NetworkConfig = json::from_str(&format!(
-            r#"{{
-            "chain_id": 10,
-            "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
-            "router_address": "{ADDRESS_20}",
-            "request_timeout": "500ms"
-        }}"#
-        ))
-        .unwrap();
-
-        assert_eq!(cfg.request_timeout, Duration::from_millis(500));
     }
 
     #[test]

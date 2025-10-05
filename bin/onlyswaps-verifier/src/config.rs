@@ -2,6 +2,8 @@ use alloy::consensus::private::serde::{Deserialize, Serialize};
 use config::agent::AgentConfig;
 use config::network::{Libp2pConfig, NetworkConfig};
 use config::signing::{CommitteeConfig, UnvalidatedCommitteeConfig};
+use omnievent::proto_types::BlockSafety;
+use std::time::Duration;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConfigFile {
@@ -9,6 +11,7 @@ pub struct ConfigFile {
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
     pub committee: UnvalidatedCommitteeConfig<ark_bn254::G2Affine>,
+    pub timeout: TimeoutConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -17,8 +20,39 @@ pub struct AppConfig {
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
     pub committee: CommitteeConfig<ark_bn254::G2Affine>,
+    pub timeout: TimeoutConfig,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TimeoutConfig {
+    #[serde(default = "default_block_safety")]
+    pub block_safety: BlockSafety,
+    #[serde(with = "humantime_serde", default = "default_request_timeout")]
+    pub request_timeout: Duration,
+    #[serde(with = "humantime_serde", default = "default_retry_duration")]
+    pub retry_duration: Duration,
+}
+
+impl Default for TimeoutConfig {
+    fn default() -> Self {
+        TimeoutConfig {
+            block_safety: default_block_safety(),
+            request_timeout: default_request_timeout(),
+            retry_duration: default_retry_duration(),
+        }
+    }
+}
+
+const fn default_block_safety() -> BlockSafety {
+    BlockSafety::Safe
+}
+const fn default_request_timeout() -> Duration {
+    Duration::from_secs(30)
+}
+
+const fn default_retry_duration() -> Duration {
+    Duration::from_secs(12)
+}
 impl TryFrom<ConfigFile> for AppConfig {
     type Error = anyhow::Error;
 
@@ -28,6 +62,7 @@ impl TryFrom<ConfigFile> for AppConfig {
             networks: file.networks,
             libp2p: file.libp2p,
             committee: file.committee.parse()?,
+            timeout: file.timeout,
         })
     }
 }
@@ -81,6 +116,10 @@ mod tests {
         address = "/ip4/127.0.0.1/tcp/8080"
         peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
 
+        [timeout]
+        block_safety = "BLOCK_SAFETY_LATEST"
+        retry_duration = "5s"
+        request_timeout = "1m"
         "#;
 
         writeln!(tmp, "{}", toml_cfg)?;

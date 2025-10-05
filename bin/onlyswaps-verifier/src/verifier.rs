@@ -12,6 +12,7 @@ use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
 use config::file::load_mapped_config_file;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio_stream::StreamExt;
 
 pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
@@ -50,11 +51,13 @@ pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
 
 async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     // the `network_bus` manages access to all the chains at once for pulling state or submitting txs
-    let network_bus = Arc::new(NetworkBus::create(&app_config.networks).await?);
+    let network_bus =
+        Arc::new(NetworkBus::create(&app_config.networks, &app_config.timeout).await?);
 
-    // the `retry_scheduler` manages receives `Verification`s that have failed and schedules them at a later time
-    // with respect to finalisation settings (the most common reason for retries)
-    let retry_scheduler = RetryScheduler::new(&app_config.networks);
+    // the `retry_scheduler` receives `Verification`s that have failed and schedules them at a later time
+    // with respect to the retry duration
+    let retry_duration = Duration::from_secs(12);
+    let retry_scheduler = RetryScheduler::new(retry_duration);
     let retry_scheduler_tx = retry_scheduler.tx();
 
     // the `verification_bus` combines recent historical events, live events, and retried events
@@ -62,14 +65,9 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     let mut verification_bus =
         VerificationBus::new(&app_config.networks, network_bus.clone(), retry_scheduler).await?;
 
-    // the `resolver` fetchs the current src and dest states from a given request_id so we can evaluate
+    // the `resolver` fetches the current src and dest states from a given request_id so we can evaluate
     // whether a swap has truly been completed
     let resolver = ChainStateResolver::new(network_bus.clone());
-
-    // the `evaluator` does the actual evaluation of a (src_chain_state, dest_chain_state) combo.
-    // errors in evaluation are kicked back to the `RetryScheduler` to decide when to pop them back
-    // onto the `verification_bus`
-    let evaluator = Arc::new(Evaluator::new(&app_config.networks)?);
 
     // the `signer` encapsulates everything related to gossiping, verifying, and aggregating partial
     // signatures using libp2p.
@@ -121,8 +119,11 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
             "attempting verification"
         );
 
+        // the `evaluator` does the actual evaluation of a (src_chain_state, dest_chain_state) combo.
+        // errors in evaluation are kicked back to the `RetryScheduler` to decide when to pop them back
+        // onto the `verification_bus`
         let state = resolver.resolve_state(&verification).await?;
-        match evaluator.evaluate(state) {
+        match Evaluator::evaluate(state) {
             Err(e) => {
                 tracing::debug!(e = ?e, "evaluation was false");
                 retry_scheduler_tx
