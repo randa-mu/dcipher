@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-/// Wrapper around ark_*::Fr that allows deserialization from hex
+/// Wrapper around ark_*::Fr that allows deserialization from hex and base64
 pub struct SecretKey<Fr>(pub Fr);
 
 /// Wrapper around libp2p::identity::Keypair with (de)serialization & cmd line parsing.
@@ -58,7 +58,8 @@ impl<Fr: PrimeField> FromStr for SecretKey<Fr> {
 fn try_decode_secret_key_hex_and_b64<Fr: PrimeField>(
     sk_str: &str,
 ) -> anyhow::Result<SecretKey<Fr>> {
-    let sk_bytes = if &sk_str[0..2] == "0x" {
+    // technicall base64 strings can start with 0x, so we check the length as well
+    let sk_bytes = if &sk_str[0..2] == "0x" && sk_str.len() == 67 {
         hex::decode(&sk_str[2..]).map_err(|e| anyhow!("secret key wasn't valid hex: {}", e))
     } else {
         BASE64_STANDARD

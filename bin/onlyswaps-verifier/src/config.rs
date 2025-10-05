@@ -31,6 +31,9 @@ pub struct AppConfigFile {
     pub listen_addr: Multiaddr,
 }
 
+// an enum representing a config object that accepts either:
+// a 0x-prefixed hex encoded ethereum private key
+// a path to a file containing a 0x-prefixed hex encoded ethereum private key
 #[derive(Debug, Clone)]
 pub(crate) enum EthPrivateKey {
     Path(PathBuf),
@@ -59,14 +62,10 @@ impl TryInto<FixedBytes<32>> for EthPrivateKey {
     type Error = anyhow::Error;
 
     fn try_into(self) -> Result<FixedBytes<32>, Self::Error> {
-        let result = match self {
-            EthPrivateKey::Path(path) => {
-                let contents = fs::read_to_string(path)?;
-                FixedBytes::from_str(&contents)?
-            }
-            EthPrivateKey::Value(s) => s,
-        };
-        Ok(result)
+        match self {
+            EthPrivateKey::Path(path) => Ok(FixedBytes::from_str(&fs::read_to_string(path)?)?),
+            EthPrivateKey::Value(s) => Ok(s),
+        }
     }
 }
 

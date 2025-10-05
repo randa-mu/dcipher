@@ -27,14 +27,18 @@ pub(crate) struct Network<P> {
 }
 impl Network<DynProvider> {
     pub async fn new_readonly(config: &NetworkConfig) -> anyhow::Result<Self> {
-        let url = config.rpc_url.clone();
+        let rpc_url = config.rpc_url.clone();
         let provider = ProviderBuilder::new()
             .with_gas_estimation()
-            .connect_ws(WsConnect::new(url))
+            .connect_ws(WsConnect::new(rpc_url))
             .await?
             .erased();
 
-        tracing::info!(chain_id = config.chain_id, "configured chain");
+        tracing::info!(
+            rpc_url = config.rpc_url.clone().to_string(),
+            chain_id = config.chain_id,
+            "configured chain"
+        );
 
         Ok(Self {
             router: RouterInstance::new(Address(config.router_address), provider.clone()),

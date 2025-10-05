@@ -149,8 +149,7 @@ impl FromStr for AdkgSecret {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let adkg_secret: Self = toml::from_str(s).context("failed to parse adkg secret")?;
-        Ok(adkg_secret)
+        toml::from_str(s).context("failed to parse adkg secret")
     }
 }
 

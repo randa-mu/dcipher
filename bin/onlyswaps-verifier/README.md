@@ -14,13 +14,27 @@ A TOML or JSON file containing the rest of the configuration parameters required
 ## Configuration
 An annotated, sample TOML configuration can be found below.
 ```toml
-longterm_secret_path = "/path/to/longterm/secret/key/file" # you generated this before running the ADKG
-group_path = "/path/to/group/file/pre/adkg"                # you received this before the adkg to know who to connect to
-adkg_public_path = "/path/to/pub/adkg/output"              # this was created during the adkg
-adkg_secret_path = "/path/to/priv/adkg/output"             # this was created during the adkg
-eth_private_key = "/path/to/private/key"                   # or you can put it in directly like "0x12345678959726c7020bca2612345678959851c13c1561b399ad8dde5207b57c"
-member_id = 1                                              # your ID in the adkg_public file
-listen_addr = "/ip4/0.0.0.0/tcp/9898"                      # this is the address you bind locally, not necessarily the multiaddr others connect to you with
+# you generated this before running the ADKG
+longterm_secret_path = "/path/to/longterm/secret/key/longterm.priv"
+
+# you received this before the adkg to know who to connect to
+group_path = "/path/to/group/file/pre/group.toml"
+
+# this was created during the adkg
+adkg_public_path = "/path/to/pub/adkg/keyshare.pub"
+
+# this was created during the adkg
+adkg_secret_path = "/path/to/priv/adkg/keyshare.priv"
+
+# or you can put it in directly like "0x12345678959726c7020bca2612345678959851c13c1561b399ad8dde5207b57c"
+eth_private_key = "/path/to/private/ethereum.priv"
+
+# your ID in the adkg_public file
+member_id = 1
+
+# this is the address you bind locally, not necessarily the multiaddr others connect to you with
+listen_addr = "/ip4/0.0.0.0/tcp/9898"                               
+
 
 # `agent` is used for general configuration and monitoring params
 [agent]
