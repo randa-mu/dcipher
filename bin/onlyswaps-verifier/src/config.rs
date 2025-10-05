@@ -135,7 +135,6 @@ mod tests {
         Ok(())
     }
 
-
     #[test]
     fn test_load_valid_toml_config_without_optional() -> anyhow::Result<()> {
         let mut tmp = NamedTempFile::with_suffix(".toml")?;

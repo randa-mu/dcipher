@@ -95,7 +95,7 @@ mod tests {
             "rpc_url": "wss://example.org",
             "private_key": "{PRIVKEY_32}",
             "router_address": "{ADDRESS_20}",
-            "request_timeout": null
+            "should_write": null
         }}"#
         ))
         .unwrap_err();
@@ -109,27 +109,6 @@ mod tests {
         assert!(
             msg2.contains("null") || msg2.contains("invalid type"),
             "unexpected error: {msg2}"
-        );
-    }
-
-    #[test]
-    fn numbers_for_timeout_are_rejected_by_humantime_serde() {
-        // humantime_serde expects a string like "30s", not a bare number
-        let err = json::from_str::<NetworkConfig>(&format!(
-            r#"{{
-            "chain_id": 1,
-            "rpc_url": "wss://example.org",
-            "private_key": "{PRIVKEY_32}",
-            "router_address": "{ADDRESS_20}",
-            "request_timeout": 30
-        }}"#
-        ))
-        .unwrap_err();
-
-        let msg = err.to_string();
-        assert!(
-            msg.contains("invalid type") || msg.contains("expected a string"),
-            "unexpected error: {msg}"
         );
     }
 
