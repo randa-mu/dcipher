@@ -80,11 +80,10 @@ impl NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>> {
         config: &AppConfig,
         libp2p_node: Libp2pNodeConfig<u16>,
     ) -> anyhow::Result<NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>>> {
-        let bls_secret_key = &config.committee.secret_key;
-        let signer = BlsPairingSigner::<ark_bn254::Bn254>::new(bls_secret_key.clone().0);
-
+        let pairing_signer =
+            BlsPairingSigner::<ark_bn254::Bn254>::new(config.committee.secret_key.clone().0);
         let signer = BlsThresholdSigner::new(
-            signer,
+            pairing_signer,
             config.committee.n.get(),
             config.committee.t.get(),
             config.committee.member_id.get(),
