@@ -23,7 +23,7 @@ pub struct Libp2pConfig {
 }
 
 fn default_should_write() -> bool {
-    true
+    false
 }
 
 #[cfg(test)]

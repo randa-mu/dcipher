@@ -35,7 +35,6 @@ member_id = 1
 # this is the address you bind locally, not necessarily the multiaddr others connect to you with
 listen_addr = "/ip4/0.0.0.0/tcp/9898"                               
 
-
 # `agent` is used for general configuration and monitoring params
 [agent]
 healthcheck_listen_addr = "0.0.0.0"
@@ -47,13 +46,26 @@ log_json = true                             # whether the logs should be structu
 # Presently all networks must be supported, and skipping verifications for one route (chain -> chain) may cause errors.
 [[networks]]
 chain_id = 43114
-rpc_url = "wss://avalanche-c-chain-rpc.publicnode.com"                                          # presently only websockets and websockets secure are supported 
+rpc_url = "wss://avalanche-c-chain-rpc.publicnode.com"                             # presently only websockets and websockets secure are supported 
 router_address = "0x3dD1a497846d060Dce130B67b22E1F9DeE18c051"                      # the address for the router contract (/or proxy) for the given chain
-should_write = false                                                               # controls whether this node actually writes signatures back to the chain to verify swaps.
+should_write = false                                                               # controls whether this node actually writes signatures back to the chain to verify swaps
 
 [[networks]]
 chain_id = 8453
 rpc_url = "wss://base-rpc.publicnode.com"
 router_address = "0x3dD1a497846d060Dce130B67b22E1F9DeE18c051"
 should_write = false
+
+# this section is optional, and we have sane defaults
+[timeout]
+# verify requests once a certain level of finalisation has been reached. See the ETH RPC spec for more details: https://github.com/ethereum/execution-apis/blob/4ec8e5735ebb3f2ce0702726385cdde70034f78c/src/schemas/block.yaml#L122
+# also accepts "BLOCK_SAFETY_FINALIZED" and "BLOCK_SAFETY_LATEST"
+block_safety = "BLOCK_SAFETY_SAFE"
+
+# how to long to wait before circuit-breaking a request
+request_timeout = "30s"
+
+# the time between retries in the case of failure
+retry_duration = "5s"
+
 ```
