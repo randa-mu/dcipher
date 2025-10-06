@@ -2,6 +2,7 @@ mod events {
     #![allow(clippy::enum_variant_names)]
 
     use alloy::dyn_abi::DynSolValue;
+    use alloy::eips::BlockId;
     use alloy::primitives::Address;
 
     include!(concat!(env!("OUT_DIR"), "/events.rs"));
@@ -13,6 +14,12 @@ mod events {
                 BlockSafety::Safe => Self::Safe,
                 BlockSafety::Finalized => Self::Finalized,
             }
+        }
+    }
+
+    impl From<BlockSafety> for BlockId {
+        fn from(value: BlockSafety) -> Self {
+            BlockId::Number(alloy::eips::BlockNumberOrTag::from(value))
         }
     }
 

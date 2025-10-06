@@ -2,23 +2,61 @@ use alloy::consensus::private::serde::{Deserialize, Serialize};
 use config::agent::AgentConfig;
 use config::network::{Libp2pConfig, NetworkConfig};
 use config::signing::{CommitteeConfig, UnvalidatedCommitteeConfig};
+use omnievent::proto_types::BlockSafety;
+use std::time::Duration;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ConfigFile {
+    #[serde(default)]
     pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
     pub committee: UnvalidatedCommitteeConfig<ark_bn254::G2Affine>,
+    #[serde(default)]
+    pub timeout: TimeoutConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
+    #[serde(default)]
     pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
     pub libp2p: Libp2pConfig,
     pub committee: CommitteeConfig<ark_bn254::G2Affine>,
+    #[serde(default)]
+    pub timeout: TimeoutConfig,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TimeoutConfig {
+    #[serde(default = "default_block_safety")]
+    pub block_safety: BlockSafety,
+    #[serde(with = "humantime_serde", default = "default_request_timeout")]
+    pub request_timeout: Duration,
+    #[serde(with = "humantime_serde", default = "default_retry_duration")]
+    pub retry_duration: Duration,
+}
+
+impl Default for TimeoutConfig {
+    fn default() -> Self {
+        TimeoutConfig {
+            block_safety: default_block_safety(),
+            request_timeout: default_request_timeout(),
+            retry_duration: default_retry_duration(),
+        }
+    }
+}
+
+const fn default_block_safety() -> BlockSafety {
+    BlockSafety::Safe
+}
+const fn default_request_timeout() -> Duration {
+    Duration::from_secs(30)
+}
+
+const fn default_retry_duration() -> Duration {
+    Duration::from_secs(12)
+}
 impl TryFrom<ConfigFile> for AppConfig {
     type Error = anyhow::Error;
 
@@ -28,6 +66,7 @@ impl TryFrom<ConfigFile> for AppConfig {
             networks: file.networks,
             libp2p: file.libp2p,
             committee: file.committee.parse()?,
+            timeout: file.timeout,
         })
     }
 }
@@ -81,6 +120,54 @@ mod tests {
         address = "/ip4/127.0.0.1/tcp/8080"
         peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
 
+        [timeout]
+        block_safety = "BLOCK_SAFETY_LATEST"
+        retry_duration = "5s"
+        request_timeout = "1m"
+        "#;
+
+        writeln!(tmp, "{}", toml_cfg)?;
+
+        let config_path = tmp.path().to_str().unwrap().to_string();
+        let config = load_mapped_config_file::<ConfigFile, AppConfig>(config_path)?;
+        assert_that!(config.agent.healthcheck_listen_addr).is_equal_to(Ipv4Addr::new(0, 0, 0, 0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_valid_toml_config_without_optional() -> anyhow::Result<()> {
+        let mut tmp = NamedTempFile::with_suffix(".toml")?;
+        let toml_cfg = r#"
+        [[networks]]
+        chain_id = 31337
+        rpc_url = "ws://localhost:31337"
+        router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
+        private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+        should_write = false
+
+        [[networks]]
+        chain_id = 1338
+        rpc_url = "ws://localhost:1338"
+        router_address = "0x1293f79c4fa7fa83610fa5ef8064ef64929ee2fd"
+        private_key = "0x868c3482353618000889b0e733022108e174bb821e1fdb43bb56dc8115e218d2"
+        should_write = false
+
+        [libp2p]
+        secret_key = "CAESQBUpjjiWNdGyX0Ffj7TccV+JUsnoFJXE71lgmsCAGqyzsnUME7bynuS2cDA7Wom8s/PhDjJRfrj+SxO9+mdtClk="
+        multiaddr = "/ip4/127.0.0.1/tcp/8881"
+
+        [committee]
+        member_id = 1
+        secret_key = "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d"
+        t = 1
+        n = 1
+
+        [[committee.members]]
+        member_id = 1
+        bls_pk = "yFCy1kJ6Goeq0jFuVVTPICNh/1fNhf5PaIRs4847Z58uN00sxx87rMNHXae2RreBNkzrhP/3yJ+6vrNASPmHRg=="
+        address = "/ip4/127.0.0.1/tcp/8080"
+        peer_id = "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
         "#;
 
         writeln!(tmp, "{}", toml_cfg)?;
@@ -134,9 +221,13 @@ mod tests {
               "address": "/ip4/127.0.0.1/tcp/8080",
               "peer_id": "12D3KooWJ4kJ5e9uY6aH9c8o8gQfupVx41Yx9QxQ9yPZy2m6Yt8b"
             }]
+          },
+          "timeout": {
+            "block_safety": "BLOCK_SAFETY_LATEST",
+            "retry_duration" : "5s",
+            "request_timeout": "1m"
           }
         }
-
         "#;
 
         writeln!(tmp, "{}", json_cfg)?;

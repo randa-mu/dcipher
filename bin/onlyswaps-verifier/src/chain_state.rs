@@ -1,22 +1,20 @@
-use crate::parsing::TransferReceipt;
-use crate::pending::{RequestId, Verification, extract_pending_verifications};
-use crate::signing::{ChainService, VerifiedSwap};
+use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
+use crate::config::TimeoutConfig;
+use crate::signing::VerifiedSwap;
 use alloy::network::EthereumWallet;
-use alloy::primitives::{Address, Bytes, FixedBytes, U256};
+use alloy::primitives::{Address, Bytes, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
-use async_trait::async_trait;
 use config::network::NetworkConfig;
 use futures::future::{try_join, try_join_all};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::RouterInstance;
+use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::time::Duration;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct ChainState<ID> {
+pub struct SwapStatus<ID> {
     pub chain_id: u64,
     pub fulfilled: Vec<ID>,
     pub verified: Vec<ID>,
@@ -29,16 +27,19 @@ pub(crate) struct NetworkBus<P> {
 pub(crate) struct Network<P> {
     chain_id: u64,
     should_write: bool,
-    request_timeout: Duration,
     router: RouterInstance<P>,
+    timeout_config: TimeoutConfig,
 }
 
 impl NetworkBus<DynProvider> {
-    pub async fn create(network_configs: &[NetworkConfig]) -> anyhow::Result<Self> {
+    pub async fn create(
+        network_configs: &[NetworkConfig],
+        timeout_config: &TimeoutConfig,
+    ) -> anyhow::Result<Self> {
         let mut networks = HashMap::new();
 
         for config in network_configs.iter() {
-            let network = Network::new(config).await?;
+            let network = Network::new(config, timeout_config.clone()).await?;
             networks.insert(config.chain_id, network);
         }
 
@@ -52,15 +53,11 @@ impl NetworkBus<DynProvider> {
         let states = try_join_all(futs).await?;
         Ok(extract_pending_verifications(states))
     }
-}
-
-#[async_trait]
-impl<P: Provider> ChainService for NetworkBus<P> {
-    async fn fetch_transfer_receipt(
+    pub(crate) async fn fetch_swap_receipt(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferReceipt> {
+    ) -> anyhow::Result<getSwapRequestReceiptReturn> {
         let transport = self
             .networks
             .get(&chain_id)
@@ -69,7 +66,7 @@ impl<P: Provider> ChainService for NetworkBus<P> {
         transport.fetch_transfer_receipt(request_id).await
     }
 
-    async fn fetch_transfer_params(
+    pub(crate) async fn fetch_swap_params(
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
@@ -82,22 +79,25 @@ impl<P: Provider> ChainService for NetworkBus<P> {
         transport.fetch_transfer_params(request_id).await
     }
 
-    async fn submit_verification(
+    pub(crate) async fn submit_verification(
         &self,
-        chain_id: u64,
         verified_swap: &VerifiedSwap,
     ) -> anyhow::Result<()> {
-        let transport = self
-            .networks
-            .get(&chain_id)
-            .ok_or(anyhow!("No chain transport for {}", chain_id))?;
+        let chain_id: u64 = verified_swap.src_chain_id.try_into()?;
+        let transport = self.networks.get(&chain_id).ok_or(anyhow!(
+            "No chain transport for {}",
+            verified_swap.src_chain_id
+        ))?;
 
         transport.submit_verified_swap(verified_swap).await
     }
 }
 
 impl Network<DynProvider> {
-    pub async fn new(config: &NetworkConfig) -> anyhow::Result<Self> {
+    pub async fn new(
+        config: &NetworkConfig,
+        timeout_config: TimeoutConfig,
+    ) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
         let signer = PrivateKeySigner::from_slice(config.private_key.as_slice())?;
         let own_addr = signer.address();
@@ -116,17 +116,17 @@ impl Network<DynProvider> {
         Ok(Self {
             chain_id: config.chain_id,
             should_write: config.should_write,
-            request_timeout: config.request_timeout,
             router: RouterInstance::new(Address(config.router_address), provider.clone()),
+            timeout_config,
         })
     }
 }
 impl<P: Provider> Network<P> {
-    pub async fn fetch_chain_state(&self) -> anyhow::Result<ChainState<RequestId>> {
+    pub async fn fetch_chain_state(&self) -> anyhow::Result<SwapStatus<RequestId>> {
         let f = self.fetch_fulfilled_transfer_ids();
         let v = self.fetch_verified_transfer_ids();
         let (fulfilled, verified) = try_join(f, v).await?;
-        Ok(ChainState {
+        Ok(SwapStatus {
             chain_id: self.chain_id,
             fulfilled,
             verified,
@@ -139,6 +139,7 @@ impl<P: Provider> Network<P> {
         Ok(self
             .router
             .getSwapRequestParameters(request_id)
+            .block(self.timeout_config.block_safety.into())
             .call()
             .await?)
     }
@@ -146,27 +147,31 @@ impl<P: Provider> Network<P> {
     pub async fn fetch_transfer_receipt(
         &self,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<TransferReceipt> {
-        let receipt = self.router.getSwapRequestReceipt(request_id).call().await?;
-        Ok(TransferReceipt {
-            chain_id: U256::from(self.chain_id),
-            request_id: receipt.requestId,
-            recipient: receipt.recipient,
-            src_chain_id: receipt.srcChainId,
-            token_in: receipt.tokenIn,
-            token_out: receipt.tokenOut,
-            fulfilled: receipt.fulfilled,
-            solver: receipt.solver,
-            amount_out: receipt.amountOut,
-            fulfilled_at: receipt.fulfilledAt,
-        })
+    ) -> anyhow::Result<getSwapRequestReceiptReturn> {
+        let receipt = self
+            .router
+            .getSwapRequestReceipt(request_id)
+            .block(self.timeout_config.block_safety.into())
+            .call()
+            .await?;
+        Ok(receipt)
     }
     pub async fn fetch_fulfilled_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
-        Ok(self.router.getFulfilledTransfers().call().await?)
+        Ok(self
+            .router
+            .getFulfilledTransfers()
+            .block(self.timeout_config.block_safety.into())
+            .call()
+            .await?)
     }
 
     pub async fn fetch_verified_transfer_ids(&self) -> anyhow::Result<Vec<FixedBytes<32>>> {
-        Ok(self.router.getFulfilledSolverRefunds().call().await?)
+        Ok(self
+            .router
+            .getFulfilledSolverRefunds()
+            .block(self.timeout_config.block_safety.into())
+            .call()
+            .await?)
     }
 
     pub async fn submit_verified_swap(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
@@ -175,7 +180,12 @@ impl<P: Provider> Network<P> {
             return Ok(());
         }
 
-        match tokio::time::timeout(self.request_timeout, self.rebalance(verified_swap)).await {
+        match tokio::time::timeout(
+            self.timeout_config.request_timeout,
+            self.rebalance(verified_swap),
+        )
+        .await
+        {
             Ok(Ok(_)) => Ok(()),
             Ok(Err(e)) => anyhow::bail!("error submitting swap: {:?}", e),
             Err(_) => anyhow::bail!("request timed out"),
@@ -190,12 +200,13 @@ impl<P: Provider> Network<P> {
                 verified_swap.request_id,
                 Bytes::from(verified_swap.signature.clone()),
             )
+            .block(self.timeout_config.block_safety.into())
             .send()
             .await?;
 
         let tx_hash = tx
             .with_required_confirmations(1)
-            .with_timeout(Some(self.request_timeout))
+            .with_timeout(Some(self.timeout_config.request_timeout))
             .watch()
             .await?;
         tracing::info!(tx_hash = tx_hash.to_string(), "verified swap");
