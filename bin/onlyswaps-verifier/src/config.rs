@@ -20,8 +20,9 @@ use std::time::Duration;
 pub struct AppConfigFile {
     #[serde(default)]
     pub agent: AgentConfig,
-    pub networks: Vec<NetworkConfig>,
+    #[serde(default)]
     pub timeout: TimeoutConfig,
+    pub networks: Vec<NetworkConfig>,
     pub longterm_secret_path: FileArg<PrivateKeyMaterial>,
     pub adkg_public_path: FileArg<AdkgPublic>,
     pub adkg_secret_path: FileArg<AdkgSecret>,
