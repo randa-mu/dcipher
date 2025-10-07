@@ -1,10 +1,12 @@
 use anyhow::anyhow;
 use ark_ff::{BigInteger, PrimeField};
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-/// Wrapper around ark_*::Fr that allows deserialization from hex
+/// Wrapper around ark_*::Fr that allows deserialization from hex and base64
 pub struct SecretKey<Fr>(pub Fr);
 
 /// Wrapper around libp2p::identity::Keypair with (de)serialization & cmd line parsing.
@@ -40,13 +42,8 @@ impl<'de, Fr: PrimeField> Deserialize<'de> for SecretKey<Fr> {
     {
         use serde::de::Error;
 
-        let hex_str = String::deserialize(deserializer)?;
-        if &hex_str[0..2] != "0x" {
-            Err(D::Error::custom("invalid hex string"))?
-        }
-
-        let bytes = hex::decode(&hex_str[2..]).map_err(D::Error::custom)?;
-        Ok(SecretKey(Fr::from_be_bytes_mod_order(&bytes)))
+        let sk_str = String::deserialize(deserializer)?;
+        try_decode_secret_key_hex_and_b64(&sk_str).map_err(Error::custom)
     }
 }
 
@@ -54,14 +51,24 @@ impl<Fr: PrimeField> FromStr for SecretKey<Fr> {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if &s[0..2] != "0x" {
-            Err(anyhow!("invalid hex string"))?
-        }
-
-        let bytes = hex::decode(&s[2..])?;
-        let s = Fr::from_be_bytes_mod_order(&bytes);
-        Ok(SecretKey(s))
+        try_decode_secret_key_hex_and_b64(s)
     }
+}
+
+fn try_decode_secret_key_hex_and_b64<Fr: PrimeField>(
+    sk_str: &str,
+) -> anyhow::Result<SecretKey<Fr>> {
+    // technicall base64 strings can start with 0x, so we check the length as well
+    let sk_bytes = if &sk_str[0..2] == "0x" && sk_str.len() == 67 {
+        hex::decode(&sk_str[2..]).map_err(|e| anyhow!("secret key wasn't valid hex: {}", e))
+    } else {
+        BASE64_STANDARD
+            .decode(sk_str)
+            .or_else(|_| hex::decode(&sk_str[2..]))
+            .map_err(|e| anyhow!("secret key wasn't hex or base64: {}", e))
+    }?;
+
+    Ok(SecretKey(Fr::from_be_bytes_mod_order(&sk_bytes)))
 }
 
 pub type Bn254SecretKey = SecretKey<ark_bn254::Fr>;

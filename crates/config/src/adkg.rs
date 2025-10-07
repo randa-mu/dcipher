@@ -23,7 +23,7 @@ pub struct GroupConfig {
     pub nodes: Vec<NodeDetail>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AdkgSecret {
     pub adkg_scheme_name: String,
     pub genesis_timestamp: i64,
@@ -32,7 +32,7 @@ pub struct AdkgSecret {
 
 /// The ADKG public output on a source group (i.e., the one used by the ADKG), and on a destination
 /// group (i.e., the one used for signatures, etc.)
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AdkgPublic {
     pub adkg_scheme_name: String,
     pub genesis_timestamp: i64,
@@ -58,7 +58,7 @@ pub struct AdkgNodePk {
     pub multiaddr: Multiaddr,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PrivateKeyMaterial {
     pub adkg_sk: String,
     pub libp2p_sk: Libp2pKeyWrapper,
@@ -142,5 +142,32 @@ impl GroupConfig {
 
         chrono::DateTime::<chrono::Utc>::from_timestamp(next_timestamp, 0)
             .ok_or(anyhow!("failed to align unix timestamp"))
+    }
+}
+
+impl FromStr for AdkgSecret {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        toml::from_str(s).context("failed to parse adkg secret")
+    }
+}
+
+impl FromStr for AdkgPublic {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let adkg_public: Self = toml::from_str(s).context("failed to parse adkg public")?;
+        Ok(adkg_public)
+    }
+}
+
+impl FromStr for PrivateKeyMaterial {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let longterm_secret: Self =
+            toml::from_str(s).context("failed to parse longterm secret key material")?;
+        Ok(longterm_secret)
     }
 }

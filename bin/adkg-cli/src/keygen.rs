@@ -24,14 +24,16 @@ pub fn keygen(
             let scheme = DXKR23Bn254G1Keccak256::try_from(scheme_config.adkg_config)?;
             let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
             let sk = PrivateKeyMaterial {
-                adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
+                adkg_sk: adkg_sk
+                    .ser_base64()
+                    .context("failed to serialize adkg sk")?,
                 libp2p_sk: Libp2pKeyWrapper(libp2p_sk),
             };
 
             let pk = PublicKeyMaterial {
                 adkg_pk: adkg_pk
                     .ser_compressed_base64()
-                    .expect("failed to serialize adkg pk"),
+                    .context("failed to serialize adkg pk")?,
                 peer_id,
             };
 
@@ -42,14 +44,16 @@ pub fn keygen(
             let scheme = DXKR23Bls12_381G1Sha256::try_from(scheme_config.adkg_config)?;
             let (adkg_sk, adkg_pk) = scheme.keygen(&mut thread_rng());
             let sk = PrivateKeyMaterial {
-                adkg_sk: adkg_sk.ser_base64().expect("failed to serialize adkg sk"),
+                adkg_sk: adkg_sk
+                    .ser_base64()
+                    .context("failed to serialize adkg sk")?,
                 libp2p_sk: Libp2pKeyWrapper(libp2p_sk),
             };
 
             let pk = PublicKeyMaterial {
                 adkg_pk: adkg_pk
                     .ser_compressed_base64()
-                    .expect("failed to serialize adkg pk"),
+                    .context("failed to serialize adkg pk")?,
                 peer_id,
             };
 
