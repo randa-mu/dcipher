@@ -13,7 +13,6 @@ use agent_utils::monitoring::init_monitoring;
 use alloy::signers::local::PrivateKeySigner;
 use config::file::load_mapped_config_file;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio_stream::StreamExt;
 
 pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
@@ -58,8 +57,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
 
     // the `retry_scheduler` manages receives `Verification`s that have failed and schedules them at a later time
     // with respect to the retry duration
-    let retry_duration = Duration::from_secs(12);
-    let retry_scheduler = RetryScheduler::new(retry_duration);
+    let retry_scheduler = RetryScheduler::new(app_config.timeout.retry_duration);
     let retry_scheduler_tx = retry_scheduler.tx();
 
     // the `verification_bus` combines recent historical events, live events, and retried events
