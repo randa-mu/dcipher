@@ -64,8 +64,13 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
 
     // the `verification_bus` combines recent historical events, live events, and retried events
     // to forward to the conditional evaluation, and then signing steps.
-    let mut verification_bus =
-        VerificationBus::new(&app_config.networks, network_bus.clone(), retry_scheduler).await?;
+    let mut verification_bus = VerificationBus::new(
+        &app_config.networks,
+        network_bus.clone(),
+        retry_scheduler,
+        &app_config.timeout,
+    )
+    .await?;
 
     // the `resolver` fetches the current src and dest states from a given request_id so we can evaluate
     // whether a swap has truly been completed

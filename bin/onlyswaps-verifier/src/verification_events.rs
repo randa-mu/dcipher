@@ -1,8 +1,9 @@
+use crate::config::TimeoutConfig;
 use alloy::providers::Provider;
 use config::network::NetworkConfig;
 use omnievent::event_manager::EventManager;
 use omnievent::event_manager::db::in_memory::InMemoryDatabase;
-use omnievent::proto_types::{BlockSafety, EventField, RegisterNewEventRequest};
+use omnievent::proto_types::{EventField, RegisterNewEventRequest};
 use omnievent::types::EventId;
 use superalloy::provider::{MultiProvider, create_provider_with_retry};
 use superalloy::retry::RetryStrategy;
@@ -14,6 +15,7 @@ pub(crate) struct EventManagement {
 
 pub(crate) async fn create_omnievent_management(
     networks: &Vec<NetworkConfig>,
+    timeout: &TimeoutConfig,
 ) -> anyhow::Result<EventManagement> {
     let mut mp = MultiProvider::empty();
     let mut event_requests = vec![];
@@ -42,7 +44,7 @@ pub(crate) async fn create_omnievent_management(
                     indexed: true,
                 },
             ],
-            block_safety: BlockSafety::Safe.into(),
+            block_safety: timeout.block_safety.into(),
         });
     }
 

@@ -1,5 +1,6 @@
 use crate::chain_state::NetworkBus;
 use crate::chain_state_pending::Verification;
+use crate::config::TimeoutConfig;
 use crate::retry_runtime::RetryScheduler;
 use crate::verification_events::{EventManagement, create_omnievent_management};
 use alloy::primitives::FixedBytes;
@@ -21,11 +22,12 @@ impl VerificationBus {
         networks: &Vec<NetworkConfig>,
         network_bus: Arc<NetworkBus<DynProvider>>,
         retry_scheduler: RetryScheduler,
+        timeout: &TimeoutConfig,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             network_bus,
             retry_scheduler,
-            event_management: create_omnievent_management(networks).await?,
+            event_management: create_omnievent_management(networks, timeout).await?,
         })
     }
 
