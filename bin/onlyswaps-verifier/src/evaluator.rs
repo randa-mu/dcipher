@@ -35,6 +35,10 @@ impl Evaluator {
             );
         }
 
+        if swap_params.executed {
+            anyhow::bail!("the swap has already been executed, solver cannot fulfil twice")
+        }
+
         Ok(chain_state)
     }
 }
@@ -161,6 +165,19 @@ mod tests {
         let _ = Evaluator::evaluate(chain_state).expect_err("should fail on overpayment");
     }
 
+    #[test]
+    fn err_if_swap_already_executed() {
+        let mut params = base_params();
+        params.executed = true;
+        let dest = receipt_from(&params, params.amountOut);
+        let chain_state = ChainState {
+            transfer_receipt: dest.clone(),
+            swap_params: params.clone(),
+        };
+
+        let _ = Evaluator::evaluate(chain_state).expect_err("should fail if already executed");
+    }
+
     fn b32(byte: u8) -> FixedBytes<32> {
         FixedBytes::<32>::from([byte; 32])
     }
@@ -177,7 +194,7 @@ mod tests {
             nonce: U256::from(1),
             sender: Address::from_str("6666cAb3cD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(),
             recipient: Address::from_str("2111cAb3cD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(),
-            executed: true,
+            executed: false,
             requestedAt: U256::from(123456),
         }
     }
