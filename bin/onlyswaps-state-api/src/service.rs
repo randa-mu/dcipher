@@ -325,11 +325,14 @@ mod tests {
             sender,
             recipient,
             solver,
-            amount: U256::ZERO.into(),
+            amount_in: U256::ZERO.into(),
+            amount_out: U256::ZERO.into(),
+            verification_fee: U256::ZERO.into(),
             solver_fee: U256::ZERO.into(),
             state: "GreaT".to_string(),
             requested_time: U256::ZERO.into(),
             solved_time: Some(U256::ZERO.into()),
+            verified_time: Some(U256::ZERO.into()),
         }
     }
 

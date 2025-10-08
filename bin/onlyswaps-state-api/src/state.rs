@@ -1,9 +1,12 @@
 use crate::network_bus::NetworkBus;
 use crate::omnievent::{StateType, StateUpdate};
 use crate::serde::{LongNumber, ShortNumber};
-use alloy::primitives::{Address, FixedBytes};
+use alloy::primitives::{Address, FixedBytes, U256};
 use alloy::providers::DynProvider;
+use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use serde::Serialize;
+use std::fmt::Display;
+use std::time::SystemTime;
 
 pub(crate) struct StateMachine {
     network_bus: NetworkBus<DynProvider>,
@@ -22,12 +25,15 @@ pub(crate) struct SwapTransaction {
     pub dest_chain_id: ShortNumber,
     pub sender: Address,
     pub recipient: Address,
-    pub amount: LongNumber,
+    pub amount_in: LongNumber,
+    pub amount_out: LongNumber,
+    pub verification_fee: LongNumber,
     pub solver_fee: LongNumber,
     pub state: String,
     pub solver: Option<Address>,
     pub requested_time: ShortNumber,
     pub solved_time: Option<ShortNumber>,
+    pub verified_time: Option<ShortNumber>,
 }
 
 impl StateMachine {
@@ -73,12 +79,15 @@ impl StateMachine {
                     dest_chain_id: params.dstChainId.into(),
                     sender: params.sender,
                     recipient: params.recipient,
-                    amount: params.amountOut.into(),
+                    amount_in: calculate_amount_in(&params).into(),
+                    amount_out: params.amountOut.into(),
                     solver_fee: params.solverFee.into(),
-                    state: "requested".to_string(),
+                    verification_fee: params.verificationFee.into(),
+                    state: SwapState::Submitted.to_string(),
                     solver: None,
                     requested_time: params.requestedAt.into(),
                     solved_time: None,
+                    verified_time: None,
                 });
             }
             StateType::Verified => {
@@ -93,18 +102,22 @@ impl StateMachine {
                 self.state
                     .transactions
                     .retain(|t| t.request_id != request_id);
+
                 self.state.transactions.push(SwapTransaction {
                     request_id,
                     src_chain_id: params.srcChainId.into(),
                     dest_chain_id: params.dstChainId.into(),
                     sender: params.sender,
                     recipient: params.recipient,
-                    amount: params.amountOut.into(),
+                    amount_in: calculate_amount_in(&params).into(),
+                    amount_out: params.amountOut.into(),
                     solver_fee: params.solverFee.into(),
-                    state: "verified".to_string(),
+                    verification_fee: params.verificationFee.into(),
+                    state: SwapState::Verified.to_string(),
                     requested_time: params.requestedAt.into(),
                     solved_time: maybe_solved_time,
                     solver: maybe_solver,
+                    verified_time: Some(ShortNumber(now()?)),
                 });
             }
             StateType::Fulfilled => unreachable!("impossible because we handle it early"),
@@ -143,14 +156,45 @@ impl StateMachine {
             dest_chain_id: params.dstChainId.into(),
             sender: params.sender,
             recipient: params.recipient,
-            amount: params.amountOut.into(),
+            amount_in: calculate_amount_in(&params).into(),
+            amount_out: params.amountOut.into(),
             solver_fee: params.solverFee.into(),
-            requested_time: params.requestedAt.into(),
-            state: "fulfilled".to_string(),
+            verification_fee: params.verificationFee.into(),
             solver: Some(receipt.solver),
+            state: SwapState::Fulfilled.to_string(),
+            requested_time: params.requestedAt.into(),
             solved_time: Some(receipt.fulfilledAt.into()),
+            verified_time: None,
         });
 
         Ok(self.state.clone())
+    }
+}
+
+fn calculate_amount_in(params: &SwapRequestParameters) -> U256 {
+    params.amountOut + params.solverFee + params.verificationFee
+}
+
+fn now() -> anyhow::Result<U256> {
+    Ok(U256::from(
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_secs(),
+    ))
+}
+
+enum SwapState {
+    Submitted,
+    Fulfilled,
+    Verified,
+}
+impl Display for SwapState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            SwapState::Submitted => "submitted".to_string(),
+            SwapState::Fulfilled => "fulfilled".to_string(),
+            SwapState::Verified => "verified".to_string(),
+        };
+        write!(f, "{}", str)
     }
 }
