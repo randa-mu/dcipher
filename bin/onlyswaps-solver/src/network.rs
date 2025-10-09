@@ -38,7 +38,11 @@ impl Network<DynProvider> {
             networks.insert(config.chain_id, network);
         }
 
-        println!("{} chain(s) have been configured", network_configs.len());
+        tracing::info!(
+            count = network_configs.len(),
+            "chain(s) have been configured",
+        );
+
         Ok(networks)
     }
 
@@ -53,7 +57,12 @@ impl Network<DynProvider> {
             .erased();
         let own_addr = signer.address();
 
-        println!("own addr: {own_addr}");
+        tracing::debug!(
+            addr = ?own_addr,
+            chain_id = ?chain_id,
+            "loaded provider"
+        );
+
         let mut tokens = Vec::new();
         for token_addr in &config.tokens {
             let contract = ERC20FaucetToken::new(*token_addr, provider.clone());

@@ -71,7 +71,7 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             match approve {
                 Ok(_) => {}
                 Err(e) => {
-                    println!("error approving trade: {e}");
+                    tracing::error!(e = ?e,"error approving trade");
                 }
             }
 
@@ -96,13 +96,16 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             }
             .await;
             match relay {
-                Ok(_) => println!(
-                    "successfully traded {} on {}",
-                    trade.swap_amount, trade.dest_chain_id
+                Ok(_) => tracing::info!(
+                    amount = ?trade.swap_amount,
+                    chain_id = ?trade.dest_chain_id,
+                    "successfully traded",
                 ),
-                Err(e) => println!(
-                    "error trading {} on {}: {}",
-                    trade.swap_amount, trade.dest_chain_id, e
+                Err(e) => tracing::error!(
+                    amount = ?trade.swap_amount,
+                    chain_id = ?trade.dest_chain_id,
+                    error = ?e,
+                    "error trading",
                 ),
             }
         }

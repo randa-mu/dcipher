@@ -32,7 +32,11 @@ impl App {
         while let Some(BlockEvent { chain_id, .. }) = stream.next().await {
             let trades = solver.fetch_state(chain_id, &inflight_requests).await?;
             if !trades.is_empty() {
-                println!("executing {} trades from chain {}", trades.len(), chain_id);
+                tracing::info!(
+                    chain_id = chain_id,
+                    trade_count = trades.len(),
+                    "executing trades "
+                );
                 executor.execute(trades, &mut inflight_requests).await;
             }
         }
