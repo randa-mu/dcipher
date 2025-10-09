@@ -1,0 +1,21 @@
+[package]
+name = "onlyswaps-solver"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+alloy = { workspace = true, features = ["provider-ws", "provider-anvil-node"] }
+anyhow.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+clap.workspace = true
+dotenv = "0.15.0"
+futures.workspace = true
+generated.workspace = true
+itertools.workspace = true
+moka = { version = "0.12.10", features = ["sync"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+speculoos = "0.13.0"
+shellexpand = "3.1.1"
+tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
