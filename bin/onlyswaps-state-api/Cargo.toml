@@ -17,5 +17,6 @@ serde = { workspace = true, features = ["derive"] }
 superalloy.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
 tokio-stream = { workspace = true, features = ["sync"] }
+tower-http = { workspace = true, features = ["cors"] }
 tracing = { workspace = true }
 url.workspace = true

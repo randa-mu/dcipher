@@ -2,11 +2,13 @@ use crate::config::ApiConfig;
 use crate::service::{StateService, SwapTransactionQueryFilter};
 use crate::state::SwapTransaction;
 use axum::extract::Query;
+use axum::http::Method;
 use axum::routing::get;
 use axum::{Json, Router};
 use std::net::SocketAddrV4;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tower_http::cors::{Any, CorsLayer};
 
 pub(crate) struct HttpApi<S: StateService> {
     listener: TcpListener,
@@ -25,9 +27,14 @@ impl<S: StateService + 'static> HttpApi<S> {
     }
 
     pub async fn start(self) -> anyhow::Result<()> {
+        let cors = CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+            .allow_headers(Any);
         let router = Router::new()
             .route("/transactions", get(get_transactions::<S>))
-            .layer(axum::Extension(Arc::clone(&self.service)));
+            .layer(axum::Extension(Arc::clone(&self.service)))
+            .layer(cors);
 
         tracing::info!("API server starting");
         Ok(axum::serve(self.listener, router).await?)

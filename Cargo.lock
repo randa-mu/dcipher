@@ -4870,6 +4870,7 @@ dependencies = [
  "superalloy",
  "tokio",
  "tokio-stream",
+ "tower-http",
  "tracing",
  "url",
 ]
