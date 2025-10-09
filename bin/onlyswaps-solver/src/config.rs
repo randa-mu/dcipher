@@ -1,5 +1,6 @@
 use alloy::primitives::Address;
 use clap::Parser;
+use config::agent::AgentConfig;
 use serde::Deserialize;
 
 #[derive(Parser, Debug)]
@@ -14,18 +15,11 @@ pub(crate) struct CliArgs {
 
     #[arg(short = 's', long = "private-key", env = "SOLVER_PRIVATE_KEY")]
     pub private_key: String,
-
-    #[arg(
-        short = 'p',
-        long = "port",
-        env = "SOLVER_PORT",
-        default_value = "8080"
-    )]
-    pub port: u16,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AppConfig {
+    pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
 }
 

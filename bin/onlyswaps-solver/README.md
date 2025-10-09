@@ -13,15 +13,19 @@
 
 ## Configuration
 
-| Environment Variable | Mandatory? | Description                                         | Example                                  | Default                           |
-|----------------------|------------|-----------------------------------------------------|------------------------------------------|-----------------------------------|
-| `SOLVER_PRIVATE_KEY` | Yes        | A hex-encoded private key, with or without the `0x` | `0xdeadbeefdeadbeefdeadbeefdeadbeefdead` | —                                 |
-| `SOLVER_CONFIG_PATH` | No         | Path to your solver configuration TOML              | `/data/config.toml`                      | `~/.onlyswaps/solver/config.toml` |
-| `SOLVER_PORT`        | No         | Port on which to host the healthcheck endpoint      | `8080`                                   | `8080`                            |
+| Environment Variable | Mandatory? | Description                                         | Example                                  | Default                                  |
+|----------------------|------------|-----------------------------------------------------|------------------------------------------|------------------------------------------|
+| `SOLVER_PRIVATE_KEY` | Yes        | A hex-encoded private key, with or without the `0x` | `0xdeadbeefdeadbeefdeadbeefdeadbeefdead` | —                                        |
+| `SOLVER_CONFIG_PATH` | No         | Path to your solver configuration TOML              | `/data/config.toml`                      | `~/.config/onlyswaps/solver/config.toml` |
 
 ## Sample Config File
 
 ```toml
+[agent]
+healthcheck_listen_addr = "0.0.0.0"
+healthcheck_port = 8081
+log_level = "debug"
+log_json = true
 
 [[networks]]
 chain_id = 43113

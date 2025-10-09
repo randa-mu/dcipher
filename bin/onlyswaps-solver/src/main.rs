@@ -1,4 +1,3 @@
-mod api;
 mod app;
 mod config;
 mod executor;
@@ -7,11 +6,12 @@ mod network;
 mod solver;
 mod util;
 
-use crate::api::ApiServer;
 use crate::app::App;
 use crate::config::{AppConfig, CliArgs};
 use crate::network::Network;
 use ::config::file::load_config_file;
+use agent_utils::healthcheck_server::HealthcheckServer;
+use agent_utils::monitoring::init_monitoring;
 use anyhow::anyhow;
 use clap::Parser;
 use dotenv::dotenv;
@@ -22,9 +22,14 @@ async fn main() -> anyhow::Result<()> {
     let cli = CliArgs::parse();
     let config: AppConfig = load_config_file(cli.config_path)?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
+    let healthcheck_server = HealthcheckServer::new(
+        config.agent.healthcheck_listen_addr,
+        config.agent.healthcheck_port,
+    )
+    .await?;
+    init_monitoring(&config.agent)?;
 
     // start some healthcheck and signal handlers
-    let api_server = ApiServer::new(cli.port);
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
 
@@ -37,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
-        res = api_server.start() => {
+        res = healthcheck_server.start() => {
             match res {
                 Ok(_) => Err(anyhow!("http server stopped unexpectedly")),
                 Err(e) => Err(anyhow!("http server stopped unexpectedly: {}", e))

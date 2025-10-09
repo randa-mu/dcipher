@@ -1,3 +1,9 @@
+[agent]
+healthcheck_listen_addr = "0.0.0.0"
+healthcheck_port = 8081
+log_level = "debug"
+log_json = true
+
 [[networks]]
 chain_id = 43113
 rpc_url = "wss://avalanche-fuji-c-chain-rpc.publicnode.com"
