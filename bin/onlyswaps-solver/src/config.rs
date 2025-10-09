@@ -1,9 +1,6 @@
 use alloy::primitives::Address;
-use anyhow::Context;
 use clap::Parser;
 use serde::Deserialize;
-use shellexpand::tilde;
-use std::fs;
 
 #[derive(Parser, Debug)]
 pub(crate) struct CliArgs {
@@ -11,7 +8,7 @@ pub(crate) struct CliArgs {
         short = 'c',
         long = "config",
         env = "SOLVER_CONFIG_PATH",
-        default_value = "~/.config/onlyswaps/solver/config.json"
+        default_value = "~/.config/onlyswaps/solver/config.toml"
     )]
     pub config_path: String,
 
@@ -28,7 +25,7 @@ pub(crate) struct CliArgs {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub(crate) struct ConfigFile {
+pub(crate) struct AppConfig {
     pub networks: Vec<NetworkConfig>,
 }
 
@@ -38,18 +35,4 @@ pub(crate) struct NetworkConfig {
     pub rpc_url: String,
     pub tokens: Vec<Address>,
     pub router_address: Address,
-}
-
-pub(crate) fn load_config_file(cli: &CliArgs) -> anyhow::Result<ConfigFile> {
-    println!("loading config file {}", cli.config_path);
-
-    let contents = fs::read(tilde(&cli.config_path).into_owned())
-        .context(format!("failed to load config file at {}", cli.config_path))?;
-
-    let config = serde_json::from_slice(&contents).context(format!(
-        "failed to parse config file at {}",
-        cli.config_path
-    ))?;
-
-    Ok(config)
 }

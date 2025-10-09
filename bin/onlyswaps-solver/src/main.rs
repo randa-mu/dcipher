@@ -9,8 +9,9 @@ mod util;
 
 use crate::api::ApiServer;
 use crate::app::App;
-use crate::config::{CliArgs, ConfigFile, load_config_file};
+use crate::config::{AppConfig, CliArgs};
 use crate::network::Network;
+use ::config::file::load_config_file;
 use anyhow::anyhow;
 use clap::Parser;
 use dotenv::dotenv;
@@ -19,7 +20,7 @@ use dotenv::dotenv;
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
     let cli = CliArgs::parse();
-    let config: ConfigFile = load_config_file(&cli)?;
+    let config: AppConfig = load_config_file(cli.config_path)?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
 
     // start some healthcheck and signal handlers
