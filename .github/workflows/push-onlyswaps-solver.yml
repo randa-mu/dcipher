@@ -1,4 +1,4 @@
-name: push-docker
+name: push-onlyswaps-solver
 on:
   push:
     branches:
@@ -85,7 +85,7 @@ jobs:
             ghcr.io/randa-mu/onlyswaps-solver:${{ env.SHORT_SHA }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
-          file: ./Dockerfile
+          file: ./bin/onlyswaps-verifier/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:${{ steps.meta.outputs.version }}
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:master-latest
