@@ -9,6 +9,7 @@ anyhow.workspace = true
 async-trait.workspace = true
 axum.workspace = true
 clap.workspace = true
+config.workspace = true
 dotenv = "0.15.0"
 futures.workspace = true
 generated.workspace = true

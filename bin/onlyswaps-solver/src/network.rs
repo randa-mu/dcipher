@@ -56,12 +56,12 @@ impl Network<DynProvider> {
         println!("own addr: {own_addr}");
         let mut tokens = Vec::new();
         for token_addr in &config.tokens {
-            let contract = ERC20FaucetToken::new(token_addr.parse()?, provider.clone());
+            let contract = ERC20FaucetToken::new(*token_addr, provider.clone());
             tokens.push(contract);
         }
         Ok(Self {
             tokens,
-            router: RouterInstance::new(config.router_address.parse()?, provider.clone()),
+            router: RouterInstance::new(config.router_address, provider.clone()),
             chain_id,
             provider,
             own_addr,

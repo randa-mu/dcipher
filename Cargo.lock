@@ -4868,6 +4868,7 @@ dependencies = [
  "async-trait",
  "axum",
  "clap",
+ "config",
  "dotenv",
  "futures",
  "generated",
