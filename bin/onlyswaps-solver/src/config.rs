@@ -9,7 +9,7 @@ pub(crate) struct CliArgs {
         short = 'c',
         long = "config",
         env = "SOLVER_CONFIG_PATH",
-        default_value = "~/.solver/config.json"
+        default_value = "~/.config/onlyswaps/solver/config.json"
     )]
     pub config_path: String,
 
