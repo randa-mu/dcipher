@@ -19,7 +19,7 @@ use dotenv::dotenv;
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
     let cli = CliArgs::parse();
-    let config: ConfigFile = load_config_file(&cli);
+    let config: ConfigFile = load_config_file(&cli)?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
 
     // start some healthcheck and signal handlers

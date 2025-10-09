@@ -1,3 +1,5 @@
+use alloy::primitives::Address;
+use anyhow::Context;
 use clap::Parser;
 use serde::Deserialize;
 use shellexpand::tilde;
@@ -34,19 +36,20 @@ pub(crate) struct ConfigFile {
 pub(crate) struct NetworkConfig {
     pub chain_id: u64,
     pub rpc_url: String,
-    pub tokens: Vec<String>,
-    pub router_address: String,
+    pub tokens: Vec<Address>,
+    pub router_address: Address,
 }
 
-pub(crate) fn load_config_file(cli: &CliArgs) -> ConfigFile {
+pub(crate) fn load_config_file(cli: &CliArgs) -> anyhow::Result<ConfigFile> {
     println!("loading config file {}", cli.config_path);
-    match fs::read(tilde(&cli.config_path).into_owned()) {
-        Ok(contents) => serde_json::from_slice(&contents)
-            .unwrap_or_else(|_| panic!("failed to parse config file at {}", cli.config_path)),
-        Err(err) => panic!(
-            "failed to read config file at {}: {:?}",
-            cli.config_path,
-            err.to_string()
-        ),
-    }
+
+    let contents = fs::read(tilde(&cli.config_path).into_owned())
+        .context(format!("failed to load config file at {}", cli.config_path))?;
+
+    let config = serde_json::from_slice(&contents).context(format!(
+        "failed to parse config file at {}",
+        cli.config_path
+    ))?;
+
+    Ok(config)
 }
