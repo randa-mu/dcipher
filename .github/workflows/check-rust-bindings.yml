@@ -7,7 +7,7 @@ on:
 
 jobs:
   check-rust-bindings:
-    name: Build and test rust crates
+    name: Check rust bindings
     runs-on: ["ubuntu-latest"]
     steps:
       - name: Checkout code
