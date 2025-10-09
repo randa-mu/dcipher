@@ -158,7 +158,7 @@ impl StateMachine {
             recipient: params.recipient,
             amount_in: calculate_amount_in(&params).into(),
             amount_out: params.amountOut.into(),
-            solver_fee: params.solverFee.into(),
+            solver_fee: calculate_solver_fee(&params).into(),
             verification_fee: params.verificationFee.into(),
             solver: Some(receipt.solver),
             state: SwapState::Fulfilled.to_string(),
@@ -171,8 +171,14 @@ impl StateMachine {
     }
 }
 
+// `solverFee` in the params is actually the total fee, so we can just add these together
 fn calculate_amount_in(params: &SwapRequestParameters) -> U256 {
-    params.amountOut + params.solverFee + params.verificationFee
+    params.amountOut + params.solverFee
+}
+
+// `solverFee` in the params is actually the total fee passed by the user
+fn calculate_solver_fee(params: &SwapRequestParameters) -> U256 {
+    params.solverFee - params.verificationFee
 }
 
 fn now() -> anyhow::Result<U256> {
