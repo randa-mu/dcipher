@@ -33,7 +33,7 @@ libp2p = { workspace = true }
 # api / rpc
 axum.workspace = true
 tonic.workspace = true
-tower-http = { version = "0.6", features = ["trace"] }
+tower-http = { workspace = true, features = ["trace"] }
 
 # serde
 prost.workspace = true
@@ -48,7 +48,7 @@ bytes.workspace = true
 clap = { workspace = true }
 figment = { workspace = true, features = ["toml", "env"] }
 hex = { workspace = true }
-config.workspace =  true
+config.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
