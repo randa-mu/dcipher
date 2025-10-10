@@ -169,6 +169,7 @@ fn parse_request_id(field: &EventFieldData) -> anyhow::Result<FixedBytes<32>> {
     Ok(ret)
 }
 
+#[derive(Debug)]
 pub(crate) struct StateUpdate {
     pub chain_id: u64,
     pub request_id: FixedBytes<32>,

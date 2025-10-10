@@ -50,6 +50,10 @@ impl StateMachine {
     // if we had perfect consumption of events, we could simply mutate transactions, but we can't be
     // sure of that so we rewrite the full tx details on each event just to ensure a full dataset
     pub async fn apply_state(&mut self, update: StateUpdate) -> anyhow::Result<AppState> {
+        tracing::debug!(
+            update = ?update,
+            "applying state update"
+        );
         let StateUpdate {
             chain_id,
             request_id,

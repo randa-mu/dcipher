@@ -98,12 +98,16 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             match relay {
                 Ok(_) => tracing::info!(
                     amount = ?trade.swap_amount,
-                    chain_id = ?trade.dest_chain_id,
+                    src_chain_id = ?trade.src_chain_id,
+                    dest_chain_id = ?trade.dest_chain_id,
+                    request_id = ?trade.request_id,
                     "successfully traded",
                 ),
                 Err(e) => tracing::error!(
                     amount = ?trade.swap_amount,
-                    chain_id = ?trade.dest_chain_id,
+                    src_chain_id = ?trade.src_chain_id,
+                    dest_chain_id = ?trade.dest_chain_id,
+                    request_id = ?trade.request_id,
                     error = ?e,
                     "error trading",
                 ),
