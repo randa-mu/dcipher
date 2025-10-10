@@ -208,12 +208,22 @@ impl<P: Provider> Network<P> {
             .send()
             .await?;
 
-        let tx_hash = tx
+        tracing::info!(
+            request_id = verified_swap.request_id,
+            tx_hash = tx.tx_hash().to_string(),
+            "swap verification submitting"
+        );
+        let _ = tx
             .with_required_confirmations(1)
             .with_timeout(Some(self.timeout_config.request_timeout))
             .watch()
             .await?;
-        tracing::info!(tx_hash = tx_hash.to_string(), "verified swap");
+
+        tracing::info!(
+            request_id = verified_swap.request_id,
+            tx_hash = tx.tx_hash().to_string(),
+            "swap verification finalised"
+        );
 
         Ok(())
     }
