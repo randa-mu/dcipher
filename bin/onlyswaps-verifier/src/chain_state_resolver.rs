@@ -27,7 +27,7 @@ impl ChainStateResolver {
     ) -> anyhow::Result<ChainState> {
         let transfer_receipt = self
             .chain
-            .fetch_swap_receipt(verification_job.chain_id, verification_job.request_id)
+            .fetch_swap_receipt(verification_job.dest_chain_id, verification_job.request_id)
             .await?;
         tracing::trace!("swap receipt received from dest chain");
 

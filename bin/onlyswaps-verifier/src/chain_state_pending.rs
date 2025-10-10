@@ -32,7 +32,7 @@ pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
                 // then we insert the new route
                 out.insert(RouteStatus {
                     route: Verification {
-                        chain_id: state.chain_id,
+                        dest_chain_id: state.chain_id,
                         request_id,
                     },
                     status: Status::Verified,
@@ -50,7 +50,7 @@ pub(crate) fn extract_pending_verifications<ID: Copy + Eq + Hash>(
                 }
 
                 let route = Verification {
-                    chain_id: state.chain_id,
+                    dest_chain_id: state.chain_id,
                     request_id,
                 };
                 out.insert(RouteStatus {
@@ -90,7 +90,7 @@ pub type RequestId = FixedBytes<32>;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Verification<ID> {
-    pub chain_id: u64,
+    pub dest_chain_id: u64,
     pub request_id: ID,
 }
 
@@ -119,7 +119,7 @@ impl TryFrom<Vec<EventFieldData>> for Verification<FixedBytes<32>> {
             .ok_or(anyhow!("received event with invalid `dest_chain_id`"))?;
 
         Ok(Verification {
-            chain_id: dest_chain_id.try_into()?,
+            dest_chain_id: dest_chain_id.try_into()?,
             request_id: FixedBytes(request_id.try_into()?),
         })
     }
@@ -145,7 +145,7 @@ mod test {
         assert_eq!(
             pending,
             vec![Verification {
-                chain_id: 1,
+                dest_chain_id: 1,
                 request_id: 1
             }]
         );
@@ -170,11 +170,11 @@ mod test {
 
         assert_that!(pending).contains_all_of(&vec![
             &Verification {
-                chain_id: 1,
+                dest_chain_id: 1,
                 request_id: 1,
             },
             &Verification {
-                chain_id: 2,
+                dest_chain_id: 2,
                 request_id: 2,
             },
         ]);
@@ -241,11 +241,11 @@ mod test {
 
         assert_that!(pending).contains_all_of(&vec![
             &Verification {
-                chain_id: 1,
+                dest_chain_id: 1,
                 request_id: 1,
             },
             &Verification {
-                chain_id: 2,
+                dest_chain_id: 2,
                 request_id: 1,
             },
         ]);
@@ -275,19 +275,19 @@ mod test {
 
         assert_that!(pending).contains_all_of(&vec![
             &Verification {
-                chain_id: 1,
+                dest_chain_id: 1,
                 request_id: 2,
             },
             &Verification {
-                chain_id: 1,
+                dest_chain_id: 1,
                 request_id: 3,
             },
             &Verification {
-                chain_id: 2,
+                dest_chain_id: 2,
                 request_id: 3,
             },
             &Verification {
-                chain_id: 3,
+                dest_chain_id: 3,
                 request_id: 5,
             },
         ]);

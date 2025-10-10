@@ -122,7 +122,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     // - submit
     while let Some(verification) = rx_verifications.recv().await {
         tracing::info!(
-            chain_id = verification.chain_id,
+            dest_chain_id = verification.dest_chain_id,
             request_id = verification.request_id.to_string(),
             "attempting verification"
         );
@@ -140,6 +140,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
                     .expect("failed to send on retry channel");
             }
             Ok(valid_state) => {
+                tracing::debug!(state = ?valid_state, "evaluation successful");
                 let solver = valid_state.transfer_receipt.solver;
                 let src_chain_id = valid_state.swap_params.srcChainId;
                 let signature = signer
@@ -156,7 +157,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
                 match network_bus.submit_verification(&verified_swap).await {
                     Err(e) => {
                         tracing::error!(
-                            chain_id = verification.chain_id,
+                            chain_id = verification.dest_chain_id,
                             request_id = verification.request_id.to_string(),
                             error = e.to_string(),
                             "verification returned an error"
@@ -164,7 +165,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
                     }
                     Ok(_) => {
                         tracing::info!(
-                            chain_id = verification.chain_id,
+                            chain_id = verification.dest_chain_id,
                             request_id = verification.request_id.to_string(),
                             "verification completed successfully"
                         );
