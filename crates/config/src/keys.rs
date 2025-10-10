@@ -43,7 +43,7 @@ impl<'de, Fr: PrimeField> Deserialize<'de> for SecretKey<Fr> {
         use serde::de::Error;
 
         let sk_str = String::deserialize(deserializer)?;
-        try_decode_secret_key_hex_and_b64(&sk_str).map_err(Error::custom)
+        SecretKey::from_str(&sk_str).map_err(D::Error::custom)
     }
 }
 
@@ -51,24 +51,11 @@ impl<Fr: PrimeField> FromStr for SecretKey<Fr> {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        try_decode_secret_key_hex_and_b64(s)
+        let sk_bytes = BASE64_STANDARD
+            .decode(s)
+            .map_err(|e| anyhow!("secret key wasn't hex or base64: {}", e))?;
+        Ok(SecretKey(Fr::from_be_bytes_mod_order(&sk_bytes)))
     }
-}
-
-fn try_decode_secret_key_hex_and_b64<Fr: PrimeField>(
-    sk_str: &str,
-) -> anyhow::Result<SecretKey<Fr>> {
-    // technicall base64 strings can start with 0x, so we check the length as well
-    let sk_bytes = if &sk_str[0..2] == "0x" && sk_str.len() == 67 {
-        hex::decode(&sk_str[2..]).map_err(|e| anyhow!("secret key wasn't valid hex: {}", e))
-    } else {
-        BASE64_STANDARD
-            .decode(sk_str)
-            .or_else(|_| hex::decode(&sk_str[2..]))
-            .map_err(|e| anyhow!("secret key wasn't hex or base64: {}", e))
-    }?;
-
-    Ok(SecretKey(Fr::from_be_bytes_mod_order(&sk_bytes)))
 }
 
 pub type Bn254SecretKey = SecretKey<ark_bn254::Fr>;
