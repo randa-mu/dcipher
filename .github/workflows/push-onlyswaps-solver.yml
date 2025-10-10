@@ -78,15 +78,15 @@ jobs:
         name: Tag Docker image and push to Google Artifact Registry
         uses: docker/build-push-action@v6
         with:
-          push: ${{ github.ref == 'refs/heads/master' }}
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ghcr.io/randa-mu/onlyswaps-solver:master-latest
+            ghcr.io/randa-mu/onlyswaps-solver:main-latest
             ghcr.io/randa-mu/onlyswaps-solver:${{ env.SHORT_SHA }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/onlyswaps-verifier/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:master-latest
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:main-latest
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:${{ steps.meta.outputs.version }},mode=max
