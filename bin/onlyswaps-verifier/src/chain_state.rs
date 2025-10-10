@@ -209,19 +209,19 @@ impl<P: Provider> Network<P> {
             .await?;
 
         tracing::info!(
-            request_id = verified_swap.request_id,
+            request_id = ?verified_swap.request_id,
             tx_hash = tx.tx_hash().to_string(),
             "swap verification submitting"
         );
-        let _ = tx
+        let tx_hash = tx
             .with_required_confirmations(1)
             .with_timeout(Some(self.timeout_config.request_timeout))
             .watch()
             .await?;
 
         tracing::info!(
-            request_id = verified_swap.request_id,
-            tx_hash = tx.tx_hash().to_string(),
+            request_id = ?verified_swap.request_id,
+            tx_hash = tx_hash.to_string(),
             "swap verification finalised"
         );
 
