@@ -13,7 +13,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-RUN cargo build --release
+RUN cargo build --release -p onlyswaps-solver
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
