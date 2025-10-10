@@ -1,8 +1,8 @@
-use alloy::primitives::{Address, U256};
+use alloy::primitives::{Address, FixedBytes, U256};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use std::collections::HashMap;
 
-pub type RequestId = [u8; 32];
+pub type RequestId = FixedBytes<32>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChainState {
     pub native_balance: U256,
