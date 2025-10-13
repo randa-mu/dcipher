@@ -66,7 +66,7 @@ impl TryInto<FixedBytes<32>> for EthPrivateKey {
         match self {
             EthPrivateKey::Path(path) => {
                 let contents = fs::read_to_string(path)?;
-                Ok(FixedBytes::from_str(&contents.trim())?)
+                Ok(FixedBytes::from_str(contents.trim())?)
             }
             EthPrivateKey::Value(s) => Ok(s),
         }
