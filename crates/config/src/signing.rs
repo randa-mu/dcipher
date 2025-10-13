@@ -49,22 +49,19 @@ impl<G: AffineRepr + PointDeserializeCompressed> TryFrom<CommitteeConfigFiles>
             members.push(node.try_into()?);
         }
 
-        // the `t_reconstruction` used in the DKG is actually an inverse of the
-        // threshold we use in the signers, so we take it away from `n` to get
-        // our usable threshold
-        let n = value.group.n.get();
-        let inverse_t = value.group.t_reconstruction.get();
-        let threshold = n - inverse_t;
-        if threshold < 1 {
-            anyhow::bail!("can't have a signing threshold less than 1");
-        }
+        // the `t_reconstruction` used in the DKG is actually 1 less than the
+        // threshold we use in the signers, so we modify it as follows
+        let signing_threshold = value
+            .group
+            .t_reconstruction
+            .checked_add(1)
+            .expect("t_reconstruction can be at most 2^16-2");
 
         Ok(Self {
             member_id: value.member_id,
             secret_key: SecretKey::from_str(&value.adkg_secret.sk)?,
             n: value.group.n.try_into()?,
-            signing_threshold: NonZeroU16::new(threshold as u16)
-                .expect("we already check the value is greater than 0 above"),
+            signing_threshold: signing_threshold.try_into()?,
             members,
         })
     }
