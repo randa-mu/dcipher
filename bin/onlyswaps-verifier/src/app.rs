@@ -17,7 +17,7 @@ impl App {
         // the `control_plane` provides the app phases each request goes through; consider it the
         // inner circle of the domain-driven-design nested circles.
         // Each validation goes through the following phases:
-        // - ingest                            (event appears from the chain)
+        // - receive                           (event appears from the chain)
         // - resolve                           (we resolve the state relating to that requestId)
         // - evaluate                          (we evaluate the resolved state to see if it's a complete swap)
         // - sign                              (we sign the necessary parameters of verified swaps)
