@@ -1,6 +1,6 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
-use crate::config::TimeoutConfig;
-use crate::signing::VerifiedSwap;
+use crate::config::{AppConfig, TimeoutConfig};
+use crate::signing::SignedVerification;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
@@ -33,16 +33,14 @@ pub(crate) struct Network<P> {
 }
 
 impl NetworkBus<DynProvider> {
-    pub async fn new(
-        eth_private_key: impl Into<Arc<PrivateKeySigner>>,
-        network_configs: &[NetworkConfig],
-        timeout_config: &TimeoutConfig,
-    ) -> anyhow::Result<Self> {
-        let private_key = eth_private_key.into();
+    pub async fn new(app_config: &AppConfig) -> anyhow::Result<Self> {
+        let private_key = PrivateKeySigner::from_slice(app_config.eth_private_key.as_slice())?;
+        let private_key = Arc::new(private_key);
         let mut networks = HashMap::new();
 
-        for config in network_configs.iter() {
-            let network = Network::new(private_key.clone(), config, timeout_config.clone()).await?;
+        for config in app_config.networks.iter() {
+            let network =
+                Network::new(private_key.clone(), config, app_config.timeout.clone()).await?;
             networks.insert(config.chain_id, network);
         }
 
@@ -84,7 +82,7 @@ impl NetworkBus<DynProvider> {
 
     pub(crate) async fn submit_verification(
         &self,
-        verified_swap: &VerifiedSwap,
+        verified_swap: &SignedVerification,
     ) -> anyhow::Result<()> {
         let chain_id: u64 = verified_swap.src_chain_id.try_into()?;
         let transport = self.networks.get(&chain_id).ok_or(anyhow!(
@@ -98,11 +96,10 @@ impl NetworkBus<DynProvider> {
 
 impl Network<DynProvider> {
     pub async fn new(
-        signer: impl Into<Arc<PrivateKeySigner>>,
+        signer: Arc<PrivateKeySigner>,
         config: &NetworkConfig,
         timeout_config: TimeoutConfig,
     ) -> anyhow::Result<Self> {
-        let signer = signer.into();
         let url = config.rpc_url.clone();
         let own_addr = signer.address();
         let provider = ProviderBuilder::new()
@@ -178,7 +175,10 @@ impl<P: Provider> Network<P> {
             .await?)
     }
 
-    pub async fn submit_verified_swap(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
+    pub async fn submit_verified_swap(
+        &self,
+        verified_swap: &SignedVerification,
+    ) -> anyhow::Result<()> {
         // nodes can be configured not to write the signature to save gas
         if !self.should_write {
             return Ok(());
@@ -196,7 +196,7 @@ impl<P: Provider> Network<P> {
         }
     }
 
-    async fn rebalance(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
+    async fn rebalance(&self, verified_swap: &SignedVerification) -> anyhow::Result<()> {
         let tx = self
             .router
             .rebalanceSolver(
