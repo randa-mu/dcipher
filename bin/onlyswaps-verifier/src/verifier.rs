@@ -85,7 +85,7 @@ async fn run_onlyswaps(app_config: &AppConfig) -> anyhow::Result<()> {
     tracing::info!(
         multiaddr = app_config.listen_addr.to_string(),
         n = app_config.committee_config.n,
-        t = app_config.committee_config.t,
+        signing_threshold = app_config.committee_config.signing_threshold,
         "threshold signer created"
     );
 

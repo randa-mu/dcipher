@@ -15,10 +15,19 @@ use utils::serialize::point::PointSerializeCompressed;
     deserialize = "G: PointDeserializeCompressed"
 ))]
 pub struct CommitteeConfig<G: AffineRepr> {
+    // this node's position in the `members` Vec
     pub member_id: NonZeroU16,
+
+    // this node's keyshare created in the ADKG
     pub secret_key: SecretKey<G::ScalarField>,
-    pub t: NonZeroU16,
+
+    // count of nodes in the group. It should basically always be the same as `members.len()`
     pub n: NonZeroU16,
+
+    // signing_threshold is number of partial signatures required to reconstruct a group signature
+    pub signing_threshold: NonZeroU16,
+
+    // all the details we need to contact and verify messages from other nodes
     pub members: Vec<MemberConfig<G>>,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -40,11 +49,22 @@ impl<G: AffineRepr + PointDeserializeCompressed> TryFrom<CommitteeConfigFiles>
             members.push(node.try_into()?);
         }
 
+        // the `t_reconstruction` used in the DKG is actually an inverse of the
+        // threshold we use in the signers, so we take it away from `n` to get
+        // our usable threshold
+        let n = value.group.n.get();
+        let inverse_t = value.group.t_reconstruction.get();
+        let threshold = n - inverse_t;
+        if threshold < 1 {
+            anyhow::bail!("can't have a signing threshold less than 1");
+        }
+
         Ok(Self {
             member_id: value.member_id,
             secret_key: SecretKey::from_str(&value.adkg_secret.sk)?,
-            t: value.group.t.try_into()?,
             n: value.group.n.try_into()?,
+            signing_threshold: NonZeroU16::new(threshold as u16)
+                .expect("we already check the value is greater than 0 above"),
             members,
         })
     }
