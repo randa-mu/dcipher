@@ -122,12 +122,13 @@ impl ChainStateProvider for Network<DynProvider> {
         let unfulfilled = self.router.getUnfulfilledSolverRefunds().call().await?;
         let reqs = unfulfilled
             .into_iter()
-            .map(async |id| -> anyhow::Result<Transfer> {
-                let params = self.router.getSwapRequestParameters(id).call().await?;
-                Ok(Transfer {
-                    request_id: *id,
-                    params,
-                })
+            .map(async |request_id| -> anyhow::Result<Transfer> {
+                let params = self
+                    .router
+                    .getSwapRequestParameters(request_id)
+                    .call()
+                    .await?;
+                Ok(Transfer { request_id, params })
             });
         let transfers = try_join_all(reqs).await?;
 

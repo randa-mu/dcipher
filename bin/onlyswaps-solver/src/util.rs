@@ -16,7 +16,7 @@ pub(crate) mod test {
         File::open("/dev/urandom")
             .and_then(|mut f| f.read_exact(&mut buf))
             .expect("failed to read random bytes");
-        buf
+        buf.into()
     }
 
     pub fn generate_address() -> Address {

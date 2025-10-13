@@ -112,11 +112,11 @@ where
                 #[cfg(not(feature = "rayon"))]
                 let iter = reqs.into_iter().zip(stored_reqs.iter());
                 let (partials, reqs): (Vec<_>, Vec<_>) = iter.filter_map(|(req, stored_req)| {
-                    tracing::info!(msg = ?req.m, app = ?req.args.app(), alg = ?req.alg, "Received new message to sign");
+                    tracing::info!(msg = %LogBytes(&req.m), app = ?req.args.app(), alg = ?req.alg, "Received new message to sign");
                     match self.sign(&req.m, &stored_req.dst, &req.alg) {
                         Ok(sig) => Some((sig, req)),
                         Err(e) => {
-                            tracing::error!(error = ?e, msg = ?req.m, "Failed to sign message.");
+                            tracing::error!(error = ?e, msg = %LogBytes(&req.m), "Failed to sign message.");
                             None
                         }
                     }

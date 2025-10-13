@@ -80,7 +80,7 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
                 let tx = router
                     .relayTokens(
                         self.own_address,
-                        trade.request_id.into(),
+                        trade.request_id,
                         trade.sender_addr,
                         trade.recipient_addr,
                         trade.token_in_addr,
@@ -100,7 +100,7 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
                     amount = ?trade.swap_amount,
                     src_chain_id = ?trade.src_chain_id,
                     dest_chain_id = ?trade.dest_chain_id,
-                    request_id = ?trade.request_id,
+                    request_id = %trade.request_id,
                     "successfully traded",
                 ),
                 Err(e) => tracing::error!(
