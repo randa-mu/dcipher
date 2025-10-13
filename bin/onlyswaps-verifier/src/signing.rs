@@ -85,7 +85,7 @@ impl NetworkedSigner<BlsPairingSigner<ark_bn254::Bn254>> {
         let signer = BlsThresholdSigner::new(
             pairing_signer,
             config.committee_config.n.get(),
-            config.committee_config.t.get(),
+            config.committee_config.signing_threshold.get(),
             config.committee_config.member_id.get(),
             HashMap::default(), // no keys on g1
             config
