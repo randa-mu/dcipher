@@ -22,10 +22,14 @@ where
             control_plane: control_plane.into(),
         }
     }
-    pub async fn start(
+
+    // `run` spawns a coroutine for each of the steps of processing, and each
+    // request also gets its own sub(?)-coroutine to ensure that no slow RPC or
+    // dodgy request can block the pipeline for other valid ones
+    pub async fn run(
         &self,
         retry_tx: RetrySender,
-        event_stream: Pin<Box<impl Stream<Item = Verification<RequestId>> + Send + 'static>>,
+        mut event_stream: Pin<Box<impl Stream<Item = Verification<RequestId>> + Send + 'static>>,
     ) {
         tracing::info!("starting channel manager");
         let mut tasks = JoinSet::new();
@@ -43,8 +47,7 @@ where
         {
             let tx_verifications = tx_verifications.clone();
             tasks.spawn(async move {
-                let mut stream = event_stream;
-                while let Some(verification) = stream.next().await {
+                while let Some(verification) = event_stream.next().await {
                     tx_verifications
                         .send(verification)
                         .expect("failed to send verification on channel");
@@ -52,8 +55,8 @@ where
             });
         }
 
-       // 'resolve' step
-       {
+        // 'resolve' step
+        {
             let control_plane = control_plane.clone();
             let tx_resolve = tx_resolve.clone();
             let tx_err = tx_err.clone();
@@ -174,7 +177,9 @@ where
         }
 
         // join all the things so we don't cede control back to the caller
-        tracing::info!("tasks all started");
-        tasks.join_all().await;
+        tracing::info!("all tasks started");
+        if tasks.join_next().await.is_some() {
+            panic!("a task manager task ended, but they should run forever")
+        }
     }
 }

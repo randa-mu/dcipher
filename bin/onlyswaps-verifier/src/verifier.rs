@@ -13,7 +13,6 @@ pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
     )
     .await?;
     init_monitoring(&app_config.agent)?;
-    let app = App::new(&app_config).await?;
 
     // listen for OS signals or any of the tasks closing and shut down either gracefully
     // or noisily with errors
@@ -31,7 +30,7 @@ pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
            }
         }
 
-        res = app.start() => {
+        res = App::start(&app_config) => {
            match res {
                 Ok(()) => anyhow::bail!("swap loop stopped unexpectedly without an error"),
                 Err(e) => anyhow::bail!("swap loop stopped unexpectedly: {}", e),

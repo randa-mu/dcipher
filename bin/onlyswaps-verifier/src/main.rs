@@ -2,6 +2,7 @@ mod chain_state;
 mod chain_state_pending;
 mod signing;
 
+mod app;
 mod chain_state_resolver;
 mod channel_manager;
 mod cli;
@@ -12,7 +13,6 @@ mod retry_runtime;
 mod transport;
 mod verification_events;
 mod verifier;
-mod app;
 
 use crate::cli::{Cli, Commands};
 use crate::verifier::start_verifier;

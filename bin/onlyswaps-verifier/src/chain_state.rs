@@ -1,5 +1,5 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
-use crate::config::TimeoutConfig;
+use crate::config::{AppConfig, TimeoutConfig};
 use crate::signing::SignedVerification;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
@@ -33,16 +33,14 @@ pub(crate) struct Network<P> {
 }
 
 impl NetworkBus<DynProvider> {
-    pub async fn new(
-        eth_private_key: impl Into<Arc<PrivateKeySigner>>,
-        network_configs: &[NetworkConfig],
-        timeout_config: &TimeoutConfig,
-    ) -> anyhow::Result<Self> {
-        let private_key = eth_private_key.into();
+    pub async fn new(app_config: &AppConfig) -> anyhow::Result<Self> {
+        let private_key = PrivateKeySigner::from_slice(app_config.eth_private_key.as_slice())?;
+        let private_key = Arc::new(private_key);
         let mut networks = HashMap::new();
 
-        for config in network_configs.iter() {
-            let network = Network::new(private_key.clone(), config, timeout_config.clone()).await?;
+        for config in app_config.networks.iter() {
+            let network =
+                Network::new(private_key.clone(), config, app_config.timeout.clone()).await?;
             networks.insert(config.chain_id, network);
         }
 
@@ -98,11 +96,10 @@ impl NetworkBus<DynProvider> {
 
 impl Network<DynProvider> {
     pub async fn new(
-        signer: impl Into<Arc<PrivateKeySigner>>,
+        signer: Arc<PrivateKeySigner>,
         config: &NetworkConfig,
         timeout_config: TimeoutConfig,
     ) -> anyhow::Result<Self> {
-        let signer = signer.into();
         let url = config.rpc_url.clone();
         let own_addr = signer.address();
         let provider = ProviderBuilder::new()
