@@ -260,7 +260,7 @@ where
     let signer = BlsThresholdSigner::new(
         signer,
         committee_config.n.get(),
-        committee_config.t.get(),
+        committee_config.signing_threshold.get(),
         committee_config.member_id.get(),
         Default::default(),
         pks_g2.into_iter().collect(),
