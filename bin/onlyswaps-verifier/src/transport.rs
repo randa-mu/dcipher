@@ -40,7 +40,7 @@ mod test {
         let committee_config = CommitteeConfig {
             member_id: NonZeroU16::new(1).unwrap(),
             secret_key: Bn254SecretKey::from_str(
-                "0x2800cafe7d54bcc5cc21d37a2e4e67a49654fc7ddf16bf616e15091962426f8d",
+                "FX9qqpEbUKJJ6hnG2G9lxr5t1Bw4XWb2R+recM+ZV6w=",
             )?,
             t: NonZeroU16::new(1).unwrap(),
             n: NonZeroU16::new(1).unwrap(),
