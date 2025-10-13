@@ -1,6 +1,6 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
 use crate::config::TimeoutConfig;
-use crate::signing::VerifiedSwap;
+use crate::signing::SignedVerification;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
@@ -84,7 +84,7 @@ impl NetworkBus<DynProvider> {
 
     pub(crate) async fn submit_verification(
         &self,
-        verified_swap: &VerifiedSwap,
+        verified_swap: &SignedVerification,
     ) -> anyhow::Result<()> {
         let chain_id: u64 = verified_swap.src_chain_id.try_into()?;
         let transport = self.networks.get(&chain_id).ok_or(anyhow!(
@@ -178,7 +178,10 @@ impl<P: Provider> Network<P> {
             .await?)
     }
 
-    pub async fn submit_verified_swap(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
+    pub async fn submit_verified_swap(
+        &self,
+        verified_swap: &SignedVerification,
+    ) -> anyhow::Result<()> {
         // nodes can be configured not to write the signature to save gas
         if !self.should_write {
             return Ok(());
@@ -196,7 +199,7 @@ impl<P: Provider> Network<P> {
         }
     }
 
-    async fn rebalance(&self, verified_swap: &VerifiedSwap) -> anyhow::Result<()> {
+    async fn rebalance(&self, verified_swap: &SignedVerification) -> anyhow::Result<()> {
         let tx = self
             .router
             .rebalanceSolver(

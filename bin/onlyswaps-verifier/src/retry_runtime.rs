@@ -46,14 +46,14 @@ impl RetryScheduler {
         }
     }
 
-    pub fn tx(&self) -> Enqueuer {
-        Enqueuer {
+    pub fn tx(&self) -> RetrySender {
+        RetrySender {
             tx: self.tx.clone(),
             retry_duration: self.retry_duration,
         }
     }
 
-    pub fn stream(&mut self) -> impl Stream<Item = Verification<FixedBytes<32>>> {
+    pub fn into_stream(mut self) -> impl Stream<Item = Verification<FixedBytes<32>>> {
         stream! {
             loop {
                 let duration_until_retry = self.to_retry.peek()
@@ -79,11 +79,12 @@ impl RetryScheduler {
     }
 }
 
-pub struct Enqueuer {
+#[derive(Clone)]
+pub struct RetrySender {
     tx: Sender<Reverse<Retry>>,
     retry_duration: Duration,
 }
-impl Enqueuer {
+impl RetrySender {
     pub async fn send(&self, verification: Verification<FixedBytes<32>>) -> anyhow::Result<()> {
         let earliest_time = Utc::now().add(self.retry_duration).timestamp();
         self.tx

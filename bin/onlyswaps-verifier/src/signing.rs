@@ -18,7 +18,7 @@ pub struct OnlySwapsSigner<S> {
 }
 
 #[derive(Clone, Debug)]
-pub struct VerifiedSwap {
+pub struct SignedVerification {
     pub src_chain_id: U256,
     pub request_id: FixedBytes<32>,
     pub solver: Address,

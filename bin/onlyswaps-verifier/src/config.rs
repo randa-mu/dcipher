@@ -64,7 +64,10 @@ impl TryInto<FixedBytes<32>> for EthPrivateKey {
 
     fn try_into(self) -> Result<FixedBytes<32>, Self::Error> {
         match self {
-            EthPrivateKey::Path(path) => Ok(FixedBytes::from_str(&fs::read_to_string(path)?)?),
+            EthPrivateKey::Path(path) => {
+                let contents = fs::read_to_string(path)?;
+                Ok(FixedBytes::from_str(contents.trim())?)
+            }
             EthPrivateKey::Value(s) => Ok(s),
         }
     }

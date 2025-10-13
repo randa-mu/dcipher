@@ -88,7 +88,7 @@ enum Status {
 }
 pub type RequestId = FixedBytes<32>;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Verification<ID> {
     pub dest_chain_id: u64,
     pub request_id: ID,
