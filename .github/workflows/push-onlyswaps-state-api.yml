@@ -16,7 +16,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: "ubuntu-latest"
+    runs-on: "randamu-self-hosted-default"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

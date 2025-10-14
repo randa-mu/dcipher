@@ -8,7 +8,7 @@ on:
 jobs:
   check-rust-bindings:
     name: Check rust bindings
-    runs-on: ["ubuntu-latest"]
+    runs-on: ["randamu-self-hosted-default"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
