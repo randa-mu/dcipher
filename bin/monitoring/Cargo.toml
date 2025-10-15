@@ -1,0 +1,23 @@
+[package]
+name = "monitoring"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+agent-utils.workspace = true
+anyhow.workspace = true
+alloy = { workspace = true, features = ["default", "provider-ws", "serde"] }
+axum.workspace = true
+clap = { workspace = true, features = ["derive"] }
+config.workspace = true
+futures.workspace = true
+generated.workspace = true
+humantime-serde = "1.1.1"
+prometheus = "0.14.0"
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
+toml.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+speculoos = "0.13.0"
