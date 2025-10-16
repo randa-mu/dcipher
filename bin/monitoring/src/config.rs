@@ -11,7 +11,7 @@ pub(crate) struct CliArgs {
         short = 'c',
         long = "config",
         env = "MONITORING_CONFIG",
-        default_value = "~/.config/monitoring/config.toml"
+        default_value = "~/.config/dcipher/monitoring/config.toml"
     )]
     pub config_path: String,
 }
