@@ -29,7 +29,6 @@ impl Network<DynProvider> {
     pub async fn new_readonly(config: &NetworkConfig) -> anyhow::Result<Self> {
         let rpc_url = config.rpc_url.clone();
         let provider = ProviderBuilder::new()
-            .with_gas_estimation()
             .connect_ws(WsConnect::new(rpc_url))
             .await?
             .erased();
