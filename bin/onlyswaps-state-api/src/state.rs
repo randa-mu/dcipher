@@ -58,6 +58,7 @@ impl StateMachine {
             chain_id,
             request_id,
             state_type,
+            source: _source,
         } = update;
 
         // fulfilled requests need to go to the dest chain, so to reduce duplicate work
