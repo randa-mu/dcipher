@@ -10,7 +10,7 @@ pub mod chain;
 pub mod token;
 
 /// A configuration used by the onlyswaps client
-pub struct OnlyswapsClientConfig {
+pub struct OnlySwapsClientConfig {
     /// a list of chain-specific configuration
     chains: HashMap<u64, ChainConfig>,
 
@@ -18,7 +18,7 @@ pub struct OnlyswapsClientConfig {
     provider: MultiProvider<u64>,
 }
 
-impl OnlyswapsClientConfig {
+impl OnlySwapsClientConfig {
     /// Create an empty onlyswaps client configuration
     pub fn new() -> Self {
         Self {
@@ -37,7 +37,7 @@ impl OnlyswapsClientConfig {
 
 
     /// Add an ethereum chain to the configuration alongside a default RPC provider
-    pub fn add_chain_with_default_provider(&mut self, chain_config: ChainConfig) -> Result<(), OnlyswapsClientConfigError> {
+    pub fn add_chain_with_default_provider(&mut self, chain_config: ChainConfig) -> Result<(), OnlySwapsClientConfigError> {
         let chain_id = chain_config.chain_id;
 
         self.chains.insert(chain_id, chain_config);
@@ -46,4 +46,4 @@ impl OnlyswapsClientConfig {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum OnlyswapsClientConfigError {}
+pub enum OnlySwapsClientConfigError {}
