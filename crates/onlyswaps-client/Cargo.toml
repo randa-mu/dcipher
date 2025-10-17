@@ -7,4 +7,5 @@ edition.workspace = true
 alloy.workspace = true
 generated.workspace = true
 superalloy.workspace = true
+tracing.workspace = true
 thiserror.workspace = true

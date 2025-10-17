@@ -1,10 +1,12 @@
 //! Various static configuration for onlyswaps
 
-use std::collections::HashMap;
-use alloy::network::Network;
-use alloy::providers::Provider;
-use superalloy::provider::MultiProvider;
 use crate::config::chain::ChainConfig;
+use crate::config::token::{Token, TokenTag};
+use alloy::network::{Ethereum, Network};
+use alloy::primitives::Address;
+use alloy::providers::{DynProvider, Provider};
+use std::collections::HashMap;
+use superalloy::provider::{MultiChainProvider, MultiProvider};
 
 pub mod chain;
 pub mod token;
@@ -20,7 +22,7 @@ pub struct OnlySwapsClientConfig {
 
 impl OnlySwapsClientConfig {
     /// Create an empty onlyswaps client configuration
-    pub fn new() -> Self {
+    pub fn empty() -> Self {
         Self {
             chains: HashMap::default(),
             provider: MultiProvider::default(),
@@ -28,20 +30,47 @@ impl OnlySwapsClientConfig {
     }
 
     /// Add a chain to the configuration alongside its rpc provider
-    pub fn add_chain<N: Network>(&mut self, chain_config: ChainConfig, provider: impl Provider<N> + 'static) {
+    pub fn add_ethereum_chain(
+        &mut self,
+        chain_config: ChainConfig,
+        provider: impl Provider<Ethereum> + 'static,
+    ) {
         let chain_id = chain_config.chain_id;
 
         self.chains.insert(chain_id, chain_config);
         self.provider.extend([(chain_id, provider.erased())])
     }
 
-
     /// Add an ethereum chain to the configuration alongside a default RPC provider
-    pub fn add_chain_with_default_provider(&mut self, chain_config: ChainConfig) -> Result<(), OnlySwapsClientConfigError> {
+    pub fn add_ethereum_chain_with_default_provider(
+        &mut self,
+        chain_config: ChainConfig,
+    ) -> Result<(), OnlySwapsClientConfigError> {
         let chain_id = chain_config.chain_id;
 
         self.chains.insert(chain_id, chain_config);
         todo!("have a default RPC provider configuration")
+    }
+
+    /// Get an ethereum provider for the specified chain_id
+    pub fn get_ethereum_provider(&self, chain_id: u64) -> Option<&DynProvider<Ethereum>> {
+        self.provider.get_ethereum_provider(&chain_id)
+    }
+
+    /// Get the chain configuration for the specified chain id
+    pub fn get_chain_config(&self, chain_id: u64) -> Option<&ChainConfig> {
+        self.chains.get(&chain_id)
+    }
+
+    /// Get the address of a supported token
+    pub fn get_token_address(&self, chain_id: u64, token_tag: &TokenTag) -> Option<Address> {
+        let chain_config = self.get_chain_config(chain_id)?;
+        Some(*chain_config.supported_tokens.get(token_tag)?)
+    }
+
+    /// Get the address of the router on the specified chain
+    pub fn get_router_address(&self, chain_id: u64) -> Option<Address> {
+        Some(self.get_chain_config(chain_id)?.router_address)
     }
 }
 
