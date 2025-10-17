@@ -3,6 +3,10 @@ name = "onlyswaps-state-api"
 version.workspace = true
 edition.workspace = true
 
+[features]
+metrics = ["dep:prometheus"]
+default = ["metrics"]
+
 [dependencies]
 agent-utils.workspace = true
 alloy = { workspace = true, features = ["default", "provider-ws"] }
@@ -20,3 +24,4 @@ tokio-stream = { workspace = true, features = ["sync"] }
 tower-http = { workspace = true, features = ["cors"] }
 tracing = { workspace = true }
 url.workspace = true
+prometheus = { workspace = true, optional = true }

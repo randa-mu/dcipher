@@ -9,6 +9,7 @@ mod app;
 mod config;
 mod events;
 mod http_api;
+mod metrics;
 mod network_bus;
 mod omnievent;
 mod serde;

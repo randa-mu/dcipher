@@ -2,7 +2,7 @@ use crate::config::DbConfig;
 use crate::events::{
     create_fee_updated_event, create_swap_fulfilled, create_swap_requested, create_swap_verified,
 };
-use crate::omnievent::StateType::{FeeUpdated, Fulfilled, Verified};
+use crate::omnievent::StateType::{FeeUpdated, Fulfilled, Requested, Verified};
 use alloy::primitives::FixedBytes;
 use alloy::providers::Provider;
 use anyhow::Context;
@@ -85,7 +85,7 @@ type AnyStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
 pub(crate) async fn stream_from_beginning(
     omnievent: &EventManager<MultiProvider<u64>, SqliteEventDatabase>,
     registered_by_chain_id: &HashMap<u64, ChainRegistration>,
-) -> anyhow::Result<AnyStream<EventOccurrence>> {
+) -> anyhow::Result<AnyStream<(StateUpdateSource, EventOccurrence)>> {
     let events_ids: Vec<EventId> = registered_by_chain_id
         .values()
         .flat_map(|it| -> Vec<EventId> { it.into() })
@@ -96,7 +96,7 @@ pub(crate) async fn stream_from_beginning(
         .get_ethereum_multi_event_stream(events_ids.clone())
         .await?
         .map_err(|e| eprintln!("very unexpected error! {}", e))
-        .map_while(|it| it.ok());
+        .map_while(|it| it.ok().map(|occ| (StateUpdateSource::UpcomingStream, occ)));
 
     // FIXME: currently fetches historical events from the database's perspective - not from the RPC provider / chain logs
     let historical_stream = omnievent
@@ -105,7 +105,9 @@ pub(crate) async fn stream_from_beginning(
 
     // combine the two streams, starting with historical events so we build state in the right order
     Ok(Box::pin(
-        tokio_stream::iter(historical_stream).chain(stream),
+        tokio_stream::iter(historical_stream)
+            .map(|occ| (StateUpdateSource::Historical, occ))
+            .chain(stream),
     ))
 }
 
@@ -126,6 +128,7 @@ impl ChainRegistration {
         event_id: EventId,
         chain_id: u64,
         fields: &[EventFieldData],
+        source: StateUpdateSource,
     ) -> anyhow::Result<StateUpdate> {
         if fields.is_empty() {
             anyhow::bail!("an event log had 0 fields??");
@@ -135,7 +138,8 @@ impl ChainRegistration {
         let mut update = StateUpdate {
             chain_id,
             request_id,
-            state_type: StateType::Requested,
+            state_type: Requested,
+            source,
         };
 
         if self.requested == event_id {
@@ -174,6 +178,7 @@ pub(crate) struct StateUpdate {
     pub chain_id: u64,
     pub request_id: FixedBytes<32>,
     pub state_type: StateType,
+    pub source: StateUpdateSource,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -182,4 +187,10 @@ pub(crate) enum StateType {
     FeeUpdated,
     Fulfilled,
     Verified,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum StateUpdateSource {
+    UpcomingStream,
+    Historical,
 }

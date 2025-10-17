@@ -36,6 +36,9 @@ impl<S: StateService + 'static> HttpApi<S> {
             .layer(axum::Extension(Arc::clone(&self.service)))
             .layer(cors);
 
+        #[cfg(feature = "metrics")]
+        let router = router.route("/metrics", get(get_metrics));
+
         tracing::info!("API server starting");
         Ok(axum::serve(self.listener, router).await?)
     }
@@ -52,4 +55,18 @@ pub async fn get_transactions<S: StateService>(
             err.to_string(),
         )
     })
+}
+
+#[cfg(feature = "metrics")]
+pub async fn get_metrics() -> Result<Vec<u8>, axum::http::StatusCode> {
+    use prometheus::{Encoder, TextEncoder};
+
+    let encoder = TextEncoder::new();
+    let metrics = crate::metrics::Metrics::gather();
+
+    let mut buffer = Vec::new();
+    match encoder.encode(&metrics, &mut buffer) {
+        Err(_) => Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(()) => Ok(buffer),
+    }
 }

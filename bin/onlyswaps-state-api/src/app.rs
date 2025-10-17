@@ -27,14 +27,16 @@ impl App {
         let stream_task = tokio::spawn(async move {
             tracing::info!("started stream listener");
 
-            while let Some(event) = stream.next().await {
+            while let Some((source, event)) = stream.next().await {
                 let _ = registered_by_chain_id
                     .get(&event.chain_id)
                     .ok_or(anyhow!(
                         "somehow we don't have a stream for chain_id {}",
                         event.chain_id
                     ))
-                    .and_then(|it| it.as_state_update(event.event_id, event.chain_id, &event.data))
+                    .and_then(|it| {
+                        it.as_state_update(event.event_id, event.chain_id, &event.data, source)
+                    })
                     .and_then(|update| next_transition_tx.send(update).map_err(|e| e.into()))
                     .map_err(|e| tracing::error!("error making state update: {}", e));
             }
