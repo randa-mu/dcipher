@@ -4935,6 +4935,7 @@ dependencies = [
  "futures",
  "generated",
  "omnievent",
+ "prometheus",
  "serde",
  "superalloy",
  "tokio",
