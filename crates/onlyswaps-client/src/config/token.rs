@@ -14,6 +14,7 @@ pub struct Token {
 pub enum SupportedTokenTag {
     RUSD,
     USDT,
+    Other(&'static str),
 }
 
 impl Token {
