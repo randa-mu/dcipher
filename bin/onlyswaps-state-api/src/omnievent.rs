@@ -96,7 +96,7 @@ pub(crate) async fn stream_from_beginning(
         .get_ethereum_multi_event_stream(events_ids.clone())
         .await?
         .map_err(|e| eprintln!("very unexpected error! {}", e))
-        .map_while(|it| it.ok().map(|occ| (StateUpdateSource::Stream, occ)));
+        .map_while(|it| it.ok().map(|occ| (StateUpdateSource::UpcomingStream, occ)));
 
     // FIXME: currently fetches historical events from the database's perspective - not from the RPC provider / chain logs
     let historical_stream = omnievent
@@ -191,6 +191,6 @@ pub(crate) enum StateType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum StateUpdateSource {
-    Stream,
+    UpcomingStream,
     Historical,
 }
