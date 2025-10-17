@@ -1,5 +1,5 @@
 use crate::network_bus::NetworkBus;
-use crate::omnievent::{StateType, StateUpdate};
+use crate::omnievent::{StateType, StateUpdate, StateUpdateSource};
 use crate::serde::{LongNumber, ShortNumber};
 use alloy::primitives::{Address, FixedBytes, U256};
 use alloy::providers::DynProvider;
@@ -58,13 +58,16 @@ impl StateMachine {
             chain_id,
             request_id,
             state_type,
-            source: _source,
+            #[cfg_attr(not(feature = "metrics"), allow(unused))]
+            source,
         } = update;
 
         // fulfilled requests need to go to the dest chain, so to reduce duplicate work
         // let's deal with them first
         if state_type == StateType::Fulfilled {
-            return self.apply_fulfilled_state(chain_id, request_id).await;
+            return self
+                .apply_fulfilled_state(chain_id, request_id, source)
+                .await;
         }
 
         let client =
@@ -94,6 +97,26 @@ impl StateMachine {
                     solved_time: None,
                     verified_time: None,
                 });
+
+                #[cfg(feature = "metrics")]
+                // update metrics if the event is fresh
+                if let StateUpdateSource::UpcomingStream = source {
+                    if let StateType::FeeUpdated = state_type {
+                        super::metrics::Metrics::report_fee_updated(
+                            params.srcChainId,
+                            params.dstChainId,
+                            params.tokenIn,
+                            params.tokenOut,
+                        );
+                    } else if let StateType::Requested = state_type {
+                        super::metrics::Metrics::report_swap_requested(
+                            params.srcChainId,
+                            params.dstChainId,
+                            params.tokenIn,
+                            params.tokenOut,
+                        );
+                    }
+                }
             }
             StateType::Verified => {
                 let (maybe_solver, maybe_solved_time) = self
@@ -124,6 +147,17 @@ impl StateMachine {
                     solver: maybe_solver,
                     verified_time: Some(ShortNumber(now()?)),
                 });
+
+                #[cfg(feature = "metrics")]
+                // report metrics if the event is fresh
+                if let StateUpdateSource::UpcomingStream = source {
+                    super::metrics::Metrics::report_swap_verified(
+                        params.srcChainId,
+                        params.dstChainId,
+                        params.tokenIn,
+                        params.tokenOut,
+                    );
+                }
             }
             StateType::Fulfilled => unreachable!("impossible because we handle it early"),
         }
@@ -135,6 +169,8 @@ impl StateMachine {
         &mut self,
         chain_id: u64,
         request_id: FixedBytes<32>,
+        #[cfg_attr(not(feature = "metrics"), allow(unused))] // only used with metrics feature
+        source: StateUpdateSource,
     ) -> anyhow::Result<AppState> {
         // we get details from the dest chain first
         let dest_chain_client =
@@ -171,6 +207,17 @@ impl StateMachine {
             solved_time: Some(receipt.fulfilledAt.into()),
             verified_time: None,
         });
+
+        #[cfg(feature = "metrics")]
+        // report metrics if the event is fresh
+        if let StateUpdateSource::UpcomingStream = source {
+            super::metrics::Metrics::report_swap_fulfilled(
+                params.srcChainId,
+                params.dstChainId,
+                params.tokenIn,
+                params.tokenOut,
+            );
+        }
 
         Ok(self.state.clone())
     }
