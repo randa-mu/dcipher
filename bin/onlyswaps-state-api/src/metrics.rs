@@ -1,8 +1,6 @@
 #[cfg(feature = "metrics")]
 mod real_metrics {
-    use prometheus::{
-        HistogramOpts, HistogramVec, IntCounter, IntCounterVec, IntGauge, Opts, Registry,
-    };
+    use prometheus::{IntCounterVec, Opts, Registry};
     use std::sync::LazyLock;
 
     pub struct Metrics {
@@ -17,22 +15,22 @@ mod real_metrics {
         let registry = Registry::new();
 
         let swap_requested = IntCounterVec::new(
-            Opts::new("swap_requested", "Total number of swap requested per (source chain, destination chain, source token, dest token) tuple"),
+            Opts::new("swap_requested", "Total number of swaps requested per (source chain, destination chain, source token, dest token) tuple"),
             &["src_chain_id", "dst_chain_id", "src_token", "dst_token"],
         ).expect("failed to create IntCounterVec");
 
         let swap_fee_updated = IntCounterVec::new(
-            Opts::new("swap_fee_updated", "Total number of swap fee updated per (source chain, destination chain, source token, dest token) tuple"),
+            Opts::new("swap_fee_updated", "Total number of swap fees updated per (source chain, destination chain, source token, dest token) tuple"),
             &["src_chain_id", "dst_chain_id", "src_token", "dst_token"],
         ).expect("failed to create IntCounterVec");
 
         let swap_fulfilled = IntCounterVec::new(
-            Opts::new("swap_fulfilled", "Total number of swap fee updated per (source chain, destination chain, source token, dest token) tuple"),
+            Opts::new("swap_fulfilled", "Total number of swaps fulfilled per (source chain, destination chain, source token, dest token) tuple"),
             &["src_chain_id", "dst_chain_id", "src_token", "dst_token"],
         ).expect("failed to create IntCounterVec");
 
         let swap_verified = IntCounterVec::new(
-            Opts::new("swap_verified", "Total number of swap fee updated per (source chain, destination chain, source token, dest token) tuple"),
+            Opts::new("swap_verified", "Total number of swaps verified per (source chain, destination chain, source token, dest token) tuple"),
             &["src_chain_id", "dst_chain_id", "src_token", "dst_token"],
         ).expect("failed to create IntCounterVec");
 
@@ -68,10 +66,10 @@ pub struct Metrics;
 #[allow(unused)]
 impl Metrics {
     pub(super) fn report_swap_requested(
-        src_chain_id: u64,
-        dst_chain_id: u64,
-        token: String,
-        dst_token: String,
+        src_chain_id: alloy::primitives::U256,
+        dst_chain_id: alloy::primitives::U256,
+        token: alloy::primitives::Address,
+        dst_token: alloy::primitives::Address,
     ) {
         #[cfg(feature = "metrics")]
         real_metrics::METRICS
@@ -79,17 +77,17 @@ impl Metrics {
             .with_label_values(&[
                 src_chain_id.to_string(),
                 dst_chain_id.to_string(),
-                token,
-                dst_token,
+                token.to_string(),
+                dst_token.to_string(),
             ])
             .inc();
     }
 
     pub(super) fn report_fee_updated(
-        src_chain_id: u64,
-        dst_chain_id: u64,
-        token: String,
-        dst_token: String,
+        src_chain_id: alloy::primitives::U256,
+        dst_chain_id: alloy::primitives::U256,
+        token: alloy::primitives::Address,
+        dst_token: alloy::primitives::Address,
     ) {
         #[cfg(feature = "metrics")]
         real_metrics::METRICS
@@ -97,17 +95,17 @@ impl Metrics {
             .with_label_values(&[
                 src_chain_id.to_string(),
                 dst_chain_id.to_string(),
-                token,
-                dst_token,
+                token.to_string(),
+                dst_token.to_string(),
             ])
             .inc();
     }
 
     pub(super) fn report_swap_fulfilled(
-        src_chain_id: u64,
-        dst_chain_id: u64,
-        token: String,
-        dst_token: String,
+        src_chain_id: alloy::primitives::U256,
+        dst_chain_id: alloy::primitives::U256,
+        token: alloy::primitives::Address,
+        dst_token: alloy::primitives::Address,
     ) {
         #[cfg(feature = "metrics")]
         real_metrics::METRICS
@@ -115,17 +113,17 @@ impl Metrics {
             .with_label_values(&[
                 src_chain_id.to_string(),
                 dst_chain_id.to_string(),
-                token,
-                dst_token,
+                token.to_string(),
+                dst_token.to_string(),
             ])
             .inc();
     }
 
     pub(super) fn report_swap_verified(
-        src_chain_id: u64,
-        dst_chain_id: u64,
-        token: String,
-        dst_token: String,
+        src_chain_id: alloy::primitives::U256,
+        dst_chain_id: alloy::primitives::U256,
+        token: alloy::primitives::Address,
+        dst_token: alloy::primitives::Address,
     ) {
         #[cfg(feature = "metrics")]
         real_metrics::METRICS
@@ -133,8 +131,8 @@ impl Metrics {
             .with_label_values(&[
                 src_chain_id.to_string(),
                 dst_chain_id.to_string(),
-                token,
-                dst_token,
+                token.to_string(),
+                dst_token.to_string(),
             ])
             .inc();
     }
