@@ -42,17 +42,6 @@ impl OnlySwapsClientConfig {
         self.provider.extend([(chain_id, provider.erased())])
     }
 
-    /// Add an ethereum chain to the configuration alongside a default RPC provider
-    pub fn add_ethereum_chain_with_default_provider(
-        &mut self,
-        chain_config: ChainConfig,
-    ) -> Result<(), OnlySwapsClientConfigError> {
-        let chain_id = chain_config.chain_id;
-
-        self.chains.insert(chain_id, chain_config);
-        todo!("have a default RPC provider configuration")
-    }
-
     /// Get an ethereum provider for the specified chain_id
     pub fn get_ethereum_provider(&self, chain_id: u64) -> Option<&DynProvider<Ethereum>> {
         self.provider.get_ethereum_provider(&chain_id)
@@ -74,6 +63,3 @@ impl OnlySwapsClientConfig {
         Some(self.get_chain_config(chain_id)?.router_address)
     }
 }
-
-#[derive(thiserror::Error, Debug)]
-pub enum OnlySwapsClientConfigError {}
