@@ -57,7 +57,7 @@ impl StateService for ChannelStateService {
         if let Some(solver) = filter.solver {
             by_solver(&mut state.transactions, solver)
         }
-        let limit = filter.limit.unwrap_or_else(|| 100);
+        let limit = filter.limit.unwrap_or(100);
         if let Some(offset) = filter.offset {
             by_limit(&mut state.transactions, limit, offset)
         } else {
