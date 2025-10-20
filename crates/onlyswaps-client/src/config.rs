@@ -1,8 +1,8 @@
 //! Various static configuration for onlyswaps
 
 use crate::config::chain::ChainConfig;
-use crate::config::token::{Token, TokenTag};
-use alloy::network::{Ethereum, Network};
+use crate::config::token::TokenTag;
+use alloy::network::Ethereum;
 use alloy::primitives::Address;
 use alloy::providers::{DynProvider, Provider};
 use std::collections::HashMap;
@@ -12,6 +12,7 @@ pub mod chain;
 pub mod token;
 
 /// A configuration used by the onlyswaps client
+#[derive(Clone)]
 pub struct OnlySwapsClientConfig {
     /// a list of chain-specific configuration
     chains: HashMap<u64, ChainConfig>,
