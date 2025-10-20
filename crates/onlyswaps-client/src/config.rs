@@ -5,6 +5,7 @@ use crate::config::token::TokenTag;
 use alloy::network::Ethereum;
 use alloy::primitives::Address;
 use alloy::providers::{DynProvider, Provider};
+use generated::onlyswaps::router::Router::RouterInstance;
 use std::collections::HashMap;
 use superalloy::provider::{MultiChainProvider, MultiProvider};
 
@@ -61,5 +62,13 @@ impl OnlySwapsClientConfig {
     /// Get the address of the router on the specified chain
     pub fn get_router_address(&self, chain_id: u64) -> Option<Address> {
         Some(self.get_chain_config(chain_id)?.router_address)
+    }
+
+    /// Get a Router contract instance
+    pub fn get_router_instance(&self, chain_id: u64) -> Option<RouterInstance<&DynProvider>> {
+        let router_address = self.get_router_address(chain_id)?;
+        let provider = self.get_ethereum_provider(chain_id)?;
+
+        Some(RouterInstance::new(router_address, provider))
     }
 }

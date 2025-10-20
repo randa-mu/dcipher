@@ -4903,6 +4903,7 @@ name = "onlyswaps-client"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "futures-util",
  "generated",
  "superalloy",
  "thiserror 2.0.16",

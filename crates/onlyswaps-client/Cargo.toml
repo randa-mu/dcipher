@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 alloy.workspace = true
+futures-util.workspace = true
 generated.workspace = true
 superalloy.workspace = true
 tracing.workspace = true

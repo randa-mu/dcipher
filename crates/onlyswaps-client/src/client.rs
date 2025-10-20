@@ -28,6 +28,19 @@ pub struct OnlySwapsClient<N = Ethereum> {
     _n: PhantomData<fn(N)>,
 }
 
+/// The status of an onlyswaps request
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub enum OnlySwapsStatus {
+    /// the swap has not yet been fulfilled by a solver
+    Pending,
+
+    /// the swap has been fulfilled by a solver, but not yet verified by the dcipher network
+    Completed,
+
+    /// the swap has been fulfilled by a solver, and verified by the dcipher network
+    Verified,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum OnlySwapsClientError {
     #[error("no provider for chain id {0}")]
@@ -56,6 +69,9 @@ pub enum OnlySwapsClientError {
 
     #[error("swap failed: event not in logs")]
     SwapFailedNotInLogs,
+
+    #[error("swap request not found")]
+    SwapRequestNotFound,
 }
 
 impl OnlySwapsClient {
@@ -175,6 +191,103 @@ impl OnlySwapsClient {
             dst_token_addr,
         )
         .await?
+    }
+
+    /// Verifies if the swap with the given request_id has been completed on the destination chain.
+    pub async fn is_swap_complete(
+        &self,
+        request_id: OnlySwapsRequestId,
+        dst_chain: u64,
+    ) -> Result<bool, OnlySwapsClientError> {
+        let dst_router = self
+            .config
+            .get_router_instance(dst_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(dst_chain))?;
+
+        // Different chains, can't multicall, but start both futures at the same time
+        let swap_receipt = dst_router
+            .getSwapRequestReceipt(request_id)
+            .call()
+            .await
+            .map_err(|e| {
+                OnlySwapsClientError::Contract(
+                    e,
+                    "failed to execute getSwapRequestReceipt RPC static call",
+                )
+            })?;
+
+        if swap_receipt.requestId.is_zero() {
+            // if request is not found on destination chain, requestId == 0 => swap not yet fulfilled
+            Ok(false)
+        } else {
+            // swap complete
+            Ok(true)
+        }
+    }
+
+    /// Verifies if the swap with the given request_id has been verified on the destination chain.
+    /// A verified swap implies that the swap has been completed on the destination chain.
+    pub async fn is_swap_verified(
+        &self,
+        request_id: OnlySwapsRequestId,
+        src_chain: u64,
+    ) -> Result<bool, OnlySwapsClientError> {
+        let src_router = self
+            .config
+            .get_router_instance(src_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(src_chain))?;
+
+        let swap_params = src_router
+            .getSwapRequestParameters(request_id)
+            .call()
+            .await
+            .map_err(|e| {
+                OnlySwapsClientError::Contract(
+                    e,
+                    "failed to execute getSwapRequestReceipt RPC static call",
+                )
+            })?;
+
+        // nonce should be non-zero, otherwise swap not found
+        if swap_params.nonce.is_zero() {
+            Err(OnlySwapsClientError::SwapRequestNotFound)?
+        }
+
+        // executed is true when the solver has completed the transfer, and
+        // it has been verified by the dcipher network
+        Ok(swap_params.executed)
+    }
+
+    /// Obtain the current status of a swap.
+    pub async fn status(
+        &self,
+        request_id: OnlySwapsRequestId,
+        src_chain: u64,
+        dst_chain: u64,
+    ) -> Result<OnlySwapsStatus, OnlySwapsClientError> {
+        // Different chains, can't multicall, but start both futures at the same time
+        let (verified_res, completed_res) = futures_util::future::join(
+            self.is_swap_verified(request_id, src_chain),
+            self.is_swap_complete(request_id, dst_chain),
+        )
+        .await;
+
+        let (verified, completed) = match (verified_res, completed_res) {
+            (Ok(verified), Ok(completed)) => (verified, completed),
+            (Err(e), _) => return Err(e),
+            (_, Err(e)) => return Err(e),
+        };
+
+        match (verified, completed) {
+            // verified, completed
+            (true, true) => Ok(OnlySwapsStatus::Verified),
+            // not verified, completed
+            (false, true) => Ok(OnlySwapsStatus::Completed),
+            // not verified, not completed
+            (false, false) => Ok(OnlySwapsStatus::Pending),
+            // any other combination should not happen
+            _ => panic!("(verified, completed) = ({verified}, {completed}) status should not be possible")
+        }
     }
 }
 
@@ -324,7 +437,8 @@ mod tests {
             removed: false,
         };
 
-        let request_id = request_id_from_swap_logs(&[log]).expect("failed to find request_id from logs");
+        let request_id =
+            request_id_from_swap_logs(&[log]).expect("failed to find request_id from logs");
         assert_eq!(request_id, expected_request_id);
     }
 }
