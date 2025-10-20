@@ -19,6 +19,8 @@ pub(crate) struct SwapTransactionQueryFilter {
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub solver: Option<Address>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
 }
 pub(crate) struct ChannelStateService {
     rx: watch::Receiver<AppState>,
@@ -55,9 +57,24 @@ impl StateService for ChannelStateService {
         if let Some(solver) = filter.solver {
             by_solver(&mut state.transactions, solver)
         }
+        let limit = filter.limit.unwrap_or_else(|| 100);
+        if let Some(offset) = filter.offset {
+            by_limit(&mut state.transactions, limit, offset)
+        } else {
+            by_limit(&mut state.transactions, limit, 0)
+        }
 
         Ok(state.transactions)
     }
+}
+
+fn by_limit(txs: &mut Vec<SwapTransaction>, limit: usize, offset: usize) {
+    if offset >= txs.len() {
+        txs.clear();
+        return;
+    }
+    txs.drain(0..offset);
+    txs.truncate(limit);
 }
 
 fn by_id(txs: &mut Vec<SwapTransaction>, request_id: &FixedBytes<32>) {
@@ -308,6 +325,84 @@ mod tests {
 
         let result = service.get_transactions(filter).unwrap();
         assert_eq!(result.len(), 3);
+    }
+
+    #[test]
+    fn filter_by_limit_smaller_all() {
+        let addr = address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cffff");
+        let tx1 = create_tx(
+            FixedBytes::default(),
+            1u64.into(),
+            2u64.into(),
+            addr,
+            address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C1111"),
+            None,
+        );
+        let txs = vec![
+            tx1.clone(),
+            create_tx(
+                FixedBytes::default(),
+                2u64.into(),
+                3u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C2222"),
+                addr,
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                4u64.into(),
+                5u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C4444"),
+                Some(addr),
+            ),
+            create_tx(
+                FixedBytes::default(),
+                6u64.into(),
+                7u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C6666"),
+                None,
+            ),
+        ];
+
+        let service = create_service(txs);
+
+        // take the first
+        let filter1 = SwapTransactionQueryFilter {
+            limit: Some(1),
+            ..Default::default()
+        };
+        let result = service.get_transactions(filter1).unwrap();
+        assert_eq!(result.len(), 1);
+
+        // take them alllll
+        let filter_all = SwapTransactionQueryFilter {
+            limit: Some(20),
+            ..Default::default()
+        };
+        let result_all = service.get_transactions(filter_all).unwrap();
+        assert_eq!(result_all.len(), 4);
+
+        // window including some tx but not the first
+        let filter_window = SwapTransactionQueryFilter {
+            limit: Some(2),
+            offset: Some(1),
+            ..Default::default()
+        };
+        let result_window = service.get_transactions(filter_window).unwrap();
+        assert_eq!(result_window.len(), 2);
+        assert_ne!(result_window[0], tx1);
+        assert_ne!(result_window[1], tx1);
+
+        // window too long returns none and doesn't blow up
+        let filter_long_offset = SwapTransactionQueryFilter {
+            limit: Some(2),
+            offset: Some(100),
+            ..Default::default()
+        };
+        let result_window = service.get_transactions(filter_long_offset).unwrap();
+        assert_eq!(result_window.len(), 0);
     }
 
     fn create_tx(

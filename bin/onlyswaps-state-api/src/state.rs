@@ -18,7 +18,7 @@ pub(crate) struct AppState {
     pub transactions: Vec<SwapTransaction>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub(crate) struct SwapTransaction {
     pub request_id: FixedBytes<32>,
     pub src_chain_id: ShortNumber,
