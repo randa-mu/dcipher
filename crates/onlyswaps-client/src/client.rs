@@ -13,6 +13,7 @@ use alloy::primitives::{Address, FixedBytes, LogData, TxHash, U256};
 use alloy::providers::{DynProvider, PendingTransactionError, Provider};
 use alloy::rpc::types::Log;
 use alloy::sol_types::SolEvent;
+use futures_util::StreamExt;
 use generated::onlyswaps::router::Router;
 use generated::onlyswaps::router::Router::RouterInstance;
 use std::marker::PhantomData;
@@ -286,8 +287,59 @@ impl OnlySwapsClient {
             // not verified, not completed
             (false, false) => Ok(OnlySwapsStatus::Pending),
             // any other combination should not happen
-            _ => panic!("(verified, completed) = ({verified}, {completed}) status should not be possible")
+            _ => panic!(
+                "(verified, completed) = ({verified}, {completed}) status should not be possible"
+            ),
         }
+    }
+
+    /// Wait until a swap is completed on the destination chain
+    pub async fn wait_until_complete(
+        &self,
+        request_id: OnlySwapsRequestId,
+        dst_chain: u64,
+    ) -> Result<(), OnlySwapsClientError> {
+        let dst_router = self
+            .config
+            .get_router_instance(dst_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(dst_chain))?;
+
+        // Issue a registration for upcoming events
+        let mut filter = dst_router
+            .SwapRequestFulfilled_filter()
+            .topic1(request_id)
+            .watch()
+            .await
+            .map_err(|e| {
+                OnlySwapsClientError::Contract(
+                    e.into(),
+                    "failed to watch SwapRequestFulfilled event",
+                )
+            })?
+            .into_stream();
+
+        // If the event was in the past, issue an RPC call
+        if self.is_swap_complete(request_id, dst_chain).await? {
+            return Ok(());
+        }
+
+        // Swap not yet completed, wait for it through the filter
+        let (swap_completed_event, _) = filter
+            .next()
+            .await
+            .expect("empty event stream empty!! provider dropped?")
+            .map_err(|e| {
+                OnlySwapsClientError::Contract(
+                    alloy::contract::Error::AbiError(e.into()),
+                    "failed to obtain obtain SwapRequestFulfilled event occurrence",
+                )
+            })?;
+        assert_eq!(
+            request_id, swap_completed_event.requestId,
+            "detected an event for a different request id, filter broken?"
+        );
+
+        Ok(())
     }
 }
 
