@@ -1,6 +1,6 @@
 //! Token configuration
 
-use alloy::primitives::{Address, address};
+use alloy::primitives::Address;
 
 /// A token with its tag and address
 #[derive(Hash, Eq, PartialEq, Copy, Clone, Debug)]
