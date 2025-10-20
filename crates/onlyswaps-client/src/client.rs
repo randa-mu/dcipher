@@ -341,6 +341,55 @@ impl OnlySwapsClient {
 
         Ok(())
     }
+
+    /// Wait until a swap reaches a specific status
+    pub async fn wait_until_verified(
+        &self,
+        request_id: OnlySwapsRequestId,
+        src_chain: u64,
+    ) -> Result<(), OnlySwapsClientError> {
+        let src_router = self
+            .config
+            .get_router_instance(src_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(src_chain))?;
+
+        // Issue a registration for upcoming events
+        let mut filter = src_router
+            .SolverPayoutFulfilled_filter()
+            .topic1(request_id)
+            .watch()
+            .await
+            .map_err(|e| {
+                OnlySwapsClientError::Contract(
+                    e.into(),
+                    "failed to watch SolverPayoutFulfilled event",
+                )
+            })?
+            .into_stream();
+
+        // If the event was in the past, issue an RPC call
+        if self.is_swap_verified(request_id, src_chain).await? {
+            return Ok(());
+        }
+
+        // Swap not yet verified, wait for it through the filter
+        let (swap_verified_event, _) = filter
+            .next()
+            .await
+            .expect("empty event stream empty!! provider dropped?")
+            .map_err(|e| {
+                OnlySwapsClientError::Contract(
+                    alloy::contract::Error::AbiError(e.into()),
+                    "failed to obtain SolverPayoutFulfilled event occurrence",
+                )
+            })?;
+        assert_eq!(
+            request_id, swap_verified_event.requestId,
+            "detected an event for a different request id, filter broken?"
+        );
+
+        Ok(())
+    }
 }
 
 /// Recovers the request id from a log containing a SwapRequested event
