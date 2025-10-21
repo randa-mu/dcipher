@@ -4932,6 +4932,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "onlyswaps-smoketest"
+version = "0.1.0"
+dependencies = [
+ "agent-utils",
+ "alloy",
+ "anyhow",
+ "axum",
+ "clap",
+ "config",
+ "onlyswaps-client",
+ "prometheus",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "onlyswaps-solver"
 version = "0.1.0"
 dependencies = [
