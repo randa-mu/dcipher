@@ -34,7 +34,8 @@ The repository is organized into:
 | `blocklock-agent`     | Agent for the Blocklock protocol (time-lock / conditional decryption)                                  |                                              | 
 | `dsigner`             | Threshold signing daemon, allowing operators to separate condition evaluation and signing for security | [README](./bin/dsigner/README.md)            |
 | `gen-keys`            | Utility for key generation (testing / setup)                                                           | [README](./bin/gen-keys/README.md)           |
-| `onlyswaps-solver`    | An agent for providing token liquidity on chains that support onlyswaps to make yield.                 | [README](./bin/onlyswaps-solver/README.md)           |
+| `monitoring`          | An agent that listens/polls dcipher-related information and ships it to prometheus                     | [README](./bin/monitoring/README.md)         |
+| `onlyswaps-solver`    | An agent for providing token liquidity on chains that support onlyswaps to make yield.                 | [README](./bin/onlyswaps-solver/README.md)   |
 | `onlyswaps-state-api` | API for caching and serving state related to ONLYSwaps                                                 |                                              |
 | `onlyswaps-verifier`  | A dcipher protocol implementation called ONLYSwaps for enabling cross-chain token swaps                | [README](./bin/onlyswaps-verifier/README.md) |
 | `randomness-agent`    | A dcipher protocol implementation for providing verifiable randomness on-chain                         |                                              |                                                                                                     |
@@ -98,7 +99,6 @@ Build a specific binary (e.g. adkg-cli):
 ```bash
 cargo build  --release -p adkg-cli
 ```
-
 
 Clean artifacts:
 
