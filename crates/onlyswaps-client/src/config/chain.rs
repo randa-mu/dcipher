@@ -37,6 +37,21 @@ impl ChainConfig {
             required_confirmations,
         }
     }
+
+    /// Obtain a chain config from a given chain id
+    pub fn from_chain_id(chain_id: u64) -> Option<Self> {
+        match chain_id {
+            8453 => Some(BASE.clone()),
+            84532 => Some(BASE_SEPOLIA.clone()),
+            43114 => Some(AVAX_C.clone()),
+            43113 => Some(AVAX_FUJI.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn router_address(&self) -> Address {
+        self.router_address
+    }
 }
 
 pub static BASE: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
