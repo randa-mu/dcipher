@@ -10,3 +10,8 @@ generated.workspace = true
 superalloy.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+alloy = { workspace = true, features = ["reqwest-default-tls", "transports", "provider-ws", "provider-anvil-node"] }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+tracing-subscriber.workspace = true

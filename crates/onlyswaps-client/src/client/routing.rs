@@ -3,6 +3,7 @@
 use crate::config::token::TokenTag;
 
 /// Parameters required to route a swap
+#[derive(Copy, Clone, Debug)]
 pub struct SwapRouting {
     pub src_chain: u64,
     pub dst_chain: u64,

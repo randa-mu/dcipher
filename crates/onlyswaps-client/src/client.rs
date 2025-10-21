@@ -542,4 +542,115 @@ mod tests {
             request_id_from_swap_logs(&[log]).expect("failed to find request_id from logs");
         assert_eq!(request_id, expected_request_id);
     }
+
+    mod ci_only {
+        use super::*;
+        use crate::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
+        use alloy::network::{EthereumWallet, NetworkWallet};
+        use alloy::primitives::utils::Unit;
+        use alloy::providers::{ProviderBuilder, WsConnect};
+        use alloy::signers::local::PrivateKeySigner;
+        use std::sync::LazyLock;
+        use std::time::Duration;
+
+        const TESTNETS_PRIVATE_KEY_ENV: &str = "TESTNETS_PRIVATE_KEY";
+        const BASE_SEPOLIA_RPC_URL_ENV: &str = "BASE_SEPOLIA_RPC_URL";
+        const AVALANCHE_FUJI_RPC_URL_ENV: &str = "AVALANCHE_FUJI_RPC_URL";
+        const SWAP_TIMEOUT: Duration = Duration::from_millis(60000); // 60s
+        static SWAP_AMOUNT: LazyLock<U256> = LazyLock::new(|| U256::from(1) * Unit::ETHER.wei());
+        static SWAP_FEE: LazyLock<U256> = LazyLock::new(|| U256::from(1) * Unit::ETHER.wei());
+
+        async fn default_client() -> (EthereumWallet, OnlySwapsClient) {
+            let testnet_signer: PrivateKeySigner = std::env::var(TESTNETS_PRIVATE_KEY_ENV)
+                .expect("testnet private key should be set")
+                .parse()
+                .unwrap();
+            let testnet_wallet = EthereumWallet::from(testnet_signer);
+
+            let mut config = OnlySwapsClientConfig::empty();
+            config.add_ethereum_chain(
+                BASE_SEPOLIA.to_owned(),
+                ProviderBuilder::new()
+                    .wallet(testnet_wallet.clone())
+                    .connect_ws(
+                        WsConnect::new(std::env::var(BASE_SEPOLIA_RPC_URL_ENV)
+                            .expect("base sepolia rpc url should be set")),
+                    )
+                    .await
+                    .expect("invalid provider"),
+            );
+            config.add_ethereum_chain(
+                AVAX_FUJI.to_owned(),
+                ProviderBuilder::new()
+                    .wallet(testnet_wallet.clone())
+                    .connect_ws(
+                        WsConnect::new(
+                        std::env::var(AVALANCHE_FUJI_RPC_URL_ENV)
+                            .expect("avalanche fuji rpc url should be set")),
+                    )
+                    .await
+                    .expect("invalid provider"),
+            );
+
+            let client = OnlySwapsClient::new(config);
+            (testnet_wallet, client)
+        }
+
+        #[tokio::test]
+        #[ignore = "ci-only"] // only run in ci
+        async fn swap_rusd_base_sepolia_to_avalanche_fuji() {
+            let _ = tracing_subscriber::FmtSubscriber::builder()
+                .with_max_level(tracing::Level::DEBUG)
+                .try_init();
+
+            let routing = SwapRouting::new_same_token(
+                BASE_SEPOLIA.chain_id,
+                AVAX_FUJI.chain_id,
+                TokenTag::RUSD,
+            );
+            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, *SWAP_FEE, SWAP_TIMEOUT).await;
+        }
+
+        #[tokio::test]
+        #[ignore = "ci-only"] // only run in ci
+        async fn swap_rusd_avalanche_fuji_to_base_sepolia() {
+            let _ = tracing_subscriber::FmtSubscriber::builder()
+                .with_max_level(tracing::Level::DEBUG)
+                .try_init();
+
+            let routing = SwapRouting::new_same_token(
+                AVAX_FUJI.chain_id,
+                BASE_SEPOLIA.chain_id,
+                TokenTag::RUSD,
+            );
+            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, *SWAP_FEE, SWAP_TIMEOUT).await;
+        }
+
+        async fn swap_and_verify_with_timeout(
+            routing: SwapRouting,
+            swap_amount: U256,
+            swap_fee: U256,
+            swap_timeout: Duration,
+        ) {
+            let (testnet_wallet, client) = default_client().await;
+            let swap_id = client
+                .approve_and_swap(
+                    NetworkWallet::<Ethereum>::default_signer_address(&testnet_wallet),
+                    swap_amount,
+                    swap_fee,
+                    routing,
+                )
+                .await
+                .expect("failed to approve and swap");
+
+            // Wait for swap to be verified, up to a set timeout
+            tokio::time::timeout(
+                swap_timeout,
+                client.wait_until_verified(swap_id, routing.src_chain),
+            )
+            .await
+            .expect("swap verification timed out")
+            .expect("failed to check verification status of swap");
+        }
+    }
 }
