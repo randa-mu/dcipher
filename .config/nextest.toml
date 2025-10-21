@@ -1,6 +1,6 @@
 [profile.default]
 # Skip CI-only tests by default
-default-filter = 'not test(#ci-only)'
+default-filter = 'not test(/ci_only/)'
 
 [profile.ci]
 # Run all tests
@@ -8,6 +8,6 @@ default-filter = 'all()'
 fail-fast = false
 
 # 1 retry for test_watch_block_numbers which may fail once depending on when the blocks are fetched
-[[profile.default.overrides]]
+[[profile.ci.overrides]]
 filter = 'package(superalloy) & (test(multi_provider::tests::test_watch_block_numbers) | test(provider::tests::watch_block_numbers_http))'
 retries = 3

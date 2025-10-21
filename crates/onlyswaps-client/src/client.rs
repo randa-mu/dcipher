@@ -596,7 +596,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[ignore = "ci-only"] // only run in ci
         async fn swap_rusd_base_sepolia_to_avalanche_fuji() {
             let _ = tracing_subscriber::FmtSubscriber::builder()
                 .with_max_level(tracing::Level::DEBUG)
@@ -611,7 +610,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[ignore = "ci-only"] // only run in ci
         async fn swap_rusd_avalanche_fuji_to_base_sepolia() {
             let _ = tracing_subscriber::FmtSubscriber::builder()
                 .with_max_level(tracing::Level::DEBUG)
