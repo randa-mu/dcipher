@@ -572,10 +572,10 @@ mod tests {
                 BASE_SEPOLIA.to_owned(),
                 ProviderBuilder::new()
                     .wallet(testnet_wallet.clone())
-                    .connect_ws(
-                        WsConnect::new(std::env::var(BASE_SEPOLIA_RPC_URL_ENV)
-                            .expect("base sepolia rpc url should be set")),
-                    )
+                    .connect_ws(WsConnect::new(
+                        std::env::var(BASE_SEPOLIA_RPC_URL_ENV)
+                            .expect("base sepolia rpc url should be set"),
+                    ))
                     .await
                     .expect("invalid provider"),
             );
@@ -583,11 +583,10 @@ mod tests {
                 AVAX_FUJI.to_owned(),
                 ProviderBuilder::new()
                     .wallet(testnet_wallet.clone())
-                    .connect_ws(
-                        WsConnect::new(
+                    .connect_ws(WsConnect::new(
                         std::env::var(AVALANCHE_FUJI_RPC_URL_ENV)
-                            .expect("avalanche fuji rpc url should be set")),
-                    )
+                            .expect("avalanche fuji rpc url should be set"),
+                    ))
                     .await
                     .expect("invalid provider"),
             );
