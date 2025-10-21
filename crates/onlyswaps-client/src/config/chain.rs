@@ -12,12 +12,11 @@ const REQUIRED_CONFIRMATIONS_DEFAULT: u64 = 1;
 /// The configuration on a specific chain
 #[derive(Clone, Debug)]
 pub struct ChainConfig {
-    pub(crate) chain_id: u64,
-    pub(crate) router_address: Address,
-    pub(crate) supported_tokens: HashMap<TokenTag, Address>,
-
-    pub(crate) timeout: Duration,
-    pub(crate) required_confirmations: u64,
+    pub chain_id: u64,
+    pub router_address: Address,
+    pub supported_tokens: HashMap<TokenTag, Address>,
+    pub timeout: Duration,
+    pub required_confirmations: u64,
 }
 
 impl ChainConfig {
