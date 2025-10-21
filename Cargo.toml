@@ -22,6 +22,9 @@ omnievent = { path = "./crates/omnievent" }
 superalloy = { path = "./crates/superalloy" }
 utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 
+# clients
+onlyswaps-client = { path = "./crates/onlyswaps-client" }
+
 # blockchain
 alloy = { version = "1.0.32", features = ["sol-types"] }
 
