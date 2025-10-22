@@ -18,14 +18,14 @@ Retrieves a filtered list of swap transactions stored in the application's curre
 
 | Parameter | Type | Description |
 |------------|------|-------------|
-| `request_id` | `string (FixedBytes<32>)` | Filters transactions matching a specific request ID. |
-| `chain_id` | `number` | Filters transactions where either `src_chain_id` or `dest_chain_id` matches. |
-| `address` | `string (Address)` | Filters transactions where the sender, recipient, or solver matches this address. |
-| `sender` | `string (Address)` | Filters transactions by sender address only. |
-| `recipient` | `string (Address)` | Filters transactions by recipient address only. |
-| `solver` | `string (Address)` | Filters transactions by solver address only. |
-| `limit` | `integer` | Maximum number of transactions to return. Defaults to `100`. |
-| `offset` | `integer` | Starting offset for pagination. Defaults to `0`. |
+| `request_id` | 0x-prefixed hex | Filters transactions matching a specific request ID. |
+| `chain_id` | integer | Filters transactions where either `src_chain_id` or `dest_chain_id` matches. |
+| `address` | 0x-prefixed address | Filters transactions where the sender, recipient, or solver matches this address. |
+| `sender` | 0x-prefixed address | Filters transactions by sender address only. |
+| `recipient` | 0x-prefixed address | Filters transactions by recipient address only. |
+| `solver` | 0x-prefixed address | Filters transactions by solver address only. |
+| `limit` | integer | Maximum number of transactions to return. Defaults to `100`. |
+| `offset` | integer | Starting offset for pagination. Defaults to `0`. |
 
 ---
 
