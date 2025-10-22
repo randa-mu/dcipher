@@ -1,7 +1,10 @@
 //! The onlyswaps client which can be used to swap tokens from one chain to another
 
 pub mod erc20;
+mod request;
 pub mod routing;
+
+pub use request::*;
 
 use crate::client::erc20::IERC20;
 use crate::client::routing::SwapRouting;
@@ -20,7 +23,7 @@ use std::marker::PhantomData;
 
 pub type OnlySwapsRequestId = FixedBytes<32>;
 
-/// An onlyswaps client to execute swaps from and to any chain.
+/// An OnlySwaps client to execute swaps from and to any chain.
 #[derive(Clone)]
 pub struct OnlySwapsClient<N = Ethereum> {
     /// onlyswaps configuration
@@ -114,22 +117,14 @@ impl OnlySwapsClient {
     /// Create a new swap, sending tokens to a recipient
     pub async fn swap(
         &self,
-        recipient: Address,
-        amount: U256,
-        fee: U256,
-        routing: SwapRouting,
+        swap_request: OnlySwapsRequest,
     ) -> Result<OnlySwapsRequestId, OnlySwapsClientError> {
         let (provider, src_chain_config, src_token_addr, dst_token_addr) =
-            self.swap_params(&routing)?;
+            self.swap_params(&swap_request.route)?;
         swap(
             src_chain_config,
             provider,
-            recipient,
-            amount,
-            fee,
-            routing.dst_chain,
-            src_token_addr,
-            dst_token_addr,
+            SwapRequest::new(swap_request, src_token_addr, dst_token_addr),
         )
         .await?
     }
@@ -170,26 +165,24 @@ impl OnlySwapsClient {
     /// Create a new swap, sending tokens to a recipient
     pub async fn approve_and_swap(
         &self,
-        recipient: Address,
-        amount: U256,
-        fee: U256,
-        routing: SwapRouting,
+        swap_request: OnlySwapsRequest,
     ) -> Result<OnlySwapsRequestId, OnlySwapsClientError> {
         let (provider, src_chain_config, src_token_addr, dst_token_addr) =
-            self.swap_params(&routing)?;
+            self.swap_params(&swap_request.route)?;
 
         // Approve spending of token on source chain by router contract, before swapping
-        approve_spending(src_chain_config, provider, src_token_addr, amount + fee).await?;
+        approve_spending(
+            src_chain_config,
+            provider,
+            src_token_addr,
+            swap_request.amount_out + swap_request.fee,
+        )
+        .await?;
 
         swap(
             src_chain_config,
             provider,
-            recipient,
-            amount,
-            fee,
-            routing.dst_chain,
-            src_token_addr,
-            dst_token_addr,
+            SwapRequest::new(swap_request, src_token_addr, dst_token_addr),
         )
         .await?
     }
@@ -275,7 +268,7 @@ impl OnlySwapsClient {
 
         let (verified, completed) = match (verified_res, completed_res) {
             (Ok(verified), Ok(completed)) => (verified, completed),
-            (Err(e), _) => return Err(e),
+            (Err(e), _) => return Err(e), // bias towards src chain error
             (_, Err(e)) => return Err(e),
         };
 
@@ -445,22 +438,52 @@ async fn approve_spending(
     Ok(tx_hash)
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn swap(
-    src_chain_config: &ChainConfig,
-    provider: &DynProvider,
+struct SwapRequest {
     recipient: Address,
-    amount: U256,
+    amount_out: U256,
     fee: U256,
     dst_chain: u64,
     src_token_addr: Address,
     dst_token_addr: Address,
+}
+
+impl SwapRequest {
+    fn new(
+        onlyswaps_request: OnlySwapsRequest,
+        src_token_addr: Address,
+        dst_token_addr: Address,
+    ) -> Self {
+        Self {
+            recipient: onlyswaps_request.recipient,
+            amount_out: onlyswaps_request.amount_out,
+            fee: onlyswaps_request.fee,
+            dst_chain: onlyswaps_request.route.dst_chain,
+            src_token_addr,
+            dst_token_addr,
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn swap(
+    src_chain_config: &ChainConfig,
+    provider: &DynProvider,
+    swap_request: SwapRequest,
 ) -> Result<Result<OnlySwapsRequestId, OnlySwapsClientError>, OnlySwapsClientError> {
+    let SwapRequest {
+        recipient,
+        amount_out,
+        fee,
+        dst_chain,
+        src_token_addr,
+        dst_token_addr,
+    } = swap_request;
+
     let router = RouterInstance::new(src_chain_config.router_address, provider);
     let call = router.requestCrossChainSwap(
         src_token_addr,
         dst_token_addr,
-        amount,
+        amount_out,
         fee,
         U256::from(dst_chain),
         recipient,
@@ -630,13 +653,19 @@ mod tests {
             swap_timeout: Duration,
         ) {
             let (testnet_wallet, client) = default_client().await;
+
+            let swap = OnlySwapsRequestBuilder::default()
+                .route(routing)
+                .amount_out(swap_amount)
+                .fee(swap_fee)
+                .recipient(NetworkWallet::<Ethereum>::default_signer_address(
+                    &testnet_wallet,
+                ))
+                .build()
+                .expect("failed to build swap request");
+
             let swap_id = client
-                .approve_and_swap(
-                    NetworkWallet::<Ethereum>::default_signer_address(&testnet_wallet),
-                    swap_amount,
-                    swap_fee,
-                    routing,
-                )
+                .approve_and_swap(swap)
                 .await
                 .expect("failed to approve and swap");
 
