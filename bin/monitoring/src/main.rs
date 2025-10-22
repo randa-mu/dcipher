@@ -15,6 +15,7 @@ mod provider;
 
 pub struct BalanceView {
     address: Address,
+    label: String,
     asset: String,
     balance: f64,
     chain_id: u64,

@@ -19,7 +19,14 @@ frequency = "3s"        # this is how often the agent calls the chain to check b
 [[networks]]
 chain_id = 43114
 rpc_url = "wss://banana.com"
-wallets = ["0x000000aAEA9e152db83A846f4509d83053F21078", "0x000000aAEA9e152db83A846f4509d83053F21078"]
+
+[[networks.wallets]]
+label = "big alice"
+address = "0x000000aAEA9e152db83A846f4509d83053F21078"
+
+[[networks.wallets]]
+label = "wee bob"
+address = "0x000000aAEA9e152db83A846f4509d83053F21078"
 
 [[networks.tokens]]
 address = "0x000000000A9e152db83A846f4509d83053F21078"
