@@ -6,6 +6,7 @@ use crate::config::token::TokenTag;
 use alloy::primitives::{Address, U256};
 
 /// Details required to execute a swap with only swaps
+#[derive(Copy, Clone, Debug)]
 pub struct OnlySwapsRequest {
     pub recipient: Address,
     pub amount: U256,
@@ -28,12 +29,16 @@ pub struct OnlySwapsRequest {
 /// use onlyswaps_client::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
 /// use onlyswaps_client::config::token::TokenTag;
 ///
-/// let request = OnlySwapsRequestBuilder::new()
-///     .recipient(Address::default()) // do not use that address
-///     .amount(U256::from(1_000_000_000_000_000_000)) // 1e18
-///     .solver_fee(U256::from(1_000_000_000_000_000_000)) // 1e18
-///     .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
-///     .build();
+/// #[tokio::main]
+/// async fn main() {
+///     let request = OnlySwapsRequestBuilder::new()
+///         .recipient(Address::default()) // do not use that address
+///         .amount(U256::from(1_000_000_000_000_000_000u128)) // 1e18
+///         .solver_fee(U256::from(1_000_000_000_000_000_000u128)) // 1e18
+///         .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
+///         .build()
+///         .expect("a valid builder");
+/// }
 /// ```
 ///
 /// Automatic solver fee estimation
@@ -45,12 +50,18 @@ pub struct OnlySwapsRequest {
 /// use onlyswaps_client::config::token::TokenTag;
 /// use onlyswaps_client::FeeEstimator;
 ///
-/// let request = OnlySwapsRequestBuilder::new()
-///     .recipient(Address::default()) // do not use that address
-///     .amount(U256::from(1_000_000_000_000_000_000)) // 1e18
-///     .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
-///     .estimate_fee(&FeeEstimator::default())
-///     .build();
+/// #[tokio::main]
+/// async fn main() {
+///     let request = OnlySwapsRequestBuilder::new()
+///         .recipient(Address::default()) // do not use that address
+///         .amount(U256::from(1_000_000_000_000_000_000u128)) // 1e18
+///         .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
+///         .estimate_fee(&FeeEstimator::default())
+///         .await
+///         .expect("fee estimation to work")
+///         .build()
+///         .expect("a valid builder");
+/// }
 /// ```
 ///
 /// Swapping an exact amount.
@@ -62,11 +73,17 @@ pub struct OnlySwapsRequest {
 /// use onlyswaps_client::config::token::TokenTag;
 /// use onlyswaps_client::FeeEstimator;
 ///
-/// let request = OnlySwapsRequestBuilder::new()
-///     .recipient(Address::default()) // do not use that address
-///     .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
-///     .exact_amount(U256::from(1_000_000_000_000_000_000), &FeeEstimator::default())
-///     .build();
+/// #[tokio::main]
+/// async fn main() {
+///     let request = OnlySwapsRequestBuilder::new()
+///         .recipient(Address::default()) // do not use that address
+///         .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
+///         .exact_amount(U256::from(1_000_000_000_000_000_000u128), &FeeEstimator::default())
+///         .await
+///         .expect("fee estimation to work")
+///         .build()
+///         .expect("a valid builder");
+/// }
 /// ```
 #[derive(Default)]
 pub struct OnlySwapsRequestBuilder {
