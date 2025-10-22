@@ -23,8 +23,9 @@ impl MetricsService {
         .parse()?;
         let registry = Registry::new();
         let balance_opts = Opts::new("balance", "wallet balances for dcipher stakeholders");
-        let balance_gauge = GaugeVec::new(balance_opts, &["address", "chain_id", "asset"])
-            .context("failed to create balance gauge")?;
+        let balance_gauge =
+            GaugeVec::new(balance_opts, &["address", "chain_id", "asset", "holder"])
+                .context("failed to create balance gauge")?;
 
         registry.register(Box::new(balance_gauge.clone()))?;
 
@@ -55,9 +56,10 @@ impl MetricsService {
         let chain_id = view.chain_id.to_string();
         let asset = view.asset;
         let balance = view.balance;
+        let holder = view.label;
 
         self.balance_gauge
-            .with_label_values(&[&address, &chain_id, &asset])
+            .with_label_values(&[&address, &chain_id, &asset, &holder])
             .set(balance);
     }
 }

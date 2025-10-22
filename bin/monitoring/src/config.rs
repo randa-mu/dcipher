@@ -28,7 +28,7 @@ pub(crate) struct NetworkMonitoringConfig {
     pub chain_id: u64,
     pub rpc_url: Url,
     pub tokens: Vec<Currency>,
-    pub wallets: Vec<Address>,
+    pub wallets: Vec<Wallet>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -36,6 +36,12 @@ pub(crate) struct Currency {
     pub address: Address,
     pub symbol: String,
     pub decimals: u8,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub(crate) struct Wallet {
+    pub label: String,
+    pub address: Address,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -62,7 +68,14 @@ log_json = true
 [[networks]]
 chain_id = 43114
 rpc_url = "wss://banana.com"
-wallets = ["0x000000aAEA9e152db83A846f4509d83053F21078", "0x000000aAEA9e152db83A846f4509d83053F21078"]
+
+[[networks.wallets]]
+address = "0x000000aAEA9e152db83A846f4509d83053F21078"
+label = "alice"
+
+[[networks.wallets]]
+address = "0x000000aAEA9e152db83A846f4509d83053F21071"
+label = "bob"
 
 [[networks.tokens]]
 address = "0x000000aAEA9e152db83A846f4509d83053F21078"

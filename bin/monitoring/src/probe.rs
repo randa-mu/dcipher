@@ -1,8 +1,7 @@
 use crate::BalanceView;
-use crate::config::{AppConfig, Currency, NetworkMonitoringConfig};
+use crate::config::{AppConfig, Currency, NetworkMonitoringConfig, Wallet};
 use crate::maths::to_float;
 use crate::provider::create_providers;
-use alloy::primitives::Address;
 use alloy::providers::{DynProvider, Provider};
 use futures::future::join_all;
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken::ERC20FaucetTokenInstance;
@@ -33,13 +32,13 @@ impl ProbeService {
             let fut = async move {
                 match &probe.token {
                     TokenProbe::Native => {
-                        fetch_native_balance(provider, probe.chain_id, probe.wallet).await
+                        fetch_native_balance(provider, probe.chain_id, probe.wallet.clone()).await
                     }
                     TokenProbe::Token(currency) => {
                         fetch_erc20_balance(
                             provider,
                             probe.chain_id,
-                            probe.wallet,
+                            probe.wallet.clone(),
                             currency.clone(),
                         )
                         .await
@@ -56,7 +55,7 @@ impl ProbeService {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Probe {
-    pub wallet: Address,
+    pub wallet: Wallet,
     pub token: TokenProbe,
     pub chain_id: u64,
 }
@@ -73,7 +72,7 @@ fn create_probes(networks: &Vec<NetworkMonitoringConfig>) -> Vec<Probe> {
     for network in networks {
         for wallet_addr in &network.wallets {
             let native_probe = Probe {
-                wallet: *wallet_addr,
+                wallet: wallet_addr.clone(),
                 token: TokenProbe::Native,
                 chain_id: network.chain_id,
             };
@@ -81,7 +80,7 @@ fn create_probes(networks: &Vec<NetworkMonitoringConfig>) -> Vec<Probe> {
 
             for token in &network.tokens {
                 let token_probe = Probe {
-                    wallet: *wallet_addr,
+                    wallet: wallet_addr.clone(),
                     token: TokenProbe::Token(token.clone()),
                     chain_id: network.chain_id,
                 };
@@ -96,14 +95,15 @@ fn create_probes(networks: &Vec<NetworkMonitoringConfig>) -> Vec<Probe> {
 async fn fetch_native_balance(
     provider: &DynProvider,
     chain_id: u64,
-    wallet: Address,
+    wallet: Wallet,
 ) -> anyhow::Result<BalanceView> {
-    let balance = provider.get_balance(wallet).await?;
+    let balance = provider.get_balance(wallet.address).await?;
     let balance_float = to_float(balance, 18);
 
     Ok(BalanceView {
         chain_id,
-        address: wallet,
+        label: wallet.label,
+        address: wallet.address,
         asset: "native".to_string(),
         balance: balance_float,
     })
@@ -112,16 +112,17 @@ async fn fetch_native_balance(
 async fn fetch_erc20_balance(
     provider: &DynProvider,
     chain_id: u64,
-    wallet: Address,
+    wallet: Wallet,
     currency: Currency,
 ) -> anyhow::Result<BalanceView> {
     let token = ERC20FaucetTokenInstance::new(currency.address, provider);
-    let balance = token.balanceOf(wallet).call().await?;
+    let balance = token.balanceOf(wallet.address).call().await?;
     let balance_float = to_float(balance, currency.decimals);
 
     let view = BalanceView {
         chain_id,
-        address: wallet,
+        label: wallet.label,
+        address: wallet.address,
         asset: currency.symbol,
         balance: balance_float,
     };
