@@ -21,7 +21,16 @@ use generated::onlyswaps::router::Router;
 use generated::onlyswaps::router::Router::RouterInstance;
 use std::marker::PhantomData;
 
+/// Request id used by only swaps
 pub type OnlySwapsRequestId = FixedBytes<32>;
+
+/// A receipt obtained after requesting a swap
+#[derive(Copy, Clone, Debug)]
+pub struct OnlySwapsReceipt {
+    pub request_id: OnlySwapsRequestId,
+    pub tx_hash: TxHash,
+    pub route: SwapRouting,
+}
 
 /// An only swaps client to execute swaps from and to any chain.
 #[derive(Clone)]
@@ -118,9 +127,9 @@ impl OnlySwapsClient {
     pub async fn swap(
         &self,
         swap_request: OnlySwapsRequest,
-    ) -> Result<OnlySwapsRequestId, OnlySwapsClientError> {
+    ) -> Result<OnlySwapsReceipt, OnlySwapsClientError> {
         let (provider, src_chain_config) = self.swap_config(&swap_request.route)?;
-        swap(src_chain_config, provider, swap_request).await?
+        swap(src_chain_config, provider, swap_request).await
     }
 
     fn swap_config(
@@ -144,7 +153,7 @@ impl OnlySwapsClient {
     pub async fn approve_and_swap(
         &self,
         swap_request: OnlySwapsRequest,
-    ) -> Result<OnlySwapsRequestId, OnlySwapsClientError> {
+    ) -> Result<OnlySwapsReceipt, OnlySwapsClientError> {
         let (provider, src_chain_config) = self.swap_config(&swap_request.route)?;
 
         // Approve spending of token on source chain by router contract, before swapping
@@ -156,7 +165,7 @@ impl OnlySwapsClient {
         )
         .await?;
 
-        swap(src_chain_config, provider, swap_request).await?
+        swap(src_chain_config, provider, swap_request).await
     }
 
     /// Verifies if the swap with the given request_id has been completed on the destination chain.
@@ -261,18 +270,19 @@ impl OnlySwapsClient {
     /// Wait until a swap is completed on the destination chain
     pub async fn wait_until_complete(
         &self,
-        request_id: OnlySwapsRequestId,
-        dst_chain: u64,
+        receipt: &OnlySwapsReceipt,
     ) -> Result<(), OnlySwapsClientError> {
         let dst_router = self
             .config
-            .get_router_instance(dst_chain)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(dst_chain))?;
+            .get_router_instance(receipt.route.dst_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(
+                receipt.route.dst_chain,
+            ))?;
 
         // Issue a registration for upcoming events
         let mut filter = dst_router
             .SwapRequestFulfilled_filter()
-            .topic1(request_id)
+            .topic1(receipt.request_id)
             .watch()
             .await
             .map_err(|e| {
@@ -284,7 +294,10 @@ impl OnlySwapsClient {
             .into_stream();
 
         // If the event was in the past, issue an RPC call
-        if self.is_swap_complete(request_id, dst_chain).await? {
+        if self
+            .is_swap_complete(receipt.request_id, receipt.route.dst_chain)
+            .await?
+        {
             return Ok(());
         }
 
@@ -300,7 +313,7 @@ impl OnlySwapsClient {
                 )
             })?;
         assert_eq!(
-            request_id, swap_completed_event.requestId,
+            receipt.request_id, swap_completed_event.requestId,
             "detected an event for a different request id, filter broken?"
         );
 
@@ -310,18 +323,19 @@ impl OnlySwapsClient {
     /// Wait until a swap reaches a specific status
     pub async fn wait_until_verified(
         &self,
-        request_id: OnlySwapsRequestId,
-        src_chain: u64,
+        receipt: &OnlySwapsReceipt,
     ) -> Result<(), OnlySwapsClientError> {
         let src_router = self
             .config
-            .get_router_instance(src_chain)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(src_chain))?;
+            .get_router_instance(receipt.route.src_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(
+                receipt.route.src_chain,
+            ))?;
 
         // Issue a registration for upcoming events
         let mut filter = src_router
             .SolverPayoutFulfilled_filter()
-            .topic1(request_id)
+            .topic1(receipt.request_id)
             .watch()
             .await
             .map_err(|e| {
@@ -333,7 +347,10 @@ impl OnlySwapsClient {
             .into_stream();
 
         // If the event was in the past, issue an RPC call
-        if self.is_swap_verified(request_id, src_chain).await? {
+        if self
+            .is_swap_verified(receipt.request_id, receipt.route.src_chain)
+            .await?
+        {
             return Ok(());
         }
 
@@ -349,7 +366,7 @@ impl OnlySwapsClient {
                 )
             })?;
         assert_eq!(
-            request_id, swap_verified_event.requestId,
+            receipt.request_id, swap_verified_event.requestId,
             "detected an event for a different request id, filter broken?"
         );
 
@@ -415,7 +432,7 @@ async fn swap(
     src_chain_config: &ChainConfig,
     provider: &DynProvider,
     swap_request: OnlySwapsRequest,
-) -> Result<Result<OnlySwapsRequestId, OnlySwapsClientError>, OnlySwapsClientError> {
+) -> Result<OnlySwapsReceipt, OnlySwapsClientError> {
     let OnlySwapsRequest {
         recipient,
         amount,
@@ -460,7 +477,11 @@ async fn swap(
     // Parse the logs to recover the request id of the swap
     let request_id = request_id_from_swap_logs(receipt.logs())
         .ok_or(OnlySwapsClientError::SwapFailedNotInLogs)?;
-    Ok(Ok(request_id))
+    Ok(OnlySwapsReceipt {
+        request_id,
+        tx_hash: receipt.transaction_hash,
+        route: swap_request.route,
+    })
 }
 
 #[cfg(test)]
@@ -616,19 +637,16 @@ mod tests {
                 .build()
                 .expect("failed to build swap request");
 
-            let swap_id = client
+            let receipt = client
                 .approve_and_swap(swap)
                 .await
                 .expect("failed to approve and swap");
 
             // Wait for swap to be verified, up to a set timeout
-            tokio::time::timeout(
-                swap_timeout,
-                client.wait_until_verified(swap_id, routing.src_chain),
-            )
-            .await
-            .expect("swap verification timed out")
-            .expect("failed to check verification status of swap");
+            tokio::time::timeout(swap_timeout, client.wait_until_verified(&receipt))
+                .await
+                .expect("swap verification timed out")
+                .expect("failed to check verification status of swap");
         }
     }
 }

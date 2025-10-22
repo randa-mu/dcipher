@@ -49,11 +49,11 @@
 //!         .expect("a valid builder");
 //!
 //!     // Execute swap with approval
-//!     let swap_id = client.approve_and_swap(request).await?;
-//!     println!("Swap initiated with ID: {}", swap_id);
+//!     let receipt = client.approve_and_swap(request).await?;
+//!     println!("Swap initiated with ID: {}", receipt.request_id);
 //!
 //!     // Wait for verification
-//!     client.wait_until_verified(swap_id, request.route.src_chain).await?;
+//!     client.wait_until_verified(&receipt).await?;
 //!     println!("Swap verified!");
 //!
 //!     Ok(())
