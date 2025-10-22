@@ -52,8 +52,8 @@ jobs:
             prefix=
             suffix=
           tags: |
-            type=sha,prefix=
-            type=ref,event=branch,suffix=-latest,enable=${{ startsWith(github.ref, 'refs/heads/') }}
+            type=raw,value=main-latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=ref,event=branch
             type=semver,pattern={{version}},event=tag,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
       - name: Set up Docker Buildx
@@ -69,10 +69,6 @@ jobs:
             image=mirror.gcr.io/moby/buildkit:buildx-stable-1
             network=host
 
-      - name : Add SHORT_SHA Environment Variable
-        id   : short-sha
-        shell: bash
-        run  : echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
 
       - id: docker-push-tagged
         name: Tag Docker image and push to Google Artifact Registry
@@ -81,8 +77,7 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ghcr.io/randa-mu/dcipher/onlyswaps-state-api:main-latest
-            ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ env.SHORT_SHA }}
+            ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ steps.meta.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/onlyswaps-state-api/Dockerfile
@@ -95,8 +90,8 @@ jobs:
         if: ${{startsWith(github.ref, 'refs/tags/') }}
         shell: bash
         run  : |
-          docker pull ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ env.SHORT_SHA }}
-          container=$(docker create ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ env.SHORT_SHA }})
+          docker pull ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ steps.meta.outputs.version }}
+          container=$(docker create ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ steps.meta.outputs.version }})
           docker cp $container:usr/local/bin/onlyswaps-state-api /tmp/onlyswaps-state-api
           docker rm $container
 

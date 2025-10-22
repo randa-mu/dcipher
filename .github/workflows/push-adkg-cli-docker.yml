@@ -30,7 +30,6 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
 
-          
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -53,8 +52,8 @@ jobs:
             prefix=
             suffix=
           tags: |
-            type=sha,prefix=
-            type=ref,event=branch,suffix=-latest,enable=${{ startsWith(github.ref, 'refs/heads/') }}
+            type=raw,value=main-latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=ref,event=branch
             type=semver,pattern={{version}},event=tag,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
       - name: Set up Docker Buildx
@@ -70,11 +69,6 @@ jobs:
             image=mirror.gcr.io/moby/buildkit:buildx-stable-1
             network=host
 
-      - name : Add SHORT_SHA Environment Variable
-        id   : short-sha
-        shell: bash
-        run  : echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
-
       - id: docker-push-tagged
         name: Tag Docker image and push to Google Artifact Registry
         uses: docker/build-push-action@v6
@@ -82,8 +76,7 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
                 ${{ steps.meta.outputs.tags }}
-                ghcr.io/randa-mu/dcipher/adkg-cli:main-latest
-                ghcr.io/randa-mu/dcipher/adkg-cli:${{ env.SHORT_SHA }}
+                ghcr.io/randa-mu/dcipher/adkg-cli:${{ steps.meta.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/adkg-cli/Dockerfile
@@ -96,8 +89,8 @@ jobs:
         if: ${{startsWith(github.ref, 'refs/tags/') }}
         shell: bash
         run  : |
-          docker pull ghcr.io/randa-mu/dcipher/adkg-cli:${{ env.SHORT_SHA }}
-          container=$(docker create ghcr.io/randa-mu/dcipher/adkg-cli:${{ env.SHORT_SHA }})
+          docker pull ${{ env.DOCKER_REGISTRY }}/adkg-cli:${{ steps.meta.outputs.version }}
+          container=$(docker create ${{ env.DOCKER_REGISTRY }}/adkg-cli:${{ steps.meta.outputs.version }})
           docker cp $container:usr/local/bin/adkg-cli ./adkg-cli
           docker rm $container
 
