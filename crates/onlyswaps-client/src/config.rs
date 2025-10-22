@@ -1,4 +1,4 @@
-//! Various static configuration for onlyswaps
+//! Various static configuration for only swaps
 
 use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
@@ -12,7 +12,7 @@ use superalloy::provider::{MultiChainProvider, MultiProvider};
 pub mod chain;
 pub mod token;
 
-/// A configuration used by the onlyswaps client
+/// A configuration used by the only swaps client
 #[derive(Clone)]
 pub struct OnlySwapsClientConfig {
     /// a list of chain-specific configuration
@@ -23,7 +23,7 @@ pub struct OnlySwapsClientConfig {
 }
 
 impl OnlySwapsClientConfig {
-    /// Create an empty onlyswaps client configuration
+    /// Create an empty only swaps client configuration
     pub fn empty() -> Self {
         Self {
             chains: HashMap::default(),

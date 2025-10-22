@@ -1,4 +1,4 @@
-//! Routing configuration used by the onlyswaps client
+//! Routing configuration used by the only swaps client
 
 use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;

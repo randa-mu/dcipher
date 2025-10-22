@@ -1,6 +1,6 @@
 # onlyswaps-client
 
-A Rust client library for interacting with the OnlySwaps cross-chain token swap protocol, part of the dcipher ecosystem.
+A Rust client library for interacting with the only swaps cross-chain token swap protocol, part of the dcipher ecosystem.
 
 ## Overview
 

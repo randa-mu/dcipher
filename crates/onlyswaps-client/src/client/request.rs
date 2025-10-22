@@ -5,7 +5,7 @@ use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
 use alloy::primitives::{Address, U256};
 
-/// Details required to execute a swap with OnlySwaps
+/// Details required to execute a swap with only swaps
 pub struct OnlySwapsRequest {
     pub recipient: Address,
     pub amount: U256,

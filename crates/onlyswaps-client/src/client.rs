@@ -1,4 +1,4 @@
-//! The onlyswaps client which can be used to swap tokens from one chain to another
+//! The only swaps client which can be used to swap tokens from one chain to another
 
 pub mod erc20;
 mod request;
@@ -23,16 +23,16 @@ use std::marker::PhantomData;
 
 pub type OnlySwapsRequestId = FixedBytes<32>;
 
-/// An OnlySwaps client to execute swaps from and to any chain.
+/// An only swaps client to execute swaps from and to any chain.
 #[derive(Clone)]
 pub struct OnlySwapsClient<N = Ethereum> {
-    /// onlyswaps configuration
+    /// only swaps configuration
     config: OnlySwapsClientConfig,
 
     _n: PhantomData<fn(N)>,
 }
 
-/// The status of an onlyswaps request
+/// The status of an only swaps request
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum OnlySwapsStatus {
     /// the swap has not yet been fulfilled by a solver

@@ -1,4 +1,4 @@
-//! Per-chain configuration for onlyswaps
+//! Per-chain configuration for only swaps
 
 use crate::config::token::{Token, TokenTag};
 use alloy::primitives::{Address, address};

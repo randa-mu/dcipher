@@ -1,4 +1,4 @@
-//! Client for the OnlySwaps fee estimator service.
+//! Client for the only swaps fee estimator service.
 
 mod api_definitions;
 

@@ -1,4 +1,4 @@
-//! Crate providing an OnlySwaps client which can be used to swap tokens from one chain to another
+//! Crate providing an only swaps client which can be used to swap tokens from one chain to another
 //! using the dcipher network.
 
 pub mod client;
