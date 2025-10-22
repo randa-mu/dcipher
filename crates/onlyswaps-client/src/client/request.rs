@@ -1,13 +1,14 @@
 //! Definitions used to specify & build swap requests.
 
 use crate::client::routing::SwapRouting;
+use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
 use alloy::primitives::{Address, U256};
 
 /// Details required to execute a swap with OnlySwaps
 pub struct OnlySwapsRequest {
     pub recipient: Address,
-    pub amount_out: U256,
+    pub amount: U256,
     pub fee: U256,
     pub route: SwapRouting,
 }
@@ -19,26 +20,73 @@ pub struct OnlySwapsRequest {
 /// any required field is missing.
 ///
 /// # Examples
+/// Manually setting amount and fees.
+/// ```
+/// use alloy::primitives::{Address, U256};
+/// use onlyswaps_client::client::OnlySwapsRequestBuilder;
+/// use onlyswaps_client::client::routing::SwapRouting;
+/// use onlyswaps_client::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
+/// use onlyswaps_client::config::token::TokenTag;
 ///
-/// ```ignore
 /// let request = OnlySwapsRequestBuilder::new()
-///     .recipient(recipient_address)
-///     .amount_out(U256::from(1000))
-///     .fee(U256::from(10))
-///     .source_chain(1)
-///     .destination_chain(137)
-///     .source_token(TokenTag::USDC)
+///     .recipient(Address::default()) // do not use that address
+///     .amount(U256::from(1_000_000_000_000_000_000)) // 1e18
+///     .solver_fee(U256::from(1_000_000_000_000_000_000)) // 1e18
+///     .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
+///     .build();
+/// ```
+///
+/// Automatic solver fee estimation
+/// ```
+/// use alloy::primitives::{Address, U256};
+/// use onlyswaps_client::client::OnlySwapsRequestBuilder;
+/// use onlyswaps_client::client::routing::SwapRouting;
+/// use onlyswaps_client::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
+/// use onlyswaps_client::config::token::TokenTag;
+/// use onlyswaps_client::FeeEstimator;
+///
+/// let request = OnlySwapsRequestBuilder::new()
+///     .recipient(Address::default()) // do not use that address
+///     .amount(U256::from(1_000_000_000_000_000_000)) // 1e18
+///     .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
+///     .estimate_fee(&FeeEstimator::default())
+///     .build();
+/// ```
+///
+/// Swapping an exact amount.
+/// ```
+/// use alloy::primitives::{Address, U256};
+/// use onlyswaps_client::client::OnlySwapsRequestBuilder;
+/// use onlyswaps_client::client::routing::SwapRouting;
+/// use onlyswaps_client::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
+/// use onlyswaps_client::config::token::TokenTag;
+/// use onlyswaps_client::FeeEstimator;
+///
+/// let request = OnlySwapsRequestBuilder::new()
+///     .recipient(Address::default()) // do not use that address
+///     .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
+///     .exact_amount(U256::from(1_000_000_000_000_000_000), &FeeEstimator::default())
 ///     .build();
 /// ```
 #[derive(Default)]
 pub struct OnlySwapsRequestBuilder {
     recipient: Option<Address>,
-    amount_out: Option<U256>,
-    fee: Option<U256>,
+    amount: Option<U256>,
+    solver_fee: Option<U256>,
     src_chain: Option<u64>,
     dst_chain: Option<u64>,
-    src_token: Option<TokenTag>,
-    dst_token: Option<TokenTag>,
+    src_token: Option<Address>,
+    dst_token: Option<Address>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum OnlySwapsRequestBuilderError {
+    #[error("failed to calculate amount due to overflow")]
+    IntOverflow,
+
+    #[cfg(feature = "fee-estimator")]
+    #[error("failed to obtain a fee estimate")]
+    FeeEstimate(#[from] crate::FeeEstimatorError),
 }
 
 impl OnlySwapsRequestBuilder {
@@ -53,15 +101,16 @@ impl OnlySwapsRequestBuilder {
         self
     }
 
-    /// Sets the expected output amount for the swap.
-    pub fn amount_out(mut self, amount_out: U256) -> Self {
-        self.amount_out = Some(amount_out);
+    /// Sets the maximum amount for the swap. Note that you will receive less than amount on
+    /// the destination chain as this does not take the network fee into account.
+    pub fn amount(mut self, amount: U256) -> Self {
+        self.amount = Some(amount);
         self
     }
 
-    /// Sets the fee amount for the swap.
-    pub fn fee(mut self, fee: U256) -> Self {
-        self.fee = Some(fee);
+    /// Sets the solver fee for the swap.
+    pub fn solver_fee(mut self, solver_fee: U256) -> Self {
+        self.solver_fee = Some(solver_fee);
         self
     }
 
@@ -78,13 +127,13 @@ impl OnlySwapsRequestBuilder {
     }
 
     /// Sets the source token tag.
-    pub fn source_token(mut self, src_token: TokenTag) -> Self {
+    pub fn source_token(mut self, src_token: Address) -> Self {
         self.src_token = Some(src_token);
         self
     }
 
     /// Sets the destination token tag.
-    pub fn destination_token(mut self, dst_token: TokenTag) -> Self {
+    pub fn destination_token(mut self, dst_token: Address) -> Self {
         self.dst_token = Some(dst_token);
         self
     }
@@ -101,9 +150,108 @@ impl OnlySwapsRequestBuilder {
         self
     }
 
+    /// Specifies the source chain parameters using a [`ChainConfig`]
+    pub fn source_chain_config(mut self, src_chain: &ChainConfig, src_token: &TokenTag) -> Self {
+        let src_token = src_chain
+            .supported_tokens
+            .get(src_token)
+            .expect("invalid token for source chain");
+        self.src_chain = Some(src_chain.chain_id);
+        self.src_token = Some(*src_token);
+        self
+    }
+
+    /// Specifies the source chain parameters using a [`ChainConfig`]
+    pub fn destination_chain_config(
+        mut self,
+        dst_chain: &ChainConfig,
+        dst_token: &TokenTag,
+    ) -> Self {
+        let dst_token = dst_chain
+            .supported_tokens
+            .get(dst_token)
+            .expect("invalid token for source chain");
+        self.dst_chain = Some(dst_chain.chain_id);
+        self.dst_token = Some(*dst_token);
+        self
+    }
+
+    /// Estimate the solver fee using the fee estimator
+    #[cfg(feature = "fee-estimator")]
+    pub async fn estimate_fee(
+        mut self,
+        estimator: &crate::FeeEstimator,
+    ) -> Result<Self, OnlySwapsRequestBuilderError> {
+        let amount = self
+            .amount
+            .expect("cannot estimate fees without a desired amount");
+        let src_chain = self
+            .src_chain
+            .expect("cannot estimate fees without a source chain");
+        let src_token = self
+            .src_token
+            .expect("cannot estimate fees without a source token");
+        let dst_chain = self
+            .dst_chain
+            .expect("cannot estimate fees without a destination chain");
+        let dst_token = self.dst_token.unwrap_or(src_token);
+
+        let estimate = estimator
+            .estimate_fees(src_chain, dst_chain, amount, src_token, dst_token)
+            .await?;
+        self.solver_fee = Some(estimate.fees.solver);
+        Ok(self)
+    }
+
+    /// Swap an exact amount of tokens, dynamically setting both amount and fee
+    #[cfg(feature = "fee-estimator")]
+    pub async fn exact_amount(
+        mut self,
+        exact_amount: U256,
+        estimator: &crate::FeeEstimator,
+    ) -> Result<Self, OnlySwapsRequestBuilderError> {
+        let src_chain = self
+            .src_chain
+            .expect("cannot estimate fees without a source chain");
+        let src_token = self
+            .src_token
+            .expect("cannot estimate fees without a source token");
+        let dst_chain = self
+            .dst_chain
+            .expect("cannot estimate fees without a destination chain");
+        let dst_token = self.dst_token.unwrap_or(src_token);
+
+        // Do a first call to get BPS values
+        let bps = estimator
+            .estimate_fees(src_chain, dst_chain, exact_amount, src_token, dst_token)
+            .await?;
+
+        // In solidity-land, amount is actually equal to exact_amount + network fee where
+        // network fee = amount * BPS / BPS_DIVISOR.
+        // To swap an exact amount, we need to set amount dynamically as,
+        // amount = exact_amount / (1 - BPS / BPS_DIVISOR)
+        //        = exact_amount * BPS_DIVISOR / (BPS_DIVISOR - BPS) (to prevent floating point errors)
+        let amount = || {
+            let num = exact_amount.checked_mul(U256::from(bps.src.bps_divisor))?;
+            let denum = bps.src.bps_divisor.checked_sub(bps.src.bps)?;
+
+            Some(num / U256::from(denum))
+        };
+        let amount = amount().ok_or(OnlySwapsRequestBuilderError::IntOverflow)?;
+
+        // Get the actual solver fee estimate with the updated amount
+        let estimate = estimator
+            .estimate_fees(src_chain, dst_chain, amount, src_token, dst_token)
+            .await?;
+
+        self.amount = Some(amount);
+        self.solver_fee = Some(estimate.fees.solver);
+        Ok(self)
+    }
+
     /// Builds an [`OnlySwapsRequest`] from the configured parameters.
     ///
-    /// Returns `None` if any required field is missing (recipient, amount_out, fee,
+    /// Returns `None` if any required field is missing (recipient, amount, fee,
     /// source_chain, destination_chain, or source_token).
     ///
     /// If no destination token is specified, the source token is used as the destination.
@@ -113,8 +261,8 @@ impl OnlySwapsRequestBuilder {
         let dst_token = self.dst_token.unwrap_or(src_token);
 
         Some(OnlySwapsRequest {
-            amount_out: self.amount_out?,
-            fee: self.fee?,
+            amount: self.amount?,
+            fee: self.solver_fee?,
             recipient: self.recipient?,
             route: SwapRouting {
                 src_token,

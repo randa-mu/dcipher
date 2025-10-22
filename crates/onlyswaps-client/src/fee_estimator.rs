@@ -10,6 +10,7 @@ use api_definitions::*;
 pub const FEE_ESTIMATOR_ENDPOINT: &str = "https://fees.onlyswaps.dcipher.network/fees";
 
 /// Client for estimating swap fees
+#[derive(Clone, Debug)]
 pub struct FeeEstimator {
     client: reqwest::Client,
     fee_endpoint: String,
@@ -48,7 +49,7 @@ impl FeeEstimator {
         let request = FeeEstimateRequest {
             src_chain_id,
             dest_chain_id,
-            amount: amount.to_string(),
+            amount,
             src_token,
             dest_token,
         };
@@ -71,7 +72,6 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_fee_estimator_default_api() {
-        // Use your actual test/staging API URL
         let estimator = FeeEstimator::default();
 
         let src_chain = BASE_SEPOLIA.chain_id;
@@ -86,17 +86,7 @@ mod integration_tests {
             .await
             .expect("Should successfully get fee estimate");
 
-        // Transfer and approval amounts should be parseable
-        let transfer_amount: U256 = response
-            .transfer_amount
-            .parse()
-            .expect("Transfer amount should be valid number");
-        let approval_amount: U256 = response
-            .approval_amount
-            .parse()
-            .expect("Approval amount should be valid number");
-
-        // Approval should be >= transfer amount
-        assert!(approval_amount >= transfer_amount);
+        // Consistency check: approval should be >= transfer amount
+        assert!(response.approval_amount >= response.transfer_amount);
     }
 }

@@ -1,6 +1,6 @@
 //! Various definitions required by the onlyswaps-fees-api
 
-use alloy::primitives::Address;
+use alloy::primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 /// Request payload for fee estimation
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct FeeEstimateRequest {
     pub src_chain_id: u64,
     pub dest_chain_id: u64,
-    pub amount: String,
+    pub amount: U256,
     pub src_token: Address,
     pub dest_token: Address,
 }
@@ -34,11 +34,11 @@ pub struct ChainFeeDetails {
 #[derive(Debug, Deserialize)]
 pub struct FeeBreakdown {
     /// Solver fee
-    pub solver: String,
+    pub solver: U256,
     /// Network fee
-    pub network: String,
+    pub network: U256,
     /// Total fee (solver + network)
-    pub total: String,
+    pub total: U256,
 }
 
 /// Response from the fee estimation endpoint
@@ -51,9 +51,9 @@ pub struct FeeEstimateResponse {
     /// Breakdown of fees
     pub fees: FeeBreakdown,
     /// Amount that will be transferred after fees
-    pub transfer_amount: String,
+    pub transfer_amount: U256,
     /// Amount that needs to be approved for the swap
-    pub approval_amount: String,
+    pub approval_amount: U256,
     /// Unix timestamp of the estimate
     pub timestamp: u64,
 }

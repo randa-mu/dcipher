@@ -6,4 +6,7 @@ pub mod client;
 pub mod config;
 
 #[cfg(feature = "fee-estimator")]
-pub mod fee_estimator;
+mod fee_estimator;
+
+#[cfg(feature = "fee-estimator")]
+pub use fee_estimator::*;

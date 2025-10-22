@@ -119,20 +119,14 @@ impl OnlySwapsClient {
         &self,
         swap_request: OnlySwapsRequest,
     ) -> Result<OnlySwapsRequestId, OnlySwapsClientError> {
-        let (provider, src_chain_config, src_token_addr, dst_token_addr) =
-            self.swap_params(&swap_request.route)?;
-        swap(
-            src_chain_config,
-            provider,
-            SwapRequest::new(swap_request, src_token_addr, dst_token_addr),
-        )
-        .await?
+        let (provider, src_chain_config) = self.swap_config(&swap_request.route)?;
+        swap(src_chain_config, provider, swap_request).await?
     }
 
-    fn swap_params(
+    fn swap_config(
         &self,
         routing: &SwapRouting,
-    ) -> Result<(&DynProvider, &ChainConfig, Address, Address), OnlySwapsClientError> {
+    ) -> Result<(&DynProvider, &ChainConfig), OnlySwapsClientError> {
         let provider = self
             .config
             .get_ethereum_provider(routing.src_chain)
@@ -143,23 +137,7 @@ impl OnlySwapsClient {
             .get_chain_config(routing.src_chain)
             .ok_or(OnlySwapsClientError::UnsupportedChain(routing.src_chain))?;
 
-        let src_token_addr = *src_chain_config
-            .supported_tokens
-            .get(&routing.src_token)
-            .ok_or(OnlySwapsClientError::UnsupportedToken(
-                routing.src_chain,
-                routing.src_token,
-            ))?;
-
-        let dst_token_addr = self
-            .config
-            .get_token_address(routing.dst_chain, &routing.dst_token)
-            .ok_or(OnlySwapsClientError::UnsupportedToken(
-                routing.dst_chain,
-                routing.dst_token,
-            ))?;
-
-        Ok((provider, src_chain_config, src_token_addr, dst_token_addr))
+        Ok((provider, src_chain_config))
     }
 
     /// Create a new swap, sending tokens to a recipient
@@ -167,24 +145,18 @@ impl OnlySwapsClient {
         &self,
         swap_request: OnlySwapsRequest,
     ) -> Result<OnlySwapsRequestId, OnlySwapsClientError> {
-        let (provider, src_chain_config, src_token_addr, dst_token_addr) =
-            self.swap_params(&swap_request.route)?;
+        let (provider, src_chain_config) = self.swap_config(&swap_request.route)?;
 
         // Approve spending of token on source chain by router contract, before swapping
         approve_spending(
             src_chain_config,
             provider,
-            src_token_addr,
-            swap_request.amount_out + swap_request.fee,
+            swap_request.route.src_token,
+            swap_request.amount + swap_request.fee,
         )
         .await?;
 
-        swap(
-            src_chain_config,
-            provider,
-            SwapRequest::new(swap_request, src_token_addr, dst_token_addr),
-        )
-        .await?
+        swap(src_chain_config, provider, swap_request).await?
     }
 
     /// Verifies if the swap with the given request_id has been completed on the destination chain.
@@ -438,52 +410,30 @@ async fn approve_spending(
     Ok(tx_hash)
 }
 
-struct SwapRequest {
-    recipient: Address,
-    amount_out: U256,
-    fee: U256,
-    dst_chain: u64,
-    src_token_addr: Address,
-    dst_token_addr: Address,
-}
-
-impl SwapRequest {
-    fn new(
-        onlyswaps_request: OnlySwapsRequest,
-        src_token_addr: Address,
-        dst_token_addr: Address,
-    ) -> Self {
-        Self {
-            recipient: onlyswaps_request.recipient,
-            amount_out: onlyswaps_request.amount_out,
-            fee: onlyswaps_request.fee,
-            dst_chain: onlyswaps_request.route.dst_chain,
-            src_token_addr,
-            dst_token_addr,
-        }
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 async fn swap(
     src_chain_config: &ChainConfig,
     provider: &DynProvider,
-    swap_request: SwapRequest,
+    swap_request: OnlySwapsRequest,
 ) -> Result<Result<OnlySwapsRequestId, OnlySwapsClientError>, OnlySwapsClientError> {
-    let SwapRequest {
+    let OnlySwapsRequest {
         recipient,
-        amount_out,
+        amount,
         fee,
-        dst_chain,
-        src_token_addr,
-        dst_token_addr,
+        route:
+            SwapRouting {
+                dst_chain,
+                src_token,
+                dst_token,
+                ..
+            },
     } = swap_request;
 
     let router = RouterInstance::new(src_chain_config.router_address, provider);
     let call = router.requestCrossChainSwap(
-        src_token_addr,
-        dst_token_addr,
-        amount_out,
+        src_token,
+        dst_token,
+        amount,
         fee,
         U256::from(dst_chain),
         recipient,
@@ -566,9 +516,11 @@ mod tests {
         assert_eq!(request_id, expected_request_id);
     }
 
+    #[cfg(feature = "fee-estimator")]
     mod ci_only {
         use super::*;
         use crate::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
+        use crate::fee_estimator::FeeEstimator;
         use alloy::network::{EthereumWallet, NetworkWallet};
         use alloy::primitives::utils::Unit;
         use alloy::providers::{ProviderBuilder, WsConnect};
@@ -581,9 +533,8 @@ mod tests {
         const AVALANCHE_FUJI_RPC_URL_ENV: &str = "AVALANCHE_FUJI_RPC_URL";
         const SWAP_TIMEOUT: Duration = Duration::from_millis(60000); // 60s
         static SWAP_AMOUNT: LazyLock<U256> = LazyLock::new(|| U256::from(1) * Unit::ETHER.wei());
-        static SWAP_FEE: LazyLock<U256> = LazyLock::new(|| U256::from(1) * Unit::ETHER.wei());
 
-        async fn default_client() -> (EthereumWallet, OnlySwapsClient) {
+        async fn default_config() -> (EthereumWallet, OnlySwapsClient, FeeEstimator) {
             let testnet_signer: PrivateKeySigner = std::env::var(TESTNETS_PRIVATE_KEY_ENV)
                 .expect("testnet private key should be set")
                 .parse()
@@ -615,7 +566,8 @@ mod tests {
             );
 
             let client = OnlySwapsClient::new(config);
-            (testnet_wallet, client)
+            let fee_estimator = FeeEstimator::default();
+            (testnet_wallet, client, fee_estimator)
         }
 
         #[tokio::test]
@@ -624,12 +576,12 @@ mod tests {
                 .with_max_level(tracing::Level::DEBUG)
                 .try_init();
 
-            let routing = SwapRouting::new_same_token(
-                BASE_SEPOLIA.chain_id,
-                AVAX_FUJI.chain_id,
-                TokenTag::RUSD,
+            let routing = SwapRouting::new_same_token_from_configs(
+                &BASE_SEPOLIA,
+                &AVAX_FUJI,
+                &TokenTag::RUSD,
             );
-            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, *SWAP_FEE, SWAP_TIMEOUT).await;
+            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, SWAP_TIMEOUT).await;
         }
 
         #[tokio::test]
@@ -638,29 +590,29 @@ mod tests {
                 .with_max_level(tracing::Level::DEBUG)
                 .try_init();
 
-            let routing = SwapRouting::new_same_token(
-                AVAX_FUJI.chain_id,
-                BASE_SEPOLIA.chain_id,
-                TokenTag::RUSD,
+            let routing = SwapRouting::new_same_token_from_configs(
+                &AVAX_FUJI,
+                &BASE_SEPOLIA,
+                &TokenTag::RUSD,
             );
-            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, *SWAP_FEE, SWAP_TIMEOUT).await;
+            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, SWAP_TIMEOUT).await;
         }
 
         async fn swap_and_verify_with_timeout(
             routing: SwapRouting,
             swap_amount: U256,
-            swap_fee: U256,
             swap_timeout: Duration,
         ) {
-            let (testnet_wallet, client) = default_client().await;
+            let (testnet_wallet, client, fee_estimator) = default_config().await;
 
             let swap = OnlySwapsRequestBuilder::default()
                 .route(routing)
-                .amount_out(swap_amount)
-                .fee(swap_fee)
                 .recipient(NetworkWallet::<Ethereum>::default_signer_address(
                     &testnet_wallet,
                 ))
+                .exact_amount(swap_amount, &fee_estimator)
+                .await
+                .expect("failed to estimate fees")
                 .build()
                 .expect("failed to build swap request");
 
