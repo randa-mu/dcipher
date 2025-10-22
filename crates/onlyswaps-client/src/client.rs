@@ -85,6 +85,9 @@ pub enum OnlySwapsClientError {
 
     #[error("swap request not found")]
     SwapRequestNotFound,
+
+    #[error("incoherent state: verified = {verified}, but completed = {completed}")]
+    IncoherentState { verified: bool, completed: bool },
 }
 
 impl OnlySwapsClient {
@@ -261,9 +264,10 @@ impl OnlySwapsClient {
             // not verified, not completed
             (false, false) => Ok(OnlySwapsStatus::Pending),
             // any other combination should not happen
-            _ => panic!(
-                "(verified, completed) = ({verified}, {completed}) status should not be possible"
-            ),
+            _ => Err(OnlySwapsClientError::IncoherentState {
+                verified,
+                completed,
+            }),
         }
     }
 
