@@ -568,6 +568,8 @@ mod tests {
             sender,
             recipient,
             solver,
+            token_in: address!("0x1b0f6cf6f3185872a581bd2b5a738eb52ccd4d76"),
+            token_out: address!("0x1b0f6cf6f3185872a581bd2b5a738eb52ccd4d76"),
             amount_in: U256::ZERO.into(),
             amount_out: U256::ZERO.into(),
             verification_fee: U256::ZERO.into(),

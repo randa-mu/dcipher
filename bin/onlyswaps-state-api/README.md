@@ -52,6 +52,8 @@ GET /transactions?sender=0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa&limit=2&offs
     "dest_chain_id": 43113,
     "sender": "0x23bcb0d1706d2733eb0f7f0e757f76957135448a",
     "recipient": "0x23bcb0d1706d2733eb0f7f0e757f76957135448a",
+    "token_in": "0x1b0f6cf6f3185872a581bd2b5a738eb52ccd4d76",
+    "token_out": "0x1b0f6cf6f3185872a581bd2b5a738eb52ccd4d76",
     "amount_in": "1045025125628140703",
     "amount_out": "1000000000000000000",
     "verification_fee": "5025125628140703",
