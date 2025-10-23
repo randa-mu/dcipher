@@ -6,7 +6,7 @@ use alloy::providers::DynProvider;
 use futures::StreamExt;
 use futures::future::try_join_all;
 use futures::stream::select_all;
-use moka::sync::Cache;
+use moka::future::Cache;
 use std::collections::HashMap;
 use std::time::Duration;
 
