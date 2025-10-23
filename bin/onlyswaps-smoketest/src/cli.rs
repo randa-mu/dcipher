@@ -5,8 +5,8 @@ pub(crate) struct CliConfig {
     #[arg(
         short = 'c',
         long = "config",
-        env = "ONLYSWAPS_STATE_API_CONFIG",
-        default_value = "~/.config/onlyswaps/state-api/config.toml"
+        env = "ONLYSWAPS_SMOKETEST_CONFIG",
+        default_value = "~/.config/onlyswaps/smoketest/config.toml"
     )]
     pub config_path: String,
 }
