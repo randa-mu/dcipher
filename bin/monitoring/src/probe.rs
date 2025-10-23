@@ -70,9 +70,9 @@ fn create_probes(networks: &Vec<NetworkMonitoringConfig>) -> Vec<Probe> {
     let mut out = Vec::new();
 
     for network in networks {
-        for wallet_addr in &network.wallets {
+        for wallet in &network.wallets {
             let native_probe = Probe {
-                wallet: wallet_addr.clone(),
+                wallet: wallet.clone(),
                 token: TokenProbe::Native,
                 chain_id: network.chain_id,
             };
@@ -80,7 +80,7 @@ fn create_probes(networks: &Vec<NetworkMonitoringConfig>) -> Vec<Probe> {
 
             for token in &network.tokens {
                 let token_probe = Probe {
-                    wallet: wallet_addr.clone(),
+                    wallet: wallet.clone(),
                     token: TokenProbe::Token(token.clone()),
                     chain_id: network.chain_id,
                 };

@@ -7,7 +7,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub struct LongNumber(pub U256);
 
 // this is a u64 in disguise
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub struct ShortNumber(pub U256);
 
 impl Serialize for LongNumber {

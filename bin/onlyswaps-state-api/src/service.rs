@@ -1,3 +1,4 @@
+use crate::filter::matches;
 use crate::serde::ShortNumber;
 use crate::state::{AppState, SwapTransaction};
 use alloy::primitives::{Address, FixedBytes};
@@ -11,7 +12,7 @@ pub(crate) trait StateService: Send + Sync {
     ) -> anyhow::Result<Vec<SwapTransaction>>;
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Clone)]
 pub(crate) struct SwapTransactionQueryFilter {
     pub request_id: Option<FixedBytes<32>>,
     pub chain_id: Option<ShortNumber>,
@@ -19,6 +20,12 @@ pub(crate) struct SwapTransactionQueryFilter {
     pub sender: Option<Address>,
     pub recipient: Option<Address>,
     pub solver: Option<Address>,
+    pub requested_time_start: Option<u64>,
+    pub requested_time_end: Option<u64>,
+    pub verified_time_start: Option<u64>,
+    pub verified_time_end: Option<u64>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
 }
 pub(crate) struct ChannelStateService {
     rx: watch::Receiver<AppState>,
@@ -35,55 +42,21 @@ impl StateService for ChannelStateService {
         &self,
         filter: SwapTransactionQueryFilter,
     ) -> anyhow::Result<Vec<SwapTransaction>> {
-        let mut state = self.rx.borrow().clone();
+        let state = self.rx.borrow();
+        let offset = filter.offset.unwrap_or(0);
+        let limit = filter.limit.unwrap_or(100);
 
-        if let Some(id) = filter.request_id {
-            by_id(&mut state.transactions, &id)
-        }
-        if let Some(chain_id) = filter.chain_id {
-            by_chain_id(&mut state.transactions, chain_id)
-        }
-        if let Some(address) = filter.address {
-            by_address(&mut state.transactions, address)
-        }
-        if let Some(sender) = filter.sender {
-            by_sender(&mut state.transactions, sender)
-        }
-        if let Some(recipient) = filter.recipient {
-            by_recipient(&mut state.transactions, recipient)
-        }
-        if let Some(solver) = filter.solver {
-            by_solver(&mut state.transactions, solver)
-        }
+        let result = state
+            .transactions
+            .iter()
+            .filter(|tx| matches(tx, filter.clone()))
+            .skip(offset)
+            .take(limit)
+            .cloned()
+            .collect();
 
-        Ok(state.transactions)
+        Ok(result)
     }
-}
-
-fn by_id(txs: &mut Vec<SwapTransaction>, request_id: &FixedBytes<32>) {
-    txs.retain(|t| t.request_id == *request_id);
-}
-fn by_chain_id(txs: &mut Vec<SwapTransaction>, chain_id: ShortNumber) {
-    txs.retain(|t| t.src_chain_id == chain_id || t.dest_chain_id == chain_id);
-}
-
-fn by_address(txs: &mut Vec<SwapTransaction>, address: Address) {
-    txs.retain(|t| {
-        t.sender == address
-            || t.recipient == address
-            || t.solver.filter(|s| s == &address).is_some()
-    });
-}
-fn by_sender(txs: &mut Vec<SwapTransaction>, address: Address) {
-    txs.retain(|t| t.sender == address)
-}
-
-fn by_recipient(txs: &mut Vec<SwapTransaction>, address: Address) {
-    txs.retain(|t| t.recipient == address)
-}
-
-fn by_solver(txs: &mut Vec<SwapTransaction>, address: Address) {
-    txs.retain(|t| t.solver.filter(|s| s == &address).is_some())
 }
 
 #[cfg(test)]
@@ -308,6 +281,276 @@ mod tests {
 
         let result = service.get_transactions(filter).unwrap();
         assert_eq!(result.len(), 3);
+    }
+
+    #[test]
+    fn filter_by_limit_smaller_all() {
+        let addr = address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cffff");
+        let tx1 = create_tx(
+            FixedBytes::default(),
+            1u64.into(),
+            2u64.into(),
+            addr,
+            address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C1111"),
+            None,
+        );
+        let txs = vec![
+            tx1.clone(),
+            create_tx(
+                FixedBytes::default(),
+                2u64.into(),
+                3u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C2222"),
+                addr,
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                4u64.into(),
+                5u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C4444"),
+                Some(addr),
+            ),
+            create_tx(
+                FixedBytes::default(),
+                6u64.into(),
+                7u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C6666"),
+                None,
+            ),
+        ];
+
+        let service = create_service(txs);
+
+        // take the first
+        let filter1 = SwapTransactionQueryFilter {
+            limit: Some(1),
+            ..Default::default()
+        };
+        let result = service.get_transactions(filter1).unwrap();
+        assert_eq!(result.len(), 1);
+
+        // take them alllll
+        let filter_all = SwapTransactionQueryFilter {
+            limit: Some(20),
+            ..Default::default()
+        };
+        let result_all = service.get_transactions(filter_all).unwrap();
+        assert_eq!(result_all.len(), 4);
+
+        // window including some tx but not the first
+        let filter_window = SwapTransactionQueryFilter {
+            limit: Some(2),
+            offset: Some(1),
+            ..Default::default()
+        };
+        let result_window = service.get_transactions(filter_window).unwrap();
+        assert_eq!(result_window.len(), 2);
+        assert_ne!(result_window[0], tx1);
+        assert_ne!(result_window[1], tx1);
+
+        // window too long returns none and doesn't blow up
+        let filter_long_offset = SwapTransactionQueryFilter {
+            limit: Some(2),
+            offset: Some(100),
+            ..Default::default()
+        };
+        let result_window = service.get_transactions(filter_long_offset).unwrap();
+        assert_eq!(result_window.len(), 0);
+    }
+
+    #[test]
+    fn filter_by_requested_time_range() {
+        let mut txs = vec![
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C1111"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C2222"),
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C4444"),
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C6666"),
+                None,
+            ),
+        ];
+        txs[0].requested_time = 10u64.into();
+        txs[1].requested_time = 20u64.into();
+        txs[2].requested_time = 30u64.into();
+
+        let service = create_service(txs);
+
+        // inclusive range 10..=20
+        let filter = SwapTransactionQueryFilter {
+            requested_time_start: Some(10u64),
+            requested_time_end: Some(20u64),
+            ..Default::default()
+        };
+
+        let result = service.get_transactions(filter).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].requested_time, 10u64.into());
+        assert_eq!(result[1].requested_time, 20u64.into());
+    }
+
+    #[test]
+    fn filter_by_verified_time_range() {
+        let mut txs = vec![
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C1111"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C2222"),
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C4444"),
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C6666"),
+                None,
+            ),
+        ];
+        txs[0].verified_time = Some(5u64.into());
+        txs[1].verified_time = Some(15u64.into());
+        txs[2].verified_time = Some(25u64.into());
+
+        let service = create_service(txs);
+
+        // inclusive range 5..=15
+        let filter = SwapTransactionQueryFilter {
+            verified_time_start: Some(5u64),
+            verified_time_end: Some(15u64),
+            ..Default::default()
+        };
+
+        let result = service.get_transactions(filter).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].verified_time, Some(5u64.into()));
+        assert_eq!(result[1].verified_time, Some(15u64.into()));
+    }
+
+    #[test]
+    fn filter_requested_time_defaults_to_full_range() {
+        let mut txs = vec![
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cbbbb"),
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ccccc"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cdddd"),
+                None,
+            ),
+        ];
+        txs[0].requested_time = 50u64.into();
+        txs[1].requested_time = 100u64.into();
+        let service = create_service(txs);
+
+        // With no range set, both are included
+        let filter = SwapTransactionQueryFilter::default();
+        let result = service.get_transactions(filter).unwrap();
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn filter_verified_time_start_only() {
+        let mut txs = vec![
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cbbbb"),
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ccccc"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cdddd"),
+                None,
+            ),
+        ];
+        txs[0].verified_time = Some(10u64.into());
+        txs[1].verified_time = Some(20u64.into());
+        let service = create_service(txs);
+
+        // start only (>= 15)
+        let filter = SwapTransactionQueryFilter {
+            verified_time_start: Some(15u64),
+            ..Default::default()
+        };
+        let result = service.get_transactions(filter).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].verified_time, Some(20u64.into()));
+    }
+
+    #[test]
+    fn filter_verified_time_end_only() {
+        let mut txs = vec![
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cbbbb"),
+                None,
+            ),
+            create_tx(
+                FixedBytes::default(),
+                1u64.into(),
+                2u64.into(),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ccccc"),
+                address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cdddd"),
+                None,
+            ),
+        ];
+        txs[0].verified_time = Some(10u64.into());
+        txs[1].verified_time = Some(20u64.into());
+        let service = create_service(txs);
+
+        // end only (<= 15)
+        let filter = SwapTransactionQueryFilter {
+            verified_time_end: Some(15u64),
+            ..Default::default()
+        };
+        let result = service.get_transactions(filter).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].verified_time, Some(10u64.into()));
     }
 
     fn create_tx(
