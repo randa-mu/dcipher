@@ -89,6 +89,7 @@ either = "1.15"
 figment = { version = "0.10" }
 hex = "0.4"
 humantime = "2.2"
+humantime-serde = "1.1.1"
 itertools = "0.14"
 rand = "0.8.0"
 strum = { version = "0.27", features = ["derive"] }

@@ -14,7 +14,7 @@ clap = { workspace = true, features = ["derive", "env"] }
 chrono = { workspace = true, features = ["serde"] }
 figment = { workspace = true, features = ["toml", "json"] }
 hex.workspace = true
-humantime-serde = "1.1.1"
+humantime-serde.workspace = true
 itertools.workspace = true
 libp2p.workspace = true
 serde.workspace = true
