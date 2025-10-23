@@ -13,7 +13,7 @@ use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
 use alloy::network::Ethereum;
 use alloy::primitives::{Address, FixedBytes, LogData, TxHash, U256};
-use alloy::providers::{DynProvider, PendingTransactionError, Provider};
+use alloy::providers::{DynProvider, Provider};
 use alloy::rpc::types::Log;
 use alloy::sol_types::SolEvent;
 use futures_util::StreamExt;
@@ -69,7 +69,7 @@ pub enum OnlySwapsClientError {
     Contract(#[source] alloy::contract::Error, &'static str),
 
     #[error("pending transaction failed")]
-    PendingTransaction(#[from] PendingTransactionError),
+    PendingTransaction(#[from] alloy::providers::PendingTransactionError),
 
     #[error("failed to sign tx")]
     SignTx(#[from] alloy::signers::Error),
@@ -100,6 +100,11 @@ impl OnlySwapsClient {
 }
 
 impl OnlySwapsClient {
+    /// Obtain the client configuration.
+    pub fn config(&self) -> &OnlySwapsClientConfig {
+        &self.config
+    }
+
     /// Approve the router contract to spend tokens for upcoming swaps
     /// The amount must include the fees.
     pub async fn approve_spending(
