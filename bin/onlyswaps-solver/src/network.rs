@@ -3,6 +3,7 @@ use crate::model::{BlockEvent, ChainState, Transfer};
 use crate::solver::ChainStateProvider;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, U256};
+use alloy::providers::fillers::{BlobGasFiller, ChainIdFiller};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use async_trait::async_trait;
@@ -49,7 +50,11 @@ impl Network<DynProvider> {
     pub async fn new(signer: &PrivateKeySigner, config: &NetworkConfig) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
         let chain_id = config.chain_id;
-        let provider = ProviderBuilder::new()
+        let provider = ProviderBuilder::default()
+            .filler(ChainIdFiller::default())
+            .with_simple_nonce_management()
+            .filler(BlobGasFiller)
+            .with_gas_estimation()
             .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?
