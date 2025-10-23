@@ -341,7 +341,6 @@ mod tests {
         let ws = WsConnect::new(anvil.ws_endpoint());
 
         let provider = ProviderBuilder::new()
-            .with_gas_estimation()
             .wallet(wallet)
             .connect_ws(ws)
             .await

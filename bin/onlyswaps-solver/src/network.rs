@@ -50,7 +50,6 @@ impl Network<DynProvider> {
         let url = config.rpc_url.clone();
         let chain_id = config.chain_id;
         let provider = ProviderBuilder::new()
-            .with_gas_estimation()
             .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?
