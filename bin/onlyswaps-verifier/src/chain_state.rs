@@ -103,7 +103,6 @@ impl Network<DynProvider> {
         let url = config.rpc_url.clone();
         let own_addr = signer.address();
         let provider = ProviderBuilder::new()
-            .with_gas_estimation()
             .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?

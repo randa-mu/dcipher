@@ -375,7 +375,6 @@ pub(crate) mod tests {
         let ws = WsConnect::new(anvil.ws_endpoint());
 
         let provider = ProviderBuilder::new()
-            .with_gas_estimation()
             .wallet(wallet)
             .connect_ws(ws)
             .await
@@ -451,7 +450,6 @@ pub(crate) mod tests {
             .expect("anvil should have a wallet");
 
         let provider_1337 = ProviderBuilder::new()
-            .with_gas_estimation()
             .wallet(wallet_1337)
             .connect_ws(WsConnect::new(anvil_chain_1337.ws_endpoint()))
             .await
@@ -459,7 +457,6 @@ pub(crate) mod tests {
             .erased();
 
         let provider_1338 = ProviderBuilder::new()
-            .with_gas_estimation()
             .wallet(wallet_1338)
             .connect_ws(WsConnect::new(anvil_chain_1338.ws_endpoint()))
             .await
