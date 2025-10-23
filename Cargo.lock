@@ -1284,6 +1284,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-lock"
+version = "3.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fd03604047cee9b6ce9de9f70c6cd540a0520c813cbd49bae61f33ab80ed1dc"
+dependencies = [
+ "event-listener",
+ "event-listener-strategy",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "async-recursion"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4440,9 +4451,12 @@ version = "0.12.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9321642ca94a4282428e6ea4af8cc2ca4eac48ac7a6a4ea8f33f76d0ce70926"
 dependencies = [
+ "async-lock",
  "crossbeam-channel",
  "crossbeam-epoch",
  "crossbeam-utils",
+ "event-listener",
+ "futures-util",
  "loom",
  "parking_lot",
  "portable-atomic",

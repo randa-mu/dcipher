@@ -15,7 +15,7 @@ dotenv = "0.15.0"
 futures.workspace = true
 generated.workspace = true
 itertools.workspace = true
-moka = { version = "0.12.10", features = ["sync"] }
+moka = { version = "0.12.10", features = ["future"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 speculoos = "0.13.0"
