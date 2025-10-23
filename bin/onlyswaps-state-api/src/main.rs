@@ -8,6 +8,7 @@ use clap::Parser;
 mod app;
 mod config;
 mod events;
+mod filter;
 mod http_api;
 mod metrics;
 mod network_bus;
