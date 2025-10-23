@@ -292,7 +292,7 @@ impl OnlySwapsClient {
         let mut filter = dst_router
             .SwapRequestFulfilled_filter()
             .topic1(receipt.request_id)
-            .watch()
+            .subscribe()
             .await
             .map_err(|e| {
                 OnlySwapsClientError::Contract(
@@ -345,7 +345,7 @@ impl OnlySwapsClient {
         let mut filter = src_router
             .SolverPayoutFulfilled_filter()
             .topic1(receipt.request_id)
-            .watch()
+            .subscribe()
             .await
             .map_err(|e| {
                 OnlySwapsClientError::Contract(
