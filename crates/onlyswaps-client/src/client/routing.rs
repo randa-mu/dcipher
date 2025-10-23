@@ -6,6 +6,7 @@ use alloy::primitives::Address;
 
 /// Parameters required to route a swap
 #[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SwapRouting {
     pub src_chain: u64,
     pub dst_chain: u64,
