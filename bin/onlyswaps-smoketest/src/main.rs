@@ -7,14 +7,19 @@ use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::Context;
-use axum::response::Response;
 use clap::Parser;
 use onlyswaps_client::client::OnlySwapsClient;
 use onlyswaps_client::config::OnlySwapsClientConfig;
-use onlyswaps_client::config::chain::{AVAX_FUJI, BASE_SEPOLIA, ChainConfig};
+use onlyswaps_client::config::chain::ChainConfig;
+use std::sync::Arc;
+use axum::http::StatusCode;
+use prometheus::{Encoder, TextEncoder};
+use crate::metrics::Metrics;
 
 mod cli;
 mod config;
+mod metrics;
+mod smoketest;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -49,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
 
         res = run(app_config) => {
            match res {
-                Ok(()) => anyhow::bail!("swap loop stopped unexpectedly without an error"),
+                Ok(()) => anyhow::bail!("smoke test stopped unexpectedly without an error"),
                 Err(_) => res.context("smoke test exited unexpectedly"),
            }
         }
@@ -57,17 +62,34 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn run(app_config: AppConfig) -> anyhow::Result<()> {
-    let _ = get_client(app_config).await?;
-    Ok(())
-}
-
-async fn get_client(app_config: AppConfig) -> anyhow::Result<OnlySwapsClient> {
     let signer = PrivateKeySigner::from_slice(app_config.eth_private_key.as_slice())
         .context("failed to parse eth private key")?;
+    let self_recipient = signer.address();
     let wallet = EthereumWallet::from(signer);
 
+    let client = get_client(wallet, &app_config).await?;
+    let client = Arc::new(client); // need to arc it to share it across tokio tasks
+
+    // Start each of the smoketest loops in their own task
+    for swap in app_config.swaps {
+        tokio::task::spawn(smoketest::smoketest_loop(
+            self_recipient,
+            client.clone(),
+            swap,
+        )?);
+    }
+
+    let future = futures_util::future::pending();
+    let () = future.await;
+    unreachable!();
+}
+
+async fn get_client(
+    wallet: EthereumWallet,
+    app_config: &AppConfig,
+) -> anyhow::Result<OnlySwapsClient> {
     let mut config = OnlySwapsClientConfig::empty();
-    for network in app_config.networks {
+    for network in &app_config.networks {
         let chain_config = ChainConfig::from_chain_id(network.chain_id).with_context(|| {
             format!(
                 "missing onlyswaps config for chain with id {}",
@@ -85,11 +107,11 @@ async fn get_client(app_config: AppConfig) -> anyhow::Result<OnlySwapsClient> {
         let provider = ProviderBuilder::new().wallet(wallet.clone());
         let provider = if ["ws", "wss"].contains(&network.rpc_url.scheme()) {
             provider
-                .connect_ws(WsConnect::new(network.rpc_url))
+                .connect_ws(WsConnect::new(network.rpc_url.clone()))
                 .await?
                 .erased()
         } else {
-            provider.connect_http(network.rpc_url).erased()
+            provider.connect_http(network.rpc_url.clone()).erased()
         };
 
         config.add_ethereum_chain(chain_config, provider)
@@ -98,6 +120,12 @@ async fn get_client(app_config: AppConfig) -> anyhow::Result<OnlySwapsClient> {
     Ok(OnlySwapsClient::new(config))
 }
 
-async fn get_metrics() -> Response {
-    todo!("implement metrics")
+async fn get_metrics() -> Result<Vec<u8>, StatusCode> {
+    let encoder = TextEncoder::new();
+    let mut buffer = Vec::new();
+
+    match encoder.encode(&Metrics::gather(), &mut buffer) {
+        Ok(()) => Ok(buffer),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
