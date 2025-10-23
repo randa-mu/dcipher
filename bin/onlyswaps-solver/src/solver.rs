@@ -3,7 +3,7 @@ use crate::util::normalise_chain_id;
 use alloy::primitives::U256;
 use async_trait::async_trait;
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use moka::sync::Cache;
+use moka::future::Cache;
 use std::collections::HashMap;
 
 #[async_trait]
@@ -130,7 +130,7 @@ mod tests {
     use alloy::primitives::{Address, U256, address};
     use async_trait::async_trait;
     use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-    use moka::sync::Cache;
+    use moka::future::Cache;
     use speculoos::assert_that;
     use speculoos::vec::VecAssertions;
     use std::collections::HashMap;
@@ -452,8 +452,8 @@ mod tests {
         assert_that!(trades).has_length(0);
     }
 
-    #[test]
-    fn transfer_that_exist_in_cache_dont_make_trades() {
+    #[tokio::test]
+    async fn transfer_that_exist_in_cache_dont_make_trades() {
         // given
         // transfer use 100
         let transfer_params = create_transfer_params(USER_ADDR, 1, 2, 100);
@@ -473,7 +473,7 @@ mod tests {
         // we create a cache that already has the request_id in it
         let cache = Cache::new(1);
         let id = transfer_params.clone().request_id;
-        cache.insert(id, ());
+        cache.insert(id, ()).await;
         let state = HashMap::from([(1, src_chain_state), (2, dst_chain_state)]);
 
         // when
