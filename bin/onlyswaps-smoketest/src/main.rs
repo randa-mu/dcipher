@@ -1,5 +1,6 @@
 use crate::cli::CliConfig;
 use crate::config::AppConfig;
+use crate::metrics::Metrics;
 use ::config::file::load_config_file;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
@@ -7,14 +8,13 @@ use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::Context;
+use axum::http::StatusCode;
 use clap::Parser;
 use onlyswaps_client::client::OnlySwapsClient;
 use onlyswaps_client::config::OnlySwapsClientConfig;
 use onlyswaps_client::config::chain::ChainConfig;
-use std::sync::Arc;
-use axum::http::StatusCode;
 use prometheus::{Encoder, TextEncoder};
-use crate::metrics::Metrics;
+use std::sync::Arc;
 
 mod cli;
 mod config;
