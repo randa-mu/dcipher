@@ -7,7 +7,7 @@ use agent_utils::monitoring::init_monitoring;
 use alloy::network::EthereumWallet;
 use alloy::providers::{Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use axum::http::StatusCode;
 use clap::Parser;
 use onlyswaps_client::client::OnlySwapsClient;
@@ -47,18 +47,18 @@ async fn main() -> anyhow::Result<()> {
 
         res = healthcheck_server.start() =>  {
            match res {
-                Ok(()) => anyhow::bail!("healthcheck stopped unexpectedly with an error"),
-                Err(e) => anyhow::bail!("healthcheck stopped unexpectedly: {}", e),
+                Ok(()) => Err(anyhow!("healthcheck stopped unexpectedly with an error")),
+                Err(_) => res.context("healthcheck stopped unexpectedly"),
            }
         }
 
         res = run(app_config) => {
            match res {
-                Ok(()) => anyhow::bail!("smoke test stopped unexpectedly without an error"),
+                Ok(()) => Err(anyhow!("smoke test stopped unexpectedly without an error")),
                 Err(_) => res.context("smoke test exited unexpectedly"),
            }
         }
-    }
+    } // return branch results
 }
 
 async fn run(app_config: AppConfig) -> anyhow::Result<()> {
