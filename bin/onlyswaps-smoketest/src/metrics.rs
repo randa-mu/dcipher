@@ -83,28 +83,28 @@ pub(super) static METRICS: LazyLock<Metrics> = LazyLock::new(|| {
 });
 
 impl Metrics {
-    pub(super) fn report_smoketest_swap_failed(label: String, reason: String) {
+    pub(super) fn report_swap_failed(label: String, reason: String) {
         METRICS
             .smoketest_swap_failed
             .with_label_values(&[label, reason])
             .inc();
     }
 
-    pub(super) fn report_smoketest_swap_requested(label: String) {
+    pub(super) fn report_swap_requested(label: String) {
         METRICS
             .smoketest_swap_requested
             .with_label_values(&[label])
             .inc();
     }
 
-    pub(super) fn report_smoketest_swap_fulfilled(label: String) {
+    pub(super) fn report_swap_fulfilled(label: String) {
         METRICS
             .smoketest_swap_fulfilled
             .with_label_values(&[label])
             .inc();
     }
 
-    pub(super) fn report_smoketest_swap_verified(label: String) {
+    pub(super) fn report_swap_verified(label: String) {
         METRICS
             .smoketest_swap_verified
             .with_label_values(&[label])
