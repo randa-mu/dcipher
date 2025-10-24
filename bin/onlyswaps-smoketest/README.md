@@ -7,10 +7,10 @@ This service periodically executes configured swap tests and exposes metrics for
 
 The service exposes the following Prometheus metrics on the healthcheck endpoint (`/metrics`):
 
-- `swap_requested{label}`: Total number of swaps requested per test label
-- `swap_fulfilled{label}`: Total number of swaps successfully fulfilled per test label
-- `swap_verified{label}`: Total number of swaps verified on-chain per test label
-- `swap_failed{label,reason}`: Total number of failed swaps per test label and failure reason
+- `smoketest_swap_requested{label}`: Total number of swaps requested per test label
+- `smoketest_swap_fulfilled{label}`: Total number of swaps successfully fulfilled per test label
+- `smoketest_swap_verified{label}`: Total number of swaps verified on-chain per test label
+- `smoketest_swap_failed{label,reason}`: Total number of failed swaps per test label and failure reason
 
 ## Configuration
 
