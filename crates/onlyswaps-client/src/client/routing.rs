@@ -15,7 +15,10 @@ pub struct SwapRouting {
 }
 
 impl SwapRouting {
-    /// Create a new route from src_chain to dst_chain, swapping to the same token
+    /// Create a new route from src_chain to dst_chain, swapping to the same token _address_.
+    ///
+    /// # Warning
+    /// You must make sure that the address of the token is the same on both chains.
     pub fn new_same_token(src_chain: u64, dst_chain: u64, token: Address) -> Self {
         Self {
             src_chain,
