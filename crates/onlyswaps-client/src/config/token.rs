@@ -13,7 +13,6 @@ pub struct Token {
 /// Names of the token supported tokens
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-// #[cfg_attr(feature = "serde", serde())]
 pub enum TokenTag {
     RUSD,
     USDT,
