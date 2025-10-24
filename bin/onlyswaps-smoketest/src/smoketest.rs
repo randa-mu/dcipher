@@ -90,6 +90,7 @@ async fn do_swap(
         Ok(req_with_fees) => req_with_fees,
         Err(e) => {
             tracing::error!(error = ?e, "failed to fetch fees");
+            Metrics::report_swap_failed(swap.label.clone(), "fetch_fees".to_owned());
             return;
         }
     };
@@ -130,26 +131,38 @@ async fn monitor_swap(client: &Arc<OnlySwapsClient>, swap: &SwapTest, receipt: &
             }
             Err(e) => {
                 tracing::error!(error = ?e, "Failed to wait until swap is fulfilled");
-                return;
+                Err(e)?
             }
         }
 
         // Then, for verification
         tracing::debug!("Waiting for swap verification");
-        match client.wait_until_verified(receipt).await {
-            Ok(()) => {
+        client
+            .wait_until_verified(receipt)
+            .await
+            .inspect(|_| {
                 tracing::info!("Swap request verified");
                 Metrics::report_swap_verified(swap.label.clone());
-            }
-            Err(e) => {
+            })
+            .inspect_err(|e| {
                 tracing::error!(error = ?e, "Failed to wait until swap is verified");
-            }
-        }
+            })
     })
     .await;
 
-    if timeout_res.is_err() {
-        tracing::error!("Swap was not fulfilled within timeout");
-        Metrics::report_swap_failed(swap.label.clone(), "timeout".to_owned());
+    match timeout_res {
+        Ok(Ok(())) => (),
+
+        // client error
+        Ok(Err(e)) => {
+            tracing::error!(error = ?e, "Failed to monitor swap due to client error");
+            Metrics::report_swap_failed(swap.label.clone(), "client_error".to_owned());
+        }
+
+        // timed out
+        Err(_) => {
+            tracing::error!("Swap was not fulfilled within timeout");
+            Metrics::report_swap_failed(swap.label.clone(), "timeout".to_owned());
+        }
     }
 }
