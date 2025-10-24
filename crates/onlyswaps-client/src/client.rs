@@ -1,9 +1,11 @@
 //! The only swaps client which can be used to swap tokens from one chain to another
 
 pub mod erc20;
+mod errors;
 mod request;
 pub mod routing;
 
+pub use errors::*;
 pub use request::*;
 
 use crate::client::erc20::IERC20;
@@ -52,45 +54,6 @@ pub enum OnlySwapsStatus {
 
     /// the swap has been fulfilled by a solver, and verified by the dcipher network
     Verified,
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum OnlySwapsClientError {
-    #[error("no provider for chain id {0}")]
-    MissingProvider(u64),
-
-    #[error("no config for chain id {0}")]
-    UnsupportedChain(u64),
-
-    #[error("token ({0}) not supported on chain id ({1:?})")]
-    UnsupportedToken(u64, TokenTag),
-
-    #[error("contract error: {1}")]
-    Contract(#[source] alloy::contract::Error, &'static str),
-
-    #[error("pending transaction failed")]
-    PendingTransaction(#[from] alloy::providers::PendingTransactionError),
-
-    #[error("failed to sign tx")]
-    SignTx(#[from] alloy::signers::Error),
-
-    #[error("rpc error: {1}")]
-    Rpc(
-        #[source] alloy::transports::RpcError<alloy::transports::TransportErrorKind>,
-        &'static str,
-    ),
-
-    #[error("swap failed: event not in logs")]
-    SwapFailedNotInLogs,
-
-    #[error("swap request not found")]
-    SwapRequestNotFound,
-
-    #[error("failed to get event from log stream")]
-    NoEventInLogStream,
-
-    #[error("incoherent state: verified = {verified}, but completed = {completed}")]
-    IncoherentState { verified: bool, completed: bool },
 }
 
 impl OnlySwapsClient {
@@ -195,12 +158,7 @@ impl OnlySwapsClient {
             .getSwapRequestReceipt(request_id)
             .call()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e,
-                    "failed to execute getSwapRequestReceipt RPC static call",
-                )
-            })?;
+            .map_err(|e| (e, "failed to execute getSwapRequestReceipt RPC static call"))?;
 
         if swap_receipt.requestId.is_zero() {
             // if request is not found on destination chain, requestId == 0 => swap not yet fulfilled
@@ -227,12 +185,7 @@ impl OnlySwapsClient {
             .getSwapRequestParameters(request_id)
             .call()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e,
-                    "failed to execute getSwapRequestReceipt RPC static call",
-                )
-            })?;
+            .map_err(|e| (e, "failed to execute getSwapRequestReceipt RPC static call"))?;
 
         // nonce should be non-zero, otherwise swap not found
         if swap_params.nonce.is_zero() {
@@ -297,12 +250,7 @@ impl OnlySwapsClient {
             .topic1(receipt.request_id)
             .subscribe()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e.into(),
-                    "failed to watch SwapRequestFulfilled event",
-                )
-            })?
+            .map_err(|e| (e.into(), "failed to watch SwapRequestFulfilled event"))?
             .into_stream();
 
         // If the event was in the past, issue an RPC call
@@ -322,7 +270,7 @@ impl OnlySwapsClient {
                 OnlySwapsClientError::NoEventInLogStream
             })?
             .map_err(|e| {
-                OnlySwapsClientError::Contract(
+                (
                     alloy::contract::Error::AbiError(e.into()),
                     "failed to obtain obtain SwapRequestFulfilled event occurrence",
                 )
@@ -353,12 +301,7 @@ impl OnlySwapsClient {
             .topic1(receipt.request_id)
             .subscribe()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e.into(),
-                    "failed to watch SolverPayoutFulfilled event",
-                )
-            })?
+            .map_err(|e| (e.into(), "failed to watch SolverPayoutFulfilled event"))?
             .into_stream();
 
         // If the event was in the past, issue an RPC call
@@ -387,7 +330,7 @@ impl OnlySwapsClient {
                 OnlySwapsClientError::NoEventInLogStream
             })?
             .map_err(|e| {
-                OnlySwapsClientError::Contract(
+                (
                     alloy::contract::Error::AbiError(e.into()),
                     "failed to obtain SolverPayoutFulfilled event occurrence",
                 )
@@ -444,7 +387,7 @@ async fn approve_spending(
     let tx_hash = call
         .send()
         .await
-        .map_err(|e| OnlySwapsClientError::Contract(e, "failed to send approve tx"))?
+        .map_err(|e| (e, "failed to send approve tx"))?
         .with_required_confirmations(chain_config.required_confirmations)
         .with_timeout(Some(chain_config.timeout))
         .watch()
@@ -485,15 +428,18 @@ async fn swap(
 
     // Do an RPC call first to make sure it works before sending a tx
     tracing::debug!(?call, "Executing requestCrossChainSwap RPC call");
-    let _ = call.clone().call().await.map_err(|e| {
-        OnlySwapsClientError::Contract(e, "failed to execute requestCrossChainSwap RPC static call")
-    })?;
+    let _ = call
+        .clone()
+        .call()
+        .await
+        .map_err(|e| (e, "failed to execute requestCrossChainSwap RPC static call"))?;
 
     // RPC call worked, sign TX and send it
     tracing::debug!(?call, "Sending requestCrossChainSwap transaction");
-    let pending_tx = call.send().await.map_err(|e| {
-        OnlySwapsClientError::Contract(e, "failed to send requestCrossChainSwap transaction")
-    })?;
+    let pending_tx = call
+        .send()
+        .await
+        .map_err(|e| (e, "failed to send requestCrossChainSwap transaction"))?;
     let receipt = pending_tx
         .with_required_confirmations(src_chain_config.required_confirmations)
         .with_timeout(Some(src_chain_config.timeout))
