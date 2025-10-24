@@ -1,3 +1,15 @@
+//! Prometheus metrics for monitoring swap test execution and results.
+//!
+//! This module defines and exposes metrics that track the lifecycle of swap tests,
+//! from initial request through fulfillment and verification.
+//!
+//! # Metrics Overview
+//!
+//! - **swap_requested**: Incremented when a swap request is successfully submitted
+//! - **swap_fulfilled**: Incremented when a swap is fulfilled by the solver on the destination chain
+//! - **swap_verified**: Incremented when a swap is verified on the source chain
+//! - **swap_failed**: Incremented when a swap fails, with reason label for debugging
+
 use prometheus::{IntCounterVec, Opts, Registry};
 use std::sync::LazyLock;
 

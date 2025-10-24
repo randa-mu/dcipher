@@ -1,4 +1,4 @@
-# OnlySwaps Smoketest
+# only swaps smoketest
 
 A continuous monitoring and testing tool for only swaps. 
 This service periodically executes configured swap tests and exposes metrics for monitoring swap success rates, fulfillment, and verification status.
@@ -63,7 +63,7 @@ recipient = "0x..."    # Optional: specify recipient address, otherwise uses sig
 #### Networks Section
 - `chain_id`: EVM chain ID
 - `rpc_url`: RPC endpoint URL (supports both HTTP and WebSocket)
-- `router_address`: OnlySwaps router contract address
+- `router_address`: only swaps router contract address
 
 #### Swaps Section
 - `amount`: Token amount to swap (in smallest unit, e.g., wei for 18 decimal tokens)
