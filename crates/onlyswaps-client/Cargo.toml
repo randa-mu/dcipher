@@ -4,8 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default = ["fee-estimator"]
+default = ["serde", "fee-estimator"]
 fee-estimator = ["dep:reqwest", "dep:serde"]
+serde = ["dep:serde"]
 
 [dependencies]
 alloy.workspace = true

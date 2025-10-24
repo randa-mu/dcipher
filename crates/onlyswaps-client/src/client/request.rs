@@ -85,7 +85,7 @@ pub struct OnlySwapsRequest {
 ///         .expect("a valid builder");
 /// }
 /// ```
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct OnlySwapsRequestBuilder {
     recipient: Option<Address>,
     amount: Option<U256>,

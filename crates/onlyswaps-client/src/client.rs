@@ -13,7 +13,7 @@ use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
 use alloy::network::Ethereum;
 use alloy::primitives::{Address, FixedBytes, LogData, TxHash, U256};
-use alloy::providers::{DynProvider, PendingTransactionError, Provider};
+use alloy::providers::{DynProvider, Provider};
 use alloy::rpc::types::Log;
 use alloy::sol_types::SolEvent;
 use futures_util::StreamExt;
@@ -69,7 +69,7 @@ pub enum OnlySwapsClientError {
     Contract(#[source] alloy::contract::Error, &'static str),
 
     #[error("pending transaction failed")]
-    PendingTransaction(#[from] PendingTransactionError),
+    PendingTransaction(#[from] alloy::providers::PendingTransactionError),
 
     #[error("failed to sign tx")]
     SignTx(#[from] alloy::signers::Error),
@@ -86,6 +86,9 @@ pub enum OnlySwapsClientError {
     #[error("swap request not found")]
     SwapRequestNotFound,
 
+    #[error("failed to get event from log stream")]
+    NoEventInLogStream,
+
     #[error("incoherent state: verified = {verified}, but completed = {completed}")]
     IncoherentState { verified: bool, completed: bool },
 }
@@ -100,6 +103,11 @@ impl OnlySwapsClient {
 }
 
 impl OnlySwapsClient {
+    /// Obtain the client configuration.
+    pub fn config(&self) -> &OnlySwapsClientConfig {
+        &self.config
+    }
+
     /// Approve the router contract to spend tokens for upcoming swaps
     /// The amount must include the fees.
     pub async fn approve_spending(
@@ -287,7 +295,7 @@ impl OnlySwapsClient {
         let mut filter = dst_router
             .SwapRequestFulfilled_filter()
             .topic1(receipt.request_id)
-            .watch()
+            .subscribe()
             .await
             .map_err(|e| {
                 OnlySwapsClientError::Contract(
@@ -309,7 +317,10 @@ impl OnlySwapsClient {
         let (swap_completed_event, _) = filter
             .next()
             .await
-            .expect("empty event stream empty!! provider dropped?")
+            .ok_or_else(|| {
+                tracing::error!("RPC did not return any event in subscription stream");
+                OnlySwapsClientError::NoEventInLogStream
+            })?
             .map_err(|e| {
                 OnlySwapsClientError::Contract(
                     alloy::contract::Error::AbiError(e.into()),
@@ -340,7 +351,7 @@ impl OnlySwapsClient {
         let mut filter = src_router
             .SolverPayoutFulfilled_filter()
             .topic1(receipt.request_id)
-            .watch()
+            .subscribe()
             .await
             .map_err(|e| {
                 OnlySwapsClientError::Contract(
@@ -351,18 +362,30 @@ impl OnlySwapsClient {
             .into_stream();
 
         // If the event was in the past, issue an RPC call
-        if self
+        // There's a slight concurrency issue where the swap may not yet exist from the RPC provider's perspective
+        // here. If that's the case, we'll get the swap through the event log.
+        match self
             .is_swap_verified(receipt.request_id, receipt.route.src_chain)
-            .await?
+            .await
         {
-            return Ok(());
+            // verified, exit now
+            Ok(true) => return Ok(()),
+
+            // not verified / not found, continue execution
+            Ok(false) | Err(OnlySwapsClientError::SwapRequestNotFound) => (),
+
+            // raise any other error
+            Err(e) => return Err(e),
         }
 
         // Swap not yet verified, wait for it through the filter
         let (swap_verified_event, _) = filter
             .next()
             .await
-            .expect("empty event stream empty!! provider dropped?")
+            .ok_or_else(|| {
+                tracing::error!("RPC did not return any event in subscription stream");
+                OnlySwapsClientError::NoEventInLogStream
+            })?
             .map_err(|e| {
                 OnlySwapsClientError::Contract(
                     alloy::contract::Error::AbiError(e.into()),

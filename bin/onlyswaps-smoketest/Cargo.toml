@@ -1,0 +1,24 @@
+[package]
+name = "onlyswaps-smoketest"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+agent-utils.workspace = true
+config.workspace = true
+onlyswaps-client.workspace = true
+
+alloy = { workspace = true, features = ["provider-ws", "reqwest-default-tls"] }
+anyhow.workspace = true
+axum.workspace = true
+clap.workspace = true
+chrono.workspace = true
+futures-util.workspace = true
+humantime.workspace = true
+humantime-serde.workspace = true
+prometheus.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal", "io-std", "time"] }
+tracing.workspace = true
