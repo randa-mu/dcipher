@@ -22,6 +22,9 @@ omnievent = { path = "./crates/omnievent" }
 superalloy = { path = "./crates/superalloy" }
 utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 
+# clients
+onlyswaps-client = { path = "./crates/onlyswaps-client" }
+
 # blockchain
 alloy = { version = "1.0.32", features = ["sol-types"] }
 
@@ -59,6 +62,7 @@ url = { version = "2.5.7", features = ["serde"] }
 
 # api / rpc
 axum = "0.8"
+reqwest = { version = "0.12" }
 tonic = { version = "0.13" }
 tonic-build = { version = "0.13" }
 

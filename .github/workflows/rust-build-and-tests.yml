@@ -85,7 +85,10 @@ jobs:
       - name: Lint & Test Rust Workspace
         uses: ./.github/actions/rust-test-action
         env:
+          TESTNETS_PRIVATE_KEY: ${{ secrets.TESTNETS_PRIVATE_KEY }}
           POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          AVALANCHE_FUJI_RPC_URL: ${{ secrets.AVALANCHE_FUJI_RPC_URL }}
         with:
           working-directory: .
           extra-cache-key: 'dcipher'

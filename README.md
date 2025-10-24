@@ -44,18 +44,19 @@ The repository is organized into:
 
 ### Crates (`crates/`)
 
-| Crate            | Purpose                                                                                                                                                   |
-|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `adkg`           | Core Asynchronous Distributed Key Generation implementation                                                                                               |
-| `agent-utils`    | Utilities shared by dcipher agents                                                                                                                        |
-| `config`         | Shared configuration handling for agents that use networking, threshold signing, or load config files (TOML, env, etc.)                                   |
-| `dcipher-agents` | Common agent framework code                                                                                                                               |
-| `generated`      | Auto-generated Rust bindings from Solidity (kept in sync via `generate-bindings.sh`)                                                                      |
-| `network`        | Networking primitives and libp2p integrations                                                                                                             |
-| `omnievent`      | A library for streaming contract events sources into database sinks, and back into filterable streams for apps built on top of [alloy](https://alloy.rs/) |
-| `signer`         | Signing logic (BLS / threshold compatible)                                                                                                                |
-| `superalloy`     | A crate providing multiplexing logic for combining [alloy](https://alloy.rs/) providers                                                                   |
-| `utils`          | General helper utilities                                                                                                                                  |
+| Crate              | Purpose                                                                                                                                                   |
+|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `adkg`             | Core Asynchronous Distributed Key Generation implementation                                                                                               |
+| `agent-utils`      | Utilities shared by dcipher agents                                                                                                                        |
+| `config`           | Shared configuration handling for agents that use networking, threshold signing, or load config files (TOML, env, etc.)                                   |
+| `dcipher-agents`   | Common agent framework code                                                                                                                               |
+| `generated`        | Auto-generated Rust bindings from Solidity (kept in sync via `generate-bindings.sh`)                                                                      |
+| `network`          | Networking primitives and libp2p integrations                                                                                                             |
+| `onlyswaps-client` | A client to interact with onlyswaps                                                                                                                       |
+| `omnievent`        | A library for streaming contract events sources into database sinks, and back into filterable streams for apps built on top of [alloy](https://alloy.rs/) |
+| `signer`           | Signing logic (BLS / threshold compatible)                                                                                                                |
+| `superalloy`       | A crate providing multiplexing logic for combining [alloy](https://alloy.rs/) providers                                                                   |
+| `utils`            | General helper utilities                                                                                                                                  |
 
 ---
 
