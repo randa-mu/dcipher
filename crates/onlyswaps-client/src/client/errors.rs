@@ -1,7 +1,7 @@
 //! Various errors returned by the only swaps client.
 
-use crate::client::erc20::IERC20::IERC20Errors;
 use crate::config::token::TokenTag;
+use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors; // bindings quirk
 use generated::onlyswaps::router::Router::RouterErrors;
 
 #[derive(thiserror::Error, Debug)]
