@@ -145,5 +145,12 @@ async fn execute_trade(
         })
         .context("error submitting swap")?;
 
+    // Fetch the receipt to get the tx status
+    let receipt = tx.get_receipt().await.context("error submitting swap")?;
+    if !receipt.status() {
+        tracing::error!(?receipt, "error submitting swap: tx reverted");
+        anyhow::bail!("error submitting swap: tx reverted");
+    }
 
+    Ok(receipt.transaction_hash)
 }
