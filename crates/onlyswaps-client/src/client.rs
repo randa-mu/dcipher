@@ -1,6 +1,5 @@
 //! The only swaps client which can be used to swap tokens from one chain to another
 
-pub mod erc20;
 mod errors;
 mod request;
 pub mod routing;
@@ -8,7 +7,6 @@ pub mod routing;
 pub use errors::*;
 pub use request::*;
 
-use crate::client::erc20::IERC20;
 use crate::client::routing::SwapRouting;
 use crate::config::OnlySwapsClientConfig;
 use crate::config::chain::ChainConfig;
@@ -19,6 +17,7 @@ use alloy::providers::{DynProvider, Provider};
 use alloy::rpc::types::Log;
 use alloy::sol_types::SolEvent;
 use futures_util::StreamExt;
+use generated::onlyswaps::ierc20::IERC20;
 use generated::onlyswaps::router::Router;
 use generated::onlyswaps::router::Router::RouterInstance;
 use std::marker::PhantomData;
