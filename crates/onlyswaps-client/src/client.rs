@@ -2,7 +2,6 @@
 
 mod backoff;
 mod errors;
-mod errors;
 mod request;
 pub mod routing;
 
