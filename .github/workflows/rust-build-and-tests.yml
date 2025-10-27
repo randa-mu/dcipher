@@ -12,6 +12,7 @@ concurrency:
 env:
   SCCACHE_CACHE_SIZE: "10G"
   SCCACHE_GCS_BUCKET: "randamu-gha-cache-bucket"
+  SCCACHE_GCS_KEY_PATH: /tmp/gcp-secret.json
   GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SCCACHE_SERVICE_ACCOUNT }}
   SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
   SCCACHE_GCS_RW_MODE: READ_WRITE
@@ -28,6 +29,9 @@ jobs:
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
+      - name: setup secrets
+        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+
       # Pull cargo nextest binaries
       - uses: taiki-e/install-action@v2
         with:
