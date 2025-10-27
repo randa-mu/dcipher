@@ -54,4 +54,5 @@ forge bind --bindings-path $ROOT_DIR/crates/generated/src/onlyswaps \
 --select ERC20FaucetToken \
 --select SwapRequestParameters \
 --select SwapRequestReceipt \
+--select IERC20 \
 --no-metadata
