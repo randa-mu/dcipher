@@ -5,7 +5,7 @@ use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use config::network::NetworkConfig;
 use futures::future::{try_join, try_join_all};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
