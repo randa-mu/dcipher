@@ -6,6 +6,10 @@
 pub mod r#configure_router_script;
 pub mod r#deploy_router;
 pub mod r#erc20_faucet_token;
+pub mod r#ierc20;
+pub mod r#ierc20_metadata;
+pub mod r#ierc20_permit;
 pub mod r#i_router;
 pub mod r#mock_router_v2;
 pub mod r#router;
+pub mod r#ierc20_errors;
