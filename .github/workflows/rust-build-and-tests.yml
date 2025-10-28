@@ -10,85 +10,83 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  SCCACHE_CACHE_SIZE: "10G"
+  SCCACHE_GCS_BUCKET: "randamu-gha-cache-bucket"
+  SCCACHE_GCS_KEY_PATH: /tmp/gcp-secret.json
+  GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SCCACHE_SERVICE_ACCOUNT }}
+  SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
+  SCCACHE_GCS_RW_MODE: READ_WRITE
   CARGO_TERM_COLOR: always
 
+
 jobs:
-  rust-build-and-tests:
-    name: Build and test rust crates
+  rust-tests:
+    name: Test rust crates
     runs-on: ["randamu-self-hosted-default"]
+    env:
+      RUSTC_WRAPPER: "sccache"
     steps:
+      - name: setup secrets for sccache
+        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      # Pull cargo nextest binaries
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
       - name: Checkout code
         uses: actions/checkout@v5
         with:
           submodules: 'recursive'
 
-      - name: Cache npm blocklock-solidity
-        uses: actions/cache@v3
-        with:
-          path: modules/blocklock-solidity/node_modules
-          key: ${{ runner.os }}-npm-blocklock-solidity-${{ hashFiles('blocklock-solidity/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-blocklock-solidity-
-
-      - name: Cache npm randomness-solidity
-        uses: actions/cache@v3
-        with:
-          path: modules/randomness-solidity/node_modules
-          key: ${{ runner.os }}-npm-randomness-solidity-${{ hashFiles('randomness-solidity/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-randomness-solidity-
-
-      - name: Cache Solidity blocklock-solidity
-        uses: actions/cache@v3
-        with:
-          path: modules/blocklock-solidity/out
-          key: ${{ runner.os }}-sol-blocklock-solidity-${{ hashFiles('blocklock-solidity/src/**/*.sol', 'blocklock-solidity/lib/**/*.sol') }}
-          restore-keys: |
-            ${{ runner.os }}-sol-blocklock-solidity-
-
-      - name: Cache Solidity randomness-solidity
-        uses: actions/cache@v3
-        with:
-          path: modules/randomness-solidity/out
-          key: ${{ runner.os }}-sol-randomness-solidity-${{ hashFiles('randomness-solidity/src/**/*.sol', 'randomness-solidity/lib/**/*.sol') }}
-          restore-keys: |
-            ${{ runner.os }}-sol-randomness-solidity-
-
-      # 1. Compile blocklock-solidity
-      - name: blocklock-solidity - Install dependencies
-        working-directory: ./modules/blocklock-solidity
-        run: npm ci
-
-      - name: blocklock-solidity - Build Solidity contracts
-        working-directory: ./modules/blocklock-solidity
-        run: npm run build:forge
-
-      # 2. Compile randomness-solidity
-      - name: randomness-solidity - Install dependencies
-        working-directory: ./modules/randomness-solidity
-        run: npm ci
-
-      - name: randomness-solidity - Build Solidity contracts
-        working-directory: ./modules/randomness-solidity
-        run: npm run build:forge
-
-      # 3. Compile onlyswaps-solidity
-      - name: onlyswaps-solidity - Install dependencies
-        working-directory: ./modules/onlyswaps-solidity
-        run: npm ci
-
-      - name: onlyswaps-solidity - Build Solidity contracts
-        working-directory: ./modules/onlyswaps-solidity
-        run: npm run build
-
-      # 4. Build and test workspace packages
-      - name: Lint & Test Rust Workspace
-        uses: ./.github/actions/rust-test-action
+      - name: Run all tests
+        run: cargo nextest run --target-dir './target' --no-tests warn --profile ci
+        shell: bash
         env:
           TESTNETS_PRIVATE_KEY: ${{ secrets.TESTNETS_PRIVATE_KEY }}
           POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
           BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
           AVALANCHE_FUJI_RPC_URL: ${{ secrets.AVALANCHE_FUJI_RPC_URL }}
+
+  rust-clippy:
+    name: Run clippy
+    runs-on: ["randamu-self-hosted-default"]
+    env:
+      RUSTC_WRAPPER: "sccache"
+      RUSTFLAGS: -Dwarnings
+      RUSTDOCFLAGS: -Dwarnings
+    steps:
+      - name: setup secrets for sccache
+        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      # Pull cargo nextest binaries
+      - uses: taiki-e/install-action@v2
         with:
-          working-directory: .
-          extra-cache-key: 'dcipher'
+          tool: hack
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+
+      - name: Check formatting
+        run: cargo fmt --check
+        shell: bash
+
+      - name: clippy check (all features)
+        run: cargo clippy --workspace --all-features --all-targets --lib --bins --tests --benches --examples
+
+      - name: clippy check (no features)
+        run: cargo clippy --workspace --no-default-features --all-targets --lib --bins --tests --benches --examples
+
+      - name: clippy check (default features)
+        run: cargo clippy --workspace --all-targets --lib --bins --tests --benches --examples
+
+      - name: clippy for each only on main
+        if: github.ref == 'refs/heads/main'
+        run: cargo hack clippy --workspace --exclude generated --each-feature --all-targets --target-dir './target'
+        shell: bash

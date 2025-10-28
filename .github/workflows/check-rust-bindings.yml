@@ -3,6 +3,8 @@ on:
   push:
     branches: [ main ]
   pull_request:
+    paths:
+      - 'modules/*-solidity/**'
   workflow_dispatch:
 
 jobs:
@@ -52,3 +54,4 @@ jobs:
       # 4. Actually check the bindings against the generated code
       - name: Check the bindings match
         run: ./generate-bindings.sh
+
