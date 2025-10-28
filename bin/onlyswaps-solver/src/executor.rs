@@ -3,9 +3,10 @@ use crate::network::Network;
 use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, TxHash};
 use alloy::providers::Provider;
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken::ERC20FaucetTokenInstance;
-use generated::onlyswaps::router::Router::RouterInstance;
+use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors;
+use generated::onlyswaps::router::Router::{RouterErrors, RouterInstance};
 use moka::future::Cache;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -107,6 +108,13 @@ async fn execute_trade(
         .approve(*router.address(), trade.swap_amount)
         .send()
         .await
+        .map_err(|e| {
+            // Try to decode it as an IERC20 error
+            if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
+                return anyhow!("erc20 contract error: {erc20_err:?}");
+            }
+            e.into()
+        })
         .context("error approving funds")?;
     tx.watch().await.context("error approving funds")?;
 
@@ -124,7 +132,25 @@ async fn execute_trade(
         )
         .send()
         .await
-        .context("error submitting verification")?;
+        .map_err(|e| {
+            // Try to decode it as an IERC20 error
+            if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
+                return anyhow!("erc20 contract error: {erc20_err:?}");
+            }
+            // Try to decode it as a Router error
+            if let Some(router_err) = e.as_decoded_interface_error::<RouterErrors>() {
+                return anyhow!("router contract error: {router_err:?}");
+            }
+            e.into()
+        })
+        .context("error submitting swap")?;
 
-    tx.watch().await.context("error submitting verification")
+    // Fetch the receipt to get the tx status
+    let receipt = tx.get_receipt().await.context("error submitting swap")?;
+    if !receipt.status() {
+        tracing::error!(?receipt, "error submitting swap: tx reverted");
+        anyhow::bail!("error submitting swap: tx reverted");
+    }
+
+    Ok(receipt.transaction_hash)
 }
