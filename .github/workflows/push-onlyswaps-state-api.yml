@@ -78,21 +78,21 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ steps.meta.outputs.version }}
+            ghcr.io/randa-mu/dcipher/onlyswaps-state-api:main-latest
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/onlyswaps-state-api/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-state-api-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-state-api-cache:main-latest
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-state-api-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-state-api-cache:${{ steps.meta.outputs.version }},mode=max
 
       - name : extract binary
         if: ${{startsWith(github.ref, 'refs/tags/') }}
         shell: bash
         run  : |
-          docker pull ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ steps.meta.outputs.version }}
-          container=$(docker create ghcr.io/randa-mu/dcipher/onlyswaps-state-api:${{ steps.meta.outputs.version }})
+          docker pull ${{ env.DOCKER_REGISTRY }}/onlyswaps-state-api:main-latest
+          container=$(docker create ${{ env.DOCKER_REGISTRY }}/onlyswaps-state-api:main-latest)
           docker cp $container:usr/local/bin/onlyswaps-state-api /tmp/onlyswaps-state-api
           docker rm $container
 

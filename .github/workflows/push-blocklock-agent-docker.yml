@@ -74,5 +74,5 @@ jobs:
           file: ./bin/blocklock-agent/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:main-latest
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/blocklock-agent-rs-cache:${{ steps.meta.outputs.version }},mode=max

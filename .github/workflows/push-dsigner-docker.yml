@@ -74,5 +74,5 @@ jobs:
           file: ./bin/dsigner/examples/dsigner_legacy_http/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/dsigner-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/dsigner-cache:main-latest
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/dsigner-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/dsigner-cache:${{ steps.meta.outputs.version }},mode=max
