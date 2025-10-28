@@ -17,10 +17,7 @@ env:
   SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
   SCCACHE_GCS_RW_MODE: READ_WRITE
   CARGO_TERM_COLOR: always
-  TESTNETS_PRIVATE_KEY: ${{ secrets.TESTNETS_PRIVATE_KEY }}
-  POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
-  BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
-  AVALANCHE_FUJI_RPC_URL: ${{ secrets.AVALANCHE_FUJI_RPC_URL }}
+
 
 jobs:
   rust-tests:
@@ -47,6 +44,11 @@ jobs:
       - name: Run all tests
         run: cargo nextest run --target-dir './target' --no-tests warn --profile ci
         shell: bash
+        env:
+          TESTNETS_PRIVATE_KEY: ${{ secrets.TESTNETS_PRIVATE_KEY }}
+          POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+          AVALANCHE_FUJI_RPC_URL: ${{ secrets.AVALANCHE_FUJI_RPC_URL }}
 
   rust-clippy:
     name: Run clippy

@@ -5,16 +5,21 @@ WORKDIR /app
 
 FROM chef AS planner
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+RUN cargo chef prepare --recipe-path recipe.json --bin adkg-cli
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json --bin adkg-cli
+# Copy local dependencies
+COPY Cargo.toml Cargo.lock ./
+COPY bin/adkg-cli/ ./bin/adkg-cli
+COPY crates/adkg ./crates/adkg
+COPY crates/config ./crates/config
+COPY crates/network ./crates/network
+COPY crates/utils ./crates/utils
 # Build application
-COPY . .
-RUN cargo build --release -p adkg-cli
-RUN strip target/release/adkg-cli
+RUN cargo build --release -p adkg-cli --bin adkg-cli
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
