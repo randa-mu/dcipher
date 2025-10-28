@@ -82,7 +82,7 @@ jobs:
           file: ./bin/monitoring/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/monitoring-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/monitoring-cache:main-latest
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/monitoring-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/monitoring-cache:${{ steps.meta.outputs.version }},mode=max
 
       - name : extract binary

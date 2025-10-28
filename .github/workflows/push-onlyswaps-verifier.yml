@@ -77,21 +77,21 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ghcr.io/randa-mu/dcipher/onlyswaps-verifier:${{ steps.meta.outputs.version }}
+            ghcr.io/randa-mu/dcipher/onlyswaps-verifier:main-latest
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/onlyswaps-verifier/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:main-latest
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:${{ steps.meta.outputs.version }},mode=max
 
       - name : extract binary
         if: ${{startsWith(github.ref, 'refs/tags/') }}
         shell: bash
         run  : |
-          docker pull ghcr.io/randa-mu/dcipher/onlyswaps-verifier:${{ steps.meta.outputs.version }}
-          container=$(docker create ghcr.io/randa-mu/dcipher/onlyswaps-verifier:${{ steps.meta.outputs.version }})
+          docker pull ${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier:main-latest
+          container=$(docker create ${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier:main-latest)
           docker cp $container:usr/local/bin/onlyswaps-verifier /tmp/onlyswaps-verifier
           docker rm $container
 

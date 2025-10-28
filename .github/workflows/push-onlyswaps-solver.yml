@@ -83,5 +83,5 @@ jobs:
           file: ./bin/onlyswaps-solver/Dockerfile
           cache-from: |
             type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:main-latest
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-solver-cache:${{ steps.meta.outputs.version }},mode=max
