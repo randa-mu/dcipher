@@ -11,7 +11,7 @@ RUN cargo chef prepare --recipe-path recipe.json --bin blocklock-agent
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
-RUN cargo chef cook --release --recipe-path recipe.json --bin blocklock-agent
+RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY Cargo.toml Cargo.lock ./
 COPY bin/blocklock-agent/ ./bin/blocklock-agent
