@@ -235,6 +235,8 @@ where
     filter: BlsFilter,
 
     // Enable the node to broadcast a partial signature upon receiving a valid partial.
+    // This mode is _insecure_ as it allows a single malicious node to sign arbitrary messages,
+    // instead of a threshold of nodes. It must only be used in test deployment.
     eager_signing: bool,
 }
 
@@ -308,6 +310,10 @@ where
 
     /// Enable eager signing by automatically submitting a partial signature upon receiving
     /// a valid partial from another node.
+    ///
+    /// # Warning
+    /// This function is _insecure_ as it allows a single malicious node to sign arbitrary messages,
+    /// instead of a threshold of nodes. It must only be used in test deployment.
     pub fn with_eager_signing(mut self) -> Self {
         self.eager_signing = true;
         self
