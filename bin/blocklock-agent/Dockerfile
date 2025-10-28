@@ -14,6 +14,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY Cargo.toml Cargo.lock ./
+
 COPY bin/blocklock-agent/ ./bin/blocklock-agent
 COPY crates/dcipher-agents ./crates/dcipher-agents
 COPY crates/generated ./crates/generated

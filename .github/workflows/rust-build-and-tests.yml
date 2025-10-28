@@ -65,6 +65,8 @@ jobs:
 
       # Pull cargo nextest binaries
       - uses: taiki-e/install-action@v2
+        with:
+          tool: hack
 
       - name: Checkout code
         uses: actions/checkout@v5
@@ -83,3 +85,8 @@ jobs:
 
       - name: clippy check (default features)
         run: cargo clippy --workspace --all-targets --lib --bins --tests --benches --examples
+
+      - name: clippy for each only on main
+        if: github.ref == 'refs/heads/main'
+        run: cargo hack clippy --workspace --exclude generated --each-feature --all-targets --target-dir './target'
+        shell: bash
