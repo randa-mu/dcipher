@@ -23,22 +23,21 @@ env:
   AVALANCHE_FUJI_RPC_URL: ${{ secrets.AVALANCHE_FUJI_RPC_URL }}
 
 jobs:
-  rust-build-and-tests:
-    name: Build and test rust crates
+  rust-tests:
+    name: Test rust crates
     runs-on: ["randamu-self-hosted-default"]
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
-      - name: setup secrets
+      - name: setup secrets for sccache
         run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       # Pull cargo nextest binaries
       - uses: taiki-e/install-action@v2
         with:
-          tool: nextest,cargo-hack
-
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+          tool: nextest
 
       - name: Checkout code
         uses: actions/checkout@v5
@@ -49,10 +48,36 @@ jobs:
         run: cargo nextest run --target-dir './target' --no-tests warn --profile ci
         shell: bash
 
+  rust-clippy:
+    name: Run clippy
+    runs-on: ["randamu-self-hosted-default"]
+    env:
+      RUSTC_WRAPPER: "sccache"
+      RUSTFLAGS: -Dwarnings
+      RUSTDOCFLAGS: -Dwarnings
+    steps:
+      - name: setup secrets for sccache
+        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      # Pull cargo nextest binaries
+      - uses: taiki-e/install-action@v2
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+
       - name: Check formatting
         run: cargo fmt --check
         shell: bash
 
-      - name: Check clippy
-        run: cargo hack clippy --workspace --exclude generated --each-feature --all-targets --target-dir './target' -- -Dwarnings
-        shell: bash
+      - name: clippy check (all features)
+        run: cargo clippy --workspace --all-features --all-targets --lib --bins --tests --benches --examples
+
+      - name: clippy check (no features)
+        run: cargo clippy --workspace --no-default-features --all-targets --lib --bins --tests --benches --examples
+
+      - name: clippy check (default features)
+        run: cargo clippy --workspace --all-targets --lib --bins --tests --benches --examples
