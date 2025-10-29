@@ -81,9 +81,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/adkg-cli/Dockerfile
-          cache-from: |
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/adkg-cli-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/adkg-cli-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/adkg-cli-cache:${{ steps.meta.outputs.version }},mode=max
 
       - name : extract binary
