@@ -81,9 +81,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/onlyswaps-verifier/Dockerfile
-          cache-from: |
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/onlyswaps-verifier-cache:${{ steps.meta.outputs.version }},mode=max
 
       - name : extract binary

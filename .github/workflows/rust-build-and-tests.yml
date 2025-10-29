@@ -10,12 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SCCACHE_CACHE_SIZE: "10G"
-  SCCACHE_GCS_BUCKET: "randamu-gha-cache-bucket"
-  SCCACHE_GCS_KEY_PATH: /tmp/gcp-secret.json
-  GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SCCACHE_SERVICE_ACCOUNT }}
-  SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
-  SCCACHE_GCS_RW_MODE: READ_WRITE
   CARGO_TERM_COLOR: always
 
 
@@ -23,14 +17,7 @@ jobs:
   rust-tests:
     name: Test rust crates
     runs-on: ["randamu-self-hosted-default"]
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
-      - name: setup secrets for sccache
-        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       # Pull cargo nextest binaries
       - uses: taiki-e/install-action@v2
         with:
@@ -54,15 +41,9 @@ jobs:
     name: Run clippy
     runs-on: ["randamu-self-hosted-default"]
     env:
-      RUSTC_WRAPPER: "sccache"
       RUSTFLAGS: -Dwarnings
       RUSTDOCFLAGS: -Dwarnings
     steps:
-      - name: setup secrets for sccache
-        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       # Pull cargo nextest binaries
       - uses: taiki-e/install-action@v2
         with:

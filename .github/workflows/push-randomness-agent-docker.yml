@@ -72,7 +72,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           context: .
           file: ./bin/randomness-agent/Dockerfile
-          cache-from: |
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/randomness-agent-rs-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/randomness-agent-rs-cache:main
           cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/randomness-agent-rs-cache:${{ steps.meta.outputs.version }},mode=max
