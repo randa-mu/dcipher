@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod executor;
 mod fee_adapter;
+pub(crate) mod gasless;
 mod model;
 mod network;
 pub mod price_feed;
