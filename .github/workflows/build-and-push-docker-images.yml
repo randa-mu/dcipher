@@ -1,0 +1,201 @@
+name: build-and-push-docker-images
+on:
+  push:
+    branches:
+      - "*"
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Enable test mode (uses candyland-test registry and draft releases)'
+        required: false
+        type: boolean
+        default: false
+      docker_push:
+        description: 'Enable docker push'
+        required: false
+        type: boolean
+        default: true
+      release_push:
+        description: 'Enable release push'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  # If test_mode is true, or we're on a branch with a test-build- prefix then use a test registry and a draft release
+  TEST_MODE: ${{ github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-') }}
+  DOCKER_REGISTRY: ${{ (github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-')) && 'europe-west1-docker.pkg.dev/randamu-prod/candyland-test' || 'europe-west1-docker.pkg.dev/randamu-prod/candyland' }}
+
+  SERVICE_ACCOUNT: github@randamu-prod.iam.gserviceaccount.com
+  IMAGE_MAINTAINER: "Randamu"
+  IMAGE_VENDOR: "Randamu"
+  AUTHOR: "Randu Mohammed"
+
+jobs:
+  build-binaries:
+    uses: ./.github/workflows/build-all-binaries.yml
+    secrets: inherit
+
+  build-and-push:
+    needs: build-binaries
+    runs-on: ["randamu-self-hosted-default"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: randomness-agent
+            image_name: randomness-agent-rs
+            binary_name: randomness
+            description: "a rust agent for uploading signatures to blockchains"
+            source_binary_path: target/release/examples/randomness
+
+          - service: blocklock-agent
+            image_name: blocklock-agent-rs
+            binary_name: blocklock
+            description: "a rust agent for uploading signatures to blockchains"
+            source_binary_path: target/release/examples/blocklock
+
+          - service: onlyswaps-verifier
+            image_name: onlyswaps-verifier
+            binary_name: onlyswaps-verifier
+            description: "a rust agent for verifying crosschain swaps"
+            source_binary_path: target/release/onlyswaps-verifier
+            docker_push: true
+
+          - service: onlyswaps-solver
+            image_name: onlyswaps-solver
+            binary_name: onlyswaps-solver
+            description: "a rust agent for performing token swaps across EVM chains"
+            source_binary_path: target/release/onlyswaps-solver
+
+          - service: onlyswaps-state-api
+            image_name: onlyswaps-state-api
+            binary_name: onlyswaps-state-api
+            description: "API for caching and serving state related to ONLYSwaps"
+            source_binary_path: target/release/onlyswaps-state-api
+
+          - service: onlyswaps-smoketest
+            image_name: onlyswaps-smoketest
+            binary_name: onlyswaps-smoketest
+            description: "a continuous monitoring and testing tool for only swaps"
+            source_binary_path: target/release/onlyswaps-smoketest
+
+          - service: monitoring
+            image_name: monitoring
+            binary_name: monitoring
+            description: "an agent that listens/polls dcipher-related information and ships it to prometheus"
+            source_binary_path: target/release/monitoring
+
+          - service: adkg-cli
+            image_name: adkg-cli
+            binary_name: adkg-cli
+            description: "a tool to preform asynchronous distributed key generation"
+            source_binary_path: target/release/adkg-cli
+
+          - service: dsigner
+            image_name: dsigner
+            binary_name: dsigner_legacy_http
+            description: "threshold signing daemon"
+            source_binary_path: target/release/examples/dsigner_legacy_http
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+
+      - name: Download pre-built binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-${{ github.sha }}
+          path: target/release
+
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: europe-west1-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        if: matrix.docker_push
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}
+          labels: |
+            maintainer=${{ env.IMAGE_MAINTAINER }}
+            org.opencontainers.image.title=${{ matrix.image_name }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}
+          flavor: |
+            latest=false
+            prefix=
+            suffix=
+          tags: |
+            type=raw,value=main-latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=ref,event=pr
+            type=ref,event=branch
+            type=semver,pattern={{version}},event=tag,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+          driver-opts: |
+            image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+            network=host
+
+      - name: Build tags list
+        id: tags
+        run: |
+          TAGS="${{ steps.meta.outputs.tags }}"
+          if [[ "${{ matrix.docker_push }}" == "true" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            TAGS="${TAGS}
+          ${{ matrix.docker_registry }}:main-latest"
+          fi
+          if [[ "${{ matrix.docker_push }}" == "true" && "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]]; then
+            TAGS="${TAGS}
+          ${{ matrix.docker_registry }}:${{ steps.meta.outputs.version }}"
+          fi
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          # Push if: main branch, version tag, OR test mode enabled
+          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || env.TEST_MODE == 'true' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          context: .
+          file: ./Dockerfile
+          build-args: |
+            BINARY_PATH=${{ matrix.source_binary_path }}
+            BINARY_NAME=${{ matrix.binary_name }}
+          cache-from: |
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}-cache:${{ steps.meta.outputs.version }}
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}-cache:main
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}-cache:${{ steps.meta.outputs.version }},mode=max
+
+      - name: Upload binary to release
+        if: startsWith(github.ref, 'refs/tags/') || env.TEST_MODE == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: ${{ env.TEST_MODE == 'true' }}
+          generate_release_notes: true
+          files: ${{ matrix.source_binary_path }}
+          fail_on_unmatched_files: true

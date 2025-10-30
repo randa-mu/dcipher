@@ -1,0 +1,67 @@
+name: build-all-binaries
+on:
+  push:
+    branches:
+      - "*"
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  SCCACHE_CACHE_SIZE: "10G"
+  SCCACHE_GCS_BUCKET: "randamu-gha-cache-bucket"
+  SCCACHE_GCS_KEY_PATH: /tmp/gcp-secret.json
+  GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SCCACHE_SERVICE_ACCOUNT }}
+  SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
+  SCCACHE_GCS_RW_MODE: READ_WRITE
+  CARGO_TERM_COLOR: always
+  ARTIFACT_RETENTION_DAYS: 1
+
+jobs:
+  build-binaries:
+    name: Build all workspace binaries
+    runs-on: ["randamu-self-hosted-default"]
+    env:
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - name: setup secrets for sccache
+        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+
+      - name: Build all workspace binaries and examples
+        run: |
+          cargo build --release --workspace --bins --examples --all-features
+        shell: bash
+
+      - name: List built binaries
+        run: |
+          echo "=== Built binaries ==="
+          ls -lh target/release/ | grep -E '^-.*x' || true
+          echo "=== Built examples ==="
+          ls -lh target/release/examples/ | grep -E '^-.*x' || true
+        shell: bash
+
+      - name: Upload binaries artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ github.sha }}
+          path: |
+            target/release/adkg-cli
+            target/release/monitoring
+            target/release/onlyswaps-solver
+            target/release/onlyswaps-smoketest
+            target/release/onlyswaps-state-api
+            target/release/onlyswaps-verifier
+            target/release/examples/blocklock
+            target/release/examples/randomness
+            target/release/examples/dsigner_legacy_http
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+          if-no-files-found: error
