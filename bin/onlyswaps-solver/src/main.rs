@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod executor;
+pub(crate) mod gasless;
 mod model;
 mod network;
 mod solver;
