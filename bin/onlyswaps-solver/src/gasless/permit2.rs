@@ -4,3 +4,4 @@
 #![allow(dead_code)]
 
 pub mod transfer_from;
+pub mod witness_transfer_from;
