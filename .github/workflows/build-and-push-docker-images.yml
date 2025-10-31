@@ -39,7 +39,9 @@ jobs:
     uses: ./.github/workflows/build-all-binaries.yml
     secrets: inherit
 
-  setup:
+  # Get the common things so we're not doing slow operations
+  # for every matrix item
+  download-artifacts-for-docker-build:
     needs: build-binaries
     runs-on: ["randamu-self-hosted-default"]
     steps:
@@ -69,7 +71,7 @@ jobs:
           retention-days: 1
 
   docker:
-    needs: setup
+    needs:  download-artifacts-for-docker-build
     runs-on: ["randamu-self-hosted-default"]
     strategy:
       fail-fast: false
@@ -143,13 +145,6 @@ jobs:
           name: dockerfile-${{ github.sha }}
           path: .
 
-      - name: Login to Artifact Registry
-        uses: docker/login-action@v3
-        with:
-          registry: europe-west1-docker.pkg.dev
-          username: _json_key
-          password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
-
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -195,6 +190,13 @@ jobs:
           echo "tags<<EOF" >> $GITHUB_OUTPUT
           echo "$TAGS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: europe-west1-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
