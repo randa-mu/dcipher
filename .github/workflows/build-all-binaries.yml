@@ -40,7 +40,7 @@ jobs:
       - name: Build all workspace binaries and examples
         run: |
           if [ "${{ env.ENABLE_TIMING_REPORTS }}" = "true" ]; then
-            cargo build --release --workspace --bins --examples --all-features --timings -p monitoring
+            cargo build --release --timings -p monitoring
           else
             cargo build --release --workspace --bins --examples --all-features
           fi
@@ -80,6 +80,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
