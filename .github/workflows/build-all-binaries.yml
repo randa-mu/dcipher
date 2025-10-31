@@ -16,15 +16,14 @@ env:
   GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SCCACHE_SERVICE_ACCOUNT }}
   SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
   SCCACHE_GCS_RW_MODE: READ_WRITE
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
   CARGO_TERM_COLOR: always
   ARTIFACT_RETENTION_DAYS: 1
-
 jobs:
   build-binaries:
     name: Build all workspace binaries
     runs-on: ["randamu-self-hosted-default"]
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       - name: setup secrets for sccache
         run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
