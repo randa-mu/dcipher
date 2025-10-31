@@ -40,7 +40,7 @@ jobs:
       - name: Build all workspace binaries and examples
         run: |
           if [ "${{ env.ENABLE_TIMING_REPORTS }}" = "true" ]; then
-            cargo build --release --timings -p monitoring
+            cargo build --release --workspace --bins --examples --all-features --timings
           else
             cargo build --release --workspace --bins --examples --all-features
           fi
