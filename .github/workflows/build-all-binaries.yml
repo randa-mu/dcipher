@@ -40,7 +40,7 @@ jobs:
       - name: Build all workspace binaries and examples
         run: |
           if [ "${{ env.ENABLE_TIMING_REPORTS }}" = "true" ]; then
-            cargo build --release --workspace --bins --examples --all-features --timings
+            cargo build --release --workspace --bins --examples --all-features --timings -p monitoring
           else
             cargo build --release --workspace --bins --examples --all-features
           fi
@@ -50,7 +50,7 @@ jobs:
       - name: Upload cargo timings report
         uses: actions/upload-pages-artifact@v3
         with:
-          path: target/cargo-timings/cargo-timing.html
+          path: target/cargo-timings/
         if: ${{ env.ENABLE_TIMING_REPORTS }}
 
       - name: Upload binaries artifact
