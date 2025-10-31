@@ -1,0 +1,102 @@
+name: release-binaries
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Enable test mode (creates draft release)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  # If test_mode is true, or we're on a branch with a test-build- prefix then use a draft release
+  TEST_MODE: ${{ github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-') }}
+
+jobs:
+  build-binaries:
+    uses: ./.github/workflows/build-all-binaries.yml
+    secrets: inherit
+
+  release:
+    needs: build-binaries
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-')
+    runs-on: ["randamu-self-hosted-default"]
+  docker:
+    needs: build-binaries
+    runs-on: ["randamu-self-hosted-default"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: randomness-agent
+            image_name: randomness-agent-rs
+            binary_name: randomness
+            description: "a rust agent for uploading signatures to blockchains"
+            source_binary_path: target/release/examples/randomness
+
+          - service: blocklock-agent
+            image_name: blocklock-agent-rs
+            binary_name: blocklock
+            description: "a rust agent for uploading signatures to blockchains"
+            source_binary_path: target/release/examples/blocklock
+
+          - service: onlyswaps-verifier
+            image_name: onlyswaps-verifier
+            binary_name: onlyswaps-verifier
+            description: "a rust agent for verifying crosschain swaps"
+            source_binary_path: target/release/onlyswaps-verifier
+            docker_push: true
+
+          - service: onlyswaps-solver
+            image_name: onlyswaps-solver
+            binary_name: onlyswaps-solver
+            description: "a rust agent for performing token swaps across EVM chains"
+            source_binary_path: target/release/onlyswaps-solver
+
+          - service: onlyswaps-state-api
+            image_name: onlyswaps-state-api
+            binary_name: onlyswaps-state-api
+            description: "API for caching and serving state related to ONLYSwaps"
+            source_binary_path: target/release/onlyswaps-state-api
+
+          - service: onlyswaps-smoketest
+            image_name: onlyswaps-smoketest
+            binary_name: onlyswaps-smoketest
+            description: "a continuous monitoring and testing tool for only swaps"
+            source_binary_path: target/release/onlyswaps-smoketest
+
+          - service: monitoring
+            image_name: monitoring
+            binary_name: monitoring
+            description: "an agent that listens/polls dcipher-related information and ships it to prometheus"
+            source_binary_path: target/release/monitoring
+
+          - service: adkg-cli
+            image_name: adkg-cli
+            binary_name: adkg-cli
+            description: "a tool to preform asynchronous distributed key generation"
+            source_binary_path: target/release/adkg-cli
+
+          - service: dsigner
+            image_name: dsigner
+            binary_name: dsigner_legacy_http
+            description: "threshold signing daemon"
+            source_binary_path: target/release/examples/dsigner_legacy_http
+    steps:
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries-${{ github.sha }}
+          path: target/release
+
+      - name: Upload all binaries to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: ${{ env.TEST_MODE == 'true' }}
+          generate_release_notes: true
+          files: |
+            ${{ matrix.source_binary_path }}
+          fail_on_unmatched_files: true
