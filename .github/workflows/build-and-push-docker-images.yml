@@ -84,13 +84,12 @@ jobs:
           name: docker-context-${{ github.sha }}
           path: |
             Dockerfile
-            docker-bake.hcl
             .github/docker-config.json
             .dockerignore
           retention-days: 1
 
   docker:
-    name:  Docker image ${{ matrix.app.image_name }}
+    name: "Docker: ${{ matrix.app.image_name }}"
     needs: generate-matrix
     runs-on: ["randamu-self-hosted-default"]
     strategy:
