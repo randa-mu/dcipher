@@ -67,14 +67,12 @@ jobs:
           fi
           
           # Generate matrix from binaries.json (slurp to read all objects into array)
-          MATRIX=$(jq -s --argjson config "$CONFIG" '{
-            include: map({
-              binary_name: .name,
-              binary_path: .path,
-              image_name: ($config[.name].image_name // .name),
-              description: ($config[.name].description // "Dcipher service")
-            })
-          }' binaries.json)
+          MATRIX=$(jq -sc --argjson config "$CONFIG" 'map({
+            binary_name: .name,
+            binary_path: .path,
+            image_name: ($config[.name].image_name // .name),
+            description: ($config[.name].description // "Dcipher service")
+          })' binaries.json)
           
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Generated matrix:"
@@ -85,7 +83,8 @@ jobs:
     runs-on: ["randamu-self-hosted-default"]
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix:
+        app: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -102,12 +101,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}
+          images: ${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}
           labels: |
             maintainer=${{ env.IMAGE_MAINTAINER }}
             org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}
-            org.opencontainers.image.title=${{ matrix.image_name }}
-            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.title=${{ matrix.app.image_name }}
+            org.opencontainers.image.description=${{ matrix.app.description }}
           flavor: |
             latest=false
           tags: |
@@ -142,9 +141,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BINARY_PATH=${{ matrix.binary_path }}
-            BINARY_NAME=${{ matrix.binary_name }}
+            BINARY_PATH=${{ matrix.app.binary_path }}
+            BINARY_NAME=${{ matrix.app.binary_name }}
           cache-from: |
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}-cache:main
-          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.image_name }}-cache:${{ steps.meta.outputs.version }},mode=max
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:${{ steps.meta.outputs.version }}
+            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:main
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:${{ steps.meta.outputs.version }},mode=max
