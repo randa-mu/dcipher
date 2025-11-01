@@ -90,6 +90,7 @@ jobs:
           retention-days: 1
 
   docker:
+    name:  Docker image ${{ matrix.app.image_name }}
     needs: generate-matrix
     runs-on: ["randamu-self-hosted-default"]
     strategy:
