@@ -66,8 +66,8 @@ jobs:
             CONFIG='{}'
           fi
           
-          # Generate matrix from binaries.json
-          MATRIX=$(jq --argjson config "$CONFIG" '{
+          # Generate matrix from binaries.json (slurp to read all objects into array)
+          MATRIX=$(jq -s --argjson config "$CONFIG" '{
             include: map({
               binary_name: .name,
               binary_path: .path,
