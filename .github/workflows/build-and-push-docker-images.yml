@@ -70,6 +70,7 @@ jobs:
           name: dockerfile-${{ github.sha }}
           path: Dockerfile
           retention-days: 1
+          overwrite: true
 
   docker:
     needs:  download-artifacts-for-docker-build
