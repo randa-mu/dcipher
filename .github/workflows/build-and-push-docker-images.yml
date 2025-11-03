@@ -62,6 +62,7 @@ jobs:
           name: binaries-for-docker-${{ github.sha }}
           path: target/release/
           retention-days: 1
+          overwrite: true
 
       - name: Upload Dockerfile for docker jobs
         uses: actions/upload-artifact@v4
