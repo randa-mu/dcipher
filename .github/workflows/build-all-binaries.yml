@@ -1,0 +1,130 @@
+name: build-all-binaries
+on:
+  push:
+    branches:
+      - "*"
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+env:
+  SCCACHE_CACHE_SIZE: "10G"
+  SCCACHE_GCS_BUCKET: "randamu-gha-cache-bucket"
+  SCCACHE_GCS_KEY_PATH: /tmp/gcp-secret.json
+  GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SCCACHE_SERVICE_ACCOUNT }}
+  SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
+  SCCACHE_GCS_RW_MODE: READ_WRITE
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+  CARGO_TERM_COLOR: always
+  # CARGO_BUILD_JOBS needs to be finely tuned relative to the pod limits and underlying node's cpu
+  CARGO_BUILD_JOBS: 8
+  ARTIFACT_RETENTION_DAYS: 1
+  ENABLE_TIMING_REPORTS: "true"
+jobs:
+  build-binaries:
+    name: Build all workspace binaries
+    runs-on: ["randamu-self-hosted-default"]
+    steps:
+      - name: setup secrets for sccache
+        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+
+      - name: Build all workspace binaries and examples
+        run: |
+          # Build with JSON output to capture build artifacts
+          if [ "${{ env.ENABLE_TIMING_REPORTS }}" = "true" ]; then
+            cargo build --release --workspace --bins --examples --all-features --timings --message-format=json > build-output.json
+          else
+            cargo build --release --workspace --bins --examples --all-features --message-format=json > build-output.json
+          fi
+          
+          # Extract binary information from build output
+          jq -r 'select(.reason == "compiler-artifact" and .target.kind != null) | 
+                 select(.target.kind[] | . == "bin" or . == "example") | 
+                 select(.executable != null) |
+                 {
+                   name: .target.name,
+                   kind: (.target.kind | if any(. == "example") then "example" else "bin" end),
+                   path: .executable
+                 }' build-output.json > binaries.json
+          
+          # Display discovered binaries
+          echo "Discovered binaries:"
+          jq -r '.name + " (" + .kind + "): " + .path' binaries.json
+          
+          # Count for verification
+          COUNT=$(jq -s 'length' binaries.json)
+          echo "Found $COUNT binaries"
+        shell: bash
+
+      # do this asynchronously
+      - name: Upload cargo timings report
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/cargo-timings/
+        if: ${{ env.ENABLE_TIMING_REPORTS }}
+      
+      - name: Upload binaries metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-metadata-${{ github.sha }}
+          path: binaries.json
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+      - name: Prepare binaries for upload
+        run: |
+          # Create a directory with just the binaries we need
+          mkdir -p binaries-upload/release
+          mkdir -p binaries-upload/release/examples
+          
+          # Copy binaries based on binaries.json
+          jq -r 'select(.kind == "bin") | .path' binaries.json | while read -r path; do
+            if [ -f "$path" ]; then
+              cp "$path" binaries-upload/release/
+            fi
+          done
+          
+          jq -r 'select(.kind == "example") | .path' binaries.json | while read -r path; do
+            if [ -f "$path" ]; then
+              cp "$path" binaries-upload/release/examples/
+            fi
+          done
+          
+          echo "Binaries prepared for upload:"
+          find binaries-upload -type f
+        shell: bash
+
+      - name: Upload binaries artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ github.sha }}
+          path: binaries-upload/release/
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+          if-no-files-found: error
+
+  deploy:
+    needs: build-binaries
+    runs-on: ["randamu-self-hosted-default"]
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        if: ${{ env.ENABLE_TIMING_REPORTS }}

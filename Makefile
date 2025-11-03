@@ -26,6 +26,28 @@ build_forge_all_concurrent:
 build_cargo: deps
 	cargo build
 
+build_binaries: deps
+	cargo build --release --workspace --bins --examples
+
+# Helper to determine binary path for Docker builds
+# Usage: make build_docker_randomness-agent
+build_docker_%: build_binaries
+	@if [ -f "target/release/$*" ]; then \
+		BINARY_PATH="target/release/$*"; \
+		BINARY_NAME="$*"; \
+	elif [ -f "target/release/examples/$*" ]; then \
+		BINARY_PATH="target/release/examples/$*"; \
+		BINARY_NAME="$*"; \
+	else \
+		echo "Error: Binary not found for $*"; \
+		exit 1; \
+	fi; \
+	docker build \
+		--build-arg BINARY_PATH=$$BINARY_PATH \
+		--build-arg BINARY_NAME=$$BINARY_NAME \
+		-t dcipher-$* \
+		-f Dockerfile .
+
 # If you want to pass args run
 # make run_onlyswaps-verifier ARGS="-v"
 run_%: deps

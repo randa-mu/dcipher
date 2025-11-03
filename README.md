@@ -99,7 +99,15 @@ cargo build
 Build a specific binary (e.g. adkg-cli):
 
 ```bash
-cargo build  --release -p adkg-cli
+cargo build --release -p adkg-cli
+```
+
+Build Docker images (requires binaries to be built first):
+
+```bash
+make build_binaries
+make build_docker_randomness-agent
+make build_docker_onlyswaps-verifier
 ```
 
 Clean artifacts:
