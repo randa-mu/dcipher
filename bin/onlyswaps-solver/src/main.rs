@@ -16,6 +16,7 @@ use crate::network::Network;
 use ::config::file::load_config_file;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
+use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
 use clap::Parser;
 use dotenv::dotenv;
@@ -25,6 +26,7 @@ async fn main() -> anyhow::Result<()> {
     dotenv().ok();
     let cli = CliArgs::parse();
     let config: AppConfig = load_config_file(cli.config_path)?;
+    let private_key_signer: PrivateKeySigner = cli.private_key.parse()?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
     let healthcheck_server = HealthcheckServer::new(
         config.agent.healthcheck_listen_addr,
@@ -39,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
 
     // listen for alllll the things!
     tokio::select! {
-        res = App::start(networks, &config.timeout, &config.profitability) => {
+        res = App::start(private_key_signer, networks, &config.timeout, &config.profitability) => {
             match res {
                 Ok(_) => Err(anyhow!("event listener stopped unexpectedly")),
                 Err(e) => Err(anyhow!("event listener stopped unexpectedly: {}", e))

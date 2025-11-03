@@ -8,7 +8,7 @@ use crate::model::Trade;
 use alloy::primitives::{Address, B256, U256};
 use serde_json::json;
 
-mod permit2;
+pub mod permit2;
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Permit2RelayTokensDetails {
@@ -58,7 +58,7 @@ pub fn permit2_relay_tokens_details(
         // swap params
         chain_id: trade.dest_chain_id.try_into().expect("invalid chain_id"),
         token_addr: trade.token_out_addr,
-        token_amount: trade.swap_amount,
+        token_amount: trade.amount_out,
         spender_addr,
 
         // permit2 params
