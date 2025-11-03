@@ -51,8 +51,16 @@ jobs:
       - name: Download binaries metadata
         uses: actions/download-artifact@v4
         with:
-          name: binaries-metadata-${{ github.sha }}
-          path: .
+          name: binaries-${{ github.sha }}
+          path: target/release
+
+      - name: Upload binaries for docker jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-for-docker-${{ github.sha }}
+          path: target/release/
+          retention-days: 1
+          overwrite: true
 
       - name: Generate build matrix
         id: set-matrix
@@ -87,6 +95,7 @@ jobs:
             .github/docker-config.json
             .dockerignore
           retention-days: 1
+          overwrite: true
 
   docker:
     name: "Docker: ${{ matrix.app.image_name }}"
