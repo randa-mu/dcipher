@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-alloy = { workspace = true, features = ["provider-ws", "provider-anvil-node", "eip712"] }
+alloy = { workspace = true, features = ["provider-ws", "provider-anvil-node", "eip712", "rand"] }
 agent-utils.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true

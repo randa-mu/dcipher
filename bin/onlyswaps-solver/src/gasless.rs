@@ -8,7 +8,7 @@ use crate::model::Trade;
 use alloy::primitives::{Address, B256, U256};
 use serde_json::json;
 
-mod permit2;
+pub mod permit2;
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Permit2RelayTokensDetails {

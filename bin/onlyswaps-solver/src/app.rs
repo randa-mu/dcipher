@@ -3,6 +3,7 @@ use crate::model::{BlockEvent, RequestId};
 use crate::network::Network;
 use crate::solver::Solver;
 use alloy::providers::DynProvider;
+use alloy::signers::local::PrivateKeySigner;
 use futures::StreamExt;
 use futures::future::try_join_all;
 use futures::stream::select_all;
@@ -12,14 +13,17 @@ use std::time::Duration;
 
 pub struct App {}
 impl App {
-    pub async fn start(networks: HashMap<u64, Network<DynProvider>>) -> anyhow::Result<()> {
+    pub async fn start(
+        signer: PrivateKeySigner,
+        networks: HashMap<u64, Network<DynProvider>>,
+    ) -> anyhow::Result<()> {
         let block_numbers = networks
             .values()
             .map(|network| network.stream_block_numbers());
         let streams = try_join_all(block_numbers).await?;
         let mut stream = Box::pin(select_all(streams));
         let mut solver = Solver::from(&networks).await?;
-        let executor = TradeExecutor::new(&networks);
+        let executor = TradeExecutor::new(signer, &networks);
 
         // we pull new chain state every block, so inflight requests may not have been
         // completed yet, so we don't want to attempt to execute them again and waste gas.
