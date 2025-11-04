@@ -169,30 +169,30 @@ jobs:
             CACHE_REF="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME-cache:$VERSION_TAG"
             CACHE_REF_MAIN="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME-cache:main"
 
-            # Build arguments
-            BUILD_ARGS=""
-            BUILD_ARGS="$BUILD_ARGS --build-arg BINARY_PATH=$BINARY_PATH"
-            BUILD_ARGS="$BUILD_ARGS --build-arg BINARY_NAME=$BINARY_NAME"
-            BUILD_ARGS="$BUILD_ARGS --label maintainer=${{ env.IMAGE_MAINTAINER }}"
-            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}"
-            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.title=$IMAGE_NAME"
-            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.description=\"$DESCRIPTION\""
-            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.version=$VERSION_TAG"
-            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.revision=${{ github.sha }}"
-            BUILD_ARGS="$BUILD_ARGS --cache-from type=registry,ref=$CACHE_REF"
-            BUILD_ARGS="$BUILD_ARGS --cache-from type=registry,ref=$CACHE_REF_MAIN"
-            BUILD_ARGS="$BUILD_ARGS --cache-to type=registry,ref=$CACHE_REF,mode=max"
-            BUILD_ARGS="$BUILD_ARGS -t $FULL_IMAGE_NAME"
-            BUILD_ARGS="$BUILD_ARGS -f ./Dockerfile"
+            # Build arguments (using array to properly handle spaces)
+            BUILD_ARGS=()
+            BUILD_ARGS+=(--build-arg "BINARY_PATH=$BINARY_PATH")
+            BUILD_ARGS+=(--build-arg "BINARY_NAME=$BINARY_NAME")
+            BUILD_ARGS+=(--label "maintainer=${{ env.IMAGE_MAINTAINER }}")
+            BUILD_ARGS+=(--label "org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}")
+            BUILD_ARGS+=(--label "org.opencontainers.image.title=$IMAGE_NAME")
+            BUILD_ARGS+=(--label "org.opencontainers.image.description=$DESCRIPTION")
+            BUILD_ARGS+=(--label "org.opencontainers.image.version=$VERSION_TAG")
+            BUILD_ARGS+=(--label "org.opencontainers.image.revision=${{ github.sha }}")
+            BUILD_ARGS+=(--cache-from "type=registry,ref=$CACHE_REF")
+            BUILD_ARGS+=(--cache-from "type=registry,ref=$CACHE_REF_MAIN")
+            BUILD_ARGS+=(--cache-to "type=registry,ref=$CACHE_REF,mode=max")
+            BUILD_ARGS+=(-t "$FULL_IMAGE_NAME")
+            BUILD_ARGS+=(-f ./Dockerfile)
 
             if [[ "$SHOULD_PUSH" == "true" ]]; then
-              BUILD_ARGS="$BUILD_ARGS --push"
+              BUILD_ARGS+=(--push)
             fi
 
             set -x
             # Build and optionally push
-            echo "Running: docker buildx build $BUILD_ARGS ."
-            docker buildx build $BUILD_ARGS .
+            echo "Running: docker buildx build ${BUILD_ARGS[@]} ."
+            docker buildx build ${BUILD_ARGS[@]} .
 
             echo "✓ Successfully built $IMAGE_NAME"
           done
