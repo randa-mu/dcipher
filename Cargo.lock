@@ -4976,6 +4976,7 @@ dependencies = [
  "speculoos",
  "tokio",
  "tracing",
+ "utils",
 ]
 
 [[package]]
