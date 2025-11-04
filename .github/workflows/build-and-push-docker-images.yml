@@ -77,7 +77,7 @@ jobs:
           # Generate matrix from binaries.json (slurp to read all objects into array)
           MATRIX=$(jq -sc --argjson config "$CONFIG" 'map({
             binary_name: .name,
-            binary_path: .path,
+            binary_path: ( .path | sub("/home/runner/_work/dcipher/dcipher/"; "") ),
             image_name: ($config[.name].image_name // .name),
             description: ($config[.name].description // "Dcipher service")
           })' binaries.json)
