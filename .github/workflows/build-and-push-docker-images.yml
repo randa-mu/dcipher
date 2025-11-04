@@ -12,7 +12,7 @@ on:
         description: 'Enable test mode (uses candyland-test registry and draft releases)'
         required: false
         type: boolean
-        default: false
+        default: true
       docker_push:
         description: 'Enable docker push'
         required: false
