@@ -11,7 +11,6 @@ use bytes::Bytes;
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
 use itertools::Either;
-use serde::{Deserialize, Serialize};
 use utils::serialize::point::{
     PointDeserializeCompressed, PointSerializeCompressed, PointSerializeUncompressed,
 };
@@ -37,12 +36,6 @@ impl<BLS: BlsVerifier> AsyncThresholdSigner<BLS> {
             filter,
         }
     }
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-struct PartialSignature<G> {
-    id: u16,
-    sig: G,
 }
 
 #[derive(thiserror::Error, Debug)]
