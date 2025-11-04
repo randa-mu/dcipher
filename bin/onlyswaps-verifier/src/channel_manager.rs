@@ -144,9 +144,17 @@ where
                             .await
                         {
                             Ok(v) => tx_done.send(v).expect("error writing on channel"),
-                            Err(_) => tx_err
-                                .send(VerificationError::Submit(signed_verification))
-                                .expect("error writing on channel"),
+                            Err(e) => {
+                                tracing::error!(
+                                    error = ?e,
+                                    src_chain_id = %signed_verification.src_chain_id,
+                                    request_id = %signed_verification.request_id,
+                                    "Verification error"
+                                );
+                                tx_err
+                                    .send(VerificationError::Submit(signed_verification))
+                                    .expect("error writing on channel")
+                            }
                         }
                     });
                 }
