@@ -2,6 +2,9 @@ name: rust-build-and-tests
 on:
   push:
     branches: [main]
+    # Don't run on release tags since they're built in build-all-binaries
+    tags-ignore:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
   pull_request:
   workflow_dispatch:
 

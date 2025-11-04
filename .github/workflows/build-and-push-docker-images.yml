@@ -51,8 +51,8 @@ jobs:
       - name: Download binaries metadata
         uses: actions/download-artifact@v4
         with:
-          name: binaries-${{ github.sha }}
-          path: target/release
+          name: binaries-metadata-${{ github.sha }}
+          path: .
 
       - name: Upload binaries for docker jobs
         uses: actions/upload-artifact@v4
