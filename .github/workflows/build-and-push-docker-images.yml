@@ -39,11 +39,10 @@ jobs:
     uses: ./.github/workflows/build-all-binaries.yml
     secrets: inherit
 
-  generate-matrix:
+  docker-build-all:
+    name: "Build all Docker images"
     needs: build-binaries
     runs-on: ["randamu-self-hosted-default"]
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -66,14 +65,14 @@ jobs:
         id: set-matrix
         run: |
           CONFIG_FILE=".github/docker-config.json"
-          
+
           # Load config if exists
           if [ -f "$CONFIG_FILE" ]; then
             CONFIG=$(cat "$CONFIG_FILE")
           else
             CONFIG='{}'
           fi
-          
+
           # Generate matrix from binaries.json (slurp to read all objects into array)
           MATRIX=$(jq -sc --argjson config "$CONFIG" 'map({
             binary_name: .name,
@@ -81,7 +80,7 @@ jobs:
             image_name: ($config[.name].image_name // .name),
             description: ($config[.name].description // "Dcipher service")
           })' binaries.json)
-          
+
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Generated matrix:"
           echo "$MATRIX" | jq .
@@ -96,68 +95,11 @@ jobs:
             .dockerignore
           retention-days: 1
           overwrite: true
-
-  docker:
-    name: "Docker: ${{ matrix.app.image_name }}"
-    needs: generate-matrix
-    runs-on: ["randamu-self-hosted-default"]
-    strategy:
-      fail-fast: false
-      matrix:
-        app: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
-    steps:
-      - name: Download Docker build context
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-context-${{ github.sha }}
-          path: .
-
       - name: Download pre-built binaries
         uses: actions/download-artifact@v4
         with:
           name: binaries-${{ github.sha }}
           path: target/release
-
-      - name: Debug - List directory structure and matrix variables
-        run: |
-          echo "=== Directory structure after downloads ==="
-          ls -la
-          echo ""
-          echo "=== Target directory structure ==="
-          ls -laR target/
-          echo ""
-          echo "=== Matrix variables ==="
-          echo "matrix.app.binary_path: ${{ matrix.app.binary_path }}"
-          echo "matrix.app.binary_name: ${{ matrix.app.binary_name }}"
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}
-          labels: |
-            maintainer=${{ env.IMAGE_MAINTAINER }}
-            org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}
-            org.opencontainers.image.title=${{ matrix.app.image_name }}
-            org.opencontainers.image.description=${{ matrix.app.description }}
-          flavor: |
-            latest=false
-          tags: |
-            type=raw,value=main-latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
-            type=ref,event=pr
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          buildkitd-config-inline: |
-            [registry."docker.io"]
-              mirrors = ["mirror.gcr.io"]
-          driver-opts: |
-            image=mirror.gcr.io/moby/buildkit:buildx-stable-1
-            network=host
-
       - name: Login to Artifact Registry
         uses: docker/login-action@v3
         with:
@@ -165,18 +107,96 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || env.TEST_MODE == 'true' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BINARY_PATH=${{ matrix.app.binary_path }}
-            BINARY_NAME=${{ matrix.app.binary_name }}
-          cache-from: |
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:main
-          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:${{ steps.meta.outputs.version }},mode=max
+      - name: Build and push all Docker images
+        run: |
+          set -e
+
+          CONFIG_FILE=".github/docker-config.json"
+
+          # Load config if exists
+          if [ -f "$CONFIG_FILE" ]; then
+            CONFIG=$(cat "$CONFIG_FILE")
+          else
+            CONFIG='{}'
+          fi
+
+          # Generate image list from binaries.json
+          IMAGES=$(jq -sc --argjson config "$CONFIG" 'map({
+            binary_name: .name,
+            binary_path: .path,
+            image_name: ($config[.name].image_name // .name),
+            description: ($config[.name].description // "Dcipher service")
+          })' binaries.json)
+
+          echo "Building images for the following binaries:"
+          echo "$IMAGES" | jq .
+
+          # Generate version tag based on git ref
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            VERSION_TAG="main-latest"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION_TAG="${GITHUB_REF#refs/tags/}"
+          elif [[ "${{ github.ref }}" == refs/pull/* ]]; then
+            VERSION_TAG="pr-${{ github.event.pull_request.number }}"
+          else
+            VERSION_TAG="${GITHUB_REF#refs/heads/}"
+          fi
+
+          # Determine if we should push
+          SHOULD_PUSH="false"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "${{ env.TEST_MODE }}" == "true" ]]; then
+            SHOULD_PUSH="true"
+          fi
+
+          echo "Version tag: $VERSION_TAG"
+          echo "Should push: $SHOULD_PUSH"
+
+          # Loop through each image and build
+          echo "$IMAGES" | jq -c '.[]' | while read -r image; do
+            BINARY_NAME=$(echo "$image" | jq -r '.binary_name')
+            BINARY_PATH=$(echo "$image" | jq -r '.binary_path')
+            IMAGE_NAME=$(echo "$image" | jq -r '.image_name')
+            DESCRIPTION=$(echo "$image" | jq -r '.description')
+
+            echo ""
+            echo "========================================"
+            echo "Building image: $IMAGE_NAME"
+            echo "Binary: $BINARY_NAME ($BINARY_PATH)"
+            echo "Description: $DESCRIPTION"
+            echo "========================================"
+
+            FULL_IMAGE_NAME="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME:$VERSION_TAG"
+            CACHE_REF="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME-cache:$VERSION_TAG"
+            CACHE_REF_MAIN="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME-cache:main"
+
+            # Build arguments
+            BUILD_ARGS=""
+            BUILD_ARGS="$BUILD_ARGS --build-arg BINARY_PATH=$BINARY_PATH"
+            BUILD_ARGS="$BUILD_ARGS --build-arg BINARY_NAME=$BINARY_NAME"
+            BUILD_ARGS="$BUILD_ARGS --label maintainer=${{ env.IMAGE_MAINTAINER }}"
+            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}"
+            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.title=$IMAGE_NAME"
+            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.description=\"$DESCRIPTION\""
+            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.version=$VERSION_TAG"
+            BUILD_ARGS="$BUILD_ARGS --label org.opencontainers.image.revision=${{ github.sha }}"
+            BUILD_ARGS="$BUILD_ARGS --cache-from type=registry,ref=$CACHE_REF"
+            BUILD_ARGS="$BUILD_ARGS --cache-from type=registry,ref=$CACHE_REF_MAIN"
+            BUILD_ARGS="$BUILD_ARGS --cache-to type=registry,ref=$CACHE_REF,mode=max"
+            BUILD_ARGS="$BUILD_ARGS -t $FULL_IMAGE_NAME"
+            BUILD_ARGS="$BUILD_ARGS -f ./Dockerfile"
+
+            if [[ "$SHOULD_PUSH" == "true" ]]; then
+              BUILD_ARGS="$BUILD_ARGS --push"
+            fi
+
+            # Build and optionally push
+            echo "Running: docker buildx build $BUILD_ARGS ."
+            docker buildx build $BUILD_ARGS .
+
+            echo "✓ Successfully built $IMAGE_NAME"
+          done
+
+          echo ""
+          echo "========================================"
+          echo "All images built successfully!"
+          echo "========================================"
