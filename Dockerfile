@@ -6,7 +6,11 @@ ARG BINARY_PATH
 ARG BINARY_NAME
 
 FROM debian:bookworm-slim AS runtime
-RUN apt-get update && apt-get install -y libssl3 dnsutils && rm -rf /var/lib/apt/lists/*
+
+ARG BINARY_PATH
+ARG BINARY_NAME
+
+RUN apt-get update && apt-get install -y --no-install-recommends libssl3 dnsutils && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY ${BINARY_PATH} /usr/local/bin/${BINARY_NAME}
 
