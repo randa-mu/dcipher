@@ -472,12 +472,18 @@ async fn swap(
         .send()
         .await
         .map_err(|e| (e, "failed to send requestCrossChainSwap transaction"))?;
-    let receipt = pending_tx
+    let tx_hash = pending_tx
         .with_required_confirmations(src_chain_config.required_confirmations)
         .with_timeout(Some(src_chain_config.timeout))
-        .get_receipt()
+        .watch()
         .await?;
-    tracing::debug!(?receipt, "Got receipt for requestCrossChainSwap");
+    tracing::debug!(%tx_hash, "Got confirmed tx for requestCrossChainSwap");
+
+    let receipt = backoff::get_receipt(tx_hash, router.provider()).await?;
+    if !receipt.status() {
+        // make sure it didn't revert
+        return Err(OnlySwapsClientError::SwapReverted);
+    }
 
     // Parse the logs to recover the request id of the swap
     let request_id = request_id_from_swap_logs(receipt.logs())
