@@ -189,6 +189,7 @@ jobs:
               BUILD_ARGS="$BUILD_ARGS --push"
             fi
 
+            set -x
             # Build and optionally push
             echo "Running: docker buildx build $BUILD_ARGS ."
             docker buildx build $BUILD_ARGS .
