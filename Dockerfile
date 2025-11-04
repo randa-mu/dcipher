@@ -9,6 +9,7 @@ FROM debian:bookworm-slim AS runtime
 
 ARG BINARY_PATH
 ARG BINARY_NAME
+ENV BINARY_NAME=${BINARY_NAME}
 
 RUN apt-get update && apt-get install -y --no-install-recommends libssl3 dnsutils && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
