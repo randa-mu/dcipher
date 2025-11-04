@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use moka::future::Cache;
 use std::collections::HashMap;
-use utils::display::LogBytes;
 
 #[async_trait]
 pub(crate) trait ChainStateProvider {
@@ -86,7 +85,7 @@ fn solve(
     };
 
     if executed {
-        tracing::debug!(request_id = %LogBytes(transfer_request.request_id), "skipping - tx already executed");
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - tx already executed");
         return;
     }
 
@@ -94,12 +93,12 @@ fn solve(
         .already_fulfilled
         .contains(&transfer_request.request_id)
     {
-        tracing::debug!(request_id = %LogBytes(transfer_request.request_id), "skipping - tx already fulfilled");
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - tx already fulfilled");
         return;
     }
 
     if dest_state.native_balance == U256::from(0) {
-        tracing::debug!(request_id = %LogBytes(transfer_request.request_id), "skipping - native balance too low");
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - native balance too low");
         return;
     }
 
@@ -107,17 +106,20 @@ fn solve(
         .token_balances
         .get(&transfer_request.params.tokenOut)
     {
-        None => return,
+        None => {
+            tracing::debug!(request_id = %transfer_request.request_id, "skipping - token balance empty");
+            return;
+        }
         Some(balance) => balance,
     };
     if *token_balance < amountOut {
-        tracing::debug!(request_id = %LogBytes(transfer_request.request_id), "skipping - token balance too low");
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - token balance too low");
         return;
     }
 
     // just takes a flat fee for the moment
     if solverFee < U256::from(1) {
-        tracing::debug!(request_id = %LogBytes(transfer_request.request_id), "skipping - fee too low");
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - fee too low");
         return;
     }
 
