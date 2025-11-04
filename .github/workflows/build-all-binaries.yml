@@ -43,7 +43,7 @@ jobs:
         run: |
           # Build with JSON output to capture build artifacts
           if [ "${{ env.ENABLE_TIMING_REPORTS }}" = "true" ]; then
-            cargo build -p monitoring -p dcipher-network --timings --message-format=json > build-output.json
+            cargo build --release -p monitoring -p dcipher-network --timings --message-format=json > build-output.json
           else
             cargo build --release --workspace --bins --examples --all-features --message-format=json > build-output.json
           fi
