@@ -118,6 +118,18 @@ jobs:
           name: binaries-${{ github.sha }}
           path: target/release
 
+      - name: Debug - List directory structure and matrix variables
+        run: |
+          echo "=== Directory structure after downloads ==="
+          ls -la
+          echo ""
+          echo "=== Target directory structure ==="
+          ls -laR target/
+          echo ""
+          echo "=== Matrix variables ==="
+          echo "matrix.app.binary_path: ${{ matrix.app.binary_path }}"
+          echo "matrix.app.binary_name: ${{ matrix.app.binary_name }}"
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
