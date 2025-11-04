@@ -53,38 +53,6 @@ jobs:
           name: binaries-metadata-${{ github.sha }}
           path: .
 
-      - name: Upload binaries for docker jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: binaries-for-docker-${{ github.sha }}
-          path: target/release/
-          retention-days: 1
-          overwrite: true
-
-      - name: Generate build matrix
-        id: set-matrix
-        run: |
-          CONFIG_FILE=".github/docker-config.json"
-
-          # Load config if exists
-          if [ -f "$CONFIG_FILE" ]; then
-            CONFIG=$(cat "$CONFIG_FILE")
-          else
-            CONFIG='{}'
-          fi
-
-          # Generate matrix from binaries.json (slurp to read all objects into array)
-          MATRIX=$(jq -sc --argjson config "$CONFIG" 'map({
-            binary_name: .name,
-            binary_path: ( .path | sub("/home/runner/_work/dcipher/dcipher/"; "") ),
-            image_name: ($config[.name].image_name // .name),
-            description: ($config[.name].description // "Dcipher service")
-          })' binaries.json)
-
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Generated matrix:"
-          echo "$MATRIX" | jq .
-
       - name: Upload Docker build context
         uses: actions/upload-artifact@v4
         with:
