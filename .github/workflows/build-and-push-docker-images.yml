@@ -176,7 +176,7 @@ jobs:
             BUILD_ARGS+=(--label "maintainer=${{ env.IMAGE_MAINTAINER }}")
             BUILD_ARGS+=(--label "org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}")
             BUILD_ARGS+=(--label "org.opencontainers.image.title=$IMAGE_NAME")
-            BUILD_ARGS+=(--label "org.opencontainers.image.description=$DESCRIPTION")
+            BUILD_ARGS+=(--label 'org.opencontainers.image.description="'$DESCRIPTION'"')
             BUILD_ARGS+=(--label "org.opencontainers.image.version=$VERSION_TAG")
             BUILD_ARGS+=(--label "org.opencontainers.image.revision=${{ github.sha }}")
             BUILD_ARGS+=(--cache-from "type=registry,ref=$CACHE_REF")
