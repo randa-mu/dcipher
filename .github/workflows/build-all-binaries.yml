@@ -123,7 +123,7 @@ jobs:
           name: workspace-debug-binaries-${{ strategy.job-index }}
           path: .
           retention-days: 1
-        if: ${{ env.WORKSPACE_UPLOAD && (success() || failure()) }}
+        if: ${{ env.WORKSPACE_UPLOAD == 'true' && (success() || failure()) }}
 
   deploy:
     needs: build-binaries
