@@ -22,8 +22,9 @@ env:
   # CARGO_BUILD_JOBS needs to be finely tuned relative to the pod limits and underlying node's cpu
   CARGO_BUILD_JOBS: 32
   ARTIFACT_RETENTION_DAYS: 1
+  # Debug flags
   ENABLE_TIMING_REPORTS: "true"
-  test_mode: "false"
+  WORKSPACE_UPLOAD: "false"
 jobs:
   build-binaries:
     name: Build all workspace binaries
@@ -122,10 +123,7 @@ jobs:
           name: workspace-debug-binaries-${{ strategy.job-index }}
           path: .
           retention-days: 1
-        if: ${{
-          (github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-')) &&
-          success() || failure()
-          }}
+        if: ${{ env.WORKSPACE_UPLOAD && (success() || failure()) }}
 
   deploy:
     needs: build-binaries
