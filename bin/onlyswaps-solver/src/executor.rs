@@ -15,14 +15,27 @@ use tokio::time::timeout;
 pub(crate) struct TradeExecutor<'a, P, S> {
     signer: S,
     own_address: Address,
-    routers: HashMap<u64, &'a RouterInstance<P>>,
+    routers: HashMap<u64, ChainConfig<'a, P>>,
+}
+
+pub(crate) struct ChainConfig<'a, P> {
+    router: &'a RouterInstance<P>,
+    permit2_relayer_address: Address,
 }
 
 impl<'a, P, S> TradeExecutor<'a, P, S> {
     pub fn new(signer: S, networks: &'a HashMap<u64, Network<P>>) -> Self {
         let routers = networks
             .iter()
-            .map(|(chain_id, net)| (*chain_id, &net.router))
+            .map(|(chain_id, net)| {
+                (
+                    *chain_id,
+                    ChainConfig {
+                        router: &net.router,
+                        permit2_relayer_address: net.permit2_relayer_address,
+                    },
+                )
+            })
             .collect();
 
         let own_address = networks
@@ -51,7 +64,7 @@ where
             in_flight.insert(trade.request_id, ()).await;
 
             // then we get the contract bindings for the destination chain
-            let router = self
+            let config = self
                 .routers
                 .get(&normalise_chain_id(trade.dest_chain_id))
                 .expect("somehow didn't have a router binding for a solved trade");
@@ -59,7 +72,13 @@ where
             // and finally execute the trade with a timeout
             match timeout(
                 Duration::from_secs(10),
-                execute_trade(&trade, router, self.own_address, &self.signer),
+                execute_trade(
+                    &trade,
+                    config.router,
+                    config.permit2_relayer_address,
+                    self.own_address,
+                    &self.signer,
+                ),
             )
             .await
             {
@@ -94,6 +113,7 @@ where
 async fn execute_trade<S>(
     trade: &Trade,
     router: &RouterInstance<impl Provider>,
+    permit2_relayer_address: Address,
     own_addr: Address,
     signer: &S,
 ) -> anyhow::Result<TxHash>
@@ -104,10 +124,7 @@ where
         message_hash,
         nonce: permit_nonce,
         deadline: permit_deadline,
-    } = permit2_relay_tokens_details(
-        trade,
-        alloy::primitives::address!("0x6ede4f5EFfcb205A46a37374954Cba421956F88D"),
-    )?;
+    } = permit2_relay_tokens_details(trade, permit2_relayer_address)?;
     let permit2_signed_allowance = signer.sign_hash(&message_hash).await?;
 
     let tx = router
