@@ -107,4 +107,7 @@ jobs:
           name: workspace-debug
           path: .
           retention-days: 1
-        if: ${{ github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-') }}
+        if: ${{
+            (github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-')) &&
+            success() || failure()
+          }}
