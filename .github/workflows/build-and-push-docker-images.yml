@@ -28,7 +28,7 @@ env:
   # If test_mode is true, or we're on a branch with a test-build- prefix then use a test registry and a draft release
   TEST_MODE: ${{ github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-') }}
   DOCKER_REGISTRY: ${{ (github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-')) && 'europe-west1-docker.pkg.dev/randamu-prod/candyland-test' || 'europe-west1-docker.pkg.dev/randamu-prod/candyland' }}
-
+  DOCKER_CONTEXT: docker-context
   SERVICE_ACCOUNT: github@randamu-prod.iam.gserviceaccount.com
   IMAGE_MAINTAINER: "Randamu"
   IMAGE_VENDOR: "Randamu"
@@ -62,11 +62,13 @@ jobs:
             .github/docker-config.json
           retention-days: 1
           overwrite: true
+
       - name: Download pre-built binaries
         uses: actions/download-artifact@v4
         with:
           name: binaries-${{ github.sha }}
-          path: target/release
+          path: ${{ env.DOCKER_CONTEXT }}/target/release
+
       - name: Login to Artifact Registry
         uses: docker/login-action@v3
         with:
@@ -96,6 +98,7 @@ jobs:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           IMAGE_MAINTAINER: ${{ env.IMAGE_MAINTAINER }}
           IMAGE_VENDOR: ${{ env.IMAGE_VENDOR }}
+          DOCKER_CONTEXT: ${{ env.DOCKER_CONTEXT }}
         run: |
           chmod +x .github/build-docker.sh
           ./.github/build-docker.sh
