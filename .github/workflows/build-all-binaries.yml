@@ -17,7 +17,7 @@ env:
   SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
   SCCACHE_GCS_RW_MODE: READ_WRITE
   SCCACHE_GHA_ENABLED: "false"
-  RUSTC_WRAPPER: "sccache"
+#  RUSTC_WRAPPER: "sccache"
   CARGO_TERM_COLOR: always
   # CARGO_BUILD_JOBS needs to be finely tuned relative to the pod limits and underlying node's cpu
   CARGO_BUILD_JOBS: 32
