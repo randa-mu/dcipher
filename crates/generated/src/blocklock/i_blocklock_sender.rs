@@ -38,7 +38,6 @@ struct PointG2 { uint256[2] x; uint256[2] y; }
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (
             alloy::sol_types::sol_data::FixedArray<
                 alloy::sol_types::sol_data::Uint<256>,
@@ -254,8 +253,8 @@ See the [wrapper's documentation](`BLSInstance`) for more details.*/
     pub const fn new<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
-    >(address: alloy_sol_types::private::Address, __provider: P) -> BLSInstance<P, N> {
-        BLSInstance::<P, N>::new(address, __provider)
+    >(address: alloy_sol_types::private::Address, provider: P) -> BLSInstance<P, N> {
+        BLSInstance::<P, N>::new(address, provider)
     }
     /**A [`BLS`](self) instance.
 
@@ -282,6 +281,7 @@ See the [module-level documentation](self) for all the available methods.*/
         }
     }
     /// Instantiation and getters/setters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -292,11 +292,11 @@ See the [wrapper's documentation](`BLSInstance`) for more details.*/
         #[inline]
         pub const fn new(
             address: alloy_sol_types::private::Address,
-            __provider: P,
+            provider: P,
         ) -> Self {
             Self {
                 address,
-                provider: __provider,
+                provider,
                 _network: ::core::marker::PhantomData,
             }
         }
@@ -333,6 +333,7 @@ See the [wrapper's documentation](`BLSInstance`) for more details.*/
         }
     }
     /// Function calls.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -349,6 +350,7 @@ See the [wrapper's documentation](`BLSInstance`) for more details.*/
         }
     }
     /// Event filters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -419,7 +421,6 @@ struct BlocklockRequest { uint256 subId; uint256 directFundingFeePaid; uint32 ca
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (
             alloy::sol_types::sol_data::Uint<256>,
             alloy::sol_types::sol_data::Uint<256>,
@@ -794,7 +795,6 @@ struct Ciphertext { BLS.PointG2 u; bytes v; bytes w; }
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (
             BLS::PointG2,
             alloy::sol_types::sol_data::Bytes,
@@ -1021,9 +1021,9 @@ See the [wrapper's documentation](`TypesLibInstance`) for more details.*/
         N: alloy_contract::private::Network,
     >(
         address: alloy_sol_types::private::Address,
-        __provider: P,
+        provider: P,
     ) -> TypesLibInstance<P, N> {
-        TypesLibInstance::<P, N>::new(address, __provider)
+        TypesLibInstance::<P, N>::new(address, provider)
     }
     /**A [`TypesLib`](self) instance.
 
@@ -1050,6 +1050,7 @@ See the [module-level documentation](self) for all the available methods.*/
         }
     }
     /// Instantiation and getters/setters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -1060,11 +1061,11 @@ See the [wrapper's documentation](`TypesLibInstance`) for more details.*/
         #[inline]
         pub const fn new(
             address: alloy_sol_types::private::Address,
-            __provider: P,
+            provider: P,
         ) -> Self {
             Self {
                 address,
-                provider: __provider,
+                provider,
                 _network: ::core::marker::PhantomData,
             }
         }
@@ -1101,6 +1102,7 @@ See the [wrapper's documentation](`TypesLibInstance`) for more details.*/
         }
     }
     /// Function calls.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -1117,6 +1119,7 @@ See the [wrapper's documentation](`TypesLibInstance`) for more details.*/
         }
     }
     /// Event filters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -1805,7 +1808,6 @@ function acceptSubscriptionOwnerTransfer(uint256 subId) external;
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -1841,7 +1843,6 @@ function acceptSubscriptionOwnerTransfer(uint256 subId) external;
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -1959,7 +1960,6 @@ function addConsumer(uint256 subId, address consumer) external;
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Address,
@@ -2000,7 +2000,6 @@ function addConsumer(uint256 subId, address consumer) external;
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -2123,7 +2122,6 @@ function calculateRequestPriceNative(uint32 _callbackGasLimit) external view ret
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<32>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (u32,);
@@ -2157,7 +2155,6 @@ function calculateRequestPriceNative(uint32 _callbackGasLimit) external view ret
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -2278,7 +2275,6 @@ function cancelSubscription(uint256 subId, address to) external;
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Address,
@@ -2321,7 +2317,6 @@ function cancelSubscription(uint256 subId, address to) external;
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -2443,7 +2438,6 @@ function createSubscription() external returns (uint256 subId);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -2477,7 +2471,6 @@ function createSubscription() external returns (uint256 subId);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -2599,7 +2592,6 @@ function decrypt(TypesLib.Ciphertext memory ciphertext, bytes memory decryptionK
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 TypesLib::Ciphertext,
                 alloy::sol_types::sol_data::Bytes,
@@ -2640,7 +2632,6 @@ function decrypt(TypesLib.Ciphertext memory ciphertext, bytes memory decryptionK
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
@@ -2768,7 +2759,6 @@ function estimateRequestPriceNative(uint32 _callbackGasLimit, uint256 _requestGa
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<32>,
                 alloy::sol_types::sol_data::Uint<256>,
@@ -2811,7 +2801,6 @@ function estimateRequestPriceNative(uint32 _callbackGasLimit, uint256 _requestGa
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -2936,7 +2925,6 @@ function fundSubscriptionWithNative(uint256 subId) external payable;
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -2972,7 +2960,6 @@ function fundSubscriptionWithNative(uint256 subId) external payable;
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -3097,7 +3084,6 @@ function getActiveSubscriptionIds(uint256 startIndex, uint256 maxCount) external
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Uint<256>,
@@ -3140,7 +3126,6 @@ function getActiveSubscriptionIds(uint256 startIndex, uint256 maxCount) external
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Array<alloy::sol_types::sol_data::Uint<256>>,
             );
@@ -3275,7 +3260,6 @@ function getChainId() external view returns (uint256 chainId);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -3307,7 +3291,6 @@ function getChainId() external view returns (uint256 chainId);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -3425,7 +3408,6 @@ function getRequest(uint256 requestId) external view returns (TypesLib.Blocklock
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -3459,7 +3441,6 @@ function getRequest(uint256 requestId) external view returns (TypesLib.Blocklock
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (TypesLib::BlocklockRequest,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -3589,7 +3570,6 @@ function getSubscription(uint256 subId) external view returns (uint96 nativeBala
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -3623,7 +3603,6 @@ function getSubscription(uint256 subId) external view returns (uint96 nativeBala
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<96>,
                 alloy::sol_types::sol_data::Uint<64>,
@@ -3775,7 +3754,6 @@ function isInFlight(uint256 requestId) external view returns (bool);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -3809,7 +3787,6 @@ function isInFlight(uint256 requestId) external view returns (bool);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bool,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (bool,);
@@ -3929,7 +3906,6 @@ function pendingRequestExists(uint256 subId) external view returns (bool);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -3965,7 +3941,6 @@ function pendingRequestExists(uint256 subId) external view returns (bool);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bool,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (bool,);
@@ -4084,7 +4059,6 @@ function removeConsumer(uint256 subId, address consumer) external;
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Address,
@@ -4125,7 +4099,6 @@ function removeConsumer(uint256 subId, address consumer) external;
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -4254,7 +4227,6 @@ function requestBlocklock(uint32 callbackGasLimit, bytes memory condition, Types
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<32>,
                 alloy::sol_types::sol_data::Bytes,
@@ -4300,7 +4272,6 @@ function requestBlocklock(uint32 callbackGasLimit, bytes memory condition, Types
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -4440,7 +4411,6 @@ function requestBlocklockWithSubscription(uint32 callbackGasLimit, uint256 subId
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<32>,
                 alloy::sol_types::sol_data::Uint<256>,
@@ -4494,7 +4464,6 @@ function requestBlocklockWithSubscription(uint32 callbackGasLimit, uint256 subId
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -4629,7 +4598,6 @@ function requestSubscriptionOwnerTransfer(uint256 subId, address newOwner) exter
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Address,
@@ -4672,7 +4640,6 @@ function requestSubscriptionOwnerTransfer(uint256 subId, address newOwner) exter
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -4794,7 +4761,6 @@ function setDecryptionSender(address newDecryptionSender) external;
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Address,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Address,);
@@ -4830,7 +4796,6 @@ function setDecryptionSender(address newDecryptionSender) external;
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -4946,7 +4911,6 @@ function version() external pure returns (string memory);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -4978,7 +4942,6 @@ function version() external pure returns (string memory);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::String,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::String,);
@@ -5064,7 +5027,6 @@ function version() external pure returns (string memory);
         }
     };
     ///Container for all the [`IBlocklockSender`](self) function calls.
-    #[derive(Clone)]
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive()]
     pub enum IBlocklockSenderCalls {
@@ -5109,6 +5071,7 @@ function version() external pure returns (string memory);
         #[allow(missing_docs)]
         version(versionCall),
     }
+    #[automatically_derived]
     impl IBlocklockSenderCalls {
         /// All the selectors of this enum.
         ///
@@ -5138,72 +5101,6 @@ function version() external pure returns (string memory);
             [218u8, 200u8, 61u8, 41u8],
             [220u8, 49u8, 29u8, 211u8],
         ];
-        /// The names of the variants in the same order as `SELECTORS`.
-        pub const VARIANT_NAMES: &'static [&'static str] = &[
-            ::core::stringify!(requestBlocklockWithSubscription),
-            ::core::stringify!(cancelSubscription),
-            ::core::stringify!(setDecryptionSender),
-            ::core::stringify!(estimateRequestPriceNative),
-            ::core::stringify!(getChainId),
-            ::core::stringify!(pendingRequestExists),
-            ::core::stringify!(calculateRequestPriceNative),
-            ::core::stringify!(version),
-            ::core::stringify!(requestBlocklock),
-            ::core::stringify!(fundSubscriptionWithNative),
-            ::core::stringify!(createSubscription),
-            ::core::stringify!(getActiveSubscriptionIds),
-            ::core::stringify!(acceptSubscriptionOwnerTransfer),
-            ::core::stringify!(addConsumer),
-            ::core::stringify!(getRequest),
-            ::core::stringify!(decrypt),
-            ::core::stringify!(removeConsumer),
-            ::core::stringify!(isInFlight),
-            ::core::stringify!(requestSubscriptionOwnerTransfer),
-            ::core::stringify!(getSubscription),
-        ];
-        /// The signatures in the same order as `SELECTORS`.
-        pub const SIGNATURES: &'static [&'static str] = &[
-            <requestBlocklockWithSubscriptionCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <cancelSubscriptionCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <setDecryptionSenderCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <estimateRequestPriceNativeCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <getChainIdCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <pendingRequestExistsCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <calculateRequestPriceNativeCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <versionCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <requestBlocklockCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <fundSubscriptionWithNativeCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <createSubscriptionCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <getActiveSubscriptionIdsCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <acceptSubscriptionOwnerTransferCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <addConsumerCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <getRequestCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <decryptCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <removeConsumerCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <isInFlightCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <requestSubscriptionOwnerTransferCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <getSubscriptionCall as alloy_sol_types::SolCall>::SIGNATURE,
-        ];
-        /// Returns the signature for the given selector, if known.
-        #[inline]
-        pub fn signature_by_selector(
-            selector: [u8; 4usize],
-        ) -> ::core::option::Option<&'static str> {
-            match Self::SELECTORS.binary_search(&selector) {
-                ::core::result::Result::Ok(idx) => {
-                    ::core::option::Option::Some(Self::SIGNATURES[idx])
-                }
-                ::core::result::Result::Err(_) => ::core::option::Option::None,
-            }
-        }
-        /// Returns the enum variant name for the given selector, if known.
-        #[inline]
-        pub fn name_by_selector(
-            selector: [u8; 4usize],
-        ) -> ::core::option::Option<&'static str> {
-            let sig = Self::signature_by_selector(selector)?;
-            sig.split_once('(').map(|(name, _)| name)
-        }
     }
     #[automatically_derived]
     impl alloy_sol_types::SolInterface for IBlocklockSenderCalls {
@@ -5980,9 +5877,9 @@ See the [wrapper's documentation](`IBlocklockSenderInstance`) for more details.*
         N: alloy_contract::private::Network,
     >(
         address: alloy_sol_types::private::Address,
-        __provider: P,
+        provider: P,
     ) -> IBlocklockSenderInstance<P, N> {
-        IBlocklockSenderInstance::<P, N>::new(address, __provider)
+        IBlocklockSenderInstance::<P, N>::new(address, provider)
     }
     /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
@@ -5994,11 +5891,11 @@ For more fine-grained control over the deployment process, use [`deploy_builder`
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
     >(
-        __provider: P,
+        provider: P,
     ) -> impl ::core::future::Future<
         Output = alloy_contract::Result<IBlocklockSenderInstance<P, N>>,
     > {
-        IBlocklockSenderInstance::<P, N>::deploy(__provider)
+        IBlocklockSenderInstance::<P, N>::deploy(provider)
     }
     /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
 and constructor arguments, if any.
@@ -6009,8 +5906,8 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
     pub fn deploy_builder<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
-    >(__provider: P) -> alloy_contract::RawCallBuilder<P, N> {
-        IBlocklockSenderInstance::<P, N>::deploy_builder(__provider)
+    >(provider: P) -> alloy_contract::RawCallBuilder<P, N> {
+        IBlocklockSenderInstance::<P, N>::deploy_builder(provider)
     }
     /**A [`IBlocklockSender`](self) instance.
 
@@ -6037,6 +5934,7 @@ See the [module-level documentation](self) for all the available methods.*/
         }
     }
     /// Instantiation and getters/setters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -6047,11 +5945,11 @@ See the [wrapper's documentation](`IBlocklockSenderInstance`) for more details.*
         #[inline]
         pub const fn new(
             address: alloy_sol_types::private::Address,
-            __provider: P,
+            provider: P,
         ) -> Self {
             Self {
                 address,
-                provider: __provider,
+                provider,
                 _network: ::core::marker::PhantomData,
             }
         }
@@ -6062,9 +5960,9 @@ Returns a new instance of the contract, if the deployment was successful.
 For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
         #[inline]
         pub async fn deploy(
-            __provider: P,
+            provider: P,
         ) -> alloy_contract::Result<IBlocklockSenderInstance<P, N>> {
-            let call_builder = Self::deploy_builder(__provider);
+            let call_builder = Self::deploy_builder(provider);
             let contract_address = call_builder.deploy().await?;
             Ok(Self::new(contract_address, call_builder.provider))
         }
@@ -6074,9 +5972,9 @@ and constructor arguments, if any.
 This is a simple wrapper around creating a `RawCallBuilder` with the data set to
 the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         #[inline]
-        pub fn deploy_builder(__provider: P) -> alloy_contract::RawCallBuilder<P, N> {
+        pub fn deploy_builder(provider: P) -> alloy_contract::RawCallBuilder<P, N> {
             alloy_contract::RawCallBuilder::new_raw_deploy(
-                __provider,
+                provider,
                 ::core::clone::Clone::clone(&BYTECODE),
             )
         }
@@ -6113,6 +6011,7 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         }
     }
     /// Function calls.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -6343,6 +6242,7 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         }
     }
     /// Event filters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
