@@ -12,6 +12,7 @@ set -e
 # - $PARALLEL_BUILDS: true|false defaults to true
 
 CONFIG_FILE=".github/docker-config.json"
+PARALLEL_BUILDS=${PARALLEL_BUILDS:-"true"}
 
 # Load config if exists
 if [ -f "$CONFIG_FILE" ]; then
