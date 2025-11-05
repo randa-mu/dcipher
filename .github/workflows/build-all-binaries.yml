@@ -29,11 +29,11 @@ jobs:
     name: Build all workspace binaries
     runs-on: ["randamu-self-hosted-default"]
     steps:
-      - name: setup secrets for sccache
-        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
-
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+#      - name: setup secrets for sccache
+#        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+#
+#      - name: Install sccache
+#        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Checkout code
         uses: actions/checkout@v5
