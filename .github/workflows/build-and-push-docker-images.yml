@@ -100,3 +100,11 @@ jobs:
         run: |
           chmod +x .github/build-docker.sh
           ./.github/build-docker.sh
+
+      - name: Upload workspace for debugging
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-debug
+          path: .
+          retention-days: 1
+        if: ${{ github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-') }}
