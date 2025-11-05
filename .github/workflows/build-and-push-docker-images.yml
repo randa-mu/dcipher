@@ -111,4 +111,4 @@ jobs:
           name: workspace-debug-docker-${{ strategy.job-index }}
           path: .
           retention-days: 1
-        if: ${{ env.WORKSPACE_UPLOAD && ()success() || failure()) }}
+        if: ${{ env.WORKSPACE_UPLOAD && (success() || failure()) }}
