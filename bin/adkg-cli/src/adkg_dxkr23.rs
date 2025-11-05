@@ -697,21 +697,6 @@ where
     Ok(())
 }
 
-#[serde_with::serde_as]
-#[derive(Serialize, Deserialize)]
-struct ChaCha20BroadcastCiphertext {
-    /// one unique ciphertext per participant to store a shared encryption key
-    encrypted_key: MultiHybridCiphertext,
-
-    /// chacha20+poly1305 nonce
-    #[serde_as(as = "utils::Base64OrBytes")]
-    nonce: Vec<u8>,
-
-    /// a (large) message encrypted with the shared encryption key
-    #[serde_as(as = "utils::Base64OrBytes")]
-    ciphertext: Vec<u8>,
-}
-
 /// An encrypted adkg transcript that can be stored and sent to nodes.
 /// Authenticity of the transcript is obtained by relying on hybrid encryption w/ static public keys.
 #[serde_with::serde_as]

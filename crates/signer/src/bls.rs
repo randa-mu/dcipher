@@ -104,19 +104,6 @@ impl From<BlsSignatureRequest> for SignatureRequest {
     serialize = "Group<BLS>: Serialize",
     deserialize = "Group<BLS>: Deserialize<'de>"
 ))]
-struct PartialSignatureWithMessage<BLS>
-where
-    BLS: BlsVerifier,
-{
-    m: Vec<u8>,
-    sig: Group<BLS>,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "Group<BLS>: Serialize",
-    deserialize = "Group<BLS>: Deserialize<'de>"
-))]
 struct PartialSignatureWithRequest<BLS>
 where
     BLS: BlsVerifier,
