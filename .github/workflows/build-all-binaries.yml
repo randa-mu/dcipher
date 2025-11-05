@@ -120,7 +120,7 @@ jobs:
       - name: Upload workspace for debugging
         uses: actions/upload-artifact@v4
         with:
-          name: workspace-debug
+          name: workspace-debug-${{ env.GITHUB_WORKFLOW }}
           path: .
           retention-days: 1
         if: ${{
