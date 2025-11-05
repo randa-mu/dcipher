@@ -70,12 +70,12 @@ echo "$IMAGES" | jq -c '.[]' | while read -r image; do
 
   # Build arguments (using array to properly handle spaces)
   BUILD_ARGS=()
-  BUILD_ARGS+=(--build-arg 'BINARY_PATH='"$BINARY_PATH")
-  BUILD_ARGS+=(--build-arg 'BINARY_NAME='"$BINARY_NAME")
-  BUILD_ARGS+=(--label 'maintainer='"$IMAGE_MAINTAINER")
-  BUILD_ARGS+=(--label 'org.opencontainers.image.vendor='"$IMAGE_VENDOR")
-  BUILD_ARGS+=(--label 'org.opencontainers.image.title='"$IMAGE_NAME")
-  BUILD_ARGS+=(--label 'org.opencontainers.image.description='"$DESCRIPTION")
+  BUILD_ARGS+=(--build-arg "BINARY_PATH=$BINARY_PATH")
+  BUILD_ARGS+=(--build-arg "BINARY_NAME=$BINARY_NAME")
+  BUILD_ARGS+=(--label "maintainer=$IMAGE_MAINTAINER")
+  BUILD_ARGS+=(--label "org.opencontainers.image.vendor=$IMAGE_VENDOR")
+  BUILD_ARGS+=(--label "org.opencontainers.image.title=$IMAGE_NAME")
+  BUILD_ARGS+=(--label "org.opencontainers.image.description=$DESCRIPTION")
   BUILD_ARGS+=(--label "org.opencontainers.image.version=$VERSION_TAG")
   BUILD_ARGS+=(--label "org.opencontainers.image.revision=$GITHUB_SHA")
   BUILD_ARGS+=(--cache-from "type=registry,ref=$CACHE_REF")
@@ -92,7 +92,7 @@ echo "$IMAGES" | jq -c '.[]' | while read -r image; do
 
   set -x
   # Build and optionally push
-  echo "Running: docker buildx build ${BUILD_ARGS[@]} ."
+#  echo "Running: docker buildx build ${BUILD_ARGS[@]} ."
   docker buildx build "${BUILD_ARGS[@]}" .
 
   echo "✓ Successfully built $IMAGE_NAME"
