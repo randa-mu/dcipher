@@ -66,7 +66,6 @@ fn calculate_trades(
     trades
 }
 
-#[tracing::instrument(skip_all, fields(request_id = %transfer_request.request_id))]
 fn solve(
     transfer_request: &Transfer,
     trades: &mut Vec<Trade>,
