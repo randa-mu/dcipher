@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - 'modules/*-solidity/**'
-      - 'generated/**'
+      - 'crates/generated/**'
   workflow_dispatch:
 
 jobs:
