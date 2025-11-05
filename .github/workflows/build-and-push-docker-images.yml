@@ -76,96 +76,14 @@ jobs:
           password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
 
       - name: Build and push all Docker images
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TEST_MODE: ${{ env.TEST_MODE }}
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+          IMAGE_MAINTAINER: ${{ env.IMAGE_MAINTAINER }}
+          IMAGE_VENDOR: ${{ env.IMAGE_VENDOR }}
         run: |
-          set -e
-
-          # Support overrides by loading a statically defined override file
-          CONFIG_FILE=".github/docker-config.json"
-          # Load config if exists
-          if [ -f "$CONFIG_FILE" ]; then
-            CONFIG=$(cat "$CONFIG_FILE")
-          else
-            CONFIG='{}'
-          fi
-
-          # Extract the metadata from binaries.json, applying overrides from above config file
-          IMAGES=$(jq -sc --argjson config "$CONFIG" 'map({
-            binary_name: .name,
-            binary_path: .path,
-            image_name: ($config[.name].image_name // .name),
-            description: ($config[.name].description // "Dcipher service")
-          })' binaries.json)
-
-          echo "Building images for the following binaries:"
-          echo "$IMAGES" | jq .
-
-          # Generate version tag based on git ref
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION_TAG="main-latest"
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION_TAG="${GITHUB_REF#refs/tags/}"
-          elif [[ "${{ github.ref }}" == refs/pull/* ]]; then
-            VERSION_TAG="pr-${{ github.event.pull_request.number }}"
-          else
-            VERSION_TAG="${GITHUB_REF#refs/heads/}"
-          fi
-
-          # Determine if we should push
-          SHOULD_PUSH="false"
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "${{ env.TEST_MODE }}" == "true" ]]; then
-            SHOULD_PUSH="true"
-          fi
-
-          echo "Version tag: $VERSION_TAG"
-          echo "Should push: $SHOULD_PUSH"
-
-          # Loop through each image and build
-          echo "$IMAGES" | jq -c '.[]' | while read -r image; do
-            BINARY_NAME=$(echo "$image" | jq -r '.binary_name')
-            BINARY_PATH=$(echo "$image" | jq -r '.binary_path')
-            IMAGE_NAME=$(echo "$image" | jq -r '.image_name')
-            DESCRIPTION=$(echo "$image" | jq -r '.description')
-
-            echo ""
-            echo "========================================"
-            echo "Building image: $IMAGE_NAME"
-            echo "Binary: $BINARY_NAME ($BINARY_PATH)"
-            echo "Description: $DESCRIPTION"
-            echo "========================================"
-
-            FULL_IMAGE_NAME="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME:$VERSION_TAG"
-            CACHE_REF="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME-cache:$VERSION_TAG"
-            CACHE_REF_MAIN="${{ env.DOCKER_REGISTRY }}/$IMAGE_NAME-cache:main"
-
-            # Build arguments (using array to properly handle spaces)
-            BUILD_ARGS=()
-            BUILD_ARGS+=(--build-arg 'BINARY_PATH='"$BINARY_PATH")
-            BUILD_ARGS+=(--build-arg 'BINARY_NAME='"$BINARY_NAME")
-            BUILD_ARGS+=(--label 'maintainer='"${{ env.IMAGE_MAINTAINER }}")
-            BUILD_ARGS+=(--label 'org.opencontainers.image.vendor='"${{ env.IMAGE_VENDOR }}")
-            BUILD_ARGS+=(--label 'org.opencontainers.image.title='"$IMAGE_NAME")
-            BUILD_ARGS+=(--label 'org.opencontainers.image.description='"$DESCRIPTION")
-            BUILD_ARGS+=(--label "org.opencontainers.image.version=$VERSION_TAG")
-            BUILD_ARGS+=(--label "org.opencontainers.image.revision=${{ github.sha }}")
-            BUILD_ARGS+=(--cache-from "type=registry,ref=$CACHE_REF")
-            BUILD_ARGS+=(--cache-from "type=registry,ref=$CACHE_REF_MAIN")
-            BUILD_ARGS+=(--cache-to "type=registry,ref=$CACHE_REF,mode=max")
-            BUILD_ARGS+=(-t "$FULL_IMAGE_NAME")
-            BUILD_ARGS+=(-f ./Dockerfile)
-
-            if [[ "$SHOULD_PUSH" == "true" ]]; then
-              BUILD_ARGS+=(--push)
-            fi
-
-            set -x
-            # Build and optionally push
-            echo "Running: docker buildx build ${BUILD_ARGS[@]} ."
-            docker buildx build "${BUILD_ARGS[@]}" .
-
-            echo "✓ Successfully built $IMAGE_NAME"
-          done
-
-          echo ""
-          echo "========================================"
-          echo "All images built successfully!"
-          echo "========================================"
+          chmod +x .github/build-docker.sh
+          ./.github/build-docker.sh
