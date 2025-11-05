@@ -16,8 +16,8 @@ env:
   GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SCCACHE_SERVICE_ACCOUNT }}
   SCCACHE_GCS_KEY_PREFIX: sccache_dcipher
   SCCACHE_GCS_RW_MODE: READ_WRITE
-  SCCACHE_GHA_ENABLED: "false"
-#  RUSTC_WRAPPER: "sccache"
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
   CARGO_TERM_COLOR: always
   # CARGO_BUILD_JOBS needs to be finely tuned relative to the pod limits and underlying node's cpu
   CARGO_BUILD_JOBS: 32
@@ -30,11 +30,11 @@ jobs:
     name: Build all workspace binaries
     runs-on: ["randamu-self-hosted-default"]
     steps:
-#      - name: setup secrets for sccache
-#        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
-#
-#      - name: Install sccache
-#        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: setup secrets for sccache
+        run: echo $GOOGLE_APPLICATION_CREDENTIALS > $SCCACHE_GCS_KEY_PATH
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Checkout code
         uses: actions/checkout@v5
