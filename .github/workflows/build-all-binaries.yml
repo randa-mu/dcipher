@@ -20,7 +20,7 @@ env:
   RUSTC_WRAPPER: "sccache"
   CARGO_TERM_COLOR: always
   # CARGO_BUILD_JOBS needs to be finely tuned relative to the pod limits and underlying node's cpu
-#  CARGO_BUILD_JOBS: 8
+  CARGO_BUILD_JOBS: 32
   ARTIFACT_RETENTION_DAYS: 1
   ENABLE_TIMING_REPORTS: "true"
   test_mode: "false"
