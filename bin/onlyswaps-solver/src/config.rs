@@ -29,4 +29,11 @@ pub(crate) struct NetworkConfig {
     pub rpc_url: String,
     pub tokens: Vec<Address>,
     pub router_address: Address,
+    #[serde(default = "default_tx_gas_buffer")]
+    pub tx_gas_buffer: u16,
+}
+
+/// 20 percent extra gas to the limit by default
+fn default_tx_gas_buffer() -> u16 {
+    120
 }

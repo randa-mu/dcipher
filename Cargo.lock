@@ -4998,6 +4998,7 @@ dependencies = [
  "serde_json",
  "shellexpand",
  "speculoos",
+ "superalloy",
  "tokio",
  "tracing",
 ]

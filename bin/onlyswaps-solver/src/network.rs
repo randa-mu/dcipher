@@ -17,6 +17,7 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::str::FromStr;
+use superalloy::fillers::GasBufferFiller;
 
 pub(crate) struct Network<P> {
     pub chain_id: u64,
@@ -54,7 +55,7 @@ impl Network<DynProvider> {
             .filler(ChainIdFiller::default())
             .with_simple_nonce_management()
             .filler(BlobGasFiller)
-            .with_gas_estimation()
+            .filler(GasBufferFiller::new(config.tx_gas_buffer))
             .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?
