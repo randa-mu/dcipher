@@ -3,9 +3,6 @@ name = "superalloy"
 version.workspace = true
 edition.workspace = true
 
-[features]
-fillers = []
-
 [dependencies]
 # blockchain
 alloy = { workspace = true, features = ["default", "provider-ws"] }

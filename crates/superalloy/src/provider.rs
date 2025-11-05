@@ -2,10 +2,11 @@ mod multi;
 
 pub use multi::*;
 
+use crate::fillers::GasBufferFiller;
 use crate::retry::{RetryStrategy, with_retry};
 use alloy::consensus::BlockHeader;
 use alloy::providers::fillers::{
-    BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller,
+    BlobGasFiller, ChainIdFiller, FillProvider, JoinFill, NonceFiller, SimpleNonceManager,
 };
 use alloy::providers::{Identity, Provider, ProviderBuilder, RootProvider, WsConnect};
 use alloy::transports::http::reqwest;
@@ -28,20 +29,29 @@ pub enum CreateProviderError {
     UnsupportedScheme,
 }
 
-pub type RecommendedProvider = FillProvider<
-    JoinFill<
-        Identity,
-        JoinFill<GasFiller, JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>>,
-    >,
-    RootProvider,
+pub type RecommendedProvider = FillProvider<JoinFill<Identity, RecommendedFillers>, RootProvider>;
+
+pub type RecommendedFillers = JoinFill<
+    NonceFiller<SimpleNonceManager>,
+    JoinFill<ChainIdFiller, JoinFill<BlobGasFiller, GasBufferFiller>>,
 >;
+
+pub fn recommended_fillers(tx_gas_buffer: u16) -> RecommendedFillers {
+    JoinFill::new(
+        NonceFiller::new(SimpleNonceManager::default()),
+        JoinFill::new(
+            ChainIdFiller::default(),
+            JoinFill::new(BlobGasFiller, GasBufferFiller::new(tx_gas_buffer)),
+        ),
+    )
+}
 
 /// Creates a http / websocket provider based on the rpc url provided.
 pub async fn create_provider_with_retry(
     rpc_url: reqwest::Url,
     retry_strategy: RetryStrategy,
 ) -> Result<RecommendedProvider, CreateProviderError> {
-    let build_provider = || ProviderBuilder::default().with_recommended_fillers();
+    let build_provider = || ProviderBuilder::default().filler(recommended_fillers(100));
 
     match rpc_url.scheme() {
         "http" | "https" => {

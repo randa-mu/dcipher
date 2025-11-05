@@ -3,7 +3,6 @@ use crate::model::{BlockEvent, ChainState, Transfer};
 use crate::solver::ChainStateProvider;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, U256};
-use alloy::providers::fillers::{BlobGasFiller, ChainIdFiller};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use async_trait::async_trait;
@@ -17,7 +16,7 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::str::FromStr;
-use superalloy::fillers::GasBufferFiller;
+use superalloy::provider::recommended_fillers;
 
 pub(crate) struct Network<P> {
     pub chain_id: u64,
@@ -52,10 +51,7 @@ impl Network<DynProvider> {
         let url = config.rpc_url.clone();
         let chain_id = config.chain_id;
         let provider = ProviderBuilder::default()
-            .filler(ChainIdFiller::default())
-            .with_simple_nonce_management()
-            .filler(BlobGasFiller)
-            .filler(GasBufferFiller::new(config.tx_gas_buffer))
+            .filler(recommended_fillers(config.tx_gas_buffer))
             .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?
