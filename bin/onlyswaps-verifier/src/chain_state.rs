@@ -15,6 +15,7 @@ use generated::onlyswaps::router::Router::{
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
+use superalloy::provider::recommended_fillers;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SwapStatus<ID> {
@@ -104,7 +105,8 @@ impl Network<DynProvider> {
     ) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
         let own_addr = signer.address();
-        let provider = ProviderBuilder::new()
+        let provider = ProviderBuilder::default()
+            .filler(recommended_fillers(config.tx_gas_buffer))
             .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?
