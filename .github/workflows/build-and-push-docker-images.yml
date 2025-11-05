@@ -60,7 +60,6 @@ jobs:
           path: |
             Dockerfile
             .github/docker-config.json
-            .dockerignore
           retention-days: 1
           overwrite: true
       - name: Download pre-built binaries
