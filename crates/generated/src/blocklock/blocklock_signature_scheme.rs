@@ -301,7 +301,6 @@ error BNAddFailed(uint256[4] input);
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (
             alloy::sol_types::sol_data::FixedArray<
                 alloy::sol_types::sol_data::Uint<256>,
@@ -390,7 +389,6 @@ error InvalidDSTLength(bytes dst);
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
         #[doc(hidden)]
         type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
@@ -471,7 +469,6 @@ error InvalidFieldElement(uint256 x);
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
         #[doc(hidden)]
         type UnderlyingRustTuple<'a> = (
@@ -554,7 +551,6 @@ error MapToPointFailed(uint256 noSqrt);
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
         #[doc(hidden)]
         type UnderlyingRustTuple<'a> = (
@@ -641,7 +637,6 @@ error ModExpFailed(uint256 base, uint256 exponent, uint256 modulus);
     const _: () = {
         use alloy::sol_types as alloy_sol_types;
         #[doc(hidden)]
-        #[allow(dead_code)]
         type UnderlyingSolTuple<'a> = (
             alloy::sol_types::sol_data::Uint<256>,
             alloy::sol_types::sol_data::Uint<256>,
@@ -735,7 +730,6 @@ constructor(uint256[2] x, uint256[2] y);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::FixedArray<
                     alloy::sol_types::sol_data::Uint<256>,
@@ -841,7 +835,6 @@ function DST() external view returns (bytes memory);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -873,7 +866,6 @@ function DST() external view returns (bytes memory);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
@@ -986,7 +978,6 @@ function SCHEME_ID() external view returns (string memory);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -1018,7 +1009,6 @@ function SCHEME_ID() external view returns (string memory);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::String,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::String,);
@@ -1131,7 +1121,6 @@ function getChainId() external view returns (uint256 chainId);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -1163,7 +1152,6 @@ function getChainId() external view returns (uint256 chainId);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Uint<256>,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (
@@ -1280,7 +1268,6 @@ function getPublicKey() external view returns (uint256[2] memory, uint256[2] mem
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -1312,7 +1299,6 @@ function getPublicKey() external view returns (uint256[2] memory, uint256[2] mem
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::FixedArray<
                     alloy::sol_types::sol_data::Uint<256>,
@@ -1452,7 +1438,6 @@ function getPublicKeyBytes() external view returns (bytes memory);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = ();
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = ();
@@ -1486,7 +1471,6 @@ function getPublicKeyBytes() external view returns (bytes memory);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
@@ -1604,7 +1588,6 @@ function hashToBytes(bytes memory message) external view returns (bytes memory);
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
@@ -1636,7 +1619,6 @@ function hashToBytes(bytes memory message) external view returns (bytes memory);
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
@@ -1758,7 +1740,6 @@ function hashToPoint(bytes memory message) external view returns (uint256, uint2
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bytes,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (alloy::sol_types::private::Bytes,);
@@ -1790,7 +1771,6 @@ function hashToPoint(bytes memory message) external view returns (uint256, uint2
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Uint<256>,
                 alloy::sol_types::sol_data::Uint<256>,
@@ -1927,7 +1907,6 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
         use alloy::sol_types as alloy_sol_types;
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (
                 alloy::sol_types::sol_data::Bytes,
                 alloy::sol_types::sol_data::Bytes,
@@ -1971,7 +1950,6 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
         }
         {
             #[doc(hidden)]
-            #[allow(dead_code)]
             type UnderlyingSolTuple<'a> = (alloy::sol_types::sol_data::Bool,);
             #[doc(hidden)]
             type UnderlyingRustTuple<'a> = (bool,);
@@ -2073,7 +2051,6 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
         }
     };
     ///Container for all the [`BlocklockSignatureScheme`](self) function calls.
-    #[derive(Clone)]
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive()]
     pub enum BlocklockSignatureSchemeCalls {
@@ -2094,6 +2071,7 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
         #[allow(missing_docs)]
         verifySignature(verifySignatureCall),
     }
+    #[automatically_derived]
     impl BlocklockSignatureSchemeCalls {
         /// All the selectors of this enum.
         ///
@@ -2111,48 +2089,6 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
             [234u8, 225u8, 225u8, 91u8],
             [246u8, 229u8, 72u8, 233u8],
         ];
-        /// The names of the variants in the same order as `SELECTORS`.
-        pub const VARIANT_NAMES: &'static [&'static str] = &[
-            ::core::stringify!(getPublicKey),
-            ::core::stringify!(hashToPoint),
-            ::core::stringify!(getChainId),
-            ::core::stringify!(DST),
-            ::core::stringify!(SCHEME_ID),
-            ::core::stringify!(getPublicKeyBytes),
-            ::core::stringify!(hashToBytes),
-            ::core::stringify!(verifySignature),
-        ];
-        /// The signatures in the same order as `SELECTORS`.
-        pub const SIGNATURES: &'static [&'static str] = &[
-            <getPublicKeyCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <hashToPointCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <getChainIdCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <DSTCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <SCHEME_IDCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <getPublicKeyBytesCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <hashToBytesCall as alloy_sol_types::SolCall>::SIGNATURE,
-            <verifySignatureCall as alloy_sol_types::SolCall>::SIGNATURE,
-        ];
-        /// Returns the signature for the given selector, if known.
-        #[inline]
-        pub fn signature_by_selector(
-            selector: [u8; 4usize],
-        ) -> ::core::option::Option<&'static str> {
-            match Self::SELECTORS.binary_search(&selector) {
-                ::core::result::Result::Ok(idx) => {
-                    ::core::option::Option::Some(Self::SIGNATURES[idx])
-                }
-                ::core::result::Result::Err(_) => ::core::option::Option::None,
-            }
-        }
-        /// Returns the enum variant name for the given selector, if known.
-        #[inline]
-        pub fn name_by_selector(
-            selector: [u8; 4usize],
-        ) -> ::core::option::Option<&'static str> {
-            let sig = Self::signature_by_selector(selector)?;
-            sig.split_once('(').map(|(name, _)| name)
-        }
     }
     #[automatically_derived]
     impl alloy_sol_types::SolInterface for BlocklockSignatureSchemeCalls {
@@ -2497,7 +2433,6 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
         }
     }
     ///Container for all the [`BlocklockSignatureScheme`](self) custom errors.
-    #[derive(Clone)]
     #[derive(serde::Serialize, serde::Deserialize)]
     #[derive(Debug, PartialEq, Eq, Hash)]
     pub enum BlocklockSignatureSchemeErrors {
@@ -2512,6 +2447,7 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
         #[allow(missing_docs)]
         ModExpFailed(ModExpFailed),
     }
+    #[automatically_derived]
     impl BlocklockSignatureSchemeErrors {
         /// All the selectors of this enum.
         ///
@@ -2526,42 +2462,6 @@ function verifySignature(bytes memory message, bytes memory signature, bytes mem
             [198u8, 218u8, 247u8, 171u8],
             [213u8, 62u8, 148u8, 21u8],
         ];
-        /// The names of the variants in the same order as `SELECTORS`.
-        pub const VARIANT_NAMES: &'static [&'static str] = &[
-            ::core::stringify!(BNAddFailed),
-            ::core::stringify!(InvalidDSTLength),
-            ::core::stringify!(MapToPointFailed),
-            ::core::stringify!(ModExpFailed),
-            ::core::stringify!(InvalidFieldElement),
-        ];
-        /// The signatures in the same order as `SELECTORS`.
-        pub const SIGNATURES: &'static [&'static str] = &[
-            <BNAddFailed as alloy_sol_types::SolError>::SIGNATURE,
-            <InvalidDSTLength as alloy_sol_types::SolError>::SIGNATURE,
-            <MapToPointFailed as alloy_sol_types::SolError>::SIGNATURE,
-            <ModExpFailed as alloy_sol_types::SolError>::SIGNATURE,
-            <InvalidFieldElement as alloy_sol_types::SolError>::SIGNATURE,
-        ];
-        /// Returns the signature for the given selector, if known.
-        #[inline]
-        pub fn signature_by_selector(
-            selector: [u8; 4usize],
-        ) -> ::core::option::Option<&'static str> {
-            match Self::SELECTORS.binary_search(&selector) {
-                ::core::result::Result::Ok(idx) => {
-                    ::core::option::Option::Some(Self::SIGNATURES[idx])
-                }
-                ::core::result::Result::Err(_) => ::core::option::Option::None,
-            }
-        }
-        /// Returns the enum variant name for the given selector, if known.
-        #[inline]
-        pub fn name_by_selector(
-            selector: [u8; 4usize],
-        ) -> ::core::option::Option<&'static str> {
-            let sig = Self::signature_by_selector(selector)?;
-            sig.split_once('(').map(|(name, _)| name)
-        }
     }
     #[automatically_derived]
     impl alloy_sol_types::SolInterface for BlocklockSignatureSchemeErrors {
@@ -2814,9 +2714,9 @@ See the [wrapper's documentation](`BlocklockSignatureSchemeInstance`) for more d
         N: alloy_contract::private::Network,
     >(
         address: alloy_sol_types::private::Address,
-        __provider: P,
+        provider: P,
     ) -> BlocklockSignatureSchemeInstance<P, N> {
-        BlocklockSignatureSchemeInstance::<P, N>::new(address, __provider)
+        BlocklockSignatureSchemeInstance::<P, N>::new(address, provider)
     }
     /**Deploys this contract using the given `provider` and constructor arguments, if any.
 
@@ -2828,13 +2728,13 @@ For more fine-grained control over the deployment process, use [`deploy_builder`
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
     >(
-        __provider: P,
+        provider: P,
         x: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
         y: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
     ) -> impl ::core::future::Future<
         Output = alloy_contract::Result<BlocklockSignatureSchemeInstance<P, N>>,
     > {
-        BlocklockSignatureSchemeInstance::<P, N>::deploy(__provider, x, y)
+        BlocklockSignatureSchemeInstance::<P, N>::deploy(provider, x, y)
     }
     /**Creates a `RawCallBuilder` for deploying this contract using the given `provider`
 and constructor arguments, if any.
@@ -2846,11 +2746,11 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
     >(
-        __provider: P,
+        provider: P,
         x: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
         y: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
     ) -> alloy_contract::RawCallBuilder<P, N> {
-        BlocklockSignatureSchemeInstance::<P, N>::deploy_builder(__provider, x, y)
+        BlocklockSignatureSchemeInstance::<P, N>::deploy_builder(provider, x, y)
     }
     /**A [`BlocklockSignatureScheme`](self) instance.
 
@@ -2882,6 +2782,7 @@ See the [module-level documentation](self) for all the available methods.*/
         }
     }
     /// Instantiation and getters/setters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -2892,11 +2793,11 @@ See the [wrapper's documentation](`BlocklockSignatureSchemeInstance`) for more d
         #[inline]
         pub const fn new(
             address: alloy_sol_types::private::Address,
-            __provider: P,
+            provider: P,
         ) -> Self {
             Self {
                 address,
-                provider: __provider,
+                provider,
                 _network: ::core::marker::PhantomData,
             }
         }
@@ -2907,11 +2808,11 @@ Returns a new instance of the contract, if the deployment was successful.
 For more fine-grained control over the deployment process, use [`deploy_builder`] instead.*/
         #[inline]
         pub async fn deploy(
-            __provider: P,
+            provider: P,
             x: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
             y: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
         ) -> alloy_contract::Result<BlocklockSignatureSchemeInstance<P, N>> {
-            let call_builder = Self::deploy_builder(__provider, x, y);
+            let call_builder = Self::deploy_builder(provider, x, y);
             let contract_address = call_builder.deploy().await?;
             Ok(Self::new(contract_address, call_builder.provider))
         }
@@ -2922,12 +2823,12 @@ This is a simple wrapper around creating a `RawCallBuilder` with the data set to
 the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         #[inline]
         pub fn deploy_builder(
-            __provider: P,
+            provider: P,
             x: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
             y: [alloy::sol_types::private::primitives::aliases::U256; 2usize],
         ) -> alloy_contract::RawCallBuilder<P, N> {
             alloy_contract::RawCallBuilder::new_raw_deploy(
-                __provider,
+                provider,
                 [
                     &BYTECODE[..],
                     &alloy_sol_types::SolConstructor::abi_encode(
@@ -2971,6 +2872,7 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         }
     }
     /// Function calls.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
@@ -3042,6 +2944,7 @@ the bytecode concatenated with the constructor's ABI-encoded arguments.*/
         }
     }
     /// Event filters.
+    #[automatically_derived]
     impl<
         P: alloy_contract::private::Provider<N>,
         N: alloy_contract::private::Network,
