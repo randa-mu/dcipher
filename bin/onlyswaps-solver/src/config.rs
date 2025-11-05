@@ -34,6 +34,7 @@ pub(crate) struct NetworkConfig {
     pub rpc_url: String,
     pub tokens: Vec<Address>,
     pub router_address: Address,
+    pub permit2_relayer_address: Address,
     #[serde(default = "default_tx_gas_buffer")]
     pub tx_gas_buffer: u16,
     #[serde(default = "default_tx_gas_price_buffer")]
