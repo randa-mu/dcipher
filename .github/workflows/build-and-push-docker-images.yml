@@ -106,7 +106,7 @@ jobs:
       - name: Upload workspace for debugging
         uses: actions/upload-artifact@v4
         with:
-          name: workspace-debug-${{ strategy.job-index }}
+          name: workspace-debug-docker-${{ strategy.job-index }}
           path: .
           retention-days: 1
         if: ${{
