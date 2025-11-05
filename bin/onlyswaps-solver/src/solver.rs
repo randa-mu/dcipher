@@ -85,6 +85,7 @@ fn solve(
     };
 
     if executed {
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - tx already executed");
         return;
     }
 
@@ -92,10 +93,12 @@ fn solve(
         .already_fulfilled
         .contains(&transfer_request.request_id)
     {
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - tx already fulfilled");
         return;
     }
 
     if dest_state.native_balance == U256::from(0) {
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - native balance too low");
         return;
     }
 
@@ -103,15 +106,20 @@ fn solve(
         .token_balances
         .get(&transfer_request.params.tokenOut)
     {
-        None => return,
+        None => {
+            tracing::debug!(request_id = %transfer_request.request_id, "skipping - token balance empty");
+            return;
+        }
         Some(balance) => balance,
     };
     if *token_balance < amountOut {
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - token balance too low");
         return;
     }
 
     // just takes a flat fee for the moment
     if solverFee < U256::from(1) {
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - fee too low");
         return;
     }
 
