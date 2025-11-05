@@ -86,6 +86,8 @@ echo "$IMAGES" | jq -c '.[]' | while read -r image; do
 
   if [[ "$SHOULD_PUSH" == "true" ]]; then
     BUILD_ARGS+=(--push)
+  else
+    BUILD_ARGS+=(--load)
   fi
 
   set -x
