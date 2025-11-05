@@ -79,8 +79,8 @@ jobs:
         run: |
           set -e
 
+          # Support overrides by loading a statically defined override file
           CONFIG_FILE=".github/docker-config.json"
-
           # Load config if exists
           if [ -f "$CONFIG_FILE" ]; then
             CONFIG=$(cat "$CONFIG_FILE")
@@ -88,7 +88,7 @@ jobs:
             CONFIG='{}'
           fi
 
-          # Generate image list from binaries.json
+          # Extract the metadata from binaries.json, applying overrides from above config file
           IMAGES=$(jq -sc --argjson config "$CONFIG" 'map({
             binary_name: .name,
             binary_path: .path,
@@ -139,12 +139,12 @@ jobs:
 
             # Build arguments (using array to properly handle spaces)
             BUILD_ARGS=()
-            BUILD_ARGS+=(--build-arg "BINARY_PATH=$BINARY_PATH")
-            BUILD_ARGS+=(--build-arg "BINARY_NAME=$BINARY_NAME")
-            BUILD_ARGS+=(--label "maintainer=${{ env.IMAGE_MAINTAINER }}")
-            BUILD_ARGS+=(--label "org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}")
-            BUILD_ARGS+=(--label "org.opencontainers.image.title=$IMAGE_NAME")
-            BUILD_ARGS+=(--label "org.opencontainers.image.description=\\"$DESCRIPTION\\"")
+            BUILD_ARGS+=(--build-arg 'BINARY_PATH='"$BINARY_PATH")
+            BUILD_ARGS+=(--build-arg 'BINARY_NAME='"$BINARY_NAME")
+            BUILD_ARGS+=(--label 'maintainer='"${{ env.IMAGE_MAINTAINER }}")
+            BUILD_ARGS+=(--label 'org.opencontainers.image.vendor='"${{ env.IMAGE_VENDOR }}")
+            BUILD_ARGS+=(--label 'org.opencontainers.image.title='"$IMAGE_NAME")
+            BUILD_ARGS+=(--label 'org.opencontainers.image.description='"$DESCRIPTION")
             BUILD_ARGS+=(--label "org.opencontainers.image.version=$VERSION_TAG")
             BUILD_ARGS+=(--label "org.opencontainers.image.revision=${{ github.sha }}")
             BUILD_ARGS+=(--cache-from "type=registry,ref=$CACHE_REF")
