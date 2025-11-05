@@ -9,10 +9,10 @@ members = [
 version = "0.1.0"
 edition = "2024"
 
-[workspace.dev-dependencies]
+[workspace.dependencies]
+# "Dev" depency for people cross building
 cross = "0.2"
 
-[workspace.dependencies]
 # workspace crates
 adkg = { path = "./crates/adkg" }
 agent-utils = { path = "./crates/agent-utils" }
