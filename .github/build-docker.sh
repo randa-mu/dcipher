@@ -93,6 +93,8 @@ echo "$IMAGES" | jq -c '.[]' | while read -r image; do
   set -x
   # Build and optionally push
 #  echo "Running: docker buildx build ${BUILD_ARGS[@]} ."
+  ls -aR
+  tree
   docker buildx build "${BUILD_ARGS[@]}" .
 
   echo "✓ Successfully built $IMAGE_NAME"
