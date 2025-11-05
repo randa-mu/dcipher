@@ -1,0 +1,12 @@
+[build]
+default-target = "x86_64-unknown-linux-gnu"
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get install --assume-yes protobuf-compiler:$CROSS_DEB_ARCH libssl-dev:$CROSS_DEB_ARCH"
+]
+
+[target.x86_64-unknown-linux-gnu]
+image = "lukemathwalker/cargo-chef"
+
+[target.x86_64-unknown-linux-musl]
+image = "lukemathwalker/cargo-chef"

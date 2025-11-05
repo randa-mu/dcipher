@@ -9,6 +9,9 @@ members = [
 version = "0.1.0"
 edition = "2024"
 
+[workspace.dev-dependencies]
+cross = "0.2"
+
 [workspace.dependencies]
 # workspace crates
 adkg = { path = "./crates/adkg" }

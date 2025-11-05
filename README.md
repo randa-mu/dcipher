@@ -141,7 +141,51 @@ cargo test --workspace
 ```
 
 ---
+## Cross compiling
+### Using cross (recommended)
+If you're on a non linux machine and want to build against linux dylibs, you can use `cross`.
+Note that cross requires docker to be available, see the cross documentation for complex cases.
 
+1. First ensure you've installed dev-dependencies or have otherwise installed `cross`
+
+2. Then you can invoke `cross` like you would cargo, by default this will build you GLIBC compatible
+build:
+```bash
+cross build --release
+```
+
+If your build succeeds you will find a directory corresponding to the architecture in the `target` directory:
+```bash
+$ find target -type f -name adkg-cli -exec file {} \;
+target/x86_64-unknown-linux-gnu/release/adkg-cli: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=9893b95e8c056757dcf5651a3237a1e84b9f72dc, not stripped
+target/debug/adkg-cli: Mach-O 64-bit executable arm64
+```
+
+3. If you wish to target MUSL you need to specify the target as follows
+```bash
+cross build --release --target x86_64-unknown-linux-musl
+```
+
+If you require another target, simply add it to the `Cross.toml` file
+
+4. If you're running rosetta with docker, ensure you specify the architecture when running docker commands, e.g.
+```bash
+$ docker run --rm \
+  -v $(pwd)/target/x86_64-unknown-linux-gnu/release/adkg-cli:/usr/local/bin/onlyswaps-solver \
+  --platform linux/amd64 \
+  debian:bookworm-slim \
+  /usr/local/bin/onlyswaps-solver
+Unable to find image 'debian:bookworm-slim' locally
+bookworm-slim: Pulling from library/debian
+1adabd6b0d6b: Pull complete
+Digest: sha256:936abff852736f951dab72d91a1b6337cf04217b2a77a5eaadc7c0f2f1ec1758
+Status: Downloaded newer image for debian:bookworm-slim
+CLI for key generation and distributed key generation.
+
+Usage: onlyswaps-solver [OPTIONS] <COMMAND>
+```
+
+---
 ## Contributing
 
 1. Fork & clone the repo
