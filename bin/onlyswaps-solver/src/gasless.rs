@@ -5,6 +5,7 @@ use crate::gasless::permit2::witness_transfer_from::{
     Permit2CustomWitness, Permit2WitnessError, permit2_witness_transfer_from_message_hash,
 };
 use crate::model::Trade;
+use alloy::dyn_abi::DynSolValue;
 use alloy::primitives::{Address, B256, U256};
 use serde_json::json;
 
@@ -26,7 +27,9 @@ pub struct Permit2RelayTokensDetails {
 pub fn permit2_relay_tokens_details(
     trade: &Trade,
     spender_addr: Address,
+    own_addr: Address,
 ) -> Result<Permit2RelayTokensDetails, Permit2WitnessError> {
+    let additional_data = DynSolValue::Tuple(vec![DynSolValue::Address(own_addr)]);
     let witness = Permit2CustomWitness {
         witness_type_name: "RelayerWitness".to_owned(),
         witness_argument_name: "witness".to_owned(),
@@ -47,7 +50,7 @@ pub fn permit2_relay_tokens_details(
         witness_data_json: json!({
             "requestId": trade.request_id,
             "recipient": trade.recipient_addr,
-            "additionalData": alloy::primitives::Bytes::default(),
+            "additionalData": additional_data.abi_encode(),
         }),
     };
 
