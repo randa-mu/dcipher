@@ -28,7 +28,7 @@ where
     // dodgy request can block the pipeline for other valid ones
     pub async fn run(
         &self,
-        retry_tx: RetrySender,
+        retry_tx: RetrySender<Verification<RequestId>>,
         mut event_stream: Pin<Box<impl Stream<Item = Verification<RequestId>> + Send + 'static>>,
     ) {
         tracing::info!("starting channel manager");

@@ -25,7 +25,11 @@ pub trait ControlPlane {
         &self,
         verification: SignedVerification,
     ) -> anyhow::Result<SignedVerification>;
-    async fn handle_error(&self, verification: &VerificationError, retry: RetrySender);
+    async fn handle_error(
+        &self,
+        verification: &VerificationError,
+        retry: RetrySender<Verification<RequestId>>,
+    );
 }
 #[derive(Debug, Clone)]
 pub struct ResolvedState {
@@ -125,7 +129,11 @@ impl ControlPlane for DefaultControlPlane {
         Ok(verification)
     }
 
-    async fn handle_error(&self, err: &VerificationError, retry: RetrySender) {
+    async fn handle_error(
+        &self,
+        err: &VerificationError,
+        retry: RetrySender<Verification<RequestId>>,
+    ) {
         match err {
             VerificationError::Resolve(verification) => retry
                 .send(verification.clone())
