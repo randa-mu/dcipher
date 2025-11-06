@@ -142,7 +142,7 @@ where
         message_hash,
         nonce: permit_nonce,
         deadline: permit_deadline,
-    } = permit2_relay_tokens_details(trade, permit2_relayer_address)?;
+    } = permit2_relay_tokens_details(trade, permit2_relayer_address, own_addr)?;
     let permit2_signed_allowance = signer.sign_hash(&message_hash).await?;
 
     let relay_tokens_call = router.relayTokensPermit2(RelayTokensPermit2Params {
