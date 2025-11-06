@@ -1,4 +1,4 @@
-name: build-and-push-docker-images
+name: build-and-push-docker
 on:
   push:
     branches:
@@ -8,26 +8,16 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
-      test_mode:
-        description: 'Enable test mode (uses candyland-test registry and draft releases)'
-        required: false
-        type: boolean
-        default: false
       docker_push:
         description: 'Enable docker push'
         required: false
         type: boolean
         default: true
-      release_push:
-        description: 'Enable release push'
-        required: false
-        type: boolean
-        default: true
+
 
 env:
-  # If test_mode is true, or we're on a branch with a test-build- prefix then use a test registry and a draft release
-  TEST_MODE: ${{ github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-') }}
-  DOCKER_REGISTRY: ${{ (github.event.inputs.test_mode == 'true' || startsWith(github.ref, 'refs/heads/test-build-')) && 'europe-west1-docker.pkg.dev/randamu-prod/candyland-test' || 'europe-west1-docker.pkg.dev/randamu-prod/candyland' }}
+  DOCKER_REGISTRY: 'europe-west1-docker.pkg.dev/randamu-prod/candyland'
+  DOCKER_PUSH: ${{ github.event.inputs.docker_push == 'true' }}
 
   SERVICE_ACCOUNT: github@randamu-prod.iam.gserviceaccount.com
   IMAGE_MAINTAINER: "Randamu"
@@ -35,116 +25,19 @@ env:
   AUTHOR: "Randu Mohammed"
 
 jobs:
-  build-binaries:
-    uses: ./.github/workflows/build-all-binaries.yml
-    secrets: inherit
-
-  generate-matrix:
-    needs: build-binaries
+  docker-build-and-push:
+    name: "Docker build and push"
     runs-on: ["randamu-self-hosted-default"]
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
-      - name: Download binaries metadata
-        uses: actions/download-artifact@v4
         with:
-          name: binaries-metadata-${{ github.sha }}
-          path: .
+          submodules: 'recursive'
 
-      - name: Upload binaries for docker jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: binaries-for-docker-${{ github.sha }}
-          path: target/release/
-          retention-days: 1
-          overwrite: true
-
-      - name: Generate build matrix
-        id: set-matrix
+      - name: Setup local cache directory, to reuse across images
         run: |
-          CONFIG_FILE=".github/docker-config.json"
-          
-          # Load config if exists
-          if [ -f "$CONFIG_FILE" ]; then
-            CONFIG=$(cat "$CONFIG_FILE")
-          else
-            CONFIG='{}'
-          fi
-          
-          # Generate matrix from binaries.json (slurp to read all objects into array)
-          MATRIX=$(jq -sc --argjson config "$CONFIG" 'map({
-            binary_name: .name,
-            binary_path: ( .path | sub("/home/runner/_work/dcipher/dcipher/"; "") ),
-            image_name: ($config[.name].image_name // .name),
-            description: ($config[.name].description // "Dcipher service")
-          })' binaries.json)
-          
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Generated matrix:"
-          echo "$MATRIX" | jq .
-
-      - name: Upload Docker build context
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-context-${{ github.sha }}
-          path: |
-            Dockerfile
-            .github/docker-config.json
-            .dockerignore
-          retention-days: 1
-          overwrite: true
-
-  docker:
-    name: "Docker: ${{ matrix.app.image_name }}"
-    needs: generate-matrix
-    runs-on: ["randamu-self-hosted-default"]
-    strategy:
-      fail-fast: false
-      matrix:
-        app: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
-    steps:
-      - name: Download Docker build context
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-context-${{ github.sha }}
-          path: .
-
-      - name: Download pre-built binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: binaries-${{ github.sha }}
-          path: target/release
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}
-          labels: |
-            maintainer=${{ env.IMAGE_MAINTAINER }}
-            org.opencontainers.image.vendor=${{ env.IMAGE_VENDOR }}
-            org.opencontainers.image.title=${{ matrix.app.image_name }}
-            org.opencontainers.image.description=${{ matrix.app.description }}
-          flavor: |
-            latest=false
-          tags: |
-            type=raw,value=main-latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
-            type=ref,event=pr
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          buildkitd-config-inline: |
-            [registry."docker.io"]
-              mirrors = ["mirror.gcr.io"]
-          driver-opts: |
-            image=mirror.gcr.io/moby/buildkit:buildx-stable-1
-            network=host
+          mkdir -p /tmp/buildkit-cache
 
       - name: Login to Artifact Registry
         uses: docker/login-action@v3
@@ -153,18 +46,37 @@ jobs:
           username: _json_key
           password: ${{ secrets.GCP_SERVICE_ACCOUNT_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          context: .
-          file: ./Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || env.TEST_MODE == 'true' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BINARY_PATH=${{ matrix.app.binary_path }}
-            BINARY_NAME=${{ matrix.app.binary_name }}
-          cache-from: |
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:main
-          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ matrix.app.image_name }}-cache:${{ steps.meta.outputs.version }},mode=max
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-config-inline: |
+            debug = true
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+            [worker.oci]
+              max-parallelism = 8
+          driver-opts: |
+            image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+            network=host
+
+      - name: Build and push docker images
+        uses: docker/bake-action@v6
+        with:
+          files: docker-bake.hcl
+          env:
+            TAG: ${{ github.ref_name }}
+            REGISTRY: ${{ env.DOCKER_REGISTRY }}
+          source: .
+          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || env.DOCKER_PUSH == 'true' }}
+          set: |
+            *.cache-from=type=local,src=/tmp/buildkit-cache
+            *.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache
+            *.cache-to=type=local,dest=/tmp/buildkit-cache,mode=max
+            *.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache,mode=max
