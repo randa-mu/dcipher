@@ -17,6 +17,9 @@ pub enum Permit2WitnessError {
 
     #[error("failed to deserialize witness")]
     JsonDeserialize(#[from] serde_json::Error),
+
+    #[error("failed to create typed data, invalid structure")]
+    InvalidStructure,
 }
 
 /// A custom witness used by permit2
@@ -43,7 +46,7 @@ pub fn permit2_witness_transfer_from_typed_data(
     params: Permit2TransferFromParameters,
     witness: Permit2CustomWitness,
 ) -> Result<TypedData, Permit2WitnessError> {
-    let json_typed_data = permit2_witness_transfer_from_json(params, witness);
+    let json_typed_data = permit2_witness_transfer_from_json(params, witness)?;
     Ok(serde_json::from_value(json_typed_data)?)
 }
 
@@ -51,7 +54,7 @@ pub fn permit2_witness_transfer_from_typed_data(
 pub fn permit2_witness_transfer_from_json(
     params: Permit2TransferFromParameters,
     witness: Permit2CustomWitness,
-) -> Value {
+) -> Result<Value, Permit2WitnessError> {
     const OLD_PRIMARY_TYPE: &str = "PermitTransferFrom";
     const NEW_PRIMARY_TYPE: &str = "PermitWitnessTransferFrom";
 
@@ -66,30 +69,31 @@ pub fn permit2_witness_transfer_from_json(
     // permit2 transfer _without_ witness.
     let mut witness_transfer_from_json = permit2_transfer_from_json(params);
 
-    // rename PermitTransferFrom type and update primary type
-    let old_type = witness_transfer_from_json["types"]
-        .as_object_mut()
-        .expect("an object")
-        .remove(OLD_PRIMARY_TYPE)
-        .expect("entry to exist");
-    witness_transfer_from_json["types"][NEW_PRIMARY_TYPE] = old_type;
-    witness_transfer_from_json["primaryType"] = NEW_PRIMARY_TYPE.into();
+    // inlined lambda that returns an Option to avoid having to ok_or n times
+    (|| {
+        // rename PermitTransferFrom type and update primary type
+        let old_type = witness_transfer_from_json["types"]
+            .as_object_mut()?
+            .remove(OLD_PRIMARY_TYPE)?;
+        witness_transfer_from_json["types"][NEW_PRIMARY_TYPE] = old_type;
+        witness_transfer_from_json["primaryType"] = NEW_PRIMARY_TYPE.into();
 
-    // add our custom witness, i.e., .types.Witness = witness_type
-    witness_transfer_from_json["types"][&witness_type_name] = witness_type_json;
+        // add our custom witness, i.e., .types.Witness = witness_type
+        witness_transfer_from_json["types"][&witness_type_name] = witness_type_json;
 
-    // add our custom argument to the PermitWitnessTransferFrom type
-    witness_transfer_from_json["types"][NEW_PRIMARY_TYPE]
-        .as_array_mut()
-        .expect("to contain an array of arguments")
-        .push(json!({
-            "name": witness_argument_name,
-            "type": witness_type_name,
-        }));
+        // add our custom argument to the PermitWitnessTransferFrom type
+        witness_transfer_from_json["types"][NEW_PRIMARY_TYPE]
+            .as_array_mut()?
+            .push(json!({
+                "name": witness_argument_name,
+                "type": witness_type_name,
+            }));
 
-    // set the value of the witness argument
-    witness_transfer_from_json["message"][&witness_argument_name] = witness_data_json;
-    witness_transfer_from_json
+        // set the value of the witness argument
+        witness_transfer_from_json["message"][&witness_argument_name] = witness_data_json;
+        Some(witness_transfer_from_json)
+    })()
+    .ok_or(Permit2WitnessError::InvalidStructure)
 }
 
 #[cfg(test)]
