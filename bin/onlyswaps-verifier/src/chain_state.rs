@@ -192,7 +192,7 @@ impl<P: Provider> Network<P> {
         .await
         {
             Ok(Ok(_)) => Ok(()),
-            Ok(Err(e)) => anyhow::bail!("error submitting swap: {:?}", e),
+            Ok(Err(e)) => Err(e.context("error submitting swap"))?,
             Err(_) => anyhow::bail!("request timed out"),
         }
     }
