@@ -1,4 +1,5 @@
 use crate::chain_state::NetworkBus;
+use crate::chain_state_pending::{RequestId, Verification};
 use crate::channel_manager::TaskManager;
 use crate::config::AppConfig;
 use crate::control_plane::DefaultControlPlane;
@@ -44,7 +45,7 @@ impl App {
             .filter_map(|maybe_event| async move {
                 match maybe_event {
                     Ok(event) => match event.data.try_into() {
-                        Ok(verification) => Some(verification),
+                        Ok(verification) => Some::<Verification<RequestId>>(verification),
                         _ => {
                             tracing::warn!("received an invalid RPC event");
                             None
@@ -67,9 +68,11 @@ impl App {
         let pending_verifications = network_bus
             .fetch_pending_verifications()
             .await
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .map(Into::into);
 
-        let live_streams = stream::select(live_stream, retry_stream);
+        let live_streams = stream::select(live_stream.map(Into::into), retry_stream);
         let stream = stream::iter(pending_verifications).chain(live_streams);
 
         // in order to allow the `task_manager` to send retries back 'up the funnel', we pass in a
