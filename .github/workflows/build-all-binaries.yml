@@ -47,21 +47,24 @@ jobs:
           else
             cargo build --release --workspace --bins --examples --all-features --message-format=json > build-output.json
           fi
-          
-          # Extract binary information from build output
-          jq -r 'select(.reason == "compiler-artifact" and .target.kind != null) | 
-                 select(.target.kind[] | . == "bin" or . == "example") | 
+
+          # Get the workspace directory
+          WORKSPACE_DIR=$(pwd)
+
+          # Extract binary information from build output and convert to relative paths
+          jq -r --arg workspace "$WORKSPACE_DIR/" 'select(.reason == "compiler-artifact" and .target.kind != null) |
+                 select(.target.kind[] | . == "bin" or . == "example") |
                  select(.executable != null) |
                  {
                    name: .target.name,
                    kind: (.target.kind | if any(. == "example") then "example" else "bin" end),
-                   path: .executable
+                   path: (.executable | sub($workspace; ""))
                  }' build-output.json > binaries.json
-          
+
           # Display discovered binaries
           echo "Discovered binaries:"
           jq -r '.name + " (" + .kind + "): " + .path' binaries.json
-          
+
           # Count for verification
           COUNT=$(jq -s 'length' binaries.json)
           echo "Found $COUNT binaries"
@@ -73,7 +76,7 @@ jobs:
         with:
           path: target/cargo-timings/
         if: ${{ env.ENABLE_TIMING_REPORTS }}
-      
+
       - name: Upload binaries metadata
         uses: actions/upload-artifact@v4
         with:
@@ -86,20 +89,20 @@ jobs:
           # Create a directory with just the binaries we need
           mkdir -p binaries-upload/release
           mkdir -p binaries-upload/release/examples
-          
+
           # Copy binaries based on binaries.json
           jq -r 'select(.kind == "bin") | .path' binaries.json | while read -r path; do
             if [ -f "$path" ]; then
               cp "$path" binaries-upload/release/
             fi
           done
-          
+
           jq -r 'select(.kind == "example") | .path' binaries.json | while read -r path; do
             if [ -f "$path" ]; then
               cp "$path" binaries-upload/release/examples/
             fi
           done
-          
+
           echo "Binaries prepared for upload:"
           find binaries-upload -type f
         shell: bash
