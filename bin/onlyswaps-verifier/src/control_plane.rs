@@ -138,13 +138,8 @@ impl ControlPlane for DefaultControlPlane {
                 .await
                 .expect("error sending on retry channel"),
 
-            VerificationError::Evaluate(state) => retry
-                .send(state.verification.clone().into())
-                .await
-                .expect("error sending on retry channel"),
-
-            VerificationError::Sign(state) => retry
-                .send(state.verification.clone().into())
+            VerificationError::Evaluate(state) | VerificationError::Sign(state) => retry
+                .send(state.verification.to_owned().into())
                 .await
                 .expect("error sending on retry channel"),
 
