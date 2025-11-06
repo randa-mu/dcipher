@@ -36,6 +36,7 @@ pub struct ResolvedState {
 #[derive(Eq, PartialEq, Clone)]
 pub(crate) enum Event {
     NewVerification(Verification<RequestId>),
+    SignedVerification(SignedVerification),
 }
 
 pub enum VerificationError {
@@ -130,11 +131,7 @@ impl ControlPlane for DefaultControlPlane {
         Ok(verification)
     }
 
-    async fn handle_error(
-        &self,
-        err: &VerificationError,
-        retry: RetrySender<Event>,
-    ) {
+    async fn handle_error(&self, err: &VerificationError, retry: RetrySender<Event>) {
         match err {
             VerificationError::Resolve(verification) => retry
                 .send(verification.clone().into())
@@ -151,11 +148,10 @@ impl ControlPlane for DefaultControlPlane {
                 .await
                 .expect("error sending on retry channel"),
 
-            VerificationError::Submit(submit) => tracing::error!(
-                src_chain_id = submit.src_chain_id.to_string(),
-                request_id = submit.request_id.to_string(),
-                "dont support resubmit just yet :("
-            ),
+            VerificationError::Submit(submit) => retry
+                .send(submit.to_owned().into())
+                .await
+                .expect("error sending on retry channel"),
         }
     }
 }
@@ -163,5 +159,11 @@ impl ControlPlane for DefaultControlPlane {
 impl From<Verification<RequestId>> for Event {
     fn from(value: Verification<RequestId>) -> Self {
         Self::NewVerification(value)
+    }
+}
+
+impl From<SignedVerification> for Event {
+    fn from(value: SignedVerification) -> Self {
+        Self::SignedVerification(value)
     }
 }

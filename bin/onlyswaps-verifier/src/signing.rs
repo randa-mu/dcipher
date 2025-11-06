@@ -17,7 +17,7 @@ pub struct OnlySwapsSigner<S> {
     signer: Arc<S>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SignedVerification {
     pub src_chain_id: U256,
     pub request_id: FixedBytes<32>,

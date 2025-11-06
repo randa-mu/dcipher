@@ -54,6 +54,11 @@ where
                         Event::NewVerification(verification) => tx_verifications
                             .send(verification)
                             .expect("failed to send verification on channel"),
+
+                        // dispatch to the submit step / tx_submit channel
+                        Event::SignedVerification(signed_verification) => tx_submit
+                            .send(signed_verification)
+                            .expect("failed to send verification on channel"),
                     }
                 }
             });
