@@ -4,7 +4,7 @@ use alloy::dyn_abi::TypedData;
 use alloy::primitives::{Address, U256, address};
 use serde_json::{Value, json};
 
-const PERMIT2_ADDRESS: Address = address!("0x000000000022D473030F116dDEE9F6B43aC78BA3");
+const DEFAULT_PERMIT2_ADDRESS: Address = address!("0x000000000022D473030F116dDEE9F6B43aC78BA3");
 
 /// Contains the various permit2 transfer from parameters.
 #[derive(Copy, Clone, Default, Debug)]
@@ -99,7 +99,7 @@ pub fn permit2_transfer_from_json(params: Permit2TransferFromParameters) -> Valu
         "domain": {
             "name": "Permit2",
             "chainId": chain_id,
-            "verifyingContract": permit2_address_override.unwrap_or(PERMIT2_ADDRESS),
+            "verifyingContract": permit2_address_override.unwrap_or(DEFAULT_PERMIT2_ADDRESS),
         },
         "primaryType": "PermitTransferFrom",
         "message": {
