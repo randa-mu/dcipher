@@ -1,5 +1,6 @@
 //! Some custom alloy fillers
 
+use alloy::eips::eip1559::Eip1559Estimation;
 use alloy::network::Network;
 use alloy::providers::fillers::{FillerControlFlow, GasFillable, GasFiller, TxFiller};
 use alloy::providers::{Provider, SendableTx};
@@ -8,7 +9,8 @@ use alloy::transports::{TransportErrorKind, TransportResult};
 /// A filler that fetches the gas cost using a [`GasFiller`], and adds a constant buffer to it.
 #[derive(Clone, Copy, Debug)]
 pub struct GasBufferFiller {
-    buffer_percentage: u16,
+    gas_limit_buffer_percentage: u16,
+    gas_price_buffer_percentage: u16,
     gas_filler: GasFiller,
 }
 
@@ -21,7 +23,8 @@ pub enum GasBufferFillerError {
 impl Default for GasBufferFiller {
     fn default() -> Self {
         Self {
-            buffer_percentage: 100,
+            gas_limit_buffer_percentage: 100,
+            gas_price_buffer_percentage: 100,
             gas_filler: GasFiller,
         }
     }
@@ -30,9 +33,15 @@ impl Default for GasBufferFiller {
 impl GasBufferFiller {
     pub fn new(buffer_percentage: u16) -> Self {
         Self {
-            buffer_percentage,
+            gas_limit_buffer_percentage: buffer_percentage,
             gas_filler: GasFiller,
+            ..Default::default()
         }
+    }
+
+    pub fn with_gas_price_buffer(mut self, gas_price_buffer_percentage: u16) -> Self {
+        self.gas_price_buffer_percentage = gas_price_buffer_percentage;
+        self
     }
 }
 
@@ -53,18 +62,43 @@ impl<N: Network> TxFiller<N> for GasBufferFiller {
     where
         P: Provider<N>,
     {
+        // value * percentage / 100
+        let buffer_u128 = |value: u128, percentage: u16| {
+            value
+                .checked_mul(percentage as u128)
+                .ok_or_else(|| TransportErrorKind::custom(GasBufferFillerError::IntegerOverflow))
+                .map(|v| v / 100)
+        };
+
+        let buffer_u64 = |value: u64, percentage: u16| {
+            buffer_u128(value as u128, percentage)?
+                .try_into()
+                .map_err(|_| TransportErrorKind::custom(GasBufferFillerError::IntegerOverflow))
+        };
+
         let mut estimate = TxFiller::<N>::prepare(&self.gas_filler, provider, tx).await?;
         match &mut estimate {
-            GasFillable::Legacy { gas_limit, .. } | GasFillable::Eip1559 { gas_limit, .. } => {
-                // gas_limit = gas_limit * percentage / 100
-                *gas_limit = gas_limit
-                    .checked_mul(self.buffer_percentage as u64)
-                    .ok_or_else(|| {
-                        TransportErrorKind::custom(GasBufferFillerError::IntegerOverflow)
-                    })?
-                    / 100;
+            GasFillable::Legacy {
+                gas_limit,
+                gas_price,
+            } => {
+                *gas_limit = buffer_u64(*gas_limit, self.gas_limit_buffer_percentage)?;
+                *gas_price = buffer_u128(*gas_price, self.gas_price_buffer_percentage)?;
             }
-        }
+            GasFillable::Eip1559 {
+                gas_limit,
+                estimate:
+                    Eip1559Estimation {
+                        max_fee_per_gas,
+                        max_priority_fee_per_gas,
+                    },
+            } => {
+                *gas_limit = buffer_u64(*gas_limit, self.gas_limit_buffer_percentage)?;
+                *max_fee_per_gas = buffer_u128(*max_fee_per_gas, self.gas_price_buffer_percentage)?;
+                *max_priority_fee_per_gas =
+                    buffer_u128(*max_priority_fee_per_gas, self.gas_price_buffer_percentage)?;
+            }
+        };
 
         Ok(estimate)
     }
@@ -89,7 +123,7 @@ mod tests {
     use alloy::rpc::types::TransactionRequest;
 
     #[tokio::test]
-    async fn default_buffer_normal_gas_limit() {
+    async fn default_buffer_normal_gas() {
         let provider = ProviderBuilder::<_, _, Ethereum>::default()
             .filler(GasBufferFiller::default())
             .filler(BlobGasFiller)
@@ -106,12 +140,14 @@ mod tests {
         let sendable_tx = provider.fill(tx_req).await.unwrap();
         let tx = sendable_tx.as_envelope().expect("should be signed");
         assert_eq!(tx.gas_limit(), 21000);
+        assert_eq!(tx.max_fee_per_gas(), 2000000001);
+        assert_eq!(tx.max_priority_fee_per_gas().expect("eip1559 tx"), 1);
     }
 
     #[tokio::test]
-    async fn double_buffer_double_gas_limit() {
+    async fn double_buffer_double_gas() {
         let provider = ProviderBuilder::<_, _, Ethereum>::default()
-            .filler(GasBufferFiller::new(200))
+            .filler(GasBufferFiller::new(200).with_gas_price_buffer(200))
             .filler(BlobGasFiller)
             .filler(ChainIdFiller::default())
             .with_simple_nonce_management()
@@ -125,6 +161,8 @@ mod tests {
 
         let sendable_tx = provider.fill(tx_req).await.unwrap();
         let tx = sendable_tx.as_envelope().expect("should be signed");
-        assert_eq!(tx.gas_limit(), 42000);
+        assert_eq!(tx.gas_limit(), 21000 * 2);
+        assert_eq!(tx.max_fee_per_gas(), 2000000001 * 2);
+        assert_eq!(tx.max_priority_fee_per_gas().expect("eip1559 tx"), 2);
     }
 }
