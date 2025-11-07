@@ -25,12 +25,18 @@ pub trait ControlPlane {
         &self,
         verification: SignedVerification,
     ) -> anyhow::Result<SignedVerification>;
-    async fn handle_error(&self, verification: &VerificationError, retry: RetrySender);
+    async fn handle_error(&self, verification: &VerificationError, retry: RetrySender<Event>);
 }
 #[derive(Debug, Clone)]
 pub struct ResolvedState {
     pub verification: Verification<RequestId>,
     pub chain_state: ChainState,
+}
+
+#[derive(Eq, PartialEq, Clone)]
+pub(crate) enum Event {
+    NewVerification(Verification<RequestId>),
+    SignedVerification(SignedVerification),
 }
 
 pub enum VerificationError {
@@ -125,28 +131,34 @@ impl ControlPlane for DefaultControlPlane {
         Ok(verification)
     }
 
-    async fn handle_error(&self, err: &VerificationError, retry: RetrySender) {
+    async fn handle_error(&self, err: &VerificationError, retry: RetrySender<Event>) {
         match err {
             VerificationError::Resolve(verification) => retry
-                .send(verification.clone())
+                .send(verification.clone().into())
                 .await
                 .expect("error sending on retry channel"),
 
-            VerificationError::Evaluate(state) => retry
-                .send(state.verification.clone())
+            VerificationError::Evaluate(state) | VerificationError::Sign(state) => retry
+                .send(state.verification.to_owned().into())
                 .await
                 .expect("error sending on retry channel"),
 
-            VerificationError::Sign(state) => retry
-                .send(state.verification.clone())
+            VerificationError::Submit(submit) => retry
+                .send(submit.to_owned().into())
                 .await
                 .expect("error sending on retry channel"),
-
-            VerificationError::Submit(submit) => tracing::error!(
-                src_chain_id = submit.src_chain_id.to_string(),
-                request_id = submit.request_id.to_string(),
-                "dont support resubmit just yet :("
-            ),
         }
+    }
+}
+
+impl From<Verification<RequestId>> for Event {
+    fn from(value: Verification<RequestId>) -> Self {
+        Self::NewVerification(value)
+    }
+}
+
+impl From<SignedVerification> for Event {
+    fn from(value: SignedVerification) -> Self {
+        Self::SignedVerification(value)
     }
 }

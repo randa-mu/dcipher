@@ -1,5 +1,5 @@
 use crate::chain_state_pending::{RequestId, Verification};
-use crate::control_plane::{ControlPlane, ResolvedState, VerificationError};
+use crate::control_plane::{ControlPlane, Event, ResolvedState, VerificationError};
 use crate::retry_runtime::RetrySender;
 use crate::signing::SignedVerification;
 use futures::Stream;
@@ -28,8 +28,8 @@ where
     // dodgy request can block the pipeline for other valid ones
     pub async fn run(
         &self,
-        retry_tx: RetrySender,
-        mut event_stream: Pin<Box<impl Stream<Item = Verification<RequestId>> + Send + 'static>>,
+        retry_tx: RetrySender<Event>,
+        mut event_stream: Pin<Box<impl Stream<Item = Event> + Send + 'static>>,
     ) {
         tracing::info!("starting channel manager");
         let mut tasks = JoinSet::new();
@@ -46,11 +46,20 @@ where
         // 'receive' step
         {
             let tx_verifications = tx_verifications.clone();
+            let tx_submit = tx_submit.clone();
             tasks.spawn(async move {
-                while let Some(verification) = event_stream.next().await {
-                    tx_verifications
-                        .send(verification)
-                        .expect("failed to send verification on channel");
+                while let Some(event) = event_stream.next().await {
+                    match event {
+                        // dispatch to the resolve step / tx_verifications channel
+                        Event::NewVerification(verification) => tx_verifications
+                            .send(verification)
+                            .expect("failed to send verification on channel"),
+
+                        // dispatch to the submit step / tx_submit channel
+                        Event::SignedVerification(signed_verification) => tx_submit
+                            .send(signed_verification)
+                            .expect("failed to send verification on channel"),
+                    }
                 }
             });
         }
