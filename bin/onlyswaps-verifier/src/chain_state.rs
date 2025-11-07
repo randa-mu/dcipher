@@ -9,7 +9,9 @@ use anyhow::anyhow;
 use config::network::NetworkConfig;
 use futures::future::{try_join, try_join_all};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
+use generated::onlyswaps::router::Router::{
+    RouterErrors, RouterInstance, getSwapRequestReceiptReturn,
+};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -190,7 +192,7 @@ impl<P: Provider> Network<P> {
         .await
         {
             Ok(Ok(_)) => Ok(()),
-            Ok(Err(e)) => anyhow::bail!("error submitting swap: {:?}", e),
+            Ok(Err(e)) => Err(e.context("error submitting swap"))?,
             Err(_) => anyhow::bail!("request timed out"),
         }
     }
@@ -205,22 +207,34 @@ impl<P: Provider> Network<P> {
             )
             .block(self.timeout_config.block_safety.into())
             .send()
-            .await?;
+            .await
+            .map_err(|e| {
+                // Try to decode it as a Router error
+                if let Some(router_err) = e.as_decoded_interface_error::<RouterErrors>() {
+                    return anyhow!("router contract error: {router_err:?}");
+                }
+                e.into()
+            })?;
 
         tracing::info!(
             request_id = ?verified_swap.request_id,
             tx_hash = tx.tx_hash().to_string(),
             "swap verification submitting"
         );
-        let tx_hash = tx
+        let receipt = tx
             .with_required_confirmations(1)
             .with_timeout(Some(self.timeout_config.request_timeout))
-            .watch()
+            .get_receipt()
             .await?;
+
+        if !receipt.status() {
+            tracing::error!(request_id = ?verified_swap.request_id, ?receipt, "error submitting swap verification: tx reverted");
+            anyhow::bail!("error submitting swap verification: tx reverted");
+        }
 
         tracing::info!(
             request_id = ?verified_swap.request_id,
-            tx_hash = tx_hash.to_string(),
+            tx_hash = receipt.transaction_hash.to_string(),
             "swap verification finalised"
         );
 
