@@ -15,6 +15,8 @@ pub struct NetworkConfig {
     pub should_write: bool,
     #[serde(default = "default_tx_gas_buffer")]
     pub tx_gas_buffer: u16,
+    #[serde(default = "default_tx_gas_price_buffer")]
+    pub tx_gas_price_buffer: u16,
 }
 
 #[serde_as]
@@ -31,6 +33,11 @@ fn default_should_write() -> bool {
 /// 20 percent extra gas to the limit by default
 fn default_tx_gas_buffer() -> u16 {
     120
+}
+
+/// no extra gas to the price by default
+fn default_tx_gas_price_buffer() -> u16 {
+    100
 }
 
 #[cfg(test)]

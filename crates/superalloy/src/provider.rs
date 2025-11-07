@@ -36,14 +36,25 @@ pub type RecommendedFillers = JoinFill<
     JoinFill<ChainIdFiller, JoinFill<BlobGasFiller, GasBufferFiller>>,
 >;
 
-pub fn recommended_fillers(tx_gas_buffer: u16) -> RecommendedFillers {
+pub fn recommended_fillers(
+    gas_buffer_percentage: Option<u16>,
+    gas_price_buffer_percentage: Option<u16>,
+) -> RecommendedFillers {
     JoinFill::new(
         NonceFiller::new(SimpleNonceManager::default()),
         JoinFill::new(
             ChainIdFiller::default(),
-            JoinFill::new(BlobGasFiller, GasBufferFiller::new(tx_gas_buffer)),
+            JoinFill::new(
+                BlobGasFiller,
+                GasBufferFiller::new(gas_buffer_percentage.unwrap_or(100))
+                    .with_gas_price_buffer(gas_price_buffer_percentage.unwrap_or(100)),
+            ),
         ),
     )
+}
+
+pub fn recommended_fillers_default() -> RecommendedFillers {
+    recommended_fillers(None, None)
 }
 
 /// Creates a http / websocket provider based on the rpc url provided.
@@ -51,7 +62,7 @@ pub async fn create_provider_with_retry(
     rpc_url: reqwest::Url,
     retry_strategy: RetryStrategy,
 ) -> Result<RecommendedProvider, CreateProviderError> {
-    let build_provider = || ProviderBuilder::default().filler(recommended_fillers(100));
+    let build_provider = || ProviderBuilder::default().filler(recommended_fillers_default());
 
     match rpc_url.scheme() {
         "http" | "https" => {
