@@ -17,3 +17,6 @@ tracing = { workspace = true }
 # misc
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+[dev-dependencies]
+alloy = { workspace = true, features = ["provider-anvil-node"] }

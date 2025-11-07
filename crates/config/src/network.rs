@@ -13,6 +13,10 @@ pub struct NetworkConfig {
     pub router_address: FixedBytes<20>,
     #[serde(default = "default_should_write")]
     pub should_write: bool,
+    #[serde(default = "default_tx_gas_buffer")]
+    pub tx_gas_buffer: u16,
+    #[serde(default = "default_tx_gas_price_buffer")]
+    pub tx_gas_price_buffer: u16,
 }
 
 #[serde_as]
@@ -24,6 +28,16 @@ pub struct Libp2pConfig {
 
 fn default_should_write() -> bool {
     false
+}
+
+/// 20 percent extra gas to the limit by default
+fn default_tx_gas_buffer() -> u16 {
+    120
+}
+
+/// no extra gas to the price by default
+fn default_tx_gas_price_buffer() -> u16 {
+    100
 }
 
 #[cfg(test)]
