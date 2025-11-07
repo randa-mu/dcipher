@@ -81,6 +81,7 @@ sqlx = { version = "0.8" }
 
 # misc
 anyhow = "1.0"
+backoff = { version = "0.4", features = ["tokio"] }
 base64 = "0.22"
 bytes = "1.10"
 chrono = "0.4"

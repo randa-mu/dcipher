@@ -10,6 +10,7 @@ serde = ["dep:serde"]
 
 [dependencies]
 alloy.workspace = true
+backoff.workspace = true
 futures-util.workspace = true
 generated.workspace = true
 superalloy.workspace = true

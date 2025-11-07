@@ -27,6 +27,15 @@ pub enum OnlySwapsClientError {
     #[error("incoherent state: verified = {verified}, but completed = {completed}")]
     IncoherentState { verified: bool, completed: bool },
 
+    #[error("failed to get transaction receipt using tx hash")]
+    GetTransactionReceipt,
+
+    #[error("swap reverted")]
+    SwapReverted,
+
+    #[error("approve reverted")]
+    ApproveReverted,
+
     #[error("router contract error: {0:?}")]
     RouterContract(RouterErrors),
 

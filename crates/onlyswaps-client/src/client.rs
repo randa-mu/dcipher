@@ -1,5 +1,6 @@
 //! The only swaps client which can be used to swap tokens from one chain to another
 
+mod backoff;
 mod errors;
 mod request;
 pub mod routing;
@@ -12,12 +13,13 @@ use crate::config::OnlySwapsClientConfig;
 use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
 use alloy::network::Ethereum;
-use alloy::primitives::{Address, FixedBytes, LogData, TxHash, U256};
+use alloy::primitives::{FixedBytes, LogData, TxHash, U256};
 use alloy::providers::{DynProvider, Provider};
-use alloy::rpc::types::Log;
+use alloy::rpc::types::{Log, TransactionReceipt};
 use alloy::sol_types::SolEvent;
 use futures_util::StreamExt;
 use generated::onlyswaps::ierc20::IERC20;
+use generated::onlyswaps::ierc20::IERC20::IERC20Instance;
 use generated::onlyswaps::router::Router;
 use generated::onlyswaps::router::Router::RouterInstance;
 use std::marker::PhantomData;
@@ -92,8 +94,11 @@ impl OnlySwapsClient {
             .supported_tokens
             .get(&token)
             .ok_or(OnlySwapsClientError::UnsupportedToken(chain_id, token))?;
+        let ierc20 = IERC20::new(token_addr, provider);
 
-        approve_spending(chain_config, provider, token_addr, amount).await
+        approve_spending(chain_config, &ierc20, amount)
+            .await
+            .map(|r| r.transaction_hash)
     }
 
     /// Create a new swap, sending tokens to a recipient
@@ -128,13 +133,14 @@ impl OnlySwapsClient {
         swap_request: OnlySwapsRequest,
     ) -> Result<OnlySwapsReceipt, OnlySwapsClientError> {
         let (provider, src_chain_config) = self.swap_config(&swap_request.route)?;
+        let ierc20 = IERC20::new(swap_request.route.src_token, provider);
 
         // Approve spending of token on source chain by router contract, before swapping
-        approve_spending(
+        approve_spending_and_wait(
             src_chain_config,
-            provider,
-            swap_request.route.src_token,
+            &ierc20,
             swap_request.amount + swap_request.fee,
+            Some(src_chain_config.timeout),
         )
         .await?;
 
@@ -370,19 +376,40 @@ fn request_id_from_swap_logs<'l>(
     Some(swap_requested_logs[0].requestId)
 }
 
+/// Approve the router contract to spend tokens for upcoming swaps and wait until the allowance is
+/// effective from the RPC's perspective.
+/// The amount must include the fees.
+async fn approve_spending_and_wait(
+    chain_config: &ChainConfig,
+    ierc20: &IERC20Instance<impl Provider>,
+    amount: U256,
+    allowance_timeout: Option<std::time::Duration>,
+) -> Result<TransactionReceipt, OnlySwapsClientError> {
+    let receipt = approve_spending(chain_config, ierc20, amount).await?;
+    backoff::wait_valid_erc20_allowance(
+        receipt.from,
+        chain_config.router_address,
+        amount,
+        allowance_timeout,
+        ierc20,
+    )
+    .await?;
+
+    Ok(receipt)
+}
+
 /// Approve the router contract to spend tokens for upcoming swaps.
 /// The amount must include the fees.
+#[tracing::instrument(skip_all, fields(token_addr = %ierc20.address(), %amount))]
 async fn approve_spending(
     chain_config: &ChainConfig,
-    provider: impl Provider,
-    token_addr: Address,
+    ierc20: &IERC20Instance<impl Provider>,
     amount: U256,
-) -> Result<TxHash, OnlySwapsClientError> {
-    let ierc20 = IERC20::new(token_addr, provider);
+) -> Result<TransactionReceipt, OnlySwapsClientError> {
     let call = ierc20.approve(chain_config.router_address, amount);
 
     let _ = tracing::trace_span!("approve_call", ?call).entered();
-    tracing::debug!(%token_addr, router_address = %chain_config.router_address, %amount, "Sending approve(router_address, amount) transaction for ERC20 token");
+    tracing::debug!(token_addr = %ierc20.address(), router_address = %chain_config.router_address, %amount, "Sending approve(router_address, amount) transaction for ERC20 token");
     let tx_hash = call
         .send()
         .await
@@ -391,12 +418,18 @@ async fn approve_spending(
         .with_timeout(Some(chain_config.timeout))
         .watch()
         .await?;
-    tracing::debug!(?tx_hash, "approve tx mined");
+    tracing::debug!(%tx_hash, "approve tx mined");
 
-    Ok(tx_hash)
+    let receipt = backoff::get_receipt(tx_hash, ierc20.provider()).await?;
+    if !receipt.status() {
+        // make sure it didn't revert
+        return Err(OnlySwapsClientError::ApproveReverted);
+    }
+
+    Ok(receipt)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[tracing::instrument(skip_all, fields(route = ?swap_request.route))]
 async fn swap(
     src_chain_config: &ChainConfig,
     provider: &DynProvider,
@@ -439,12 +472,18 @@ async fn swap(
         .send()
         .await
         .map_err(|e| (e, "failed to send requestCrossChainSwap transaction"))?;
-    let receipt = pending_tx
+    let tx_hash = pending_tx
         .with_required_confirmations(src_chain_config.required_confirmations)
         .with_timeout(Some(src_chain_config.timeout))
-        .get_receipt()
+        .watch()
         .await?;
-    tracing::debug!(?receipt, "Got receipt for requestCrossChainSwap");
+    tracing::debug!(%tx_hash, "Got confirmed tx for requestCrossChainSwap");
+
+    let receipt = backoff::get_receipt(tx_hash, router.provider()).await?;
+    if !receipt.status() {
+        // make sure it didn't revert
+        return Err(OnlySwapsClientError::SwapReverted);
+    }
 
     // Parse the logs to recover the request id of the swap
     let request_id = request_id_from_swap_logs(receipt.logs())
