@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use clap::Parser;
 use config::keys::{Bn254SecretKey, Libp2pKeyWrapper, serde_to_string_from_str};
 use figment::Figment;
-use figment::providers::{Format, Serialized, Toml};
+use figment::providers::{Format, Toml};
 use serde::{Deserialize, Serialize};
 use std::num::{NonZeroU16, NonZeroUsize};
 use std::path::PathBuf;
@@ -117,11 +117,7 @@ pub struct DSignerConfig {
 
 impl DSignerConfig {
     pub fn parse() -> anyhow::Result<Self> {
-        let c: Args = Figment::new()
-            .merge(Serialized::defaults(Args::parse()))
-            .merge(Toml::file("config.toml"))
-            .extract()?;
-
+        let c: Args = Args::parse();
         if c.key_config.t > c.key_config.n {
             Err(anyhow!("t cannot be greater than n"))?
         }
