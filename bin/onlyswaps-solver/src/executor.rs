@@ -63,7 +63,7 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
 
             // and finally execute the trade with a timeout
             match timeout(
-                Duration::from_secs(10),
+                Duration::from_secs(90),
                 execute_trade(&trade, router, token, self.own_address),
             )
             .await
