@@ -1,6 +1,7 @@
 use alloy::primitives::Address;
 use clap::Parser;
 use config::agent::AgentConfig;
+use config::timeout::TimeoutConfig;
 use serde::Deserialize;
 
 #[derive(Parser, Debug)]
@@ -21,6 +22,8 @@ pub(crate) struct CliArgs {
 pub(crate) struct AppConfig {
     pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
+    #[serde(default)]
+    pub timeout: TimeoutConfig,
 }
 
 #[derive(Deserialize, Debug, Clone)]

@@ -1,5 +1,5 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
-use crate::config::{AppConfig, TimeoutConfig};
+use crate::config::AppConfig;
 use crate::signing::SignedVerification;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
@@ -15,6 +15,7 @@ use generated::onlyswaps::router::Router::{
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
+use config::timeout::TimeoutConfig;
 use superalloy::provider::recommended_fillers;
 
 #[derive(Debug, PartialEq, Eq, Hash)]

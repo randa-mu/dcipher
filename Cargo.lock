@@ -1877,6 +1877,7 @@ dependencies = [
  "humantime-serde",
  "itertools 0.14.0",
  "libp2p",
+ "omnievent",
  "serde",
  "serde_json",
  "serde_with",
