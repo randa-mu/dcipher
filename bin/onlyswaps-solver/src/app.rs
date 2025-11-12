@@ -23,10 +23,10 @@ impl App {
 
         // we pull new chain state every block, so inflight requests may not have been
         // completed yet, so we don't want to attempt to execute them again and waste gas.
-        // if they're still there after 30s we can reattempt
+        // if they're still there after 120s we can reattempt
         let mut inflight_requests: Cache<RequestId, ()> = Cache::builder()
             .max_capacity(1000)
-            .time_to_live(Duration::from_secs(30))
+            .time_to_live(Duration::from_secs(120))
             .build();
 
         while let Some(BlockEvent { chain_id, .. }) = stream.next().await {
