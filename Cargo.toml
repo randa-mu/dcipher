@@ -36,7 +36,7 @@ ark-ff = "0.5.0"
 ark-poly = "0.5.0"
 ark-serialize = "0.5.0"
 ark-std = "0.5.0"
-chacha20poly1305 = "0.10"
+chacha20poly1305 = "0.10.1"
 
 # hashes
 digest = "0.10"

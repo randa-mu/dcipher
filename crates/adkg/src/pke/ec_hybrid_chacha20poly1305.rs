@@ -273,6 +273,8 @@ impl HybridCiphertext {
         let k: Key = derive_shared_sym_key(shared_key, sender_pk, recipient_pk)?.into();
 
         // Decrypt ciphertext
+        // chacha crate is unmaintained :<
+        #[allow(deprecated)]
         let nonce = Nonce::from_slice(&self.nonce);
         sym_decrypt(&k, nonce, self.ct.as_ref())
     }
@@ -314,6 +316,8 @@ where
         let k: Key = derive_shared_sym_key(shared_key, &self.sender_pk, recipient_pk)?.into();
 
         // Decrypt ciphertext
+        // chacha crate is unmaintained :<
+        #[allow(deprecated)]
         let nonce = Nonce::from_slice(&self.inner.nonce);
         sym_decrypt(&k, nonce, ct.as_ref())
     }
@@ -355,6 +359,8 @@ impl MultiHybridCiphertext {
         let k: Key = derive_shared_sym_key(shared_key, sender_pk, recipient_pk)?.into();
 
         // Decrypt ciphertext
+        // chacha crate is unmaintained :<
+        #[allow(deprecated)]
         let nonce = Nonce::from_slice(&self.nonce);
         sym_decrypt(&k, nonce, ct.as_ref())
     }
