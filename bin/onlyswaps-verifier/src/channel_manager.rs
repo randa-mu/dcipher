@@ -5,6 +5,7 @@ use crate::signing::SignedVerification;
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinSet;
 use tokio_stream::StreamExt;
@@ -124,9 +125,14 @@ where
                     let tx_err = tx_err.clone();
 
                     tokio::spawn(async move {
-                        match control_plane.sign_state(state.clone()).await {
-                            Ok(v) => tx_submit.send(v).expect("error writing on channel"),
-                            Err(_) => tx_err
+                        match tokio::time::timeout(
+                            Duration::from_secs(30),
+                            control_plane.sign_state(state.clone()),
+                        )
+                        .await
+                        {
+                            Ok(Ok(v)) => tx_submit.send(v).expect("error writing on channel"),
+                            Err(_) | Ok(Err(_)) => tx_err
                                 .send(VerificationError::Sign(state))
                                 .expect("error writing on channel"),
                         }
