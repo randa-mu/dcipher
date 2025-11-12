@@ -5,6 +5,7 @@ use crate::config::AppConfig;
 use crate::control_plane::DefaultControlPlane;
 use crate::retry_runtime::RetryScheduler;
 use crate::verification_events::EventManagement;
+use futures::future::BoxFuture;
 use futures::{StreamExt, stream};
 use std::sync::Arc;
 
@@ -38,7 +39,6 @@ impl App {
             omnievent,
             event_ids,
         } = EventManagement::new(app_config).await?;
-        //
         let live_stream = omnievent
             .get_ethereum_multi_event_stream(event_ids.clone())
             .await?
@@ -75,9 +75,19 @@ impl App {
         let live_streams = stream::select(live_stream.map(Into::into), retry_stream);
         let stream = stream::iter(pending_verifications).chain(live_streams);
 
+        // we create a periodic catchup function in case there are connection issues with the stream
+        // or other nodes
+        let bus = Arc::clone(&network_bus);
+        let catchup: Arc<
+            dyn Fn() -> BoxFuture<'static, Vec<Verification<RequestId>>> + Send + Sync,
+        > = Arc::new(move || {
+            let bus = Arc::clone(&bus);
+            Box::pin(async move { bus.fetch_pending_verifications().await.unwrap_or_default() })
+        });
+
         // in order to allow the `task_manager` to send retries back 'up the funnel', we pass in a
         // tx "Sender" into its `run` method.
-        task_manager.run(retry_tx, Box::pin(stream)).await;
+        task_manager.run(retry_tx, Box::pin(stream), catchup).await;
 
         // if the `run` function ever ends, it's night night
         anyhow::bail!("onlyswaps closed unexpectedly")
