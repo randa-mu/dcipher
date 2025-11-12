@@ -45,7 +45,7 @@ forge bind --bindings-path $ROOT_DIR/crates/generated/src/blocklock \
 popd
 
 pushd $ROOT_DIR/modules/onlyswaps-solidity
-forge bind --bindings-path $ROOT_DIR/crates/generated/src/onlyswaps \
+forge bind --bindings-path $ROOT_DIR/crates/generated/src/onlyswaps --via-ir \
 --skip-cargo-toml \
 --module \
 --use $SOLC_VERSION \
