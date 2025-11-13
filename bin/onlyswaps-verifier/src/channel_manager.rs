@@ -3,6 +3,7 @@ use crate::control_plane::{ControlPlane, Event, ResolvedState, VerificationError
 use crate::retry_runtime::RetrySender;
 use crate::signing::SignedVerification;
 use futures::Stream;
+use futures::future::BoxFuture;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
@@ -13,6 +14,7 @@ use tokio_stream::StreamExt;
 pub(crate) struct TaskManager<CP> {
     control_plane: Arc<CP>,
 }
+type Catchup<T> = Arc<dyn Fn() -> BoxFuture<'static, T> + Send + Sync>;
 
 impl<CP: ControlPlane> TaskManager<CP>
 where
@@ -31,6 +33,7 @@ where
         &self,
         retry_tx: RetrySender<Event>,
         mut event_stream: Pin<Box<impl Stream<Item = Event> + Send + 'static>>,
+        catchup: Catchup<Vec<Verification<RequestId>>>,
     ) {
         tracing::info!("starting channel manager");
         let mut tasks = JoinSet::new();
@@ -60,6 +63,24 @@ where
                         Event::SignedVerification(signed_verification) => tx_submit
                             .send(signed_verification)
                             .expect("failed to send verification on channel"),
+                    }
+                }
+            });
+        }
+
+        // 'receive' part 2
+        // sometimes network problems can stop other nodes seeing our requests,
+        // so periodically fetch outstanding ones and retry
+        {
+            let tx_verifications = tx_verifications.clone();
+            tasks.spawn(async move {
+                loop {
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    let pending_tasks = catchup().await;
+                    for t in pending_tasks {
+                        tx_verifications
+                            .send(t)
+                            .expect("error writing on tx channel");
                     }
                 }
             });
