@@ -7,6 +7,7 @@ use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
 use config::network::NetworkConfig;
+use config::timeout::TimeoutConfig;
 use futures::future::{try_join, try_join_all};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use generated::onlyswaps::router::Router::{
@@ -15,7 +16,6 @@ use generated::onlyswaps::router::Router::{
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
-use config::timeout::TimeoutConfig;
 use superalloy::provider::recommended_fillers;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
