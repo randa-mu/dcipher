@@ -4,12 +4,12 @@ use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, TxHash};
 use alloy::providers::Provider;
 use anyhow::{Context, anyhow};
+use config::timeout::TimeoutConfig;
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken::ERC20FaucetTokenInstance;
 use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors;
 use generated::onlyswaps::router::Router::{RouterErrors, RouterInstance};
 use moka::future::Cache;
 use std::collections::HashMap;
-use std::time::Duration;
 use tokio::time::timeout;
 
 pub(crate) struct TradeExecutor<'a, P> {
@@ -42,7 +42,12 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             own_address,
         }
     }
-    pub async fn execute(&self, trades: Vec<Trade>, in_flight: &mut Cache<RequestId, ()>) {
+    pub async fn execute(
+        &self,
+        trades: Vec<Trade>,
+        in_flight: &mut Cache<RequestId, ()>,
+        timeout_config: &TimeoutConfig,
+    ) {
         for trade in trades {
             // first we add the trade to the cache so that we don't retry it in the next block
             // (before it's been finalised, potentially)
@@ -63,7 +68,7 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
 
             // and finally execute the trade with a timeout
             match timeout(
-                Duration::from_secs(90),
+                timeout_config.request_timeout,
                 execute_trade(&trade, router, token, self.own_address),
             )
             .await

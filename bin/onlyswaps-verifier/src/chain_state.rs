@@ -1,5 +1,5 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
-use crate::config::{AppConfig, TimeoutConfig};
+use crate::config::AppConfig;
 use crate::signing::SignedVerification;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
@@ -7,6 +7,7 @@ use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
 use config::network::NetworkConfig;
+use config::timeout::TimeoutConfig;
 use futures::future::{try_join, try_join_all};
 use generated::onlyswaps::router::IRouter::SwapRequestParameters;
 use generated::onlyswaps::router::Router::{
