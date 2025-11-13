@@ -204,7 +204,7 @@ impl<P: Provider> Network<P> {
     }
 
     async fn rebalance(&self, verified_swap: &SignedVerification) -> anyhow::Result<()> {
-        let tx = self
+        let tx_submit_res = self
             .router
             .rebalanceSolver(
                 verified_swap.solver,
@@ -213,14 +213,24 @@ impl<P: Provider> Network<P> {
             )
             .block(self.timeout_config.block_safety.into())
             .send()
-            .await
-            .map_err(|e| {
+            .await;
+
+        let tx = match tx_submit_res {
+            Ok(tx) => tx,
+            Err(e) => {
                 // Try to decode it as a Router error
-                if let Some(router_err) = e.as_decoded_interface_error::<RouterErrors>() {
-                    return anyhow!("router contract error: {router_err:?}");
+                match e.as_decoded_interface_error::<RouterErrors>() {
+                    Some(RouterErrors::AlreadyFulfilled(_)) => {
+                        tracing::info!(request_id = ?verified_swap.request_id, "swap request already fulfilled");
+                        return Ok(());
+                    }
+                    Some(router_err) => {
+                        anyhow::bail!("router contract error: {router_err:?}");
+                    }
+                    None => Err(e)?,
                 }
-                e.into()
-            })?;
+            }
+        };
 
         tracing::info!(
             request_id = ?verified_swap.request_id,
