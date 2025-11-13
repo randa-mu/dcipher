@@ -1,3 +1,5 @@
+use crate::transports::{StatusAction, StatusOutput};
+use futures_util::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -101,6 +103,11 @@ pub trait TransportSender: Send + Sync {
     type Identity: PartyIdentifier + Send + Sync + 'static;
     type Error: std::error::Error + Send + Sync + 'static;
 
+    fn status(
+        &self,
+        action: StatusAction,
+    ) -> impl Future<Output = Result<StatusOutput<Self::Identity>, Self::Error>> + Send + Sync;
+
     fn send(
         &self,
         msg: Vec<u8>,
@@ -129,6 +136,19 @@ pub trait TransportSender: Send + Sync {
         self.send(msg, Recipient::Single(to))
     }
 }
+
+pub trait TransportSenderExt: TransportSender {
+    fn list_connected_peers(
+        &self,
+    ) -> impl Future<Output = Result<Vec<Self::Identity>, Self::Error>> + Send + Sync {
+        self.status(StatusAction::ConnectedPeers).map_ok(|out| {
+            let StatusOutput::ConnectedPeers(peers) = out;
+            peers
+        })
+    }
+}
+
+impl<T: TransportSender> TransportSenderExt for T {}
 
 #[cfg(test)]
 mod tests {

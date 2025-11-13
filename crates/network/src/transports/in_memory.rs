@@ -1,5 +1,6 @@
 //! In memory transport that is primarily designed for use in tests.
 
+use crate::transports::{StatusAction, StatusOutput};
 use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
@@ -106,6 +107,13 @@ impl<ID: PartyIdentifier> Transport for BusMemoryTransport<ID, Vec<u8>> {
 impl<ID: PartyIdentifier> TransportSender for BusMemorySender<ID, Vec<u8>> {
     type Identity = ID;
     type Error = MemoryTransportError;
+
+    async fn status(
+        &self,
+        _action: StatusAction,
+    ) -> Result<StatusOutput<Self::Identity>, Self::Error> {
+        unimplemented!("fetch not supported")
+    }
 
     async fn send(&self, msg: Vec<u8>, to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
         self.tx_channel

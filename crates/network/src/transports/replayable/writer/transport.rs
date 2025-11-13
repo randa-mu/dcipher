@@ -1,6 +1,7 @@
 //! Implementation of [`Transport`] that forwards sent messages to a [`MessageWriter`].
 
 use crate::transports::replayable::writer::{InMemoryWriter, MessageWriter};
+use crate::transports::{StatusAction, StatusOutput};
 use crate::{Recipient, Transport, TransportSender};
 
 /// [`Transport`] forwarding sent messages to a writer.
@@ -77,6 +78,13 @@ where
 {
     type Identity = _TransportSender::Identity;
     type Error = _TransportSender::Error;
+
+    async fn status(
+        &self,
+        _action: StatusAction,
+    ) -> Result<StatusOutput<Self::Identity>, Self::Error> {
+        unimplemented!("fetch not supported")
+    }
 
     async fn send(&self, msg: Vec<u8>, to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
         if let Err(e) = self.writer.write(&msg, to).await {

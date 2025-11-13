@@ -1,5 +1,6 @@
 //! A replayable implementation of [`Transport`].
 
+use crate::transports::{StatusAction, StatusOutput};
 use crate::{MessageType, PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
@@ -125,6 +126,13 @@ where
 {
     type Identity = ID;
     type Error = Infallible;
+
+    async fn status(
+        &self,
+        _action: StatusAction,
+    ) -> Result<StatusOutput<Self::Identity>, Self::Error> {
+        unimplemented!()
+    }
 
     async fn send(&self, _msg: Vec<u8>, _to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
         Ok(())

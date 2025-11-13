@@ -7,10 +7,21 @@ pub mod libp2p;
 #[cfg(feature = "replayable")]
 pub mod replayable;
 
-#[derive(Clone, Debug)]
 pub enum TransportAction<I: PartyIdentifier> {
     SendDirectMessage(SendDirectMessage<I>),
     SendBroadcastMessage(SendBroadcastMessage),
+    Status {
+        tx: tokio::sync::oneshot::Sender<StatusOutput<I>>,
+        action: StatusAction,
+    },
+}
+
+pub enum StatusAction {
+    ConnectedPeers,
+}
+
+pub enum StatusOutput<I: PartyIdentifier> {
+    ConnectedPeers(Vec<I>),
 }
 
 #[derive(Clone, Debug)]

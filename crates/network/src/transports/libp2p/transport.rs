@@ -1,6 +1,8 @@
 //! Implementation of the transport traits for libp2p.
 
-use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
+use crate::transports::{
+    SendBroadcastMessage, SendDirectMessage, StatusAction, StatusOutput, TransportAction,
+};
 use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
@@ -60,6 +62,18 @@ where
 {
     type Identity = I;
     type Error = Libp2pTransportError;
+
+    async fn status(
+        &self,
+        action: StatusAction,
+    ) -> Result<StatusOutput<Self::Identity>, Self::Error> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.0
+            .send(TransportAction::Status { action, tx })
+            .map_err(|_| Libp2pTransportError::ChannelClosed)?;
+
+        rx.await.map_err(|_| Libp2pTransportError::ChannelClosed)
+    }
 
     async fn send(&self, msg: Vec<u8>, to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
         let action = match to {

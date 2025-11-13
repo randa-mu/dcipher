@@ -3,7 +3,9 @@ use crate::transports::libp2p::metrics::Metrics;
 use crate::transports::libp2p::{
     Behaviour, BehaviourEvent, LIBP2P_MAIN_TOPIC, Libp2pNodeError, PeerDetails,
 };
-use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
+use crate::transports::{
+    SendBroadcastMessage, SendDirectMessage, StatusAction, StatusOutput, TransportAction,
+};
 use crate::{PartyIdentifier, ReceivedMessage};
 use futures_util::StreamExt;
 use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
@@ -73,6 +75,10 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
 
                         Some(TransportAction::SendDirectMessage(msg)) => self.send_direct_message_to_swarm(msg),
                         Some(TransportAction::SendBroadcastMessage(msg)) => self.send_broadcast_message_to_swarm(msg),
+                        Some(TransportAction::Status {
+                            tx,
+                            action
+                        }) => self.fetch_action(tx, action),
                     }
                 }
 
@@ -131,6 +137,26 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
                 tracing::error!("Libp2p node failed echo broadcast to self: channel closed");
             }
         }
+    }
+
+    fn fetch_action(
+        &mut self,
+        tx: tokio::sync::oneshot::Sender<StatusOutput<ID>>,
+        action: StatusAction,
+    ) {
+        let out = match action {
+            StatusAction::ConnectedPeers => {
+                let peers = self
+                    .swarm
+                    .connected_peers()
+                    .filter_map(|peer_id| self.peers.get_short_id(peer_id))
+                    .collect();
+                StatusOutput::ConnectedPeers(peers)
+            }
+        };
+
+        // don't really care from the event handler's perspective if the caller dropped the receiver
+        let _ = tx.send(out);
     }
 
     fn handle_swarm_event(

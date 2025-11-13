@@ -1,4 +1,5 @@
 use crate::topic::{Topic, TopicBasedTransport};
+use crate::transports::{StatusAction, StatusOutput};
 use crate::{PartyIdentifier, ReceivedMessage, Recipient, Transport, TransportSender};
 use futures_util::StreamExt;
 use prost::Message;
@@ -276,6 +277,13 @@ where
 {
     type Identity = _TransportSender::Identity;
     type Error = _TransportSender::Error;
+
+    async fn status(
+        &self,
+        action: StatusAction,
+    ) -> Result<StatusOutput<Self::Identity>, Self::Error> {
+        self.transport_sender.status(action).await
+    }
 
     async fn send(&self, msg: Vec<u8>, to: Recipient<Self::Identity>) -> Result<(), Self::Error> {
         let m = MessageWithTopic {
