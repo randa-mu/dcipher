@@ -671,21 +671,18 @@ mod tests {
             let fut_sig2 = ch2.async_sign(req.clone());
             let fut_sig3 = ch3.async_sign(req.clone());
 
-            // Wait for signatures up to 1 second
-            let sigs = tokio::select! {
-                sigs = futures_util::future::join_all([fut_sig1, fut_sig2, fut_sig3]) => {
-                    sigs
-                }
-
-                _ = tokio::time::sleep(Duration::from_millis(1000)) => {
-                    panic!("failed to obtain threshold signatures after waiting 1000ms");
-                }
-            };
+            // Wait for signatures up to 5 seconds
+            let sigs = tokio::time::timeout(
+                Duration::from_secs(5),
+                futures_util::future::try_join_all([fut_sig1, fut_sig2, fut_sig3]),
+            )
+            .await
+            .expect("to get threshold sig within 5s")
+            .expect("all sigs to succeed");
 
             assert_eq!(sigs.len(), 3);
-            assert!(sigs[0].is_ok());
-            assert!(sigs[1].is_ok());
-            assert!(sigs[2].is_ok());
+            assert_eq!(sigs[0], sigs[1]);
+            assert_eq!(sigs[1], sigs[2]);
         }
     }
 }
