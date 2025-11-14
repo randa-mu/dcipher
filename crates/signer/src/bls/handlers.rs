@@ -63,16 +63,9 @@ where
                 };
 
                 // First, request partials on each of these messages
-                let ms = reqs.iter().cloned().map(|req| {
-                    serde_cbor::to_vec(&NetworkMessage::<BLS>::ReplayPartials(req))
-                        .expect("serialization should always work")
-                });
-
-                if let Err(e) = futures_util::future::try_join_all(
-                    ms.map(|m| tx_to_network.send_single(m, self.id)),
-                )
-                .await
-                {
+                let m = serde_cbor::to_vec(&NetworkMessage::<BLS>::ReplayPartials(reqs.clone()))
+                    .expect("serialization should always work");
+                if let Err(e) = tx_to_network.broadcast(m).await {
                     tracing::error!(error = ?e, "Failed to request partials")
                 }
 
@@ -319,17 +312,25 @@ where
                         sender_id,
                         &tx_new_message_to_sign,
                     ),
-                    NetworkMessage::ReplayPartials(req) => {
-                        self.handle_replay_partials_from_network(req, sender_id, &tx_to_network)
+                    NetworkMessage::ReplayPartials(reqs) => {
+                        for req in reqs {
+                            self.handle_replay_partials_from_network(
+                                req,
+                                sender_id,
+                                &tx_to_network,
+                            )
                             .await;
+                        }
                     }
-                    NetworkMessage::KnownPartials(req, partials) => {
-                        self.handle_known_partials_from_network(
-                            req,
-                            sender_id,
-                            partials,
-                            &tx_new_message_to_sign,
-                        );
+                    NetworkMessage::KnownPartials(partials) => {
+                        for (req, partials) in partials {
+                            self.handle_known_partials_from_network(
+                                req,
+                                sender_id,
+                                partials,
+                                &tx_new_message_to_sign,
+                            );
+                        }
                     }
                 }
             }
@@ -444,7 +445,7 @@ where
                 msg = %LogBytes(&stored_req.m),
                 "Sending partials to requester"
             );
-            let m = serde_cbor::to_vec(&NetworkMessage::KnownPartials(req, partials))
+            let m = serde_cbor::to_vec(&NetworkMessage::KnownPartials(vec![(req, partials)]))
                 .expect("serialization should always work");
 
             if let Err(e) = tx_to_network.send_single(m, requester_id).await {

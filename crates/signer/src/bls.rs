@@ -73,9 +73,14 @@ struct StoredSignatureRequest {
 ))]
 enum NetworkMessage<BLS: BlsVerifier> {
     PartialSignature(PartialSignatureWithRequest<BLS>),
-    ReplayPartials(BlsSignatureRequest),
-    KnownPartials(BlsSignatureRequest, Vec<PartialSignature<Group<BLS>>>),
+    ReplayPartials(BatchReplayPartials),
+    KnownPartials(BatchKnownPartials<BLS>),
 }
+
+type ReplayPartial = BlsSignatureRequest;
+type BatchReplayPartials = Vec<ReplayPartial>;
+type KnownPartials<BLS> = (BlsSignatureRequest, Vec<PartialSignature<Group<BLS>>>);
+type BatchKnownPartials<BLS> = Vec<KnownPartials<BLS>>;
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlsSignatureRequest {
