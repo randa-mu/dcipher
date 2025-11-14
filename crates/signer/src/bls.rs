@@ -66,6 +66,15 @@ struct StoredSignatureRequest {
     dst: Bytes,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Group<BLS>: Serialize",
+    deserialize = "Group<BLS>: Deserialize<'de>"
+))]
+enum NetworkMessage<BLS: BlsVerifier> {
+    PartialSignature(PartialSignatureWithRequest<BLS>),
+}
+
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlsSignatureRequest {
     m: Bytes,
@@ -406,7 +415,7 @@ where
         ));
 
         // Spawn task that handles messages from other nodes
-        tokio::task::spawn(arc_self.clone().recv_new_signatures(
+        tokio::task::spawn(arc_self.clone().network_recv_loop(
             partials_stream,
             tx_registry_to_signer,
             cancellation_token.child_token(),

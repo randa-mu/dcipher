@@ -3,7 +3,7 @@
 use crate::bls::metrics::Metrics;
 use crate::bls::{
     BlsSignatureRequest, BlsSigner, BlsThresholdSigner, G1, G1Affine, G2, G2Affine, Group,
-    PartialSignature, PartialSignatureWithRequest, StoredSignatureRequest,
+    NetworkMessage, PartialSignature, PartialSignatureWithRequest, StoredSignatureRequest,
     lagrange_points_interpolate_at,
 };
 use crate::dsigner::BlsSignatureAlgorithm;
@@ -199,7 +199,7 @@ where
                         async |(sig, req)| {
                             let partial = PartialSignatureWithRequest { sig, req };
 
-                            let m = serde_cbor::to_vec(&partial)
+                            let m = serde_cbor::to_vec(&NetworkMessage::PartialSignature(partial))
                                 .expect("serialization should always work");
                             Metrics::report_partials_sent(1);
                             if let Err(e) = tx_to_network.broadcast(m).await {
@@ -262,9 +262,9 @@ where
         }
     }
 
-    pub(super) async fn recv_new_signatures<E>(
+    pub(super) async fn network_recv_loop<E>(
         self: Arc<Self>,
-        mut partials_stream: impl Stream<Item = Result<ReceivedMessage<u16>, E>> + Unpin + Send,
+        mut network_stream: impl Stream<Item = Result<ReceivedMessage<u16>, E>> + Unpin + Send,
         new_message_to_sign: tokio::sync::mpsc::UnboundedSender<BlsSignatureRequest>,
         cancellation_token: CancellationToken,
     ) where
@@ -276,7 +276,7 @@ where
                     sender: party_id,
                     content: partial,
                     ..
-                } = match partials_stream.next().await {
+                } = match network_stream.next().await {
                     Some(Ok(m)) => m,
                     Some(Err(e)) => {
                         tracing::error!(error = ?e, "Failed to receive message");
@@ -288,65 +288,16 @@ where
                     }
                 };
 
-                let PartialSignatureWithRequest::<BLS> { sig, req } =
-                    match serde_cbor::from_slice(&partial) {
-                        Ok(partial) => partial,
-                        Err(e) => {
-                            tracing::error!(
-                                sender_id = party_id,
-                                error = ?e,
-                                "Failed to decode partial signature."
-                            );
-                            continue;
-                        }
-                    };
-
-                Metrics::report_partials_received(1);
-
-                // Get the dst, making sure the request is supported
-                let Some(dst) = self
-                    .filter
-                    .get_rfc9380_dst_if_supported(&req.args, &req.alg)
-                else {
-                    tracing::warn!(sender_id = party_id, app = ?req.args.app(), alg = ?req.alg, "Received partial with unsupported app");
-                    continue;
-                };
-                let stored_req = StoredSignatureRequest {
-                    dst,
-                    m: req.m.clone(),
-                };
-
-                // Verify the validity of the partial signature for the specified id
-                match self.try_verify(&req.m, &stored_req.dst, sig, &party_id, &req.alg) {
-                    Ok(true) => (),
-                    Ok(false) => {
-                        tracing::error!(sender_id = party_id, "Received invalid partial signature");
-                        Metrics::report_invalid_partials(1);
-                        continue;
-                    }
+                let m: NetworkMessage<_> = match serde_cbor::from_slice(&partial) {
+                    Ok(m) => m,
                     Err(e) => {
-                        // Algorithm should be supported at this point
-                        tracing::warn!(sender_id = party_id, error = ?e, "Failed to verify partial");
+                        tracing::error!(sender_id = party_id, error = ?e, "Failed to decode network message");
                         continue;
                     }
-                }
+                };
 
-                // Valid signature, add it to our cache
-                self.store_and_process_partial(
-                    stored_req.clone(),
-                    PartialSignature { id: party_id, sig },
-                    &req,
-                );
-
-                if self.eager_signing {
-                    // If eager signing is enabled and the message has not been signed already,
-                    // request to broadcast a partial signature on that message
-                    if !self.partial_issued(&stored_req) {
-                        new_message_to_sign
-                            .send(req)
-                            .expect("failed to forward message to signer");
-                    }
-                }
+                let NetworkMessage::PartialSignature(partial) = m;
+                self.handle_partial_from_network(partial, party_id, &new_message_to_sign);
             }
         };
 
@@ -356,6 +307,62 @@ where
             },
 
             _ = inner_fn => (),
+        }
+    }
+
+    fn handle_partial_from_network(
+        &self,
+        partial: PartialSignatureWithRequest<BLS>,
+        sender: u16,
+        new_message_to_sign: &tokio::sync::mpsc::UnboundedSender<BlsSignatureRequest>,
+    ) {
+        let PartialSignatureWithRequest { sig, req } = partial;
+
+        Metrics::report_partials_received(1);
+
+        // Get the dst, making sure the request is supported
+        let Some(dst) = self
+            .filter
+            .get_rfc9380_dst_if_supported(&req.args, &req.alg)
+        else {
+            tracing::warn!(sender_id = sender, app = ?req.args.app(), alg = ?req.alg, "Received partial with unsupported app");
+            return;
+        };
+        let stored_req = StoredSignatureRequest {
+            dst,
+            m: req.m.clone(),
+        };
+
+        // Verify the validity of the partial signature for the specified id
+        match self.try_verify(&req.m, &stored_req.dst, sig, &sender, &req.alg) {
+            Ok(true) => (),
+            Ok(false) => {
+                tracing::error!(sender_id = sender, "Received invalid partial signature");
+                Metrics::report_invalid_partials(1);
+                return;
+            }
+            Err(e) => {
+                // Algorithm should be supported at this point
+                tracing::warn!(sender_id = sender, error = ?e, "Failed to verify partial");
+                return;
+            }
+        }
+
+        // Valid signature, add it to our cache
+        self.store_and_process_partial(
+            stored_req.clone(),
+            PartialSignature { id: sender, sig },
+            &req,
+        );
+
+        if self.eager_signing {
+            // If eager signing is enabled and the message has not been signed already,
+            // request to broadcast a partial signature on that message
+            if !self.partial_issued(&stored_req) {
+                new_message_to_sign
+                    .send(req)
+                    .expect("failed to forward message to signer");
+            }
         }
     }
 
