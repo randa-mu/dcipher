@@ -26,14 +26,14 @@ pub async fn start_verifier(args: StartArgs) -> anyhow::Result<()> {
         res = healthcheck_server.start() =>  {
            match res {
                 Ok(()) => anyhow::bail!("healthcheck stopped unexpectedly without an error"),
-                Err(e) => anyhow::bail!("healthcheck stopped unexpectedly: {}", e),
+                Err(e) => Err(e.context("healthcheck stopped unexpectedly"))?,
            }
         }
 
         res = App::start(&app_config) => {
            match res {
                 Ok(()) => anyhow::bail!("swap loop stopped unexpectedly without an error"),
-                Err(e) => anyhow::bail!("swap loop stopped unexpectedly: {}", e),
+                Err(e) => Err(e.context("swap loop stopped unexpectedly"))?,
            }
         }
     }
