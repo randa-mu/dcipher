@@ -62,6 +62,20 @@ where
                     break;
                 };
 
+                // First, request partials on each of these messages
+                let ms = reqs.iter().cloned().map(|req| {
+                    serde_cbor::to_vec(&NetworkMessage::<BLS>::ReplayPartials(req))
+                        .expect("serialization should always work")
+                });
+
+                if let Err(e) = futures_util::future::try_join_all(
+                    ms.map(|m| tx_to_network.send_single(m, self.id)),
+                )
+                .await
+                {
+                    tracing::error!(error = ?e, "Failed to request partials")
+                }
+
                 // Remove messages with partial already issued
                 let (reqs, stored_reqs): (Vec<_>, Vec<_>) = {
                     let mut partials_cache = self
