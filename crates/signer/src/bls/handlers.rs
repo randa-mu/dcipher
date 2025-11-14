@@ -13,6 +13,7 @@ use futures_util::{Stream, StreamExt};
 use itertools::{Either, izip};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 use utils::display::LogBytes;
 use utils::dst::NamedCurveGroup;
@@ -38,9 +39,9 @@ where
     G2Affine<BLS>:
         PointSerializeCompressed + PointDeserializeCompressed + PointSerializeUncompressed,
 {
-    pub(super) async fn recv_new_requests<T>(
+    pub(super) async fn sign_requests_loop<T>(
         self: Arc<Self>,
-        mut rx_reqs: tokio::sync::mpsc::UnboundedReceiver<BlsSignatureRequest>,
+        mut rx_reqs: UnboundedReceiver<BlsSignatureRequest>,
         tx_to_network: T,
         cancellation_token: CancellationToken,
     ) where
@@ -262,18 +263,20 @@ where
         }
     }
 
-    pub(super) async fn network_recv_loop<E>(
+    pub(super) async fn network_recv_loop<T, E>(
         self: Arc<Self>,
         mut network_stream: impl Stream<Item = Result<ReceivedMessage<u16>, E>> + Unpin + Send,
-        new_message_to_sign: tokio::sync::mpsc::UnboundedSender<BlsSignatureRequest>,
+        tx_new_message_to_sign: UnboundedSender<BlsSignatureRequest>,
+        tx_to_network: T,
         cancellation_token: CancellationToken,
     ) where
+        T: TransportSender<Identity = u16>,
         E: std::error::Error + Send + Sync + 'static,
     {
         let inner_fn = async move {
             loop {
                 let ReceivedMessage {
-                    sender: party_id,
+                    sender: sender_id,
                     content: partial,
                     ..
                 } = match network_stream.next().await {
@@ -291,13 +294,30 @@ where
                 let m: NetworkMessage<_> = match serde_cbor::from_slice(&partial) {
                     Ok(m) => m,
                     Err(e) => {
-                        tracing::error!(sender_id = party_id, error = ?e, "Failed to decode network message");
+                        tracing::error!(sender_id, error = ?e, "Failed to decode network message");
                         continue;
                     }
                 };
 
-                let NetworkMessage::PartialSignature(partial) = m;
-                self.handle_partial_from_network(partial, party_id, &new_message_to_sign);
+                match m {
+                    NetworkMessage::PartialSignature(partial) => self.handle_partial_from_network(
+                        partial,
+                        sender_id,
+                        &tx_new_message_to_sign,
+                    ),
+                    NetworkMessage::ReplayPartials(req) => {
+                        self.handle_replay_partials_from_network(req, sender_id, &tx_to_network)
+                            .await;
+                    }
+                    NetworkMessage::KnownPartials(req, partials) => {
+                        self.handle_known_partials_from_network(
+                            req,
+                            sender_id,
+                            partials,
+                            &tx_new_message_to_sign,
+                        );
+                    }
+                }
             }
         };
 
@@ -314,7 +334,7 @@ where
         &self,
         partial: PartialSignatureWithRequest<BLS>,
         sender: u16,
-        new_message_to_sign: &tokio::sync::mpsc::UnboundedSender<BlsSignatureRequest>,
+        new_message_to_sign: &UnboundedSender<BlsSignatureRequest>,
     ) {
         let PartialSignatureWithRequest { sig, req } = partial;
 
@@ -363,6 +383,77 @@ where
                     .send(req)
                     .expect("failed to forward message to signer");
             }
+        }
+    }
+
+    #[tracing::instrument(skip_all, fields(requester_id))]
+    async fn handle_replay_partials_from_network<T>(
+        &self,
+        req: BlsSignatureRequest,
+        requester_id: u16,
+        tx_to_network: &T,
+    ) where
+        T: TransportSender<Identity = u16>,
+    {
+        tracing::info!(requester_id, "Received replay partials request from node");
+
+        // Get the dst, making sure the request is supported
+        let Some(dst) = self
+            .filter
+            .get_rfc9380_dst_if_supported(&req.args, &req.alg)
+        else {
+            tracing::warn!(requester_id, app = ?req.args.app(), alg = ?req.alg, "Received partial request with unsupported app");
+            return;
+        };
+        let stored_req = StoredSignatureRequest {
+            dst,
+            m: req.m.clone(),
+        };
+
+        let partials: Vec<_> = {
+            let mut partials_cache = self
+                .partials_cache
+                .lock()
+                .expect("a thread panicked with the mutex");
+            partials_cache
+                .get(&stored_req)
+                .map(|p| p.values().cloned().collect())
+                .unwrap_or_default()
+        };
+
+        if partials.is_empty() {
+            tracing::info!(requester_id, msg = %LogBytes(&stored_req.m), "No partials in cache");
+        } else {
+            tracing::info!(
+                requester_id,
+                partials_count = partials.len(),
+                msg = %LogBytes(&stored_req.m),
+                "Sending partials to requester"
+            );
+            let m = serde_cbor::to_vec(&NetworkMessage::KnownPartials(req, partials))
+                .expect("serialization should always work");
+
+            if let Err(e) = tx_to_network.send_single(m, requester_id).await {
+                tracing::error!(error = ?e, "Failed to send partials back to sender");
+            }
+        }
+    }
+
+    #[tracing::instrument(skip_all, fields(sender_id))]
+    fn handle_known_partials_from_network(
+        &self,
+        req: BlsSignatureRequest,
+        sender_id: u16,
+        partials: Vec<PartialSignature<Group<BLS>>>,
+        new_message_to_sign: &UnboundedSender<BlsSignatureRequest>,
+    ) {
+        tracing::info!(sender_id, partials_count = partials.len(), msg = %LogBytes(&req.m), "Received partials from node");
+        for partial in partials {
+            let partial_w_req = PartialSignatureWithRequest {
+                sig: partial.sig,
+                req: req.clone(),
+            };
+            self.handle_partial_from_network(partial_w_req, partial.id, new_message_to_sign)
         }
     }
 

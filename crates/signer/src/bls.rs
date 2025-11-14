@@ -73,6 +73,8 @@ struct StoredSignatureRequest {
 ))]
 enum NetworkMessage<BLS: BlsVerifier> {
     PartialSignature(PartialSignatureWithRequest<BLS>),
+    ReplayPartials(BlsSignatureRequest),
+    KnownPartials(BlsSignatureRequest, Vec<PartialSignature<Group<BLS>>>),
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -408,9 +410,9 @@ where
             .expect("transport should provide at least one partial sender");
 
         // Spawn task that handles signing requests from registry
-        tokio::task::spawn(arc_self.clone().recv_new_requests(
+        tokio::task::spawn(arc_self.clone().sign_requests_loop(
             rx_signer_to_registry,
-            tx_signer_to_network,
+            tx_signer_to_network.clone(),
             cancellation_token.child_token(),
         ));
 
@@ -418,6 +420,7 @@ where
         tokio::task::spawn(arc_self.clone().network_recv_loop(
             partials_stream,
             tx_registry_to_signer,
+            tx_signer_to_network,
             cancellation_token.child_token(),
         ));
 
