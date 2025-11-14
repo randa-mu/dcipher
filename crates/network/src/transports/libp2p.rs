@@ -324,7 +324,7 @@ impl<ID: PartyIdentifier> Behaviour<ID> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::{MessageType, ReceivedMessage, Transport, TransportSender};
+    use crate::{MessageType, ReceivedMessage, Transport, TransportSender, TransportSenderExt};
     use futures_util::StreamExt;
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
@@ -391,6 +391,16 @@ pub(crate) mod tests {
         let tx_1 = Transport::sender(&mut transport_1).unwrap();
         let tx_2 = Transport::sender(&mut transport_2).unwrap();
 
+        // loop until all nodes are connected
+        let wait_all_peers = async {
+            while tx_1.list_connected_peers().await.unwrap().len() != 2 {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        };
+        tokio::time::timeout(global_timeout, wait_all_peers)
+            .await
+            .expect("to connect to all peers within timeout");
+
         // Send one message from node 1 to node 2
         let m = b"sent to node 2";
         tx_1.send_single(m.to_vec(), 2)
@@ -444,6 +454,16 @@ pub(crate) mod tests {
         let mut rx_3 = transport_3.receiver_stream().unwrap();
 
         let tx_1 = transport_1.sender().unwrap();
+
+        // loop until all nodes are connected
+        let wait_all_peers = async {
+            while tx_1.list_connected_peers().await.unwrap().len() != 2 {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        };
+        tokio::time::timeout(global_timeout, wait_all_peers)
+            .await
+            .expect("to connect to all peers within timeout");
 
         // Broadcast one message from node 1
         let m = b"broadcast from node 1";
