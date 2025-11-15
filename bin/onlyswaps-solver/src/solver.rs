@@ -76,8 +76,20 @@ impl<'a, CSP: ChainStateProvider, FA: FeeAdapter> Solver<'a, CSP, FA> {
                 continue;
             }
 
-            let estimated_fees = self.fee_estimator.fetch_fee(transfer).await?;
-            update_trades(transfer, &estimated_fees, &mut trades, &mut owned_states);
+            match self.fee_estimator.fetch_fee(transfer).await {
+                Err(e) => {
+                    tracing::error!(
+                        request_id = %transfer.request_id,
+                        src_chain_id = ?transfer.params.srcChainId,
+                        dest_chain_id = ?transfer.params.dstChainId,
+                        error = ?e,
+                        "error fetching fees"
+                    )
+                }
+                Ok(estimated_fees) => {
+                    update_trades(transfer, &estimated_fees, &mut trades, &mut owned_states)
+                }
+            }
         }
 
         Ok(trades)
