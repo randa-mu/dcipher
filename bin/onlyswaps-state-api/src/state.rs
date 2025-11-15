@@ -3,7 +3,7 @@ use crate::omnievent::{StateType, StateUpdate, StateUpdateSource};
 use crate::serde::{LongNumber, ShortNumber};
 use alloy::primitives::{Address, FixedBytes, U256};
 use alloy::providers::DynProvider;
-use generated::onlyswaps::router::IRouter::SwapRequestParameters;
+use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
 use serde::Serialize;
 use std::fmt::Display;
 use std::time::SystemTime;
@@ -231,7 +231,7 @@ impl StateMachine {
     }
 }
 
-fn calculate_amount_in(params: &SwapRequestParameters) -> U256 {
+fn calculate_amount_in(params: &SwapRequestParametersWithHooks) -> U256 {
     params.amountOut + params.solverFee + params.verificationFee
 }
 

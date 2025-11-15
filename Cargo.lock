@@ -4995,6 +4995,7 @@ dependencies = [
  "generated",
  "itertools 0.14.0",
  "moka",
+ "onlyswaps-client",
  "serde",
  "serde_json",
  "shellexpand",

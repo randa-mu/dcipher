@@ -1,8 +1,8 @@
 //! Various errors returned by the only swaps client.
 
 use crate::config::token::TokenTag;
+use generated::onlyswaps::errors_lib::ErrorsLib::ErrorsLibErrors;
 use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors; // bindings quirk
-use generated::onlyswaps::router::Router::RouterErrors;
 
 #[derive(thiserror::Error, Debug)]
 pub enum OnlySwapsClientError {
@@ -37,7 +37,7 @@ pub enum OnlySwapsClientError {
     ApproveReverted,
 
     #[error("router contract error: {0:?}")]
-    RouterContract(RouterErrors),
+    RouterContract(ErrorsLibErrors),
 
     #[error("erc20 contract error: {0:?}")]
     Erc20Contract(IERC20Errors),
@@ -76,8 +76,8 @@ impl From<alloy::signers::Error> for OnlySwapsClientError {
     }
 }
 
-impl From<RouterErrors> for OnlySwapsClientError {
-    fn from(value: RouterErrors) -> Self {
+impl From<ErrorsLibErrors> for OnlySwapsClientError {
+    fn from(value: ErrorsLibErrors) -> Self {
         Self::RouterContract(value)
     }
 }
@@ -91,7 +91,7 @@ impl From<IERC20Errors> for OnlySwapsClientError {
 impl From<(alloy::contract::Error, &'static str)> for OnlySwapsClientError {
     fn from((e, context): (alloy::contract::Error, &'static str)) -> Self {
         // Attempt to decode it as a RouterError
-        if let Some(e) = e.as_decoded_interface_error::<RouterErrors>() {
+        if let Some(e) = e.as_decoded_interface_error::<ErrorsLibErrors>() {
             return e.into();
         }
 

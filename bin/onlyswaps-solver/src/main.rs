@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod executor;
+mod fee_adapter;
 mod model;
 mod network;
 mod solver;

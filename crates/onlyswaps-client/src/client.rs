@@ -18,10 +18,10 @@ use alloy::providers::{DynProvider, Provider};
 use alloy::rpc::types::{Log, TransactionReceipt};
 use alloy::sol_types::SolEvent;
 use futures_util::StreamExt;
+use generated::onlyswaps::i_router::IRouter;
+use generated::onlyswaps::i_router::IRouter::IRouterInstance;
 use generated::onlyswaps::ierc20::IERC20;
 use generated::onlyswaps::ierc20::IERC20::IERC20Instance;
-use generated::onlyswaps::router::Router;
-use generated::onlyswaps::router::Router::RouterInstance;
 use std::marker::PhantomData;
 
 /// Request id used by only swaps
@@ -139,7 +139,7 @@ impl OnlySwapsClient {
         approve_spending_and_wait(
             src_chain_config,
             &ierc20,
-            swap_request.amount + swap_request.fee,
+            swap_request.amount_in + swap_request.fee,
             Some(src_chain_config.timeout),
         )
         .await?;
@@ -358,7 +358,7 @@ fn request_id_from_swap_logs<'l>(
 ) -> Option<OnlySwapsRequestId> {
     let swap_requested_logs: Vec<_> = logs
         .into_iter()
-        .filter_map(|log| Router::SwapRequested::decode_log_validate(&log.inner).ok())
+        .filter_map(|log| IRouter::SwapRequested::decode_log_validate(&log.inner).ok())
         .collect();
 
     if swap_requested_logs.is_empty() {
@@ -437,7 +437,8 @@ async fn swap(
 ) -> Result<OnlySwapsReceipt, OnlySwapsClientError> {
     let OnlySwapsRequest {
         recipient,
-        amount,
+        amount_in,
+        amount_out,
         fee,
         route:
             SwapRouting {
@@ -448,11 +449,12 @@ async fn swap(
             },
     } = swap_request;
 
-    let router = RouterInstance::new(src_chain_config.router_address, provider);
+    let router = IRouterInstance::new(src_chain_config.router_address, provider);
     let call = router.requestCrossChainSwap(
         src_token,
         dst_token,
-        amount,
+        amount_in,
+        amount_out,
         fee,
         U256::from(dst_chain),
         recipient,

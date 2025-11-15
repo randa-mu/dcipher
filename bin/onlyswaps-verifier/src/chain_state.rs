@@ -9,10 +9,9 @@ use anyhow::anyhow;
 use config::network::NetworkConfig;
 use config::timeout::TimeoutConfig;
 use futures::future::{try_join, try_join_all};
-use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::{
-    RouterErrors, RouterInstance, getSwapRequestReceiptReturn,
-};
+use generated::onlyswaps::errors_lib::ErrorsLib::ErrorsLibErrors;
+use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
+use generated::onlyswaps::i_router::IRouter::{IRouterInstance, getSwapRequestReceiptReturn};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -32,7 +31,7 @@ pub(crate) struct NetworkBus<P> {
 pub(crate) struct Network<P> {
     chain_id: u64,
     should_write: bool,
-    router: RouterInstance<P>,
+    router: IRouterInstance<P>,
     timeout_config: TimeoutConfig,
 }
 
@@ -75,7 +74,7 @@ impl NetworkBus<DynProvider> {
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<SwapRequestParameters> {
+    ) -> anyhow::Result<SwapRequestParametersWithHooks> {
         let transport = self
             .networks
             .get(&chain_id)
@@ -124,7 +123,7 @@ impl Network<DynProvider> {
         Ok(Self {
             chain_id: config.chain_id,
             should_write: config.should_write,
-            router: RouterInstance::new(Address(config.router_address), provider.clone()),
+            router: IRouterInstance::new(Address(config.router_address), provider.clone()),
             timeout_config,
         })
     }
@@ -143,7 +142,7 @@ impl<P: Provider> Network<P> {
     pub async fn fetch_transfer_params(
         &self,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<SwapRequestParameters> {
+    ) -> anyhow::Result<SwapRequestParametersWithHooks> {
         Ok(self
             .router
             .getSwapRequestParameters(request_id)
@@ -219,8 +218,8 @@ impl<P: Provider> Network<P> {
             Ok(tx) => tx,
             Err(e) => {
                 // Try to decode it as a Router error
-                match e.as_decoded_interface_error::<RouterErrors>() {
-                    Some(RouterErrors::AlreadyFulfilled(_)) => {
+                match e.as_decoded_interface_error::<ErrorsLibErrors>() {
+                    Some(ErrorsLibErrors::AlreadyFulfilled(_)) => {
                         tracing::info!(request_id = ?verified_swap.request_id, "swap request already fulfilled");
                         return Ok(());
                     }

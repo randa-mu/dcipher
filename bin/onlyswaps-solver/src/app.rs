@@ -1,4 +1,5 @@
 use crate::executor::TradeExecutor;
+use crate::fee_adapter::DefaultFeeAdapter;
 use crate::model::{BlockEvent, RequestId};
 use crate::network::Network;
 use crate::solver::Solver;
@@ -22,7 +23,8 @@ impl App {
             .map(|network| network.stream_block_numbers());
         let streams = try_join_all(block_numbers).await?;
         let mut stream = Box::pin(select_all(streams));
-        let mut solver = Solver::from(&networks).await?;
+        let fee_estimator = DefaultFeeAdapter::new();
+        let mut solver = Solver::new(&networks, &fee_estimator).await?;
         let executor = TradeExecutor::new(&networks);
 
         // we pull new chain state every block, so inflight requests may not have been
@@ -34,7 +36,7 @@ impl App {
             .build();
 
         while let Some(BlockEvent { chain_id, .. }) = stream.next().await {
-            let trades = solver.fetch_state(chain_id, &inflight_requests).await?;
+            let trades = solver.solve(chain_id, &inflight_requests).await?;
             if !trades.is_empty() {
                 tracing::info!(
                     chain_id = chain_id,

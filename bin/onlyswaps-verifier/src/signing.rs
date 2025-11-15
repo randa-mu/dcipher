@@ -9,7 +9,7 @@ use dcipher_signer::dsigner::{
     ApplicationArgs, BlsSignatureAlgorithm, BlsSignatureCurve, BlsSignatureHash,
     DSignerSchemeSigner, OnlySwapsVerifierArgs, SignatureAlgorithm, SignatureRequest,
 };
-use generated::onlyswaps::router::IRouter::SwapRequestParameters;
+use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -45,7 +45,7 @@ where
     pub async fn sign(
         &self,
         solver: &Address,
-        valid_transfer_params: &SwapRequestParameters,
+        valid_transfer_params: &SwapRequestParametersWithHooks,
     ) -> anyhow::Result<Vec<u8>> {
         let src_chain_id = valid_transfer_params.srcChainId.try_into()?;
         let m = create_message(valid_transfer_params, solver);
@@ -56,7 +56,7 @@ where
     }
 }
 
-pub fn create_message(params: &SwapRequestParameters, solver: &Address) -> Vec<u8> {
+pub fn create_message(params: &SwapRequestParametersWithHooks, solver: &Address) -> Vec<u8> {
     (
         solver,
         params.sender,
@@ -152,12 +152,13 @@ mod test {
     async fn matching_receipt_and_params_create_valid_signature() {
         let destination_chain_id = 1;
         let request_id = FixedBytes::from(U256::from(1));
-        let transfer_params = SwapRequestParameters {
+        let transfer_params = SwapRequestParametersWithHooks {
             dstChainId: U256::from(destination_chain_id),
             sender: Address::from(U160::from(3)),
             recipient: Address::from(U160::from(5)),
             tokenIn: Address::from(U160::from(3)),
             tokenOut: Address::from(U160::from(4)),
+            amountIn: U256::from(10),
             amountOut: U256::from(10),
             srcChainId: U256::from(2),
             verificationFee: U256::from(3),
@@ -165,6 +166,8 @@ mod test {
             nonce: U256::from(1),
             executed: true,
             requestedAt: U256::from(123456),
+            preHooks: Vec::new(),
+            postHooks: Vec::new(),
         };
 
         let transfer_receipt = getSwapRequestReceiptReturn {
@@ -192,12 +195,13 @@ mod test {
     async fn signing_errors_propagate() {
         let destination_chain_id = 1;
         let request_id = FixedBytes::from(U256::from(1));
-        let transfer_params = SwapRequestParameters {
+        let transfer_params = SwapRequestParametersWithHooks {
             dstChainId: U256::from(destination_chain_id),
             sender: Address::from(U160::from(3)),
             recipient: Address::from(U160::from(3)),
             tokenIn: Address::from(U160::from(3)),
             tokenOut: Address::from(U160::from(3)),
+            amountIn: U256::from(10),
             amountOut: U256::from(10),
             srcChainId: U256::from(2),
             verificationFee: U256::from(3),
@@ -205,6 +209,8 @@ mod test {
             nonce: U256::from(1),
             executed: true,
             requestedAt: U256::from(123456),
+            preHooks: Vec::new(),
+            postHooks: Vec::new(),
         };
 
         let transfer_receipt = getSwapRequestReceiptReturn {
@@ -247,8 +253,8 @@ mod test {
 
     use ark_ec::{AffineRepr, CurveGroup};
     use futures::future::try_join_all;
-    use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-    use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
+    use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
+    use generated::onlyswaps::i_router::IRouter::getSwapRequestReceiptReturn;
 
     #[tokio::test]
     async fn in_memory_test() -> anyhow::Result<()> {

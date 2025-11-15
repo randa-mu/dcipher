@@ -47,8 +47,8 @@ impl Evaluator {
 mod tests {
     use super::*;
     use alloy::primitives::{Address, FixedBytes, U160, U256};
-    use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-    use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
+    use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
+    use generated::onlyswaps::i_router::IRouter::getSwapRequestReceiptReturn;
     use std::str::FromStr;
 
     #[test]
@@ -182,12 +182,13 @@ mod tests {
         FixedBytes::<32>::from([byte; 32])
     }
 
-    fn base_params() -> SwapRequestParameters {
-        SwapRequestParameters {
+    fn base_params() -> SwapRequestParametersWithHooks {
+        SwapRequestParametersWithHooks {
             dstChainId: U256::from(43114),
             srcChainId: U256::from(8453),
             tokenIn: Address::from_str("2226cAb3cD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(),
             tokenOut: Address::from_str("2226cAb3cD7502C6b85ed2E11Fd5988AF76Cdd67").unwrap(),
+            amountIn: U256::from(1_000_000u64),
             amountOut: U256::from(1_000_000u64),
             verificationFee: U256::from(10_000u64),
             solverFee: U256::from(10_000u64),
@@ -196,11 +197,13 @@ mod tests {
             recipient: Address::from_str("2111cAb3cD7502C6b85ed2E11Fd5988AF76Cdd66").unwrap(),
             executed: false,
             requestedAt: U256::from(123456),
+            preHooks: Vec::new(),
+            postHooks: Vec::new(),
         }
     }
 
     fn receipt_from(
-        params: &SwapRequestParameters,
+        params: &SwapRequestParametersWithHooks,
         amount_out: U256,
     ) -> getSwapRequestReceiptReturn {
         getSwapRequestReceiptReturn {

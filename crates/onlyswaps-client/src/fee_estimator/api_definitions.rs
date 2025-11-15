@@ -14,7 +14,7 @@ pub struct FeeEstimateRequest {
 }
 
 /// Fee details for a specific chain
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ChainFeeDetails {
     /// Currency symbol (e.g., "AVAX", "ETH")
     pub currency: String,
@@ -31,7 +31,7 @@ pub struct ChainFeeDetails {
 }
 
 /// Breakdown of total fees
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct FeeBreakdown {
     /// Solver fee
     pub solver: U256,
@@ -42,7 +42,7 @@ pub struct FeeBreakdown {
 }
 
 /// Response from the fee estimation endpoint
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct FeeEstimateResponse {
     /// Fee details for the source chain
     pub src: ChainFeeDetails,
@@ -54,6 +54,10 @@ pub struct FeeEstimateResponse {
     pub transfer_amount: U256,
     /// Amount that needs to be approved for the swap
     pub approval_amount: U256,
+    /// Amount out to be expected on the destination chain.
+    /// This accounts for changes in encoding and
+    /// _may_ have been determined by a price oracle
+    pub amount_out: U256,
     /// Unix timestamp of the estimate
     pub timestamp: u64,
 }

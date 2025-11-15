@@ -16,6 +16,7 @@ futures.workspace = true
 generated.workspace = true
 itertools.workspace = true
 moka = { version = "0.12.10", features = ["future"] }
+onlyswaps-client = { workspace = true, features = ["fee-estimator"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 speculoos = "0.13.0"
