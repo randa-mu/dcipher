@@ -11,7 +11,7 @@ use futures::StreamExt;
 use futures::future::try_join_all;
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken;
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken::ERC20FaucetTokenInstance;
-use generated::onlyswaps::router::Router::RouterInstance;
+use generated::onlyswaps::i_router::IRouter::IRouterInstance;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -23,7 +23,7 @@ pub(crate) struct Network<P> {
     pub provider: P,
     pub own_addr: Address,
     pub tokens: Vec<ERC20FaucetTokenInstance<P>>,
-    pub router: RouterInstance<P>,
+    pub router: IRouterInstance<P>,
 }
 
 impl Network<DynProvider> {
@@ -74,7 +74,7 @@ impl Network<DynProvider> {
         }
         Ok(Self {
             tokens,
-            router: RouterInstance::new(config.router_address, provider.clone()),
+            router: IRouterInstance::new(config.router_address, provider.clone()),
             chain_id,
             provider,
             own_addr,

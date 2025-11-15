@@ -1,11 +1,11 @@
 //! Client for the only swaps fee estimator service.
 
-mod api_definitions;
+pub mod api_definitions;
 
 pub use api_definitions::FeeEstimateResponse as FeeEstimate;
 
 use alloy::primitives::{Address, U256};
-use api_definitions::*;
+pub use api_definitions::*;
 
 pub const FEE_ESTIMATOR_ENDPOINT: &str = "https://fees.onlyswaps.dcipher.network/fees";
 

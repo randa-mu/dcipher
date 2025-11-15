@@ -6,15 +6,16 @@ use alloy::providers::Provider;
 use anyhow::{Context, anyhow};
 use config::timeout::TimeoutConfig;
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken::ERC20FaucetTokenInstance;
+use generated::onlyswaps::errors_lib::ErrorsLib::ErrorsLibErrors;
+use generated::onlyswaps::i_router::IRouter::IRouterInstance;
 use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors;
-use generated::onlyswaps::router::Router::{RouterErrors, RouterInstance};
 use moka::future::Cache;
 use std::collections::HashMap;
 use tokio::time::timeout;
 
 pub(crate) struct TradeExecutor<'a, P> {
     own_address: Address,
-    routers: HashMap<u64, &'a RouterInstance<P>>,
+    routers: HashMap<u64, &'a IRouterInstance<P>>,
     tokens: HashMap<u64, &'a Vec<ERC20FaucetTokenInstance<P>>>,
 }
 
@@ -75,7 +76,8 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             {
                 Ok(Ok(_)) => {
                     tracing::info!(
-                        amount = ?trade.swap_amount,
+                        amount_in = ?trade.amount_in,
+                        amount_out = ?trade.amount_out,
                         src_chain_id = ?trade.src_chain_id,
                         dest_chain_id = ?trade.dest_chain_id,
                         request_id = %trade.request_id,
@@ -84,7 +86,8 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
                 }
                 Ok(Err(e)) => {
                     tracing::error!(
-                        amount = ?trade.swap_amount,
+                        amount_in = ?trade.amount_in,
+                        amount_out = ?trade.amount_out,
                         src_chain_id = ?trade.src_chain_id,
                         dest_chain_id = ?trade.dest_chain_id,
                         request_id = ?trade.request_id,
@@ -103,14 +106,14 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
 
 async fn execute_trade(
     trade: &Trade,
-    router: &RouterInstance<impl Provider>,
+    router: &IRouterInstance<impl Provider>,
     token: &ERC20FaucetTokenInstance<impl Provider>,
     own_addr: Address,
 ) -> anyhow::Result<TxHash> {
     // in theory, we shouldn't need to wait until the next block because txs will be processed in nonce order
     // but for whatever reason this doesn't seem to be the case :(
     let tx = token
-        .approve(*router.address(), trade.swap_amount)
+        .approve(*router.address(), trade.amount_out)
         .send()
         .await
         .map_err(|e| {
@@ -131,9 +134,11 @@ async fn execute_trade(
             trade.recipient_addr,
             trade.token_in_addr,
             trade.token_out_addr,
-            trade.swap_amount,
+            trade.amount_out,
             trade.src_chain_id,
             trade.nonce,
+            trade.pre_hooks.to_vec(),
+            trade.post_hooks.to_vec(),
         )
         .send()
         .await
@@ -143,7 +148,7 @@ async fn execute_trade(
                 return anyhow!("erc20 contract error: {erc20_err:?}");
             }
             // Try to decode it as a Router error
-            if let Some(router_err) = e.as_decoded_interface_error::<RouterErrors>() {
+            if let Some(router_err) = e.as_decoded_interface_error::<ErrorsLibErrors>() {
                 return anyhow!("router contract error: {router_err:?}");
             }
             e.into()

@@ -9,7 +9,8 @@ use alloy::primitives::{Address, U256};
 #[derive(Copy, Clone, Debug)]
 pub struct OnlySwapsRequest {
     pub recipient: Address,
-    pub amount: U256,
+    pub amount_in: U256,
+    pub amount_out: U256,
     pub fee: U256,
     pub route: SwapRouting,
 }
@@ -33,7 +34,7 @@ pub struct OnlySwapsRequest {
 /// async fn main() {
 ///     let request = OnlySwapsRequestBuilder::new()
 ///         .recipient(Address::default()) // do not use that address
-///         .amount(U256::from(1_000_000_000_000_000_000u128)) // 1e18
+///         .amount_in(U256::from(1_000_000_000_000_000_000u128)) // 1e18
 ///         .solver_fee(U256::from(1_000_000_000_000_000_000u128)) // 1e18
 ///         .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
 ///         .build()
@@ -54,7 +55,7 @@ pub struct OnlySwapsRequest {
 /// async fn main() {
 ///     let request = OnlySwapsRequestBuilder::new()
 ///         .recipient(Address::default()) // do not use that address
-///         .amount(U256::from(1_000_000_000_000_000_000u128)) // 1e18
+///         .amount_in(U256::from(1_000_000_000_000_000_000u128)) // 1e18
 ///         .route(SwapRouting::new_same_token_from_configs(&BASE_SEPOLIA, &AVAX_FUJI, &TokenTag::RUSD))
 ///         .estimate_fee(&FeeEstimator::default())
 ///         .await
@@ -88,7 +89,8 @@ pub struct OnlySwapsRequest {
 #[derive(Clone, Default)]
 pub struct OnlySwapsRequestBuilder {
     recipient: Option<Address>,
-    amount: Option<U256>,
+    amount_in: Option<U256>,
+    amount_out: Option<U256>,
     solver_fee: Option<U256>,
     src_chain: Option<u64>,
     dst_chain: Option<u64>,
@@ -118,10 +120,15 @@ impl OnlySwapsRequestBuilder {
         self
     }
 
-    /// Sets the maximum amount for the swap. Note that you will receive less than amount on
+    /// Sets the maximum amount_in for the swap. Note that you will receive less than amount on
     /// the destination chain as this does not take the network fee into account.
-    pub fn amount(mut self, amount: U256) -> Self {
-        self.amount = Some(amount);
+    pub fn amount_in(mut self, amount: U256) -> Self {
+        self.amount_in = Some(amount);
+        self
+    }
+
+    pub fn amount_out(mut self, amount: U256) -> Self {
+        self.amount_out = Some(amount);
         self
     }
 
@@ -199,8 +206,8 @@ impl OnlySwapsRequestBuilder {
         mut self,
         estimator: &crate::FeeEstimator,
     ) -> Result<Self, OnlySwapsRequestBuilderError> {
-        let amount = self
-            .amount
+        let amount_in = self
+            .amount_in
             .expect("cannot estimate fees without a desired amount");
         let src_chain = self
             .src_chain
@@ -214,7 +221,7 @@ impl OnlySwapsRequestBuilder {
         let dst_token = self.dst_token.unwrap_or(src_token);
 
         let estimate = estimator
-            .estimate_fees(src_chain, dst_chain, amount, src_token, dst_token)
+            .estimate_fees(src_chain, dst_chain, amount_in, src_token, dst_token)
             .await?;
         self.solver_fee = Some(estimate.fees.solver);
         Ok(self)
@@ -261,7 +268,8 @@ impl OnlySwapsRequestBuilder {
             .estimate_fees(src_chain, dst_chain, amount, src_token, dst_token)
             .await?;
 
-        self.amount = Some(amount);
+        self.amount_in = Some(amount);
+        self.amount_out = Some(estimate.amount_out);
         self.solver_fee = Some(estimate.fees.solver);
         Ok(self)
     }
@@ -278,7 +286,8 @@ impl OnlySwapsRequestBuilder {
         let dst_token = self.dst_token.unwrap_or(src_token);
 
         Some(OnlySwapsRequest {
-            amount: self.amount?,
+            amount_in: self.amount_in?,
+            amount_out: self.amount_out?,
             fee: self.solver_fee?,
             recipient: self.recipient?,
             route: SwapRouting {

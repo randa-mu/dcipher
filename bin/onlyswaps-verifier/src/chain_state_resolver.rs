@@ -2,8 +2,8 @@ use crate::chain_state::NetworkBus;
 use crate::chain_state_pending::Verification;
 use alloy::primitives::FixedBytes;
 use alloy::providers::DynProvider;
-use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::getSwapRequestReceiptReturn;
+use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
+use generated::onlyswaps::i_router::IRouter::getSwapRequestReceiptReturn;
 use std::sync::Arc;
 
 pub struct ChainStateResolver {
@@ -13,7 +13,7 @@ pub struct ChainStateResolver {
 #[derive(Debug, Clone)]
 pub struct ChainState {
     pub transfer_receipt: getSwapRequestReceiptReturn,
-    pub swap_params: SwapRequestParameters,
+    pub swap_params: SwapRequestParametersWithHooks,
 }
 
 impl ChainStateResolver {
