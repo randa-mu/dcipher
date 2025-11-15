@@ -94,6 +94,7 @@ mod tests {
           },
           "transfer_amount": "1960000000000000000",
           "approval_amount": "2000000000000000000",
+          "amount_out": "2000000000000000000",
           "timestamp": 1761137499
         }"#;
 
