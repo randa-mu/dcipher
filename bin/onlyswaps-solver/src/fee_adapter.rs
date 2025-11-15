@@ -18,7 +18,7 @@ impl FeeAdapter for DefaultFeeAdapter {
             .estimate_fees(
                 transfer.params.srcChainId.try_into()?,
                 transfer.params.dstChainId.try_into()?,
-                transfer.params.amountOut,
+                transfer.params.amountIn,
                 transfer.params.tokenIn,
                 transfer.params.tokenOut,
             )

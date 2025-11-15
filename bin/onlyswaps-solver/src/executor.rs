@@ -76,7 +76,8 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             {
                 Ok(Ok(_)) => {
                     tracing::info!(
-                        amount = ?trade.amount_in,
+                        amount_in = ?trade.amount_in,
+                        amount_out = ?trade.amount_out,
                         src_chain_id = ?trade.src_chain_id,
                         dest_chain_id = ?trade.dest_chain_id,
                         request_id = %trade.request_id,
@@ -85,7 +86,8 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
                 }
                 Ok(Err(e)) => {
                     tracing::error!(
-                        amount = ?trade.amount_in,
+                        amount_in = ?trade.amount_in,
+                        amount_out = ?trade.amount_out,
                         src_chain_id = ?trade.src_chain_id,
                         dest_chain_id = ?trade.dest_chain_id,
                         request_id = ?trade.request_id,
@@ -111,7 +113,7 @@ async fn execute_trade(
     // in theory, we shouldn't need to wait until the next block because txs will be processed in nonce order
     // but for whatever reason this doesn't seem to be the case :(
     let tx = token
-        .approve(*router.address(), trade.amount_in)
+        .approve(*router.address(), trade.amount_out)
         .send()
         .await
         .map_err(|e| {

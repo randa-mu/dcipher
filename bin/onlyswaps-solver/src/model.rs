@@ -132,7 +132,8 @@ impl Hash for Trade {
         self.amount_in.hash(state);
         self.amount_out.hash(state);
         self.nonce.hash(state);
-        // pre_hooks/post_hooks intentionally *not* hashed
+        self.pre_hooks.hash(state);
+        self.post_hooks.hash(state);
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
