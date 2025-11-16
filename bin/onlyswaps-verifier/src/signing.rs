@@ -63,10 +63,13 @@ pub fn create_message(params: &SwapRequestParametersWithHooks, solver: &Address)
         params.recipient,
         params.tokenIn,
         params.tokenOut,
+        params.amountIn,
         params.amountOut,
         params.srcChainId,
         params.dstChainId,
         params.nonce,
+        params.preHooks.clone(),
+        params.postHooks.clone()
     )
         .abi_encode()
 }
@@ -139,7 +142,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::signing::{NetworkedSigner, OnlySwapsSigner, Signer};
-    use alloy::primitives::{Address, FixedBytes, U160, U256};
+    use alloy::primitives::{Address, Bytes, FixedBytes, U160, U256};
     use ark_bn254::Fr;
     use ark_ff::MontFp;
     use async_trait::async_trait;
@@ -190,6 +193,55 @@ mod test {
             .await
             .unwrap();
     }
+
+    #[tokio::test]
+    async fn message_with_hooks_passes() {
+        let destination_chain_id = 1;
+        let request_id = FixedBytes::from(U256::from(1));
+        let transfer_params = SwapRequestParametersWithHooks {
+            dstChainId: U256::from(destination_chain_id),
+            sender: Address::from(U160::from(3)),
+            recipient: Address::from(U160::from(5)),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(4)),
+            amountIn: U256::from(10),
+            amountOut: U256::from(10),
+            srcChainId: U256::from(2),
+            verificationFee: U256::from(3),
+            solverFee: U256::from(2),
+            nonce: U256::from(1),
+            executed: true,
+            requestedAt: U256::from(123456),
+            preHooks: vec![Hook {
+                target: Address::from(U160::from(9)),
+                callData: Bytes::from(b"deadbeef"),
+                gasLimit: U256::from(1)
+            }],
+            postHooks: Vec::new(),
+        };
+
+        let transfer_receipt = getSwapRequestReceiptReturn {
+            dstChainId: U256::from(destination_chain_id),
+            requestId: request_id,
+            srcChainId: U256::from(2),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(4)),
+            fulfilled: true,
+            solver: Address::from(U160::from(4)),
+            recipient: Address::from(U160::from(5)),
+            amountOut: U256::from(10),
+            fulfilledAt: U256::from(8),
+        };
+
+        let onlyswaps = OnlySwapsSigner::new(StubbedSigner::default());
+
+        onlyswaps
+            .sign(&transfer_receipt.solver, &transfer_params)
+            .await
+            .unwrap();
+    }
+
+
 
     #[tokio::test]
     async fn signing_errors_propagate() {
@@ -253,7 +305,7 @@ mod test {
 
     use ark_ec::{AffineRepr, CurveGroup};
     use futures::future::try_join_all;
-    use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
+    use generated::onlyswaps::i_router::IRouter::{Hook, SwapRequestParametersWithHooks};
     use generated::onlyswaps::i_router::IRouter::getSwapRequestReceiptReturn;
 
     #[tokio::test]
