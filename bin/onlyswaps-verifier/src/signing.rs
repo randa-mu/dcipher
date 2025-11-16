@@ -69,7 +69,7 @@ pub fn create_message(params: &SwapRequestParametersWithHooks, solver: &Address)
         params.dstChainId,
         params.nonce,
         params.preHooks.clone(),
-        params.postHooks.clone()
+        params.postHooks.clone(),
     )
         .abi_encode()
 }
@@ -215,7 +215,7 @@ mod test {
             preHooks: vec![Hook {
                 target: Address::from(U160::from(9)),
                 callData: Bytes::from(b"deadbeef"),
-                gasLimit: U256::from(1)
+                gasLimit: U256::from(1),
             }],
             postHooks: Vec::new(),
         };
@@ -240,8 +240,6 @@ mod test {
             .await
             .unwrap();
     }
-
-
 
     #[tokio::test]
     async fn signing_errors_propagate() {
@@ -305,8 +303,8 @@ mod test {
 
     use ark_ec::{AffineRepr, CurveGroup};
     use futures::future::try_join_all;
-    use generated::onlyswaps::i_router::IRouter::{Hook, SwapRequestParametersWithHooks};
     use generated::onlyswaps::i_router::IRouter::getSwapRequestReceiptReturn;
+    use generated::onlyswaps::i_router::IRouter::{Hook, SwapRequestParametersWithHooks};
 
     #[tokio::test]
     async fn in_memory_test() -> anyhow::Result<()> {
