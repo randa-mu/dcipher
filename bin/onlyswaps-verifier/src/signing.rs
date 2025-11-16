@@ -1,5 +1,5 @@
 use crate::config::AppConfig;
-use alloy::primitives::{Address, FixedBytes, U256, keccak256};
+use alloy::primitives::{Address, FixedBytes, U256};
 use alloy::sol_types::SolValue;
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -57,8 +57,6 @@ where
 }
 
 pub fn create_message(params: &SwapRequestParametersWithHooks, solver: &Address) -> Vec<u8> {
-    let pre_hooks = keccak256(params.preHooks.abi_encode());
-    let post_hooks = keccak256(params.postHooks.abi_encode());
     (
         solver,
         params.sender,
@@ -70,8 +68,8 @@ pub fn create_message(params: &SwapRequestParametersWithHooks, solver: &Address)
         params.srcChainId,
         params.dstChainId,
         params.nonce,
-        pre_hooks,
-        post_hooks,
+        params.preHooks.clone(),
+        params.postHooks.clone(),
     )
         .abi_encode()
 }
