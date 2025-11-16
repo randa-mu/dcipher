@@ -217,7 +217,11 @@ mod test {
             preHooks: vec![Hook {
                 target: Address::from(U160::from(9)),
                 callData: Bytes::from(b"deadbeef"),
+<<<<<<< HEAD
                 gasLimit: U256::from(1),
+=======
+                gasLimit: U256::from(1)
+>>>>>>> 765afa4 (fix(verifier): add hooks and amount_in to signature logic)
             }],
             postHooks: Vec::new(),
         };
@@ -243,6 +247,11 @@ mod test {
             .unwrap();
     }
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 765afa4 (fix(verifier): add hooks and amount_in to signature logic)
     #[tokio::test]
     async fn signing_errors_propagate() {
         let destination_chain_id = 1;
@@ -305,6 +314,10 @@ mod test {
 
     use ark_ec::{AffineRepr, CurveGroup};
     use futures::future::try_join_all;
+<<<<<<< HEAD
+=======
+    use generated::onlyswaps::i_router::IRouter::{Hook, SwapRequestParametersWithHooks};
+>>>>>>> 765afa4 (fix(verifier): add hooks and amount_in to signature logic)
     use generated::onlyswaps::i_router::IRouter::getSwapRequestReceiptReturn;
     use generated::onlyswaps::i_router::IRouter::{Hook, SwapRequestParametersWithHooks};
 
