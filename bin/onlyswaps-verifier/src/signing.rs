@@ -1,5 +1,5 @@
 use crate::config::AppConfig;
-use alloy::primitives::{Address, FixedBytes, U256};
+use alloy::primitives::{Address, FixedBytes, U256, keccak256};
 use alloy::sol_types::SolValue;
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -57,16 +57,21 @@ where
 }
 
 pub fn create_message(params: &SwapRequestParametersWithHooks, solver: &Address) -> Vec<u8> {
+    let pre_hooks = keccak256(params.preHooks.abi_encode());
+    let post_hooks = keccak256(params.postHooks.abi_encode());
     (
         solver,
         params.sender,
         params.recipient,
         params.tokenIn,
         params.tokenOut,
+        params.amountIn,
         params.amountOut,
         params.srcChainId,
         params.dstChainId,
         params.nonce,
+        pre_hooks,
+        post_hooks,
     )
         .abi_encode()
 }
@@ -139,7 +144,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::signing::{NetworkedSigner, OnlySwapsSigner, Signer};
-    use alloy::primitives::{Address, FixedBytes, U160, U256};
+    use alloy::primitives::{Address, Bytes, FixedBytes, U160, U256};
     use ark_bn254::Fr;
     use ark_ff::MontFp;
     use async_trait::async_trait;
@@ -167,6 +172,53 @@ mod test {
             executed: true,
             requestedAt: U256::from(123456),
             preHooks: Vec::new(),
+            postHooks: Vec::new(),
+        };
+
+        let transfer_receipt = getSwapRequestReceiptReturn {
+            dstChainId: U256::from(destination_chain_id),
+            requestId: request_id,
+            srcChainId: U256::from(2),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(4)),
+            fulfilled: true,
+            solver: Address::from(U160::from(4)),
+            recipient: Address::from(U160::from(5)),
+            amountOut: U256::from(10),
+            fulfilledAt: U256::from(8),
+        };
+
+        let onlyswaps = OnlySwapsSigner::new(StubbedSigner::default());
+
+        onlyswaps
+            .sign(&transfer_receipt.solver, &transfer_params)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn message_with_hooks_passes() {
+        let destination_chain_id = 1;
+        let request_id = FixedBytes::from(U256::from(1));
+        let transfer_params = SwapRequestParametersWithHooks {
+            dstChainId: U256::from(destination_chain_id),
+            sender: Address::from(U160::from(3)),
+            recipient: Address::from(U160::from(5)),
+            tokenIn: Address::from(U160::from(3)),
+            tokenOut: Address::from(U160::from(4)),
+            amountIn: U256::from(10),
+            amountOut: U256::from(10),
+            srcChainId: U256::from(2),
+            verificationFee: U256::from(3),
+            solverFee: U256::from(2),
+            nonce: U256::from(1),
+            executed: true,
+            requestedAt: U256::from(123456),
+            preHooks: vec![Hook {
+                target: Address::from(U160::from(9)),
+                callData: Bytes::from(b"deadbeef"),
+                gasLimit: U256::from(1),
+            }],
             postHooks: Vec::new(),
         };
 
@@ -253,8 +305,8 @@ mod test {
 
     use ark_ec::{AffineRepr, CurveGroup};
     use futures::future::try_join_all;
-    use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
     use generated::onlyswaps::i_router::IRouter::getSwapRequestReceiptReturn;
+    use generated::onlyswaps::i_router::IRouter::{Hook, SwapRequestParametersWithHooks};
 
     #[tokio::test]
     async fn in_memory_test() -> anyhow::Result<()> {
