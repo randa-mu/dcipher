@@ -116,3 +116,23 @@ impl<Item> RetrySender<Item> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::pin_mut;
+    use tokio_stream::StreamExt;
+
+    #[tokio::test]
+    async fn retry_scheduler_should_wait() {
+        let retry_scheduler = RetryScheduler::new(Duration::from_hours(1));
+        let sender = retry_scheduler.tx();
+        let retry_stream = retry_scheduler.into_stream();
+        pin_mut!(retry_stream);
+
+        sender.send(()).await.expect("to send item successfully");
+        tokio::time::timeout(Duration::from_millis(500), retry_stream.next())
+            .await
+            .expect_err("should timeout");
+    }
+}
