@@ -1,7 +1,6 @@
 use async_stream::stream;
-use chrono::Utc;
 use futures::Stream;
-use std::cmp::{Ordering, Reverse, max};
+use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 use std::ops::Add;
 use std::time::Duration;
@@ -17,7 +16,7 @@ pub struct RetryScheduler<Item> {
 }
 
 pub struct Retry<Item> {
-    earliest_time: i64,
+    earliest_time: tokio::time::Instant,
     item: Item,
 }
 
@@ -73,10 +72,7 @@ where
         stream! {
             loop {
                 let duration_until_retry = self.to_retry.peek()
-                    .map(|it| it.0.earliest_time)
-                    .map(|secs| max(0, secs - Utc::now().timestamp()))
-                    .map(|secs| Duration::from_secs(secs as u64))
-                    .unwrap_or(Duration::MAX);
+                    .map(|it| it.0.earliest_time);
 
                 select! {
                     task = self.rx.recv() => {
@@ -84,7 +80,11 @@ where
                            self.to_retry.push(t);
                         }
                     },
-                    _ = tokio::time::sleep(duration_until_retry) => {
+
+                    // only poll the future if we have a pending item
+                    _ = async {
+                        tokio::time::sleep_until(duration_until_retry.expect("future to be lazy")).await
+                    }, if duration_until_retry.is_some() => {
                         let retry = self.to_retry.pop()
                             .expect("we checked this in the preconditions, unless we've reached Duration::MAX in which case we should fear the heat death of the universe more than a panic");
                         yield retry.0.item;
@@ -103,7 +103,7 @@ pub struct RetrySender<Item> {
 
 impl<Item> RetrySender<Item> {
     pub async fn send(&self, item: Item) -> anyhow::Result<()> {
-        let earliest_time = Utc::now().add(self.retry_duration).timestamp();
+        let earliest_time = tokio::time::Instant::now().add(self.retry_duration);
         self.tx
             .clone()
             .send(Reverse(Retry {
