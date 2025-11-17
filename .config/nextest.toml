@@ -11,3 +11,11 @@ fail-fast = false
 [[profile.ci.overrides]]
 filter = 'package(superalloy) & (test(multi_provider::tests::test_watch_block_numbers) | test(provider::tests::watch_block_numbers_http))'
 retries = 3
+
+[test-groups]
+serial-tests = { max-threads = 1 }
+
+[[profile.ci.overrides]]
+# run libp2p tests serially
+filter = 'package(dcipher-network) & test(transports::libp2p::)'
+test-group = 'serial-tests'
