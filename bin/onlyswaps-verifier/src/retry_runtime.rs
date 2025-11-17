@@ -1,4 +1,3 @@
-use crate::config::AppConfig;
 use async_stream::stream;
 use chrono::Utc;
 use futures::Stream;
@@ -46,11 +45,11 @@ impl<Item> RetryScheduler<Item>
 where
     Item: Eq,
 {
-    pub fn new(app_config: &AppConfig) -> Self {
+    pub fn new(retry_duration: Duration) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel(256);
         Self {
             to_retry: BinaryHeap::new(),
-            retry_duration: app_config.timeout.retry_duration,
+            retry_duration,
             tx,
             rx,
         }
