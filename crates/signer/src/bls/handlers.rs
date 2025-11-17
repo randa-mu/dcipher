@@ -390,17 +390,9 @@ where
 
         Metrics::report_partials_received(1);
 
-        // Get the dst, making sure the request is supported
-        let Some(dst) = self
-            .filter
-            .get_rfc9380_dst_if_supported(&req.args, &req.alg)
-        else {
+        let Some(stored_req) = self.try_parse_req(req.clone()) else {
             tracing::warn!(sender_id = sender, app = ?req.args.app(), alg = ?req.alg, "Received partial with unsupported app");
             return;
-        };
-        let stored_req = StoredSignatureRequest {
-            dst,
-            m: req.m.clone(),
         };
 
         // Verify the validity of the partial signature for the specified id
