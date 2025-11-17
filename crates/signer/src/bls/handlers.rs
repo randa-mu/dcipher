@@ -526,7 +526,7 @@ where
                 };
 
                 // Filter already signed requests
-                if signatures_cache.contains(&stored_req) {
+                if let Some(Either::Left(_sig)) = signatures_cache.peek(&stored_req) {
                     tracing::debug!(sender_id, "Filtering known partials for request that was already signed");
                     None?
                 }
