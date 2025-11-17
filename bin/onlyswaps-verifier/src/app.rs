@@ -58,7 +58,7 @@ impl App {
         // the `retry_scheduler` allows errors at any phase to drop back in at the relevant stage.
         // e.g. if an RPC is down during submission, it may be possible to just resubmit the
         // verified signature in a short while rather than pull all the state again
-        let retry_scheduler = RetryScheduler::new(app_config);
+        let retry_scheduler = RetryScheduler::new(app_config.timeout.retry_duration);
         let retry_tx = retry_scheduler.tx();
         let retry_stream = retry_scheduler.into_stream();
 
