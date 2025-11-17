@@ -135,4 +135,17 @@ mod tests {
             .await
             .expect_err("should timeout");
     }
+
+    #[tokio::test]
+    async fn retry_scheduler_should_yield_items() {
+        let retry_scheduler = RetryScheduler::new(Duration::from_secs(0));
+        let sender = retry_scheduler.tx();
+        let retry_stream = retry_scheduler.into_stream();
+        pin_mut!(retry_stream);
+
+        sender.send(()).await.expect("to send item successfully");
+        tokio::time::timeout(Duration::from_millis(500), retry_stream.next())
+            .await
+            .expect("should yield item before timeout");
+    }
 }
