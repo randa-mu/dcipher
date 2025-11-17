@@ -25,7 +25,7 @@ use digest::core_api::BlockSizeUser;
 use itertools::Either;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use strum::VariantArray;
@@ -51,7 +51,7 @@ type SharedSignatureCache<BLS> =
     Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel<BLS>>>>;
 
 type SharedPartialsCache<BLS> = Arc<
-    std::sync::Mutex<LruCache<StoredSignatureRequest, HashMap<u16, PartialSignature<Group<BLS>>>>>,
+    std::sync::Mutex<LruCache<StoredSignatureRequest, BTreeMap<u16, PartialSignature<Group<BLS>>>>>,
 >;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -77,7 +77,12 @@ enum NetworkMessage<BLS: BlsVerifier> {
     KnownPartials(BatchKnownPartials<BLS>),
 }
 
-type ReplayPartial = BlsSignatureRequest;
+#[derive(Clone, Serialize, Deserialize)]
+struct ReplayPartial {
+    req: BlsSignatureRequest,
+    missing_partials: Vec<u16>,
+}
+
 type BatchReplayPartials = Vec<ReplayPartial>;
 type KnownPartials<BLS> = (BlsSignatureRequest, Vec<PartialSignature<Group<BLS>>>);
 type BatchKnownPartials<BLS> = Vec<KnownPartials<BLS>>;
