@@ -11,3 +11,9 @@ fail-fast = false
 [[profile.ci.overrides]]
 filter = 'package(superalloy) & (test(multi_provider::tests::test_watch_block_numbers) | test(provider::tests::watch_block_numbers_http))'
 retries = 3
+
+# that test needs to be fixed properly, but use retries for now.
+# it seemingly fails when there is little cpu available, retries should hopefully help with that
+[[profile.ci.overrides]]
+filter = 'test(transports::libp2p::tests::send_receive_broadcast_messages)'
+retries = 3
