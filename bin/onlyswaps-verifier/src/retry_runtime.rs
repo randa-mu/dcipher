@@ -74,7 +74,7 @@ where
             loop {
                 let duration_until_retry = self.to_retry.peek()
                     .map(|it| it.0.earliest_time)
-                    .map(|secs| max(0, Utc::now().timestamp() - secs))
+                    .map(|secs| max(0, secs - Utc::now().timestamp()))
                     .map(|secs| Duration::from_secs(secs as u64))
                     .unwrap_or(Duration::MAX);
 
