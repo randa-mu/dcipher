@@ -54,6 +54,7 @@ forge bind --bindings-path "$ROOT_DIR/crates/generated/src/onlyswaps" \
 --use $SOLC_VERSION \
 --select SwapRequestParameters \
 --select IRouter \
+--select IHookExecutor \
 --select ERC20FaucetToken \
 --select IERC20 \
 --select ErrorsLib \
