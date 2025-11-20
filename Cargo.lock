@@ -4996,13 +4996,16 @@ dependencies = [
  "itertools 0.14.0",
  "moka",
  "onlyswaps-client",
+ "reqwest",
  "serde",
  "serde_json",
  "shellexpand",
  "speculoos",
  "superalloy",
+ "thiserror 2.0.16",
  "tokio",
  "tracing",
+ "url",
 ]
 
 [[package]]

@@ -17,10 +17,13 @@ generated.workspace = true
 itertools.workspace = true
 moka = { version = "0.12.10", features = ["future"] }
 onlyswaps-client = { workspace = true, features = ["fee-estimator"] }
+reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 speculoos = "0.13.0"
 shellexpand = "3.1.1"
 superalloy.workspace = true
+thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
 tracing.workspace = true
+url.workspace = true
