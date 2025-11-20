@@ -1,10 +1,10 @@
 use alloy::primitives::Address;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 
 /// An entry of the Asset platforms List endpoint <https://docs.coingecko.com/reference/asset-platforms-list>.
 /// We only include `id`, and `chain_identifier` here.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AssetPlatform {
     pub id: String,
     pub chain_identifier: u64,
@@ -15,7 +15,7 @@ pub struct AssetPlatform {
 pub type AssetPlatforms = Vec<AssetPlatform>;
 
 /// Usd price of a token.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TokenPrice {
     pub usd: f64,
 }
@@ -25,6 +25,37 @@ pub type TokenPriceMap = HashMap<Address, TokenPrice>;
 
 /// Output of the Coin Price by Id endpoint <https://docs.coingecko.com/reference/simple-token-price>.
 pub type CoinPriceMap = HashMap<String, TokenPrice>;
+
+/// A coingecko error
+#[derive(thiserror::Error, Debug, Deserialize)]
+#[error("coingecko error: error_code = `{error_code}`, error_message = `{}`", status.error_message)]
+pub struct CoinGeckoError {
+    error_code: i128,
+    status: CoinGeckoStatus,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CoinGeckoStatus {
+    error_message: String,
+}
+
+/// A type that either deserializes into a valid output, or an error. Basically an untagged Result,
+/// where we attempt to deserialize into each variant.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum CoinGeckoResult<Out> {
+    Ok(Out),
+    Error(CoinGeckoError),
+}
+
+impl<Out> CoinGeckoResult<Out> {
+    pub fn into_result(self) -> Result<Out, CoinGeckoError> {
+        match self {
+            CoinGeckoResult::Ok(out) => Ok(out),
+            CoinGeckoResult::Error(err) => Err(err),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
