@@ -43,6 +43,10 @@ pub enum CoinGeckoClientError {
 }
 
 impl CoinGeckoClient {
+    pub fn builder() -> CoinGeckoClientBuilder {
+        Default::default()
+    }
+
     pub(crate) fn new(
         base_url: Url,
         headers: HeaderMap,
