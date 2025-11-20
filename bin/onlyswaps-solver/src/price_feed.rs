@@ -1,1 +1,1 @@
-mod coingecko;
+pub mod coingecko;
