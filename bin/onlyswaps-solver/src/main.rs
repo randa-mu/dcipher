@@ -4,6 +4,7 @@ mod executor;
 mod fee_adapter;
 mod model;
 mod network;
+mod price_feed;
 mod solver;
 mod util;
 
