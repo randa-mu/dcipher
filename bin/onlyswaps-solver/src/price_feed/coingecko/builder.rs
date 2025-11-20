@@ -75,7 +75,7 @@ impl CoinGeckoClientBuilder {
             api_key,
         );
 
-        let client = CoinGeckoClient::new(endpoint, headers).await?;
+        let client = CoinGeckoClient::new(endpoint, headers)?;
         Ok(client)
     }
 }

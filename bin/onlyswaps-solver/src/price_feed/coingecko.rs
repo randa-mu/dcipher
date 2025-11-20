@@ -3,15 +3,15 @@ mod builder;
 
 pub use builder::*;
 
+use crate::price_feed::TokenPriceFeed;
 use crate::price_feed::coingecko::api_definitions::{
-    AssetPlatform, AssetPlatforms, CoinGeckoError, CoinGeckoResult,
+    AssetPlatform, AssetPlatforms, CoinGeckoError, CoinGeckoResult, CoinPriceMap,
 };
-use alloy::primitives::Address;
+use alloy::primitives::{Address, ChainId};
 use itertools::Itertools;
 use reqwest::Url;
 use reqwest::header::HeaderMap;
 use serde::Deserialize;
-use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -34,6 +34,12 @@ pub enum CoinGeckoClientError {
 
     #[error(transparent)]
     CoinGeckoError(#[from] CoinGeckoError),
+
+    #[error("unsupported chain id")]
+    UnsupportedChainId,
+
+    #[error("failed to get token price from CoinGecko: invalid response")]
+    CGInvalidResponse,
 }
 
 impl CoinGeckoClient {
@@ -86,8 +92,70 @@ impl CoinGeckoClient {
     }
 }
 
+impl TokenPriceFeed for CoinGeckoClient {
+    type Error = CoinGeckoClientError;
+
+    async fn native_price(&self, chain_id: ChainId) -> Result<f64, Self::Error> {
+        let native_coin_id = self
+            .chain_id_to_id
+            .get(&chain_id)
+            .ok_or(Self::Error::UnsupportedChainId)?
+            .native_coin_id
+            .clone();
+
+        let url = coin_price_url(
+            self.base_url.clone(),
+            std::iter::once(native_coin_id.clone()),
+        )?;
+        let price: CoinPriceMap = self.get_coingecko(url).await?;
+
+        Ok(price
+            .get(&native_coin_id)
+            .ok_or(Self::Error::CGInvalidResponse)?
+            .usd)
+    }
+
+    async fn token_price_batched(
+        &self,
+        chain_id: ChainId,
+        token_addresses: impl IntoIterator<Item = Address, IntoIter: Send> + Send,
+    ) -> Result<Vec<f64>, Self::Error> {
+        let chain_name = self
+            .chain_id_to_id
+            .get(&chain_id)
+            .ok_or(Self::Error::UnsupportedChainId)?
+            .id
+            .clone();
+
+        // Need to collect to Clone
+        let token_addresses: Vec<_> = token_addresses.into_iter().collect();
+
+        let url = token_price_url(self.base_url.clone(), &chain_name, token_addresses.clone())?;
+        let price_map: CoinPriceMap = self.get_coingecko(url).await?;
+
+        let prices: Option<_> = token_addresses
+            .iter()
+            .map(|addr| price_map.get(&addr.to_string()).map(|p| p.usd))
+            .collect();
+        prices.ok_or(Self::Error::CGInvalidResponse)
+    }
+}
+
 fn asset_platforms_url(base_url: Url) -> Result<Url, url::ParseError> {
     base_url.join("asset_platforms")
+}
+
+fn coin_price_url(
+    base_url: Url,
+    coin_ids: impl IntoIterator<Item = String>,
+) -> Result<Url, url::ParseError> {
+    let coin_ids = coin_ids.into_iter().join(",");
+    let mut url = base_url.join(&format!("simple/price"))?;
+    url.query_pairs_mut()
+        .append_pair("vs_currencies", "usd")
+        .append_pair("ids", &coin_ids);
+
+    Ok(url)
 }
 
 fn token_price_url(
