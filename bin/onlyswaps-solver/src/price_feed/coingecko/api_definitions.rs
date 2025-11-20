@@ -23,6 +23,9 @@ pub struct TokenPrice {
 /// Output of the Coin Price by Token Addresses endpoint <https://docs.coingecko.com/reference/simple-token-price>.
 pub type TokenPriceMap = HashMap<Address, TokenPrice>;
 
+/// Output of the Coin Price by Id endpoint <https://docs.coingecko.com/reference/simple-token-price>.
+pub type CoinPriceMap = HashMap<String, TokenPrice>;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -71,6 +74,28 @@ mod tests {
         let price = price_map
             .get(&address!("0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
             .expect("to be a valid entry");
+        assert!(
+            (price.usd - expected_usd_price).abs() <= 1e-06,
+            "usd price to be approx equal"
+        );
+    }
+
+    #[test]
+    fn decode_coin_price_by_ids() {
+        let expected_usd_price = 67187.3358936566;
+        let response = r#"{
+          "bitcoin": {
+            "usd": 67187.3358936566,
+            "usd_market_cap": 1317802988326.25,
+            "usd_24h_vol": 31260929299.5248,
+            "usd_24h_change": 3.63727894677354,
+            "last_updated_at": 1711356300
+          }
+        }"#;
+
+        let price_map: CoinPriceMap = serde_json::from_str(response)
+            .expect("to decode coin price by token addresses response");
+        let price = price_map.get("bitcoin").expect("to be a valid entry");
         assert!(
             (price.usd - expected_usd_price).abs() <= 1e-06,
             "usd price to be approx equal"
