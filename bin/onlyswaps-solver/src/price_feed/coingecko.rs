@@ -280,5 +280,13 @@ fn coins_list_url(base_url: Url) -> Result<Url, url::ParseError> {
 }
 
 fn coins_data_url(base_url: Url, coin_id: &str) -> Result<Url, url::ParseError> {
-    base_url.join(&format!("coins/{coin_id}"))
+    let mut url = base_url.join(&format!("coins/{coin_id}"))?;
+    url.query_pairs_mut()
+        .append_pair("localization", "false")
+        .append_pair("tickers", "false")
+        .append_pair("market_data", "false")
+        .append_pair("community_data", "false")
+        .append_pair("developer_data", "false");
+
+    Ok(url)
 }
