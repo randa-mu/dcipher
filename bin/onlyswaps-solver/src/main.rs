@@ -4,6 +4,8 @@ mod executor;
 mod fee_adapter;
 mod model;
 mod network;
+pub mod price_feed;
+mod profitability;
 mod solver;
 mod util;
 
