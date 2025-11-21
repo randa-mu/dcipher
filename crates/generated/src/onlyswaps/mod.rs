@@ -8,6 +8,5 @@ pub mod r#errors_lib;
 pub mod r#ierc20;
 pub mod r#ierc20_metadata;
 pub mod r#ierc20_permit;
-pub mod r#i_hook_executor;
 pub mod r#i_router;
 pub mod r#ierc20_errors;
