@@ -57,7 +57,7 @@ impl CoinGeckoClientBuilder {
         self
     }
 
-    pub async fn build(self) -> Result<CoinGeckoClient, CoinGeckoClientBuilderError> {
+    pub fn build(self) -> Result<CoinGeckoClient, CoinGeckoClientBuilderError> {
         let endpoint: Url = self.endpoint.parse()?;
         let api_key = self
             .api_key
