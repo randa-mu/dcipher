@@ -14,7 +14,6 @@ use reqwest::Url;
 use reqwest::header::HeaderMap;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::num::NonZeroU16;
 
 type GCAddress = String;
 type CGChainId = String;
@@ -39,7 +38,7 @@ pub struct CoinGeckoClient {
 
 #[derive(Clone, Debug)]
 struct TokenDetails {
-    decimal_places: NonZeroU16,
+    decimal_places: u8,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -180,7 +179,7 @@ impl TokenPriceFeed for CoinGeckoClient {
         &self,
         chain_id: ChainId,
         token_address: String,
-    ) -> Result<NonZeroU16, Self::Error> {
+    ) -> Result<u8, Self::Error> {
         let chain_name = self
             .chain_id_to_id
             .get(&chain_id)
@@ -205,13 +204,11 @@ impl TokenPriceFeed for CoinGeckoClient {
                 .decimal_place;
 
             for (chain_name, details) in coin_data.detail_platforms {
-                let Ok(decimal_places) = details.decimal_place.try_into() else {
-                    // ignore platforms with null / zero decimals
-                    continue;
-                };
                 token_details.insert(
                     (chain_name, token_address.clone()),
-                    TokenDetails { decimal_places },
+                    TokenDetails {
+                        decimal_places: details.decimal_place,
+                    },
                 );
             }
 

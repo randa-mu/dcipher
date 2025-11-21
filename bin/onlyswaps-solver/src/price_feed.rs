@@ -2,7 +2,6 @@ pub mod coingecko;
 
 use alloy::primitives::ChainId;
 use futures::FutureExt;
-use std::num::NonZeroU16;
 
 /// Allows to fetch the USD value of various tokens on various chains.
 pub trait TokenPriceFeed {
@@ -17,7 +16,7 @@ pub trait TokenPriceFeed {
         &self,
         chain_id: ChainId,
         token_address: String,
-    ) -> impl Future<Output = Result<NonZeroU16, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<u8, Self::Error>> + Send;
 
     fn token_value(
         &self,
