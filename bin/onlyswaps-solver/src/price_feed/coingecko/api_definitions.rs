@@ -1,5 +1,6 @@
-use alloy::primitives::Address;
 use serde::Deserialize;
+use serde_with::DefaultOnNull;
+use serde_with::serde_as;
 use std::collections::HashMap;
 
 /// An entry of the Asset platforms List endpoint <https://docs.coingecko.com/reference/asset-platforms-list>.
@@ -21,10 +22,40 @@ pub struct TokenPrice {
 }
 
 /// Output of the Coin Price by Token Addresses endpoint <https://docs.coingecko.com/reference/simple-token-price>.
-pub type TokenPriceMap = HashMap<Address, TokenPrice>;
+pub type TokenPriceMap = HashMap<String, TokenPrice>;
 
 /// Output of the Coin Price by Id endpoint <https://docs.coingecko.com/reference/simple-token-price>.
 pub type CoinPriceMap = HashMap<String, TokenPrice>;
+
+/// An entry of the list given by the Coins List endpoint <https://docs.coingecko.com/v3.0.1/reference/coins-list>
+#[derive(Debug, Clone, Deserialize)]
+pub struct CoinListEntry {
+    /// the unique identifier of the coin
+    pub id: String,
+
+    /// a map of chain names to contract address
+    pub platforms: HashMap<String, String>,
+}
+
+/// The entries returned by the Coins List endpoint <https://docs.coingecko.com/v3.0.1/reference/coins-list>
+pub type CoinList = Vec<CoinListEntry>;
+
+/// The output of the Coin Data by ID endpoint <https://docs.coingecko.com/v3.0.1/reference/coins-id>
+#[derive(Debug, Clone, Deserialize)]
+pub struct CoinData {
+    pub id: String,
+
+    /// mapping from chain id to platform detail
+    pub detail_platforms: HashMap<String, PlatformDetails>,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, Deserialize)]
+pub struct PlatformDetails {
+    #[serde_as(deserialize_as = "DefaultOnNull")]
+    pub decimal_place: u16,
+    pub contract_address: String,
+}
 
 /// A coingecko error
 #[derive(thiserror::Error, Debug, Deserialize)]
@@ -60,7 +91,6 @@ impl<Out> CoinGeckoResult<Out> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy::primitives::address;
 
     #[test]
     fn decode_asset_platforms() {
@@ -103,7 +133,7 @@ mod tests {
         let price_map: TokenPriceMap = serde_json::from_str(response)
             .expect("to decode coin price by token addresses response");
         let price = price_map
-            .get(&address!("0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
+            .get("0x2260fac5e5542a773aa44fbcfedf7c193bc2c599")
             .expect("to be a valid entry");
         assert!(
             (price.usd - expected_usd_price).abs() <= 1e-06,
