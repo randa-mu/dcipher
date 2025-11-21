@@ -12,6 +12,7 @@ axum.workspace = true
 clap.workspace = true
 config.workspace = true
 dotenv = "0.15.0"
+bigdecimal = "0.4"
 futures.workspace = true
 generated.workspace = true
 itertools.workspace = true

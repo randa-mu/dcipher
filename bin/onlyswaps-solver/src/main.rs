@@ -5,6 +5,7 @@ mod fee_adapter;
 mod model;
 mod network;
 mod price_feed;
+mod profitability;
 mod solver;
 mod util;
 
