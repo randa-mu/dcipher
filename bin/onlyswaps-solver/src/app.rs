@@ -2,6 +2,7 @@ use crate::executor::TradeExecutor;
 use crate::fee_adapter::DefaultFeeAdapter;
 use crate::model::{BlockEvent, RequestId};
 use crate::network::Network;
+use crate::price_feed::coingecko::CoinGeckoClient;
 use crate::solver::Solver;
 use alloy::providers::DynProvider;
 use config::timeout::TimeoutConfig;
@@ -18,6 +19,9 @@ impl App {
         networks: HashMap<u64, Network<DynProvider>>,
         timeout: &TimeoutConfig,
     ) -> anyhow::Result<()> {
+        let mut cg_price_feed = CoinGeckoClient::builder().use_demo_api().build()?;
+        cg_price_feed.init_chain_id_mapping().await?;
+
         let block_numbers = networks
             .values()
             .map(|network| network.stream_block_numbers());
@@ -25,7 +29,7 @@ impl App {
         let mut stream = Box::pin(select_all(streams));
         let fee_estimator = DefaultFeeAdapter::new();
         let mut solver = Solver::new(&networks, &fee_estimator).await?;
-        let executor = TradeExecutor::new(&networks);
+        let executor = TradeExecutor::new(&networks, cg_price_feed);
 
         // we pull new chain state every block, so inflight requests may not have been
         // completed yet, so we don't want to attempt to execute them again and waste gas.

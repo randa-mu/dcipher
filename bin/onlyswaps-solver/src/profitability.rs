@@ -20,13 +20,15 @@ const MAX_REASONABLE_GAS_COST_WEI: u128 = ETH_TO_WEI;
 /// A maximum bound to prevent too much precision loss
 const MAX_REASONABLE_TOKEN_PRICE_USD: f64 = 10_000_000.0;
 
-/// Ensures that a trade is profitable, otherwise return an error with the reason.
+/// Ensures that a trade is profitable by comparing the incurred costs in equivalent currencies using
+/// a price feed.
+#[tracing::instrument(level = "warn", skip_all, fields(trade.src_chain_id, trade.request_id))]
 pub async fn profitability_breaker(
     trade: &Trade,
     gas_estimate: u64,
     price_feed: &impl TokenPriceFeed,
     provider: &impl Provider,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     let gas_cost_upper_bound = estimate_gas_cost(provider, gas_estimate).await?;
     let market_data = fetch_trade_market_data(
         trade.src_chain_id,
@@ -39,9 +41,17 @@ pub async fn profitability_breaker(
 
     let fulfillment =
         FulfillmentData::evaluate(gas_cost_upper_bound, trade.solver_fee, &market_data)?;
-    fulfillment.is_profitable()?;
 
-    Ok(())
+    if fulfillment.is_profitable() {
+        Ok(true)
+    } else {
+        tracing::warn!(
+            fulfillment_cost = fulfillment.cost,
+            fulfillment_reward = fulfillment.reward,
+            "Trade not profitable"
+        );
+        Ok(false)
+    }
 }
 
 /// Estimate the current gas costs from the provider.
@@ -117,19 +127,8 @@ impl FulfillmentData {
         Ok(FulfillmentData { cost, reward })
     }
 
-    fn profit(&self) -> f64 {
-        self.reward - self.cost
-    }
-
-    fn is_profitable(&self) -> anyhow::Result<()> {
-        if self.cost > self.reward {
-            anyhow::bail!(
-                "unprofitable trade, cost {}, reward {}",
-                self.cost,
-                self.reward
-            );
-        }
-        Ok(())
+    fn is_profitable(&self) -> bool {
+        self.cost < self.reward
     }
 }
 
@@ -164,7 +163,7 @@ mod tests {
         };
         let data = FulfillmentData::evaluate(gas_cost_upper_bound, solver_fee, &market_data)
             .expect("to evaluate successfully");
-        data.is_profitable().expect("to be profitable");
+        assert!(data.is_profitable(), "trade should be profitable");
     }
 
     #[test]
@@ -194,6 +193,6 @@ mod tests {
         };
         let data = FulfillmentData::evaluate(gas_cost_upper_bound, solver_fee, &market_data)
             .expect("to evaluate successfully");
-        data.is_profitable().expect_err("to be unprofitable");
+        assert!(!data.is_profitable(), "trade should not be profitable");
     }
 }
