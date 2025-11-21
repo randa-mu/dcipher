@@ -53,7 +53,7 @@ pub struct CoinData {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PlatformDetails {
     #[serde_as(deserialize_as = "DefaultOnNull")]
-    pub decimal_place: u16,
+    pub decimal_place: u8,
     pub contract_address: String,
 }
 
