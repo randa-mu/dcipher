@@ -92,15 +92,18 @@ impl FulfillmentData {
         solver_fee: U256,
         market_data: &MarketData,
     ) -> anyhow::Result<FulfillmentData> {
-        // Precision analysis:
+        // Precision may be a problem here. We have:
         //  - `gas_cost_upper_bound` (u128) = gas_limit (u64) * gas_cost (u128)
         //  - native token decimals = 1e18 ~= 2^60
-        //  - `native_value_dst` (f64) = native token value in USD
-        //
-        // Experimentally, gas limit ~2^19, gas cost ~2^29, so gas_cost_upper_bound ~2^48.
-        // This fits in f64 without loss. The most expensive native coin (BTC) is ~$100k ~2^17 USD.
-        // Multiplying: 2^48 × 2^17 = 2^65, well within f64 range.
-        // Dividing by 1e18 ~2^60 gives 2^5 (~$32) with minimal relative loss (~2^-53).
+        //  - `native_value_dst` (f64) = native token value in USD, unbounded, but a reasonably-sized f64
+        // Experimentally, gas limit appears to be ~2^19. On ethereum, gas cost is about ~2^29.
+        // This tells us that `gas_cost_upper_bound` should be about 2^48, which fits in a f64 without loss.
+        // The most expensive native coin, bitcoin, is at most about 100k USD ~2^17 USD, which should result
+        // in minimal precision loss when multiplying with `gas_cost_upper_bound`.
+        // Finally, we divide by 1e18 (decimals of all native EVM tokens) ~2^60, which gives a minimal relative
+        // loss.
+        // FIXIT: Actually, the gas_cost_upper_bound is controlled by the adversary due to the gas
+        // limits specified on the hooks. Hence, the adversary can essentially put an arbitrary gas limit.
         let cost =
             (gas_cost_upper_bound as f64) * market_data.native_value_dst / NATIVE_EVM_TOKEN_UNIT;
 
