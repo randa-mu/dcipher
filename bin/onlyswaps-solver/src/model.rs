@@ -29,6 +29,7 @@ impl From<&Transfer> for Trade {
             request_id: transfer.request_id,
             amount_in: transfer.params.amountIn,
             amount_out: transfer.params.amountOut,
+            solver_fee: transfer.params.solverFee,
             nonce: transfer.params.nonce,
             pre_hooks: transfer.params.preHooks.clone(),
             post_hooks: transfer.params.postHooks.clone(),
@@ -49,6 +50,7 @@ pub struct Trade {
     pub request_id: RequestId,
     pub amount_in: U256,
     pub amount_out: U256,
+    pub solver_fee: U256,
     pub nonce: U256,
     pub pre_hooks: Vec<Hook>,
     pub post_hooks: Vec<Hook>,
@@ -67,6 +69,7 @@ impl PartialEq for Trade {
             &self.request_id,
             &self.amount_in,
             &self.amount_out,
+            &self.solver_fee,
             &self.nonce,
         ) == (
             &other.token_in_addr,
@@ -78,6 +81,7 @@ impl PartialEq for Trade {
             &other.request_id,
             &other.amount_in,
             &other.amount_out,
+            &other.solver_fee,
             &other.nonce,
         )
     }
@@ -103,6 +107,7 @@ impl Ord for Trade {
             &self.request_id,
             &self.amount_in,
             &self.amount_out,
+            &self.solver_fee,
             &self.nonce,
         )
             .cmp(&(
@@ -115,6 +120,7 @@ impl Ord for Trade {
                 &other.request_id,
                 &other.amount_in,
                 &other.amount_out,
+                &other.solver_fee,
                 &other.nonce,
             ))
     }
@@ -131,6 +137,7 @@ impl Hash for Trade {
         self.request_id.hash(state);
         self.amount_in.hash(state);
         self.amount_out.hash(state);
+        self.solver_fee.hash(state);
         self.nonce.hash(state);
         self.pre_hooks.hash(state);
         self.post_hooks.hash(state);

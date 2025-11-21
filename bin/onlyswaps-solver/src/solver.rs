@@ -229,6 +229,7 @@ mod tests {
             recipient_addr: transfer_params.params.recipient,
             amount_in: expected_output_amount,
             amount_out: expected_output_amount,
+            solver_fee: transfer_params.params.solverFee,
             pre_hooks: Vec::new(),
             post_hooks: Vec::new(),
         };
