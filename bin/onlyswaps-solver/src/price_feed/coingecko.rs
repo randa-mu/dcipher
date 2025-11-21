@@ -1,3 +1,5 @@
+//! A module to fetch token values from coingecko.
+
 mod api_definitions;
 mod builder;
 
@@ -33,7 +35,7 @@ pub struct CoinGeckoClient {
     /// A mapping from (u64 chain id, token address) to token details.
     // We use a mutex here to fill the structure & cache on-demand
     // TODO: Not sure if it's the client responsibility, tbd
-    token_details: tokio::sync::Mutex<HashMap<(CGCoinId, GCAddress), TokenDetails>>,
+    token_details: tokio::sync::Mutex<HashMap<(CGChainId, GCAddress), TokenDetails>>,
 }
 
 #[derive(Clone, Debug)]
@@ -212,7 +214,7 @@ impl TokenPriceFeed for CoinGeckoClient {
                 );
             }
 
-            decimals.try_into().map_err(|_| Self::Error::NullDecimals)?
+            decimals
         };
 
         Ok(decimals)
@@ -253,7 +255,7 @@ fn coin_price_url(
     coin_ids: impl IntoIterator<Item = String>,
 ) -> Result<Url, url::ParseError> {
     let coin_ids = coin_ids.into_iter().join(",");
-    let mut url = base_url.join(&format!("simple/price"))?;
+    let mut url = base_url.join("simple/price")?;
     url.query_pairs_mut()
         .append_pair("vs_currencies", "usd")
         .append_pair("ids", &coin_ids);

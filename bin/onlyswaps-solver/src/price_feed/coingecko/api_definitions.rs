@@ -1,3 +1,7 @@
+//! Various CoinGecko api definitions.
+
+#![allow(dead_code)]
+
 use serde::Deserialize;
 use serde_with::DefaultOnNull;
 use serde_with::serde_as;

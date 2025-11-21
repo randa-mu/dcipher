@@ -1,5 +1,7 @@
 use crate::model::{RequestId, Trade};
 use crate::network::Network;
+use crate::price_feed::TokenPriceFeed;
+use crate::profitability::profitability_breaker;
 use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, TxHash};
 use alloy::providers::Provider;
@@ -13,14 +15,19 @@ use moka::future::Cache;
 use std::collections::HashMap;
 use tokio::time::timeout;
 
-pub(crate) struct TradeExecutor<'a, P> {
+pub(crate) struct TradeExecutor<'a, P, PF> {
     own_address: Address,
     routers: HashMap<u64, &'a IRouterInstance<P>>,
     tokens: HashMap<u64, &'a Vec<ERC20FaucetTokenInstance<P>>>,
+    price_feed: PF,
 }
 
-impl<'a, P: Provider> TradeExecutor<'a, P> {
-    pub fn new(networks: &'a HashMap<u64, Network<P>>) -> Self {
+impl<'a, P, PF> TradeExecutor<'a, P, PF>
+where
+    P: Provider,
+    PF: TokenPriceFeed,
+{
+    pub fn new(networks: &'a HashMap<u64, Network<P>>, price_feed: PF) -> Self {
         let routers = networks
             .iter()
             .map(|(chain_id, net)| (*chain_id, &net.router))
@@ -41,6 +48,7 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             routers,
             tokens,
             own_address,
+            price_feed,
         }
     }
     pub async fn execute(
@@ -70,7 +78,7 @@ impl<'a, P: Provider> TradeExecutor<'a, P> {
             // and finally execute the trade with a timeout
             match timeout(
                 timeout_config.request_timeout,
-                execute_trade(&trade, router, token, self.own_address),
+                execute_trade(&trade, router, token, self.own_address, &self.price_feed),
             )
             .await
             {
@@ -109,6 +117,7 @@ async fn execute_trade(
     router: &IRouterInstance<impl Provider>,
     token: &ERC20FaucetTokenInstance<impl Provider>,
     own_addr: Address,
+    price_feed: &impl TokenPriceFeed,
 ) -> anyhow::Result<TxHash> {
     // in theory, we shouldn't need to wait until the next block because txs will be processed in nonce order
     // but for whatever reason this doesn't seem to be the case :(
@@ -126,34 +135,43 @@ async fn execute_trade(
         .context("error approving funds")?;
     tx.watch().await.context("error approving funds")?;
 
-    let tx = router
-        .relayTokens(
-            own_addr,
-            trade.request_id,
-            trade.sender_addr,
-            trade.recipient_addr,
-            trade.token_in_addr,
-            trade.token_out_addr,
-            trade.amount_out,
-            trade.src_chain_id,
-            trade.nonce,
-            trade.pre_hooks.to_vec(),
-            trade.post_hooks.to_vec(),
-        )
+    let relay_tokens_call = router.relayTokens(
+        own_addr,
+        trade.request_id,
+        trade.sender_addr,
+        trade.recipient_addr,
+        trade.token_in_addr,
+        trade.token_out_addr,
+        trade.amount_out,
+        trade.src_chain_id,
+        trade.nonce,
+        trade.pre_hooks.to_vec(),
+        trade.post_hooks.to_vec(),
+    );
+
+    let gas = relay_tokens_call
+        .clone()
+        .estimate_gas()
+        .await
+        .map_err(decode_irouter_error)
+        .context("gas estimation failed")?;
+
+    // TODO: - If we're on a testnet, we need to bypass that check
+    //       - Need to make that configureable at run-time
+    // Currently, we cannot check for profitability earlier, due to the allowance check.
+    if !profitability_breaker(trade, gas, price_feed, router.provider())
+        .await
+        .context("failed to compute profitability of trade")?
+    {
+        tracing::warn!("Trade not profitable, refusing fulfillment");
+        anyhow::bail!("trade not profitable");
+    }
+
+    let tx = relay_tokens_call
         .send()
         .await
-        .map_err(|e| {
-            // Try to decode it as an IERC20 error
-            if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
-                return anyhow!("erc20 contract error: {erc20_err:?}");
-            }
-            // Try to decode it as a Router error
-            if let Some(router_err) = e.as_decoded_interface_error::<ErrorsLibErrors>() {
-                return anyhow!("router contract error: {router_err:?}");
-            }
-            e.into()
-        })
-        .context("error submitting swap")?;
+        .map_err(decode_irouter_error)
+        .context("failed to send relayTokens tx")?;
 
     // Fetch the receipt to get the tx status
     let receipt = tx.get_receipt().await.context("error submitting swap")?;
@@ -163,4 +181,16 @@ async fn execute_trade(
     }
 
     Ok(receipt.transaction_hash)
+}
+
+fn decode_irouter_error(e: alloy::contract::Error) -> anyhow::Error {
+    // Try to decode it as an IERC20 error
+    if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
+        return anyhow!("erc20 contract error: {erc20_err:?}");
+    }
+    // Try to decode it as a Router error
+    if let Some(router_err) = e.as_decoded_interface_error::<ErrorsLibErrors>() {
+        return anyhow!("router contract error: {router_err:?}");
+    }
+    e.into()
 }
