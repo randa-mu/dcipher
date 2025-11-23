@@ -148,8 +148,8 @@ fn update_trades(
         return;
     }
 
-    if amountOut < estimated_fees.amount_out {
-        tracing::debug!(request_id = %transfer_request.request_id, "skipping - amount_out too low");
+    if amountOut > estimated_fees.amount_out {
+        tracing::debug!(request_id = %transfer_request.request_id, "skipping - amount_out higher than recommended by fees API");
         return;
     }
 
@@ -722,12 +722,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn transfer_with_lower_amount_out_than_fee_makes_no_trade() {
+    async fn transfer_with_higher_amount_out_than_fee_makes_no_trade() {
         // given
         let transfer_params = create_transfer_params(USER_ADDR, 1, 2, 100);
         // fee estimate suggests we should get 100000 out, not 100, so the solver should reject it
         let mut fee = create_fee_estimate(transfer_params.params.amountIn + U256::from(100));
-        fee.amount_out = U256::from(100000);
+        fee.amount_out = U256::from(1);
         let fee_estimater = StubbedFees {
             response: fee.clone(),
         };
