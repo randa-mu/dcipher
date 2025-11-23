@@ -15,6 +15,7 @@ pub struct Token {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TokenTag {
     RUSD,
+    FUSD,
     USDT,
     Other(Cow<'static, str>),
 }

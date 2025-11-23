@@ -55,10 +55,10 @@ impl ChainConfig {
 
 pub static BASE: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
     chain_id: 8453,
-    router_address: address!("0x4cB630aAEA9e152db83A846f4509d83053F21078"),
+    router_address: address!("0x16323707e61d20a39aae5ab64808e480b91658ab"),
     supported_tokens: HashMap::from_iter(vec![
         Token::new(
-            TokenTag::RUSD,
+            TokenTag::FUSD,
             address!("0x1b0F6cF6f3185872a581BD2B5a738EB52CCd4d76"),
         )
         .into(),
@@ -74,11 +74,11 @@ pub static BASE: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
 
 pub static BASE_SEPOLIA: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
     chain_id: 84532,
-    router_address: address!("0xC69DD549B037215BA1Ea9866FFa59603862bf986"),
+    router_address: address!("0x16323707e61d20a39aae5ab64808e480b91658ab"),
     supported_tokens: HashMap::from_iter(vec![
         Token::new(
-            TokenTag::RUSD,
-            address!("0x908e1D85604E0e9e703d52D18f3f3f604Fe7Bb1b"),
+            TokenTag::FUSD,
+            address!("0x9Eb392A6286138E5d59a40Da5398e567Ab3AAd7c"),
         )
         .into(),
     ]),
@@ -88,7 +88,7 @@ pub static BASE_SEPOLIA: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
 
 pub static AVAX_C: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
     chain_id: 43114,
-    router_address: address!("0x4cB630aAEA9e152db83A846f4509d83053F21078"),
+    router_address: address!("0x16323707e61d20a39aae5ab64808e480b91658ab"),
     supported_tokens: HashMap::from_iter(vec![
         Token::new(
             TokenTag::RUSD,
@@ -107,11 +107,11 @@ pub static AVAX_C: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
 
 pub static AVAX_FUJI: LazyLock<ChainConfig> = LazyLock::new(|| ChainConfig {
     chain_id: 43113,
-    router_address: address!("0xC69DD549B037215BA1Ea9866FFa59603862bf986"),
+    router_address: address!("0x16323707e61d20a39aae5ab64808e480b91658ab"),
     supported_tokens: HashMap::from_iter(vec![
         Token::new(
             TokenTag::RUSD,
-            address!("0x908e1D85604E0e9e703d52D18f3f3f604Fe7Bb1b"),
+            address!("0xFDdcB87aFED6B20cF7616A7339Bc5f8aC37154C3"),
         )
         .into(),
     ]),
