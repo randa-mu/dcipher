@@ -29,6 +29,30 @@ impl SwapRouting {
         }
     }
 
+    /// Create a new route from src_chain to dst_chain
+    ///
+    /// # Panics
+    /// If the token is not supported
+    pub fn new_from_configs(
+        src_chain: &ChainConfig,
+        src_token: &TokenTag,
+        dst_chain: &ChainConfig,
+        dst_token: &TokenTag,
+    ) -> Self {
+        Self {
+            src_chain: src_chain.chain_id,
+            dst_chain: dst_chain.chain_id,
+            src_token: *src_chain
+                .supported_tokens
+                .get(src_token)
+                .expect("token not supported by source chain"),
+            dst_token: *dst_chain
+                .supported_tokens
+                .get(dst_token)
+                .expect("token not supported by destination chain"),
+        }
+    }
+
     /// Create a new route from src_chain to dst_chain, swapping to the same token
     ///
     /// # Panics

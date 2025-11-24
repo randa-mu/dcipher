@@ -556,17 +556,14 @@ mod tests {
         use crate::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
         use crate::fee_estimator::FeeEstimator;
         use alloy::network::{EthereumWallet, NetworkWallet};
-        use alloy::primitives::utils::Unit;
         use alloy::providers::{ProviderBuilder, WsConnect};
         use alloy::signers::local::PrivateKeySigner;
-        use std::sync::LazyLock;
         use std::time::Duration;
 
         const TESTNETS_PRIVATE_KEY_ENV: &str = "TESTNETS_PRIVATE_KEY";
         const BASE_SEPOLIA_RPC_URL_ENV: &str = "BASE_SEPOLIA_RPC_URL";
         const AVALANCHE_FUJI_RPC_URL_ENV: &str = "AVALANCHE_FUJI_RPC_URL";
         const SWAP_TIMEOUT: Duration = Duration::from_millis(60000); // 60s
-        static SWAP_AMOUNT: LazyLock<U256> = LazyLock::new(|| U256::from(1) * Unit::ETHER.wei());
 
         async fn default_config() -> (EthereumWallet, OnlySwapsClient, FeeEstimator) {
             let testnet_signer: PrivateKeySigner = std::env::var(TESTNETS_PRIVATE_KEY_ENV)
@@ -611,12 +608,14 @@ mod tests {
                 .with_max_level(tracing::Level::DEBUG)
                 .try_init();
 
-            let routing = SwapRouting::new_same_token_from_configs(
+            let routing = SwapRouting::new_from_configs(
                 &BASE_SEPOLIA,
+                &TokenTag::FUSD,
                 &AVAX_FUJI,
                 &TokenTag::RUSD,
             );
-            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, SWAP_TIMEOUT).await;
+            // swap 1 FUSD (6 decimals on Base Sepolia)
+            swap_and_verify_with_timeout(routing, U256::from(1_000_000), SWAP_TIMEOUT).await;
         }
 
         #[tokio::test]
@@ -626,12 +625,14 @@ mod tests {
                 .with_max_level(tracing::Level::DEBUG)
                 .try_init();
 
-            let routing = SwapRouting::new_same_token_from_configs(
+            let routing = SwapRouting::new_from_configs(
                 &AVAX_FUJI,
-                &BASE_SEPOLIA,
                 &TokenTag::RUSD,
+                &BASE_SEPOLIA,
+                &TokenTag::FUSD,
             );
-            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, SWAP_TIMEOUT).await;
+            // swap 1 RUSD (6 decimals on Avalanche Fuji, apparently not the same on all chains...)
+            swap_and_verify_with_timeout(routing, U256::from(1_000_000), SWAP_TIMEOUT).await;
         }
 
         async fn swap_and_verify_with_timeout(
