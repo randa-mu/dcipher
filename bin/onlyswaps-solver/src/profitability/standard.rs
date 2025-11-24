@@ -89,33 +89,24 @@ impl FulfillmentData {
         solver_fee: U256,
         market_data: &MarketData,
     ) -> anyhow::Result<FulfillmentData> {
-        // Precision may be a problem here. We have:
-        //  - `gas_cost_upper_bound` (u128) = gas_limit (u64) * gas_cost (u128)
-        //  - native token decimals = 1e18 ~= 2^60
-        //  - `native_value_dst` (f64) = native token value in USD, unbounded, but a reasonably-sized f64
-        // Experimentally, gas limit appears to be ~2^19. On ethereum, gas cost is about ~2^29.
-        // This tells us that `gas_cost_upper_bound` should be about 2^48, which fits in a f64 without loss.
-        // The most expensive native coin, bitcoin, is at most about 100k USD ~2^17 USD, which should result
-        // in minimal precision loss when multiplying with `gas_cost_upper_bound`.
-        // Finally, we divide by 1e18 (decimals of all native EVM tokens) ~2^60, which gives a minimal relative
-        // loss.
-        // FIXIT: Actually, the gas_cost_upper_bound is controlled by the adversary due to the gas
-        // limits specified on the hooks. Hence, the adversary can essentially put an arbitrary gas limit.
-        let cost =
-            (gas_cost_upper_bound as f64) * market_data.native_value_dst / NATIVE_EVM_TOKEN_UNIT;
+        // Use BigDecimals for arbitrary precision instead of f64
+        let cost = BigDecimal::from(gas_cost_upper_bound)
+            * BigDecimal::from_f64(market_data.native_value_dst)
+                .context("native value did not fit in f64")?
+            / NATIVE_EVM_TOKEN_UNIT;
 
-        // Since the solver fee can be arbitrarily large, and often larger than 2**64, use an arbitrary precision lib
+        // no clean ruint to BigDecimal conversion
         let solver_fee =
             BigDecimal::from_biguint(BigUint::from_bytes_be(&solver_fee.to_be_bytes::<32>()), 0);
 
         let reward = solver_fee
             * BigDecimal::from_f64(market_data.token_value_src)
                 .context("token value did not fit in f64")?
-            / BigDecimal::from_u16(10)
-                .unwrap()
-                .powi(market_data.token_decimals_src as i64);
+            / BigDecimal::from(10).powi(market_data.token_decimals_src as i64);
 
-        // Let's assume that the USD reward fits a f64, if not, we're rich
+        // Let's assume that both the USD cost & reward fit in f64s. Highly unlikely to have a fulfillment
+        // with a value greater than a f64
+        let cost = cost.to_f64().context("cost did not fit in a f64")?;
         let reward = reward.to_f64().context("reward did not fit in a f64")?;
 
         anyhow::ensure!(cost.is_finite(), "computed fulfillment cost is not finite");
