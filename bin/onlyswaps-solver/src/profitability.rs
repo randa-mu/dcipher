@@ -1,7 +1,9 @@
 //! Ensures the profitability of a trade for a solver.
 
 mod market_data;
-pub mod standard;
+mod standard;
+
+pub use standard::*;
 
 use crate::model::Trade;
 

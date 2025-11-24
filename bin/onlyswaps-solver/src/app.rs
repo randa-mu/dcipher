@@ -3,7 +3,7 @@ use crate::fee_adapter::DefaultFeeAdapter;
 use crate::model::{BlockEvent, RequestId};
 use crate::network::Network;
 use crate::price_feed::coingecko::CoinGeckoClient;
-use crate::profitability::standard::StdProfitabilityEstimator;
+use crate::profitability::StdProfitabilityEstimator;
 use crate::solver::Solver;
 use alloy::providers::DynProvider;
 use config::timeout::TimeoutConfig;
