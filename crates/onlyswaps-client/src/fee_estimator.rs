@@ -75,11 +75,11 @@ mod integration_tests {
         let estimator = FeeEstimator::default();
 
         let src_chain = BASE_SEPOLIA.chain_id;
-        let src_token = *BASE_SEPOLIA.supported_tokens.get(&TokenTag::RUSD).unwrap();
+        let src_token = *BASE_SEPOLIA.supported_tokens.get(&TokenTag::FUSD).unwrap();
 
         let dst_chain = AVAX_FUJI.chain_id;
         let dst_token = *AVAX_FUJI.supported_tokens.get(&TokenTag::RUSD).unwrap();
-        let amount = U256::from(1_000_000_000_000_000_000u64);
+        let amount = U256::from(1_000_000_000_000_000u64);
 
         let response = estimator
             .estimate_fees(src_chain, dst_chain, amount, src_token, dst_token)
