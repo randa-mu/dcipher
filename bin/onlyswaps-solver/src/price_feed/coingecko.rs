@@ -21,6 +21,17 @@ type GCAddress = String;
 type CGChainId = String;
 type CGCoinId = String;
 
+/// A client used to fetch token values and other information from the CoinGecko API.
+///
+/// # Example
+/// After building the client, it must be initialized by calling the `init_chain_id_mapping` to
+/// fetch a mapping from u64 chain ids to CoinGecko chain ids.
+/// ```
+/// tokio::test::block_on(async {
+///     let mut cg_price_feed = CoinGeckoClient::builder().use_demo_api().build()?;
+///     cg_price_feed.init_chain_id_mapping().await?;
+/// });
+/// ```
 pub struct CoinGeckoClient {
     client: reqwest::Client,
     base_url: Url,

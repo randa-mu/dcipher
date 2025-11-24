@@ -126,7 +126,7 @@ mod tests {
             Default::default(),
             Default::default(),
             &FixedPriceFeed(f64::MAX, 6),
-            super::super::MAX_REASONABLE_TOKEN_PRICE_USD,
+            1_000_000.,
         )
         .await
         .expect_err("should not validate");
@@ -139,7 +139,7 @@ mod tests {
             Default::default(),
             Default::default(),
             &FixedPriceFeed(1.0, 6),
-            super::super::MAX_REASONABLE_TOKEN_PRICE_USD,
+            1_000_000.,
         )
         .await
         .expect("should validate");

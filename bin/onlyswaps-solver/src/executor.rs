@@ -1,7 +1,6 @@
 use crate::model::{RequestId, Trade};
 use crate::network::Network;
-use crate::price_feed::TokenPriceFeed;
-use crate::profitability::profitability_breaker;
+use crate::profitability::ProfitabilityEstimator;
 use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, TxHash};
 use alloy::providers::Provider;
@@ -15,19 +14,19 @@ use moka::future::Cache;
 use std::collections::HashMap;
 use tokio::time::timeout;
 
-pub(crate) struct TradeExecutor<'a, P, PF> {
+pub(crate) struct TradeExecutor<'a, P, PE> {
     own_address: Address,
     routers: HashMap<u64, &'a IRouterInstance<P>>,
     tokens: HashMap<u64, &'a Vec<ERC20FaucetTokenInstance<P>>>,
-    price_feed: PF,
+    profitability_estimator: PE,
 }
 
-impl<'a, P, PF> TradeExecutor<'a, P, PF>
+impl<'a, P, PE> TradeExecutor<'a, P, PE>
 where
     P: Provider,
-    PF: TokenPriceFeed,
+    PE: ProfitabilityEstimator,
 {
-    pub fn new(networks: &'a HashMap<u64, Network<P>>, price_feed: PF) -> Self {
+    pub fn new(networks: &'a HashMap<u64, Network<P>>, profitability_estimator: PE) -> Self {
         let routers = networks
             .iter()
             .map(|(chain_id, net)| (*chain_id, &net.router))
@@ -48,7 +47,7 @@ where
             routers,
             tokens,
             own_address,
-            price_feed,
+            profitability_estimator,
         }
     }
     pub async fn execute(
@@ -78,7 +77,13 @@ where
             // and finally execute the trade with a timeout
             match timeout(
                 timeout_config.request_timeout,
-                execute_trade(&trade, router, token, self.own_address, &self.price_feed),
+                execute_trade(
+                    &trade,
+                    router,
+                    token,
+                    self.own_address,
+                    &self.profitability_estimator,
+                ),
             )
             .await
             {
@@ -117,7 +122,7 @@ async fn execute_trade(
     router: &IRouterInstance<impl Provider>,
     token: &ERC20FaucetTokenInstance<impl Provider>,
     own_addr: Address,
-    price_feed: &impl TokenPriceFeed,
+    profitability_estimator: &impl ProfitabilityEstimator,
 ) -> anyhow::Result<TxHash> {
     // in theory, we shouldn't need to wait until the next block because txs will be processed in nonce order
     // but for whatever reason this doesn't seem to be the case :(
@@ -156,10 +161,12 @@ async fn execute_trade(
         .map_err(decode_irouter_error)
         .context("gas estimation failed")?;
 
-    // TODO: - If we're on a testnet, we need to bypass that check
-    //       - Need to make that configureable at run-time
     // Currently, we cannot check for profitability earlier, due to the allowance check.
-    if !profitability_breaker(trade, gas, price_feed, router.provider())
+    let gas_cost = estimate_gas_cost(router.provider())
+        .await
+        .context("gas cost estimation failed")?;
+    if profitability_estimator
+        .is_profitable(trade, gas, gas_cost)
         .await
         .context("failed to compute profitability of trade")?
     {
@@ -193,4 +200,23 @@ fn decode_irouter_error(e: alloy::contract::Error) -> anyhow::Error {
         return anyhow!("router contract error: {router_err:?}");
     }
     e.into()
+}
+
+/// Get an upper bound estimation of the current gas cost from the provider
+async fn estimate_gas_cost(provider: &impl Provider) -> anyhow::Result<u128> {
+    let gas_cost = match provider.estimate_eip1559_fees().await {
+        Ok(fees) => fees.max_fee_per_gas,
+        Err(e) => {
+            tracing::warn!(
+                error = ?e,
+                "Failed to estimate eip1559 fees, falling back to legacy estimation"
+            );
+            provider
+                .get_gas_price()
+                .await
+                .context("failed to get gas price")?
+        }
+    };
+
+    Ok(gas_cost)
 }
