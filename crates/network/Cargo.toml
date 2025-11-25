@@ -28,7 +28,7 @@ prometheus = { workspace = true, optional = true }
 tracing.workspace = true
 
 # network
-libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "floodsub", "request-response"], optional = true }
+libp2p = { workspace = true, features = ["tcp", "dns", "noise", "tokio", "ping", "yamux", "macros", "gossipsub", "request-response"], optional = true }
 
 # serde
 serde = { workspace = true, features = ["derive"] }

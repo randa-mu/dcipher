@@ -100,4 +100,3 @@ tower-http = { version = "0.6.6" }
 [patch.crates-io]
 # Use custom patch to fix arkworks' FieldHasher
 ark-ff = { git = 'https://github.com/azixus/algebra', branch = "fix/fieldHasher-v0.5.0" }
-libp2p-floodsub = { git = "https://github.com/azixus/rust-libp2p", branch = "fix/floodsub-msg-size" }

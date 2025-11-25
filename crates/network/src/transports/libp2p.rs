@@ -16,11 +16,13 @@ use crate::transports::libp2p::point_to_point::{
 use crate::transports::libp2p::transport::Libp2pTransport;
 use itertools::izip;
 use libp2p::allow_block_list::AllowedPeers;
+use libp2p::gossipsub::MessageAuthenticity;
 use libp2p::identity::Keypair;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::{
-    Multiaddr, PeerId, Swarm, allow_block_list, floodsub, noise, ping, request_response, tcp, yamux,
+    Multiaddr, PeerId, Swarm, allow_block_list, gossipsub, noise, ping, request_response, tcp,
+    yamux,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -31,7 +33,7 @@ use tokio_util::sync::CancellationToken;
 
 const LIBP2P_MAIN_TOPIC: &str = "main";
 const DEFAULT_REDIAL_INTERVAL: Duration = Duration::from_secs(2 * 60); // 2mins
-const FLOODSUB_MAX_MESSAGE_LEN: usize = 8192;
+const GOSSIPSUB_MAX_MESSAGE_LEN: usize = 65536; // currently same as the 65536 default
 
 /// Holds configuration parameters and obtain a [`Libp2pNode`] by running
 /// [`Self::run`](Libp2pNodeConfig::run).
@@ -136,8 +138,8 @@ impl<ID: PartyIdentifier> Libp2pNodeConfig<ID> {
 
             swarm
                 .behaviour_mut()
-                .floodsub
-                .add_node_to_partial_view(p.peer_id);
+                .gossipsub
+                .add_explicit_peer(&p.peer_id);
 
             let dial_opts = DialOpts::peer_id(p.peer_id)
                 .addresses(p.multiaddrs.clone())
@@ -148,9 +150,9 @@ impl<ID: PartyIdentifier> Libp2pNodeConfig<ID> {
             }
         });
 
-        // Create a floodsub topic and subscribe
-        let topic = floodsub::Topic::new(LIBP2P_MAIN_TOPIC);
-        let _ = swarm.behaviour_mut().floodsub.subscribe(topic);
+        // Create a gossip topic and subscribe
+        let topic = gossipsub::Sha256Topic::new(LIBP2P_MAIN_TOPIC);
+        let _ = swarm.behaviour_mut().gossipsub.subscribe(&topic);
 
         // Create channels for sending and receiving
         let (tx_received_message, rx_received_message) = unbounded_channel();
@@ -195,22 +197,23 @@ fn configure_swarm<ID: PartyIdentifier>(
     peers: impl IntoIterator<Item = PeerDetail<ID>>,
     redial_interval: Duration,
 ) -> Result<Swarm<Behaviour<ID>>, Libp2pNodeError> {
-    let peer_id = keypair.public().to_peer_id();
-    Ok(libp2p::SwarmBuilder::with_existing_identity(keypair)
-        .with_tokio()
-        .with_tcp(
-            tcp::Config::default(),
-            noise::Config::new,
-            yamux::Config::default,
-        )?
-        .with_dns()
-        .expect("failed to create swarm with dns")
-        .with_behaviour(|_| Behaviour::new(peer_id, peers, redial_interval))
-        .unwrap() // infallible
-        .with_swarm_config(|cfg| {
-            cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)) // stay connected to the peer even if idle
-        })
-        .build())
+    Ok(
+        libp2p::SwarmBuilder::with_existing_identity(keypair.clone())
+            .with_tokio()
+            .with_tcp(
+                tcp::Config::default(),
+                noise::Config::new,
+                yamux::Config::default,
+            )?
+            .with_dns()
+            .expect("failed to create swarm with dns")
+            .with_behaviour(|_| Behaviour::new(keypair, peers, redial_interval))
+            .unwrap() // infallible
+            .with_swarm_config(|cfg| {
+                cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)) // stay connected to the peer even if idle
+            })
+            .build(),
+    )
 }
 
 #[derive(Clone, Debug)]
@@ -275,11 +278,11 @@ impl<ID: PartyIdentifier> PeerDetails<ID> {
     }
 }
 
-/// Libp2p Behaviour with floodsub and a peer whitelist.
+/// Libp2p Behaviour with gossipsub and a peer whitelist.
 #[derive(NetworkBehaviour)]
 struct Behaviour<ID> {
     allowed_peers: allow_block_list::Behaviour<AllowedPeers>,
-    floodsub: floodsub::Floodsub,
+    gossipsub: gossipsub::Behaviour,
     point_to_point: request_response::Behaviour<DcipherPoint2PointMessageCodec>,
     ping: ping::Behaviour,
     periodic_dial: PeriodicDialBehaviour<ID>,
@@ -287,7 +290,7 @@ struct Behaviour<ID> {
 
 impl<ID: PartyIdentifier> Behaviour<ID> {
     /// Create a new behaviour
-    fn new<I>(local_peer_id: PeerId, peers: I, redial_interval: Duration) -> Self
+    fn new<I>(keypair: Keypair, peers: I, redial_interval: Duration) -> Self
     where
         I: IntoIterator<Item = PeerDetail<ID>>,
     {
@@ -310,10 +313,18 @@ impl<ID: PartyIdentifier> Behaviour<ID> {
             request_response::Config::default(),
         );
 
+        let gossip_config = gossipsub::ConfigBuilder::default()
+            .max_transmit_size(GOSSIPSUB_MAX_MESSAGE_LEN)
+            .build()
+            .expect("invalid static gossipsub config");
+
         Self {
             allowed_peers,
-            floodsub: floodsub::Floodsub::new(local_peer_id)
-                .with_max_message_len(FLOODSUB_MAX_MESSAGE_LEN),
+            gossipsub: gossipsub::Behaviour::new(
+                MessageAuthenticity::Signed(keypair),
+                gossip_config,
+            )
+            .expect("failed to create gossipsub behaviour"),
             point_to_point,
             ping: ping::Behaviour::default(),
             periodic_dial: PeriodicDialBehaviour::new(redial_interval, peers),

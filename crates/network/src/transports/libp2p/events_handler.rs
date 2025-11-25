@@ -6,9 +6,8 @@ use crate::transports::libp2p::{
 use crate::transports::{SendBroadcastMessage, SendDirectMessage, TransportAction};
 use crate::{PartyIdentifier, ReceivedMessage};
 use futures_util::StreamExt;
-use libp2p::floodsub::{FloodsubEvent, FloodsubMessage};
 use libp2p::request_response::{Event as RequestResponseEvent, Message as RequestResponseMessage};
-use libp2p::{Swarm, floodsub, ping, swarm::SwarmEvent};
+use libp2p::{Swarm, gossipsub, ping, swarm::SwarmEvent};
 use std::num::NonZeroU32;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
@@ -116,10 +115,12 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
 
     fn send_broadcast_message_to_swarm(&mut self, msg: SendBroadcastMessage) {
         tracing::info!("Swarm broadcasting message to all connected peers");
-        self.swarm
-            .behaviour_mut()
-            .floodsub
-            .publish(floodsub::Topic::new(LIBP2P_MAIN_TOPIC), msg.msg.clone());
+        if let Err(e) = self.swarm.behaviour_mut().gossipsub.publish(
+            gossipsub::Sha256Topic::new(LIBP2P_MAIN_TOPIC),
+            msg.msg.clone(),
+        ) {
+            tracing::error!(error = ?e, "Failed to publish message to gossipsub topic");
+        }
 
         if msg.broadcast_self {
             tracing::debug!("Sending broadcast to self");
@@ -232,8 +233,8 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
         ready_send_messages: &mut bool,
     ) {
         match event {
-            BehaviourEvent::Floodsub(event) => {
-                self.handle_floodsub_event(event, ready_send_messages);
+            BehaviourEvent::Gossipsub(event) => {
+                self.handle_gossipsub_event(event, ready_send_messages);
             }
 
             BehaviourEvent::PointToPoint(event) => {
@@ -252,18 +253,21 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
         }
     }
 
-    fn handle_floodsub_event(&mut self, event: FloodsubEvent, ready_send_messages: &mut bool) {
+    fn handle_gossipsub_event(&mut self, event: gossipsub::Event, ready_send_messages: &mut bool) {
+        use gossipsub::Event;
+
         match event {
-            FloodsubEvent::Message(FloodsubMessage {
-                source: sender_peer_id,
-                data,
+            Event::Message {
+                message: gossipsub::Message { source, data, .. },
                 ..
-            }) => {
+            } => {
+                let Some(sender_peer_id) = source else {
+                    tracing::warn!("Libp2p node received message from an anonymous peer");
+                    return;
+                };
+
                 let Some(short_id) = self.peers.get_short_id(&sender_peer_id) else {
-                    tracing::error!(
-                    sender_peer_id = %sender_peer_id,
-                    "Libp2p node received message from an unknown peer"
-                    );
+                    tracing::error!(sender_peer_id = %sender_peer_id, "Libp2p node received message from an unknown peer");
                     return;
                 };
 
@@ -277,7 +281,7 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
                 }
             }
 
-            FloodsubEvent::Subscribed { peer_id, topic } => {
+            Event::Subscribed { peer_id, topic } => {
                 let short_id = self.peers.get_short_id(&peer_id);
 
                 tracing::info!(%peer_id, ?short_id, ?topic, "Peer subscribed to topic");
@@ -286,11 +290,13 @@ impl<ID: PartyIdentifier> EventsHandler<ID> {
                 *ready_send_messages = true;
             }
 
-            FloodsubEvent::Unsubscribed { peer_id, topic } => {
+            Event::Unsubscribed { peer_id, topic } => {
                 let short_id = self.peers.get_short_id(&peer_id);
 
                 tracing::info!(%peer_id, ?short_id, ?topic, "Peer unsubscribed to topic");
             }
+
+            _ => (),
         }
     }
 
