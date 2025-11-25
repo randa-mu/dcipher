@@ -1,6 +1,6 @@
 use crate::model::{RequestId, Trade};
 use crate::network::Network;
-use crate::profitability::ProfitabilityEstimator;
+use crate::profitability::{ErasedProfitabilityEstimator, ProfitabilityEstimator};
 use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, TxHash};
 use alloy::providers::Provider;
@@ -14,19 +14,21 @@ use moka::future::Cache;
 use std::collections::HashMap;
 use tokio::time::timeout;
 
-pub(crate) struct TradeExecutor<'a, P, PE> {
+pub(crate) struct TradeExecutor<'a, P> {
     own_address: Address,
     routers: HashMap<u64, &'a IRouterInstance<P>>,
     tokens: HashMap<u64, &'a Vec<ERC20FaucetTokenInstance<P>>>,
-    profitability_estimator: PE,
+    profitability_estimator: ErasedProfitabilityEstimator,
 }
 
-impl<'a, P, PE> TradeExecutor<'a, P, PE>
+impl<'a, P> TradeExecutor<'a, P>
 where
     P: Provider,
-    PE: ProfitabilityEstimator,
 {
-    pub fn new(networks: &'a HashMap<u64, Network<P>>, profitability_estimator: PE) -> Self {
+    pub fn new(
+        networks: &'a HashMap<u64, Network<P>>,
+        profitability_estimator: ErasedProfitabilityEstimator,
+    ) -> Self {
         let routers = networks
             .iter()
             .map(|(chain_id, net)| (*chain_id, &net.router))
@@ -122,7 +124,7 @@ async fn execute_trade(
     router: &IRouterInstance<impl Provider>,
     token: &ERC20FaucetTokenInstance<impl Provider>,
     own_addr: Address,
-    profitability_estimator: &impl ProfitabilityEstimator,
+    profitability_estimator: &ErasedProfitabilityEstimator,
 ) -> anyhow::Result<TxHash> {
     // in theory, we shouldn't need to wait until the next block because txs will be processed in nonce order
     // but for whatever reason this doesn't seem to be the case :(

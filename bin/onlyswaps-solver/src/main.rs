@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
 
     // listen for alllll the things!
     tokio::select! {
-        res = App::start(networks, &config.timeout) => {
+        res = App::start(networks, &config.timeout, &config.profitability) => {
             match res {
                 Ok(_) => Err(anyhow!("event listener stopped unexpectedly")),
                 Err(e) => Err(anyhow!("event listener stopped unexpectedly: {}", e))

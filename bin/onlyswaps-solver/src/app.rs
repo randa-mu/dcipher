@@ -1,9 +1,12 @@
+use crate::config::ProfitabilityConfig;
 use crate::executor::TradeExecutor;
 use crate::fee_adapter::DefaultFeeAdapter;
 use crate::model::{BlockEvent, RequestId};
 use crate::network::Network;
 use crate::price_feed::coingecko::CoinGeckoClient;
-use crate::profitability::StdProfitabilityEstimator;
+use crate::profitability::{
+    AlwaysProfitable, ErasedProfitabilityEstimator, StdProfitabilityEstimator,
+};
 use crate::solver::Solver;
 use alloy::providers::DynProvider;
 use config::timeout::TimeoutConfig;
@@ -19,10 +22,28 @@ impl App {
     pub async fn start(
         networks: HashMap<u64, Network<DynProvider>>,
         timeout: &TimeoutConfig,
+        profitability: &ProfitabilityConfig,
     ) -> anyhow::Result<()> {
-        let mut cg_price_feed = CoinGeckoClient::builder().use_demo_api().build()?;
-        cg_price_feed.init_chain_id_mapping().await?;
-        let profitability_estimator = StdProfitabilityEstimator::new(cg_price_feed);
+        let pe = match profitability {
+            ProfitabilityConfig::AlwaysProfitable => {
+                ErasedProfitabilityEstimator::from_estimator(AlwaysProfitable)
+            }
+            ProfitabilityConfig::CheckWithCoinGecko { api_key, pro_api } => {
+                let mut builder = CoinGeckoClient::builder();
+                if let Some(api_key) = api_key {
+                    builder = builder.api_key(api_key.to_owned());
+                }
+                if !pro_api {
+                    builder = builder.use_demo_api()
+                }
+
+                let mut cg_price_feed = builder.build()?;
+                cg_price_feed.init_chain_id_mapping().await?;
+                ErasedProfitabilityEstimator::from_estimator(StdProfitabilityEstimator::new(
+                    cg_price_feed,
+                ))
+            }
+        };
 
         let block_numbers = networks
             .values()
@@ -31,7 +52,7 @@ impl App {
         let mut stream = Box::pin(select_all(streams));
         let fee_estimator = DefaultFeeAdapter::new();
         let mut solver = Solver::new(&networks, &fee_estimator).await?;
-        let executor = TradeExecutor::new(&networks, profitability_estimator);
+        let executor = TradeExecutor::new(&networks, pe);
 
         // we pull new chain state every block, so inflight requests may not have been
         // completed yet, so we don't want to attempt to execute them again and waste gas.
