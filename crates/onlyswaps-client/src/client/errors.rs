@@ -44,6 +44,10 @@ pub enum OnlySwapsClientError {
 
     #[error(transparent)]
     Alloy(#[from] OnlySwapsClientOtherError),
+
+    #[cfg(feature = "solver")]
+    #[error("relay tokens reverted")]
+    RelayTokensReverted,
 }
 
 #[derive(thiserror::Error, Debug)]
