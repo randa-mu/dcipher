@@ -27,16 +27,16 @@ impl OnlySwapsClient {
         trade: OnlySwapsTrade,
         refund_addr: Address,
     ) -> Result<u64, OnlySwapsClientError> {
-        let chain_config = self
+        let chain = self
             .config
-            .get_chain_config(trade.dest_chain_id)
+            .get_chain(trade.dest_chain_id)
             .ok_or(OnlySwapsClientError::UnsupportedChain(trade.dest_chain_id))?;
 
         let provider = self
             .config
             .get_ethereum_provider(trade.dest_chain_id)
             .ok_or(OnlySwapsClientError::MissingProvider(trade.dest_chain_id))?;
-        let router = IRouterInstance::new(chain_config.router_address, provider);
+        let router = IRouterInstance::new(chain.config.router_address, provider);
 
         let gas_estimate = router
             .relayTokens(
@@ -66,16 +66,16 @@ impl OnlySwapsClient {
         trade: OnlySwapsTrade,
         refund_addr: Address,
     ) -> Result<TransactionReceipt, OnlySwapsClientError> {
-        let chain_config = self
+        let chain = self
             .config
-            .get_chain_config(trade.dest_chain_id)
+            .get_chain(trade.dest_chain_id)
             .ok_or(OnlySwapsClientError::UnsupportedChain(trade.dest_chain_id))?;
 
         let provider = self
             .config
             .get_ethereum_provider(trade.dest_chain_id)
             .ok_or(OnlySwapsClientError::MissingProvider(trade.dest_chain_id))?;
-        let router = IRouterInstance::new(chain_config.router_address, provider);
+        let router = IRouterInstance::new(chain.config.router_address, provider);
 
         let tx_hash = router
             .relayTokens(
@@ -94,8 +94,8 @@ impl OnlySwapsClient {
             .send()
             .await
             .map_err(|e| (e, "failed to send approve tx"))?
-            .with_required_confirmations(chain_config.required_confirmations)
-            .with_timeout(Some(chain_config.timeout))
+            .with_required_confirmations(chain.config.required_confirmations)
+            .with_timeout(Some(chain.config.timeout))
             .watch()
             .await?;
 

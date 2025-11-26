@@ -118,10 +118,11 @@ impl OnlySwapsClient {
             .get_ethereum_provider(chain_id)
             .ok_or(OnlySwapsClientError::MissingProvider(chain_id))?;
 
-        let chain_config = self
+        let chain_config = &self
             .config
-            .get_chain_config(chain_id)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(chain_id))?;
+            .get_chain(chain_id)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(chain_id))?
+            .config;
 
         let token_addr = *chain_config
             .supported_tokens
@@ -149,10 +150,11 @@ impl OnlySwapsClient {
             .get_ethereum_provider(routing.src_chain)
             .ok_or(OnlySwapsClientError::MissingProvider(routing.src_chain))?;
 
-        let src_chain_config = self
+        let src_chain_config = &self
             .config
-            .get_chain_config(routing.src_chain)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(routing.src_chain))?;
+            .get_chain(routing.src_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(routing.src_chain))?
+            .config;
 
         Ok((provider, src_chain_config))
     }
