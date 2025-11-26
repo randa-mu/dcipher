@@ -315,6 +315,10 @@ impl<ID: PartyIdentifier> Behaviour<ID> {
 
         let gossip_config = gossipsub::ConfigBuilder::default()
             .max_transmit_size(GOSSIPSUB_MAX_MESSAGE_LEN)
+            .flood_publish(true)
+            .idontwant_on_publish(true)
+            .forward_queue_duration(Duration::from_secs(5))
+            .publish_queue_duration(Duration::from_secs(30))
             .build()
             .expect("invalid static gossipsub config");
 
