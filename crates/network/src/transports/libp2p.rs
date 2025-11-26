@@ -151,7 +151,7 @@ impl<ID: PartyIdentifier> Libp2pNodeConfig<ID> {
         });
 
         // Create a gossip topic and subscribe
-        let topic = gossipsub::Sha256Topic::new(LIBP2P_MAIN_TOPIC);
+        let topic = gossipsub::IdentTopic::new(LIBP2P_MAIN_TOPIC);
         let _ = swarm.behaviour_mut().gossipsub.subscribe(&topic);
 
         // Create channels for sending and receiving
