@@ -57,14 +57,19 @@ async fn profitability_breaker(
     let market_data = fetch_trade_market_data(
         trade.src_chain_id,
         trade.token_in_addr,
+        trade.token_out_addr,
         trade.dest_chain_id,
         price_feed,
         MAX_REASONABLE_TOKEN_PRICE_USD,
     )
     .await?;
 
-    let fulfillment =
-        FulfillmentData::evaluate(gas_cost_upper_bound, trade.solver_fee, &market_data)?;
+    let fulfillment = FulfillmentData::evaluate(
+        gas_cost_upper_bound,
+        trade.solver_refund_amount,
+        trade.amount_out,
+        &market_data,
+    )?;
 
     if fulfillment.is_profitable() {
         tracing::debug!(
@@ -91,27 +96,34 @@ struct FulfillmentData {
 impl FulfillmentData {
     fn evaluate(
         gas_cost_upper_bound: u128,
-        solver_fee: U256,
+        solver_refund_amount: U256,
+        amount_out: U256,
         market_data: &MarketData,
     ) -> anyhow::Result<FulfillmentData> {
         // Use BigDecimals for arbitrary precision instead of f64
-        let cost = BigDecimal::from(gas_cost_upper_bound)
+
+        // Compute the tx fulfillment cost
+        let tx_cost = BigDecimal::from(gas_cost_upper_bound)
             * BigDecimal::from_f64(market_data.native_value_dst)
                 .context("native value did not fit in f64")?
             / NATIVE_EVM_TOKEN_UNIT;
 
-        // no clean ruint to BigDecimal conversion
-        let solver_fee =
-            BigDecimal::from_biguint(BigUint::from_bytes_be(&solver_fee.to_be_bytes::<32>()), 0);
+        // Compute the cost of sending amount_out tokens
+        let amount_out_cost = u256_to_bigdecimal(&amount_out)
+            * BigDecimal::from_f64(market_data.token_value_dst)
+                .context("token value did not fit in f64")?
+            / BigDecimal::from(10).powi(market_data.token_decimals_dst as i64);
 
-        let reward = solver_fee
+        let reward = u256_to_bigdecimal(&solver_refund_amount)
             * BigDecimal::from_f64(market_data.token_value_src)
                 .context("token value did not fit in f64")?
             / BigDecimal::from(10).powi(market_data.token_decimals_src as i64);
 
         // Let's assume that both the USD cost & reward fit in f64s. Highly unlikely to have a fulfillment
         // with a value greater than a f64
-        let cost = cost.to_f64().context("cost did not fit in a f64")?;
+        let cost = (tx_cost + amount_out_cost)
+            .to_f64()
+            .context("cost did not fit in a f64")?;
         let reward = reward.to_f64().context("reward did not fit in a f64")?;
 
         anyhow::ensure!(cost.is_finite(), "computed fulfillment cost is not finite");
@@ -128,6 +140,11 @@ impl FulfillmentData {
     }
 }
 
+fn u256_to_bigdecimal(v: &U256) -> BigDecimal {
+    // no clean ruint to BigDecimal conversion
+    BigDecimal::from_biguint(BigUint::from_bytes_be(&v.to_be_bytes::<32>()), 0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,6 +155,34 @@ mod tests {
         native_values: HashMap<ChainId, f64>,
         token_decimals: HashMap<(ChainId, String), u8>,
         token_prices: HashMap<(ChainId, String), f64>,
+    }
+
+    impl FakePriceFeed {
+        fn from_trade_data(trade: &Trade, market_data: &MarketData) -> Self {
+            let token_in_addr = trade.token_in_addr.to_string();
+            let token_out_addr = trade.token_out_addr.to_string();
+
+            let src_chain = trade.src_chain_id.try_into().unwrap();
+            let dst_chain = trade.dest_chain_id.try_into().unwrap();
+
+            FakePriceFeed {
+                token_prices: HashMap::from_iter([
+                    (
+                        (src_chain, token_in_addr.clone()),
+                        market_data.token_value_src,
+                    ),
+                    (
+                        (dst_chain, token_out_addr.clone()),
+                        market_data.token_value_dst,
+                    ),
+                ]),
+                token_decimals: HashMap::from_iter([
+                    ((src_chain, token_in_addr), market_data.token_decimals_src),
+                    ((dst_chain, token_out_addr), market_data.token_decimals_dst),
+                ]),
+                native_values: HashMap::from_iter([(dst_chain, market_data.native_value_dst)]),
+            }
+        }
     }
 
     #[derive(thiserror::Error, Debug)]
@@ -204,18 +249,19 @@ mod tests {
         // requestedAt   uint256 :  1763674791
 
         let trade = Trade {
+            request_id: "0xc19a45e6e47db297aa1ef996c1e29b74cf3c5a4e11035eae115f00eeb1a81a6c"
+                .parse()
+                .unwrap(),
             token_in_addr: address!("0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2"),
             token_out_addr: address!("0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7"),
             src_chain_id: U256::from(8453),
             dest_chain_id: U256::from(43114),
             sender_addr: address!("0xafe394B3198AB80C69d280ef4f5905A0647e0e97"),
             recipient_addr: address!("0xafe394B3198AB80C69d280ef4f5905A0647e0e97"),
-            request_id: "0xc19a45e6e47db297aa1ef996c1e29b74cf3c5a4e11035eae115f00eeb1a81a6c"
-                .parse()
-                .unwrap(),
             amount_in: U256::from(110_000),
             amount_out: U256::from(109_725),
             solver_fee: U256::from(40_000),
+            solver_refund_amount: U256::from(149_725),
             nonce: U256::from(2),
             pre_hooks: vec![],
             post_hooks: vec![],
@@ -228,6 +274,8 @@ mod tests {
             native_value_dst: 13.82845f64,
             token_value_src: 0.997642,
             token_decimals_src: 6,
+            token_value_dst: 0.997642,
+            token_decimals_dst: 6,
         };
 
         (trade, gas_estimate, gas_price, market_data)
@@ -238,8 +286,13 @@ mod tests {
         let (trade, gas_estimate, gas_price, market_data) = real_trade();
         let gas_cost_upper_bound = gas_estimate as u128 * gas_price;
 
-        let data = FulfillmentData::evaluate(gas_cost_upper_bound, trade.solver_fee, &market_data)
-            .expect("to evaluate successfully");
+        let data = FulfillmentData::evaluate(
+            gas_cost_upper_bound,
+            trade.solver_refund_amount,
+            trade.amount_out,
+            &market_data,
+        )
+        .expect("to evaluate successfully");
         assert!(data.is_profitable(), "trade should be profitable");
     }
 
@@ -249,35 +302,21 @@ mod tests {
         let gas_cost_upper_bound = gas_estimate as u128 * gas_price;
         market_data.native_value_dst *= 100f64; // we now say that the price of AVAX is suddenly 100x more expensive
 
-        let data = FulfillmentData::evaluate(gas_cost_upper_bound, trade.solver_fee, &market_data)
-            .expect("to evaluate successfully");
+        let data = FulfillmentData::evaluate(
+            gas_cost_upper_bound,
+            trade.solver_refund_amount,
+            trade.amount_out,
+            &market_data,
+        )
+        .expect("to evaluate successfully");
         assert!(!data.is_profitable(), "trade should not be profitable");
     }
 
     #[tokio::test]
     async fn evaluate_real_input_with_price_feed() {
         let (trade, gas_estimate, gas_price, market_data) = real_trade();
-        let price_feed = FakePriceFeed {
-            token_prices: HashMap::from_iter([(
-                (
-                    trade.src_chain_id.try_into().unwrap(),
-                    trade.token_in_addr.to_string(),
-                ),
-                market_data.token_value_src,
-            )]),
-            token_decimals: HashMap::from_iter([(
-                (
-                    trade.src_chain_id.try_into().unwrap(),
-                    trade.token_in_addr.to_string(),
-                ),
-                market_data.token_decimals_src,
-            )]),
-            native_values: HashMap::from_iter([(
-                trade.dest_chain_id.try_into().unwrap(),
-                market_data.native_value_dst,
-            )]),
-        };
 
+        let price_feed = FakePriceFeed::from_trade_data(&trade, &market_data);
         let estimator = StdProfitabilityEstimator::new(price_feed);
         let profitable = estimator
             .is_profitable(&trade, gas_estimate, gas_price)
@@ -287,31 +326,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn evaluate_unprofitable_with_price_feed() {
+    async fn evaluate_unprofitable_high_native_with_price_feed() {
         let (trade, gas_estimate, gas_price, mut market_data) = real_trade();
         market_data.native_value_dst *= 100f64; // we now say that the price of AVAX is suddenly 100x more expensive
 
-        let price_feed = FakePriceFeed {
-            token_prices: HashMap::from_iter([(
-                (
-                    trade.src_chain_id.try_into().unwrap(),
-                    trade.token_in_addr.to_string(),
-                ),
-                market_data.token_value_src,
-            )]),
-            token_decimals: HashMap::from_iter([(
-                (
-                    trade.src_chain_id.try_into().unwrap(),
-                    trade.token_in_addr.to_string(),
-                ),
-                market_data.token_decimals_src,
-            )]),
-            native_values: HashMap::from_iter([(
-                trade.dest_chain_id.try_into().unwrap(),
-                market_data.native_value_dst,
-            )]),
-        };
+        let price_feed = FakePriceFeed::from_trade_data(&trade, &market_data);
+        let estimator = StdProfitabilityEstimator::new(price_feed);
+        let profitable = estimator
+            .is_profitable(&trade, gas_estimate, gas_price)
+            .await
+            .expect("to evaluate with Ok");
+        assert!(!profitable, "trade should be unprofitable");
+    }
 
+    #[tokio::test]
+    async fn evaluate_unprofitable_high_out_with_price_feed() {
+        let (trade, gas_estimate, gas_price, mut market_data) = real_trade();
+        market_data.token_value_dst *= 2f64; // we now say that the price of the destination token is suddenly 2x more expensive
+
+        let price_feed = FakePriceFeed::from_trade_data(&trade, &market_data);
         let estimator = StdProfitabilityEstimator::new(price_feed);
         let profitable = estimator
             .is_profitable(&trade, gas_estimate, gas_price)

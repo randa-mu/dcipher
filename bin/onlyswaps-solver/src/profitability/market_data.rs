@@ -10,6 +10,8 @@ pub(crate) struct MarketData {
     pub native_value_dst: f64,
     pub token_value_src: f64,
     pub token_decimals_src: u8,
+    pub token_value_dst: f64,
+    pub token_decimals_dst: u8,
 }
 
 impl MarketData {
@@ -17,15 +19,20 @@ impl MarketData {
         native_value_dst: f64,
         token_value_src: f64,
         token_decimals_src: u8,
+        token_value_dst: f64,
+        token_decimals_dst: u8,
         max_price: f64,
     ) -> anyhow::Result<Self> {
         validate_price(native_value_dst, max_price)
             .context("failed to validate native_value_dst")?;
         validate_price(token_value_src, max_price).context("failed to validate token_value_src")?;
+        validate_price(token_value_dst, max_price).context("failed to validate token_value_dst")?;
         Ok(Self {
             native_value_dst,
             token_value_src,
             token_decimals_src,
+            token_value_dst,
+            token_decimals_dst,
         })
     }
 }
@@ -34,6 +41,7 @@ impl MarketData {
 pub(crate) async fn fetch_trade_market_data(
     src_chain_id: U256,
     token_in_addr: Address,
+    token_out_addr: Address,
     dest_chain_id: U256,
     price_feed: &impl TokenPriceFeed,
     max_price: f64,
@@ -57,13 +65,34 @@ pub(crate) async fn fetch_trade_market_data(
         .token_decimals(src_chain_id, token_in_addr.to_string())
         .map(|out| out.context("failed to fetch source token decimals"));
 
-    let (native_value_dst, token_value_src, token_decimals_src) =
-        futures::try_join!(native_value_dst, token_value_src, token_decimals_src)?;
+    let token_value_dst = price_feed
+        .token_value(dst_chain_id, token_out_addr.to_string())
+        .map(|out| out.context("failed to fetch destination token value"));
+
+    let token_decimals_dst = price_feed
+        .token_decimals(dst_chain_id, token_out_addr.to_string())
+        .map(|out| out.context("failed to fetch destination token decimals"));
+
+    let (
+        native_value_dst,
+        token_value_src,
+        token_decimals_src,
+        token_value_dst,
+        token_decimals_dst,
+    ) = futures::try_join!(
+        native_value_dst,
+        token_value_src,
+        token_decimals_src,
+        token_value_dst,
+        token_decimals_dst
+    )?;
 
     MarketData::new_validated(
         native_value_dst,
         token_value_src,
         token_decimals_src,
+        token_value_dst,
+        token_decimals_dst,
         max_price,
     )
 }
@@ -125,6 +154,7 @@ mod tests {
             Default::default(),
             Default::default(),
             Default::default(),
+            Default::default(),
             &FixedPriceFeed(f64::MAX, 6),
             1_000_000.,
         )
@@ -135,6 +165,7 @@ mod tests {
     #[tokio::test]
     async fn should_validate_market_data() {
         fetch_trade_market_data(
+            Default::default(),
             Default::default(),
             Default::default(),
             Default::default(),

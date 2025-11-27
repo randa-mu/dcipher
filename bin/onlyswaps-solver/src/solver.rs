@@ -230,6 +230,7 @@ mod tests {
             amount_in: expected_output_amount,
             amount_out: expected_output_amount,
             solver_fee: transfer_params.params.solverFee,
+            solver_refund_amount: transfer_params.solver_refund_amount(),
             pre_hooks: Vec::new(),
             post_hooks: Vec::new(),
         };

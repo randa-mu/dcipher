@@ -354,12 +354,11 @@ mod tests {
             amount_in: U256::from(110_000),
             amount_out: U256::from(109_725),
             solver_fee: U256::from(40_000),
+            solver_refund_amount: U256::from(149_725),
             nonce: U256::from(2),
             pre_hooks: vec![],
             post_hooks: vec![],
         };
-        let gas_estimate = 402_724;
-        let gas_price = 314_900_000; // 0.3149 nAVAX
 
         let native_value_ava = client
             .native_value(trade.dest_chain_id.try_into().unwrap())
@@ -404,7 +403,7 @@ mod tests {
         tracing::debug!("native_value_dst: {native_value_ava}");
         tracing::debug!("token_price_src: {token_price_src}");
         tracing::debug!("token_price_dst: {token_price_dst}");
-        tracing::debug!("token_decimals_dst: {token_decimals_dst}");
+        tracing::debug!("token_decimals_src: {token_decimals_src}");
         tracing::debug!("token_decimals_dst: {token_decimals_dst}");
     }
 }
