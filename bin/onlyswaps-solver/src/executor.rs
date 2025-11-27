@@ -167,7 +167,7 @@ async fn execute_trade(
     let gas_cost = estimate_gas_cost(router.provider())
         .await
         .context("gas cost estimation failed")?;
-    if profitability_estimator
+    if !profitability_estimator
         .is_profitable(trade, gas, gas_cost)
         .await
         .context("failed to compute profitability of trade")?
