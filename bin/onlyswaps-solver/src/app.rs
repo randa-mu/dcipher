@@ -19,6 +19,7 @@ use omnievent::proto_types::omni_event_service_client::OmniEventServiceClient;
 use omnievent::proto_types::{
     BlockSafety, EventField, EventOccurrence, RegisterNewEventRequest, StreamEventsRequest,
 };
+use onlyswaps_client::client::OnlySwapsClient;
 use std::collections::HashMap;
 use std::ops::Mul;
 use tokio_stream::wrappers::IntervalStream;
@@ -33,13 +34,14 @@ pub struct App {}
 impl App {
     pub async fn start(
         signer: PrivateKeySigner,
+        client: OnlySwapsClient,
         networks: HashMap<u64, Network<DynProvider>>,
         timeout: &TimeoutConfig,
         profitability: &ProfitabilityConfig,
         oes: OmniEventBoxService,
     ) -> anyhow::Result<()> {
-        let mut client = OmniEventServiceClient::new(oes);
-        let swap_stream = swap_requested_stream(&mut client, &networks).await?;
+        let mut omnievent_client = OmniEventServiceClient::new(oes);
+        let swap_stream = swap_requested_stream(&mut omnievent_client, &networks).await?;
 
         // We don't actually care about the detail of the event, we just use it as a ticker
         let event_ticker = swap_stream.filter_map(|res| async {
@@ -57,7 +59,7 @@ impl App {
         let pe = get_profitability_estimator(profitability).await?;
         let fee_estimator = DefaultFeeAdapter::new();
         let mut solver = Solver::new(&networks, &fee_estimator).await?;
-        let executor = TradeExecutor::new(signer, &networks, pe).await?;
+        let executor = TradeExecutor::new(signer, client, &networks, pe).await?;
 
         // we pull new chain state every block, so inflight requests may not have been
         // completed yet, so we don't want to attempt to execute them again and waste gas.

@@ -14,10 +14,13 @@ use generated::onlyswaps::errors_lib::ErrorsLib::ErrorsLibErrors;
 use generated::onlyswaps::i_router::IRouter::{IRouterInstance, RelayTokensPermit2Params};
 use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors;
 use moka::future::Cache;
+use onlyswaps_client::client::OnlySwapsClient;
+use onlyswaps_client::client::solver::OnlySwapsTrade;
 use std::collections::HashMap;
 use tokio::time::timeout;
 
 pub(crate) struct TradeExecutor<'a, P, S> {
+    client: OnlySwapsClient,
     signer: S,
     own_address: Address,
     configs: HashMap<u64, ChainConfig<'a, P>>,
@@ -36,6 +39,7 @@ where
 {
     pub async fn new(
         signer: S,
+        client: OnlySwapsClient,
         networks: &'a HashMap<u64, Network<P>>,
         profitability_estimator: ErasedProfitabilityEstimator,
     ) -> anyhow::Result<Self> {
@@ -65,6 +69,7 @@ where
             .expect("if we don't have a network by now, something is very wrong");
 
         Ok(Self {
+            client,
             signer,
             configs,
             own_address,
@@ -246,4 +251,24 @@ async fn estimate_gas_cost(provider: &impl Provider) -> anyhow::Result<u128> {
     };
 
     Ok(gas_cost)
+}
+
+impl TryFrom<Trade> for OnlySwapsTrade {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Trade) -> Result<Self, Self::Error> {
+        Ok(Self {
+            token_in_addr: value.token_in_addr,
+            token_out_addr: value.token_out_addr,
+            src_chain_id: value.src_chain_id.try_into()?,
+            dest_chain_id: value.dest_chain_id.try_into()?,
+            sender_addr: value.sender_addr,
+            recipient_addr: value.recipient_addr,
+            amount_out: value.amount_out,
+            nonce: value.nonce,
+            request_id: value.request_id,
+            pre_hooks: value.pre_hooks,
+            post_hooks: value.post_hooks,
+        })
+    }
 }

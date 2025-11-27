@@ -102,4 +102,9 @@ impl OnlySwapsClientConfig {
 
         Some(IRouterInstance::new(router_address, provider))
     }
+
+    /// Get signer address
+    pub fn get_address(&self, chain_id: u64) -> Option<Address> {
+        self.get_chain(chain_id)?.signer_address
+    }
 }
