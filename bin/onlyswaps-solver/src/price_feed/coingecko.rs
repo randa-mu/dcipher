@@ -316,3 +316,67 @@ fn coins_data_url(base_url: Url, coin_id: &str) -> Result<Url, url::ParseError> 
 
     Ok(url)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::Trade;
+    use alloy::primitives::{U256, address};
+
+    #[tokio::test]
+    #[ignore]
+    async fn coingecko_integration() {
+        let mut client = CoinGeckoClient::builder()
+            .use_demo_api()
+            .build()
+            .expect("to get client");
+        client
+            .init_chain_id_mapping()
+            .await
+            .expect("init chain with success");
+
+        let trade = Trade {
+            token_in_addr: address!("0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2"),
+            token_out_addr: address!("0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7"),
+            src_chain_id: U256::from(8453),
+            dest_chain_id: U256::from(43114),
+            sender_addr: address!("0xafe394B3198AB80C69d280ef4f5905A0647e0e97"),
+            recipient_addr: address!("0xafe394B3198AB80C69d280ef4f5905A0647e0e97"),
+            request_id: "0xc19a45e6e47db297aa1ef996c1e29b74cf3c5a4e11035eae115f00eeb1a81a6c"
+                .parse()
+                .unwrap(),
+            amount_in: U256::from(110_000),
+            amount_out: U256::from(109_725),
+            solver_fee: U256::from(40_000),
+            nonce: U256::from(2),
+            pre_hooks: vec![],
+            post_hooks: vec![],
+        };
+        let gas_estimate = 402_724;
+        let gas_price = 314_900_000; // 0.3149 nAVAX
+
+        let native_value_ava = client
+            .native_value(trade.dest_chain_id.try_into().unwrap())
+            .await
+            .expect("to successfully obtain avax native value");
+        let native_value_base = client
+            .native_value(trade.src_chain_id.try_into().unwrap())
+            .await
+            .expect("to successfully obtain base native value");
+
+        let token_price_src = client
+            .token_value(
+                trade.src_chain_id.try_into().unwrap(),
+                trade.token_in_addr.to_string(),
+            )
+            .await
+            .expect("to successfully get src token");
+        let token_price_dst = client
+            .token_value(
+                trade.dest_chain_id.try_into().unwrap(),
+                trade.token_out_addr.to_string(),
+            )
+            .await
+            .expect("to successfully get src token");
+    }
+}
