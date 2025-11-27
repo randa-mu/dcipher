@@ -65,6 +65,9 @@ pub enum CoinGeckoClientError {
     #[error("http error")]
     HttpError(#[source] reqwest::Error),
 
+    #[error("failed to deserialize response into json")]
+    JsonDeserialize(#[from] serde_json::Error),
+
     #[error(transparent)]
     CoinGeckoError(#[from] CoinGeckoError),
 
@@ -128,19 +131,23 @@ impl CoinGeckoClient {
 
     async fn get_coingecko<T>(&self, url: Url) -> Result<T, CoinGeckoClientError>
     where
-        T: for<'de> Deserialize<'de>,
+        T: for<'de> Deserialize<'de> + std::fmt::Debug,
     {
         let response = self
             .client
-            .get(url)
+            .get(url.clone())
             .send()
             .await
             .map_err(CoinGeckoClientError::HttpError)?;
 
-        let out_or_err: CoinGeckoResult<_> = response
-            .json()
+        let response_text = response
+            .text()
             .await
             .map_err(CoinGeckoClientError::HttpError)?;
+        tracing::trace!(response_text, %url, "Got response from coingecko");
+
+        let out_or_err: CoinGeckoResult<T> = serde_json::from_str(&response_text)?;
+        tracing::trace!(?out_or_err, %url, "Deserialized response from coingecko");
         Ok(out_or_err.into_result()?)
     }
 
