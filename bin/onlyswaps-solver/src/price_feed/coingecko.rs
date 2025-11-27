@@ -200,6 +200,7 @@ impl TokenPriceFeed for CoinGeckoClient {
         chain_id: ChainId,
         token_address: String,
     ) -> Result<u8, Self::Error> {
+        let token_address = token_address.to_lowercase();
         let chain_name = self
             .chain_id_to_id
             .get(&chain_id)
