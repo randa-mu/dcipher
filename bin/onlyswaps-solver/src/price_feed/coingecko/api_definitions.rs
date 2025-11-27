@@ -66,14 +66,14 @@ pub struct PlatformDetails {
 
 /// A coingecko error
 #[derive(thiserror::Error, Debug, Deserialize)]
-#[error("coingecko error: error_code = `{error_code}`, error_message = `{}`", status.error_message)]
+#[error("coingecko error: error_code = `{}`, error_message = `{}`", status.error_code, status.error_message)]
 pub struct CoinGeckoError {
-    error_code: i128,
     status: CoinGeckoStatus,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CoinGeckoStatus {
+    error_code: i64,
     error_message: String,
 }
 
