@@ -327,10 +327,15 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn coingecko_integration() {
+        let _ = tracing_subscriber::FmtSubscriber::builder()
+            .with_max_level(tracing::Level::DEBUG)
+            .try_init();
+
         let mut client = CoinGeckoClient::builder()
             .use_demo_api()
             .build()
             .expect("to get client");
+
         client
             .init_chain_id_mapping()
             .await
@@ -372,6 +377,14 @@ mod tests {
             )
             .await
             .expect("to successfully get src token");
+        let token_decimals_src = client
+            .token_decimals(
+                trade.src_chain_id.try_into().unwrap(),
+                trade.token_in_addr.to_string(),
+            )
+            .await
+            .expect("to successfully get src token");
+
         let token_price_dst = client
             .token_value(
                 trade.dest_chain_id.try_into().unwrap(),
@@ -379,5 +392,19 @@ mod tests {
             )
             .await
             .expect("to successfully get src token");
+        let token_decimals_dst = client
+            .token_decimals(
+                trade.dest_chain_id.try_into().unwrap(),
+                trade.token_out_addr.to_string(),
+            )
+            .await
+            .expect("to successfully get src token");
+
+        tracing::debug!("native_value_src: {native_value_base}");
+        tracing::debug!("native_value_dst: {native_value_ava}");
+        tracing::debug!("token_price_src: {token_price_src}");
+        tracing::debug!("token_price_dst: {token_price_dst}");
+        tracing::debug!("token_decimals_dst: {token_decimals_dst}");
+        tracing::debug!("token_decimals_dst: {token_decimals_dst}");
     }
 }
