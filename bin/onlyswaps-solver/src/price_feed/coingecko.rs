@@ -299,7 +299,10 @@ fn token_price_url(
 }
 
 fn coins_list_url(base_url: Url) -> Result<Url, url::ParseError> {
-    base_url.join("coins/list")
+    let mut url = base_url.join("coins/list")?;
+    url.query_pairs_mut()
+        .append_pair("include_platform", "true");
+    Ok(url)
 }
 
 fn coins_data_url(base_url: Url, coin_id: &str) -> Result<Url, url::ParseError> {
