@@ -67,6 +67,11 @@ async fn profitability_breaker(
         FulfillmentData::evaluate(gas_cost_upper_bound, trade.solver_fee, &market_data)?;
 
     if fulfillment.is_profitable() {
+        tracing::debug!(
+            fulfillment_cost = fulfillment.cost,
+            fulfillment_reward = fulfillment.reward,
+            "Trade is profitable"
+        );
         Ok(true)
     } else {
         tracing::warn!(
