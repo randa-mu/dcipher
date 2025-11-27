@@ -251,14 +251,17 @@ impl TokenPriceFeed for CoinGeckoClient {
             .clone();
 
         // Need to collect to Clone
-        let token_addresses: Vec<_> = token_addresses.into_iter().collect();
+        let token_addresses: Vec<_> = token_addresses
+            .into_iter()
+            .map(|addr| addr.to_lowercase())
+            .collect();
 
         let url = token_price_url(self.base_url.clone(), &chain_name, token_addresses.clone())?;
         let price_map: CoinPriceMap = self.get_coingecko(url).await?;
 
         let prices: Option<_> = token_addresses
             .iter()
-            .map(|addr| price_map.get(&addr.to_string()).map(|p| p.usd))
+            .map(|addr| price_map.get(addr).map(|p| p.usd))
             .collect();
         prices.ok_or(Self::Error::CGInvalidResponse)
     }
