@@ -9,10 +9,13 @@ use std::collections::HashMap;
 
 /// An entry of the Asset platforms List endpoint <https://docs.coingecko.com/reference/asset-platforms-list>.
 /// We only include `id`, and `chain_identifier` here.
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 pub struct AssetPlatform {
     pub id: String,
+    #[serde_as(deserialize_as = "DefaultOnNull")]
     pub chain_identifier: u64,
+    #[serde_as(deserialize_as = "DefaultOnNull")]
     pub native_coin_id: String,
 }
 
