@@ -13,9 +13,16 @@ use crate::network::Network;
 use ::config::file::load_config_file;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
+use alloy::providers::DynProvider;
 use anyhow::anyhow;
 use clap::Parser;
 use dotenv::dotenv;
+use onlyswaps_client::client::OnlySwapsClient;
+use onlyswaps_client::config::OnlySwapsClientConfig;
+use onlyswaps_client::config::chain::ChainConfig;
+use onlyswaps_client::config::token::TokenTag;
+use std::borrow::Cow;
+use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -23,6 +30,8 @@ async fn main() -> anyhow::Result<()> {
     let cli = CliArgs::parse();
     let config: AppConfig = load_config_file(cli.config_path)?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
+    let client = create_onlyswaps_client(&config, &networks);
+
     let healthcheck_server = HealthcheckServer::new(
         config.agent.healthcheck_listen_addr,
         config.agent.healthcheck_port,
@@ -36,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
 
     // listen for alllll the things!
     tokio::select! {
-        res = App::start(networks, &config.timeout) => {
+        res = App::start(client, networks, &config.timeout) => {
             match res {
                 Ok(_) => Err(anyhow!("event listener stopped unexpectedly")),
                 Err(e) => Err(anyhow!("event listener stopped unexpectedly: {}", e))
@@ -65,4 +74,29 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         },
     }
+}
+
+fn create_onlyswaps_client(
+    config: &AppConfig,
+    networks: &HashMap<u64, Network<DynProvider>>,
+) -> OnlySwapsClient {
+    let mut only_config = OnlySwapsClientConfig::empty();
+    for (chain_id, net) in networks {
+        let tokens = HashMap::from_iter(net.tokens.iter().map(|t| {
+            // Just tag the token with its address
+            let name = Cow::Owned(t.address().to_string());
+            (TokenTag::Other(name), *t.address())
+        }));
+
+        let chain = ChainConfig::new(
+            *chain_id,
+            *net.router.address(),
+            tokens,
+            config.timeout.request_timeout,
+            1,
+        );
+        only_config.add_ethereum_chain_dyn(chain, net.provider.clone(), Some(net.own_addr));
+    }
+
+    OnlySwapsClient::new(only_config)
 }

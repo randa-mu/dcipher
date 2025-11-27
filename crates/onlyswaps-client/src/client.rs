@@ -5,7 +5,7 @@ mod errors;
 mod request;
 pub mod routing;
 #[cfg(feature = "solver")]
-mod solver;
+pub mod solver;
 
 pub use errors::*;
 pub use request::*;
