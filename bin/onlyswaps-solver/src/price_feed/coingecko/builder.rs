@@ -7,7 +7,7 @@ use std::str::FromStr;
 const PRO_API_URL: &str = "https://pro-api.coingecko.com/api/v3/";
 const PRO_API_KEY_HEADER: &str = "x-cg-pro-api-key";
 const DEMO_API_URL: &str = "https://api.coingecko.com/api/v3/";
-const DEMO_API_KEY_HEADER: &str = "x-cg-api-key";
+const DEMO_API_KEY_HEADER: &str = "x-cg-demo-api-key";
 
 /// A builder for a [`CoinGeckoClient`].
 pub struct CoinGeckoClientBuilder {
