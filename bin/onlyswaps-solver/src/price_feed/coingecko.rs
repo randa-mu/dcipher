@@ -17,7 +17,7 @@ use reqwest::header::HeaderMap;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-type GCAddress = String;
+type CGAddress = String;
 type CGChainId = String;
 type CGCoinId = String;
 
@@ -41,12 +41,12 @@ pub struct CoinGeckoClient {
 
     /// A mapping from token addresses to CoinGecko coin ids.
     /// We need that mapping to obtain the decimals...
-    token_addr_to_details: HashMap<GCAddress, CGCoinId>,
+    token_addr_to_details: HashMap<CGAddress, CGCoinId>,
 
     /// A mapping from (u64 chain id, token address) to token details.
     // We use a mutex here to fill the structure & cache on-demand
     // TODO: Not sure if it's the client responsibility, tbd
-    token_details: tokio::sync::Mutex<HashMap<(CGChainId, GCAddress), TokenDetails>>,
+    token_details: tokio::sync::Mutex<HashMap<(CGChainId, CGAddress), TokenDetails>>,
 }
 
 #[derive(Clone, Debug)]
@@ -78,7 +78,7 @@ pub enum CoinGeckoClientError {
     CGInvalidResponse,
 
     #[error("token with address `{0}` not available on chain `{1}`")]
-    TokenNotOnChain(GCAddress, u64),
+    TokenNotOnChain(CGAddress, u64),
 
     #[error("token with null / zero decimals")]
     NullDecimals,
