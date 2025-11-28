@@ -5,10 +5,17 @@ use crate::event_manager::listener::InternalEventStreamRegistration;
 use crate::event_manager::{EventManager, EventManagerError, RegisteredEventEntry};
 use crate::types::{EventId, NewRegisteredEventSpecError, RegisteredEventSpec};
 use alloy::network::{Ethereum, Network};
-use alloy::providers::Provider;
+use alloy::primitives::B256;
+use alloy::providers::{GetSubscription, Provider};
 use alloy::pubsub::SubscriptionStream;
+use alloy::rpc::client::{RpcCall, WeakClient};
+use alloy::rpc::json_rpc::RpcRecv;
+use alloy::rpc::types::pubsub::{Params, SubscriptionKind};
 use alloy::rpc::types::{Filter, Log};
-use futures_util::StreamExt;
+use futures::Stream;
+use futures_util::{FutureExt, StreamExt};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use superalloy::provider::MultiChainProvider;
 
 impl<MP, DB> EventManager<MP, DB>
@@ -34,7 +41,7 @@ where
             return Ok(event_id);
         }
 
-        let stream = create_stream::<_, Ethereum>(&event_spec, &self.multi_provider).await?;
+        let stream = create_stream::<_, Ethereum>(&event_spec, &self.multi_provider, None).await?;
 
         let reg = InternalEventStreamRegistration::new(
             event_spec.clone(),
@@ -85,10 +92,12 @@ pub enum CreateStreamError {
     ),
 }
 
+/// Create a new stream with, optionally, periodic resubscriptions.
 pub(crate) async fn create_stream<MP, N>(
     spec: &RegisteredEventSpec,
     multi_provider: &MP,
-) -> Result<SubscriptionStream<Log>, CreateStreamError>
+    reconnect_interval: Option<std::time::Duration>,
+) -> Result<ReliableSubscriptionStream<Log>, CreateStreamError>
 where
     MP: MultiChainProvider<u64>,
     N: Network,
@@ -98,10 +107,114 @@ where
         Err(CreateStreamError::UnsupportedChain)?
     };
 
-    // Create a new subscription for the specified event
-    let stream = provider
-        .subscribe_logs(&Filter::from(spec))
-        .await?
-        .into_stream();
+    let stream = ReliableSubscriptionStream::try_new_subscription(
+        provider,
+        (
+            SubscriptionKind::Logs,
+            Params::Logs(Box::new(Filter::from(spec))),
+        ),
+        reconnect_interval,
+    )
+    .await?;
+
     Ok(stream)
+}
+
+pub struct ReliableSubscriptionStream<T: RpcRecv> {
+    /// An active subscription
+    subscription: SubscriptionStream<T>,
+
+    /// The rpc call used to create a new subscription
+    subscription_call: RpcCall<(SubscriptionKind, Params), B256>,
+
+    /// A weak reference to an RPC client used for recreating subscriptions
+    client: WeakClient,
+
+    /// A future used when a reconnection is pending
+    reconnect_fut:
+        Option<<GetSubscription<(SubscriptionKind, Params), T> as IntoFuture>::IntoFuture>,
+
+    /// An interval indicating when to recreate a subscription
+    reconnect_interval: Option<tokio::time::Interval>,
+}
+
+impl<T: RpcRecv> ReliableSubscriptionStream<T> {
+    pub async fn try_new_subscription<N>(
+        provider: impl Provider<N>,
+        sub_params: (SubscriptionKind, Params),
+        interval: Option<std::time::Duration>,
+    ) -> Result<Self, CreateStreamError>
+    where
+        N: Network,
+    {
+        let rpc_call = provider.client().request("eth_subscribe", sub_params);
+
+        // Create a new subscription for the specified event
+        let stream = GetSubscription::new(provider.weak_client(), rpc_call.clone())
+            .await?
+            .into_stream();
+
+        Ok(Self {
+            subscription: stream,
+            subscription_call: rpc_call,
+            client: provider.weak_client(),
+            reconnect_fut: None,
+            reconnect_interval: interval.map(|d| tokio::time::interval(d)),
+        })
+    }
+}
+
+impl<T: RpcRecv> Stream for ReliableSubscriptionStream<T> {
+    type Item = T;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // We always prioritize yielding new items from the stream. If the stream is pending, we handle reconnect
+        match self.subscription.poll_next_unpin(cx) {
+            Poll::Ready(item) => return Poll::Ready(item),
+            Poll::Pending => (),
+        }
+
+        // Is a reconnection pending?
+        if let Some(reconnect_fut) = self.reconnect_fut.as_mut()
+            && let Poll::Ready(ready) = reconnect_fut.poll_unpin(cx)
+        {
+            // Future completed, reset reconnect interval now, and clear future
+            if let Some(i) = self.reconnect_interval.as_mut() {
+                i.reset()
+            }
+            self.reconnect_fut = None;
+
+            match ready {
+                Ok(subscription) => {
+                    tracing::debug!("Replacing subscription with fresh one");
+                    self.subscription = subscription.into_stream();
+
+                    // Ready to poll the new subscription stream immediately
+                    cx.waker().wake_by_ref();
+                }
+                Err(e) => {
+                    // Reconnection error, continue with the same subscription, retry on the next tick
+                    tracing::error!(error = ?e, rpc_call = ?self.subscription_call, "Failed to reconnect stream");
+                }
+            }
+
+            return Poll::Pending;
+        }
+
+        // Is a subscription reconnection required?
+        if let Some(interval) = &mut self.reconnect_interval
+            && let Poll::Ready(_) = interval.poll_tick(cx)
+        {
+            // Yes, init the reconnection future
+            self.reconnect_fut = Some(
+                GetSubscription::new(self.client.clone(), self.subscription_call.clone())
+                    .into_future(),
+            );
+
+            // Ready to poll the reconnection future
+            cx.waker().wake_by_ref();
+        }
+
+        Poll::Pending
+    }
 }
