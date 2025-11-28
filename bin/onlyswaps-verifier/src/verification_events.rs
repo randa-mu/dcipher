@@ -66,5 +66,6 @@ fn create_swap_fulfilled_event(
             },
         ],
         block_safety: timeout.block_safety.into(),
+        reregistration_delay: n.reregistration_delay.map(|d| d.as_secs()),
     }
 }

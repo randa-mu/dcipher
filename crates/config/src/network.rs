@@ -17,6 +17,8 @@ pub struct NetworkConfig {
     pub tx_gas_buffer: u16,
     #[serde(default = "default_tx_gas_price_buffer")]
     pub tx_gas_price_buffer: u16,
+    #[serde(with = "humantime_serde")]
+    pub reregistration_delay: Option<std::time::Duration>,
 }
 
 #[serde_as]

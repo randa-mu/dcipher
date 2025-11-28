@@ -41,7 +41,7 @@ where
             return Ok(event_id);
         }
 
-        let stream = create_stream::<_, Ethereum>(&event_spec, &self.multi_provider, None).await?;
+        let stream = create_stream::<_, Ethereum>(&event_spec, &self.multi_provider).await?;
 
         let reg = InternalEventStreamRegistration::new(
             event_spec.clone(),
@@ -96,7 +96,6 @@ pub enum CreateStreamError {
 pub(crate) async fn create_stream<MP, N>(
     spec: &RegisteredEventSpec,
     multi_provider: &MP,
-    reconnect_interval: Option<std::time::Duration>,
 ) -> Result<ReliableSubscriptionStream<Log>, CreateStreamError>
 where
     MP: MultiChainProvider<u64>,
@@ -113,7 +112,7 @@ where
             SubscriptionKind::Logs,
             Params::Logs(Box::new(Filter::from(spec))),
         ),
-        reconnect_interval,
+        spec.reregistration_delay,
     )
     .await?;
 

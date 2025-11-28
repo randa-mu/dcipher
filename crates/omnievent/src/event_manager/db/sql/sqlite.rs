@@ -290,6 +290,7 @@ mod tests {
                     "test_event".to_owned(),
                     vec![],
                     BlockSafety::Latest,
+                    None,
                 )
                 .unwrap(),
             )
@@ -343,6 +344,7 @@ mod tests {
                 "test_event".to_owned(),
                 vec![],
                 BlockSafety::Latest,
+                None,
             )
             .unwrap(),
         )
@@ -385,6 +387,7 @@ mod tests {
                 "test_event".to_owned(),
                 vec![],
                 BlockSafety::Latest,
+                None,
             )
             .unwrap(),
         )
