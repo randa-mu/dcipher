@@ -128,6 +128,7 @@ pub struct ParsedRegisterNewEventRequest {
     /// Block safety level - how we want to handle block finality
     pub block_safety: BlockSafety,
     /// Re-registration delay
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reregistration_delay: Option<std::time::Duration>,
 }
 
