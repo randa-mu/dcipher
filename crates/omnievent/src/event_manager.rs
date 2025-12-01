@@ -361,6 +361,7 @@ pub(crate) mod tests {
                     indexed: false,
                 }],
                 block_safety: BlockSafety::Latest.into(),
+                reregistration_delay: None,
             })
             .unwrap()
         }

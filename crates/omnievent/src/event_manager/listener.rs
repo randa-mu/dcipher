@@ -321,6 +321,7 @@ mod tests {
                 ParsedEventField::new(DynSolType::Uint(256), false),
             ],
             BlockSafety::Finalized,
+            None,
         )
         .unwrap();
 

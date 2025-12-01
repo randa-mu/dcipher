@@ -127,6 +127,9 @@ pub struct ParsedRegisterNewEventRequest {
     pub fields: Vec<ParsedEventField>,
     /// Block safety level - how we want to handle block finality
     pub block_safety: BlockSafety,
+    /// Re-registration delay
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reregistration_delay: Option<std::time::Duration>,
 }
 
 /// An event that has been registered with OmniEvent.
@@ -136,6 +139,7 @@ pub struct RegisteredEventSpec {
     pub chain_id: u64,
     pub address: Address,
     pub block_safety: BlockSafety,
+    pub reregistration_delay: Option<std::time::Duration>,
     pub(crate) event_name: String,
     pub(crate) topic0: B256,
     pub(crate) fields: Vec<ParsedEventField>,
@@ -159,6 +163,7 @@ impl RegisteredEventSpec {
         event_name: String,
         fields: Vec<ParsedEventField>,
         block_safety: BlockSafety,
+        reregistration_delay: Option<std::time::Duration>,
     ) -> Result<Self, NewRegisteredEventSpecError> {
         let indexed_fields: Vec<_> = fields
             .iter()
@@ -198,6 +203,7 @@ impl RegisteredEventSpec {
             chain_id,
             address,
             event_name,
+            reregistration_delay,
             topic0,
             fields,
             sol_event,
@@ -234,9 +240,18 @@ impl TryFrom<ParsedRegisterNewEventRequest> for RegisteredEventSpec {
             event_name,
             fields,
             block_safety,
+            reregistration_delay,
         } = req;
 
-        Self::try_new(id, chain_id, address, event_name, fields, block_safety)
+        Self::try_new(
+            id,
+            chain_id,
+            address,
+            event_name,
+            fields,
+            block_safety,
+            reregistration_delay,
+        )
     }
 }
 
@@ -349,6 +364,9 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
             fields,
             event_name: value.event_name,
             chain_id: value.chain_id,
+            reregistration_delay: value
+                .reregistration_delay
+                .map(std::time::Duration::from_secs),
         })
     }
 }
@@ -456,6 +474,7 @@ mod tests {
                 ParsedEventField::new(DynSolType::Uint(256), true),
             ],
             block_safety: BlockSafety::Latest,
+            reregistration_delay: None,
         };
         // cbor diagnostic notation:
         // {

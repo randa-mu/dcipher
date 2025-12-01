@@ -17,6 +17,9 @@ pub struct NetworkConfig {
     pub tx_gas_buffer: u16,
     #[serde(default = "default_tx_gas_price_buffer")]
     pub tx_gas_price_buffer: u16,
+    #[serde(with = "humantime_serde")]
+    #[serde(default = "default_reregistration_delay")]
+    pub reregistration_delay: Option<std::time::Duration>,
 }
 
 #[serde_as]
@@ -38,6 +41,11 @@ fn default_tx_gas_buffer() -> u16 {
 /// no extra gas to the price by default
 fn default_tx_gas_price_buffer() -> u16 {
     100
+}
+
+/// re-register the stream every 10mins
+fn default_reregistration_delay() -> Option<std::time::Duration> {
+    Some(std::time::Duration::from_mins(10))
 }
 
 #[cfg(test)]
