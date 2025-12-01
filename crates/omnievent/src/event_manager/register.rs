@@ -204,6 +204,8 @@ impl<T: RpcRecv> Stream for ReliableSubscriptionStream<T> {
         if let Some(interval) = &mut self.reconnect_interval
             && let Poll::Ready(_) = interval.poll_tick(cx)
         {
+            tracing::debug!("Re-registering subscription");
+
             // Yes, init the reconnection future
             self.reconnect_fut = Some(
                 GetSubscription::new(self.client.clone(), self.subscription_call.clone())
