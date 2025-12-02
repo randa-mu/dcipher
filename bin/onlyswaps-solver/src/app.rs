@@ -9,12 +9,14 @@ use futures::StreamExt;
 use futures::future::try_join_all;
 use futures::stream::select_all;
 use moka::future::Cache;
+use onlyswaps_client::client::OnlySwapsClient;
 use std::collections::HashMap;
 use std::ops::Mul;
 
 pub struct App {}
 impl App {
     pub async fn start(
+        client: OnlySwapsClient,
         networks: HashMap<u64, Network<DynProvider>>,
         timeout: &TimeoutConfig,
     ) -> anyhow::Result<()> {
@@ -25,7 +27,7 @@ impl App {
         let mut stream = Box::pin(select_all(streams));
         let fee_estimator = DefaultFeeAdapter::new();
         let mut solver = Solver::new(&networks, &fee_estimator).await?;
-        let executor = TradeExecutor::new(&networks);
+        let executor = TradeExecutor::new(client);
 
         // we pull new chain state every block, so inflight requests may not have been
         // completed yet, so we don't want to attempt to execute them again and waste gas.
