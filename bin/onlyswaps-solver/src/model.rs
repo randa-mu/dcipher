@@ -17,6 +17,18 @@ pub struct Transfer {
     pub params: SwapRequestParametersWithHooks,
 }
 
+impl Transfer {
+    /// Computes the solver refund amount
+    pub fn solver_refund_amount(&self) -> U256 {
+        // Recover the solver refund amount from amountIn. amountIn is the total amount that the
+        // requester has paid towards the swap, minus the solverFee. In other words, we have
+        // amountIn = solverFeeRefunds[requestId] + params.verificationFee - params.solverFee
+        // Here, we want to get the total amount that the solver is refunded, this corresponds to
+        // amountIn - params.verificationFee + params.solverFee
+        self.params.amountIn - self.params.verificationFee + self.params.solverFee
+    }
+}
+
 impl From<&Transfer> for Trade {
     fn from(transfer: &Transfer) -> Self {
         Trade {
@@ -29,6 +41,8 @@ impl From<&Transfer> for Trade {
             request_id: transfer.request_id,
             amount_in: transfer.params.amountIn,
             amount_out: transfer.params.amountOut,
+            solver_fee: transfer.params.solverFee,
+            solver_refund_amount: transfer.solver_refund_amount(),
             nonce: transfer.params.nonce,
             pre_hooks: transfer.params.preHooks.clone(),
             post_hooks: transfer.params.postHooks.clone(),
@@ -49,6 +63,8 @@ pub struct Trade {
     pub request_id: RequestId,
     pub amount_in: U256,
     pub amount_out: U256,
+    pub solver_fee: U256,
+    pub solver_refund_amount: U256,
     pub nonce: U256,
     pub pre_hooks: Vec<Hook>,
     pub post_hooks: Vec<Hook>,
@@ -67,6 +83,8 @@ impl PartialEq for Trade {
             &self.request_id,
             &self.amount_in,
             &self.amount_out,
+            &self.solver_fee,
+            &self.solver_refund_amount,
             &self.nonce,
         ) == (
             &other.token_in_addr,
@@ -78,6 +96,8 @@ impl PartialEq for Trade {
             &other.request_id,
             &other.amount_in,
             &other.amount_out,
+            &other.solver_fee,
+            &other.solver_refund_amount,
             &other.nonce,
         )
     }
@@ -103,6 +123,8 @@ impl Ord for Trade {
             &self.request_id,
             &self.amount_in,
             &self.amount_out,
+            &self.solver_fee,
+            &self.solver_refund_amount,
             &self.nonce,
         )
             .cmp(&(
@@ -115,6 +137,8 @@ impl Ord for Trade {
                 &other.request_id,
                 &other.amount_in,
                 &other.amount_out,
+                &other.solver_fee,
+                &other.solver_refund_amount,
                 &other.nonce,
             ))
     }
@@ -131,6 +155,8 @@ impl Hash for Trade {
         self.request_id.hash(state);
         self.amount_in.hash(state);
         self.amount_out.hash(state);
+        self.solver_fee.hash(state);
+        self.solver_refund_amount.hash(state);
         self.nonce.hash(state);
         self.pre_hooks.hash(state);
         self.post_hooks.hash(state);

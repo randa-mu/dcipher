@@ -24,6 +24,8 @@ pub(crate) struct AppConfig {
     pub networks: Vec<NetworkConfig>,
     #[serde(default)]
     pub timeout: TimeoutConfig,
+    #[serde(default)]
+    pub profitability: ProfitabilityConfig,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -46,4 +48,42 @@ fn default_tx_gas_buffer() -> u16 {
 /// no extra gas to the price by default
 fn default_tx_gas_price_buffer() -> u16 {
     100
+}
+
+/// Configure the profitability of the solver.
+///
+/// # Examples
+/// The default profitability config uses CoinGecko's demo API to ensure that fulfilling a trade is
+/// profitable. To manually specify an API key, the following config may be used:
+/// ```toml
+/// [profitability.coin-gecko]
+/// # optional
+/// api_key = "CG-api-key"
+/// pro_api = true
+/// ```
+///
+/// To skip the profitability check and assume that trades are always profitable, the following
+/// config can be used:
+/// ```toml
+/// profitability = "always-profitable"
+/// ```
+#[derive(Deserialize, Debug, Clone)]
+pub(crate) enum ProfitabilityConfig {
+    #[serde(rename = "always-profitable")]
+    AlwaysProfitable,
+
+    #[serde(rename = "coin-gecko")]
+    CheckWithCoinGecko {
+        api_key: Option<String>,
+        pro_api: bool,
+    },
+}
+
+impl Default for ProfitabilityConfig {
+    fn default() -> Self {
+        Self::CheckWithCoinGecko {
+            api_key: None,
+            pro_api: false,
+        }
+    }
 }
