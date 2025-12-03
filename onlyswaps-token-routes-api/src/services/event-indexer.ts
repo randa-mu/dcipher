@@ -77,9 +77,9 @@ export class EventIndexer {
       
       if (addedEvents.length > 0) {
         logger.info(`[${networkName}] Found ${addedEvents.length} TokenMappingAdded event(s)`);
-        // Log full first event to debug
+        // Log first event to debug
         const first = addedEvents[0];
-        logger.info(`[${networkName}] First event full: ${JSON.stringify({
+        logger.info(`[${networkName}] First event found: ${JSON.stringify({
           topics: first.topics,
           data: first.data,
           topicsLength: first.topics.length

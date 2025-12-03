@@ -2,18 +2,25 @@ import { NetworkConfig } from "../types";
 
 export const networks: NetworkConfig[] = [
   {
-    chainId: 1,
-    name: "Ethereum",
-    rpcUrl: process.env.ETHEREUM_RPC_URL || "",
-    routerAddress: process.env.ETHEREUM_ROUTER || "",
-    blockNumber: Number(process.env.ETHEREUM_START_BLOCK || 0)
-  },
-  {
     chainId: 42161,
     name: "Arbitrum",
     rpcUrl: process.env.ARBITRUM_RPC_URL || "",
     routerAddress: process.env.ARBITRUM_ROUTER || "",
     blockNumber: Number(process.env.ARBITRUM_START_BLOCK || 0)
+  },
+  {
+    chainId: 5042002,
+    name: "Arc Testnet",
+    rpcUrl: process.env.ARC_TESTNET_RPC_URL || "",
+    routerAddress: process.env.ARC_TESTNET_ROUTER || "",
+    blockNumber: Number(process.env.ARC_TESTNET_START_BLOCK || 0)
+  },
+  {
+    chainId: 43113,
+    name: "Avalanche Fuji",
+    rpcUrl: process.env.AVALANCHE_FUJI_RPC_URL || "",
+    routerAddress: process.env.AVALANCHE_FUJI_ROUTER || "",
+    blockNumber: Number(process.env.AVALANCHE_FUJI_START_BLOCK || 0)
   },
   {
     chainId: 43114,
@@ -30,6 +37,13 @@ export const networks: NetworkConfig[] = [
     blockNumber: Number(process.env.BASE_START_BLOCK || 0)
   },
   {
+    chainId: 84532,
+    name: "Base Sepolia",
+    rpcUrl: process.env.BASE_SEPOLIA_RPC_URL || "",
+    routerAddress: process.env.BASE_SEPOLIA_ROUTER || "",
+    blockNumber: Number(process.env.BASE_SEPOLIA_START_BLOCK || 0)
+  },
+  {
     chainId: 56,
     name: "Binance",
     rpcUrl: process.env.BINANCE_RPC_URL || "",
@@ -37,11 +51,25 @@ export const networks: NetworkConfig[] = [
     blockNumber: Number(process.env.BINANCE_START_BLOCK || 0)
   },
   {
+    chainId: 1,
+    name: "Ethereum",
+    rpcUrl: process.env.ETHEREUM_RPC_URL || "",
+    routerAddress: process.env.ETHEREUM_ROUTER || "",
+    blockNumber: Number(process.env.ETHEREUM_START_BLOCK || 0)
+  },
+  {
     chainId: 314,
     name: "Filecoin",
     rpcUrl: process.env.FILECOIN_RPC_URL || "",
     routerAddress: process.env.FILECOIN_ROUTER || "",
     blockNumber: Number(process.env.FILECOIN_START_BLOCK || 0)
+  },
+  {
+    chainId: 314159,
+    name: "Filecoin Calibration",
+    rpcUrl: process.env.FILECOIN_CALIBRATION_RPC_URL || "",
+    routerAddress: process.env.FILECOIN_CALIBRATION_ROUTER || "",
+    blockNumber: Number(process.env.FILECOIN_CALIBRATION_START_BLOCK || 0)
   },
   {
     chainId: 59144,
