@@ -72,6 +72,9 @@ pub async fn setup_allowances(networks: &HashMap<u64, Network<DynProvider>>) -> 
                 .send()
                 .and_then(async move |tx_watch| Ok(tx_watch.watch().await?))
                 .await
+                .inspect(|_| {
+                    println!("> [Chain {chain_id}] approval for {} sent successfully", token.address());
+                })
                 .inspect_err(|_| {
                     println!(
                         "> [Chain {chain_id}] approval for {} failed",
