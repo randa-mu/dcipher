@@ -1,4 +1,4 @@
-use crate::gasless::{Permit2RelayTokensDetails, permit2_relay_tokens_details};
+use crate::gasless::{Permit2RelayTokensDetails, permit2, permit2_relay_tokens_details};
 use crate::model::{RequestId, Trade};
 use crate::network::Network;
 use crate::profitability::{ErasedProfitabilityEstimator, ProfitabilityEstimator};
@@ -200,6 +200,10 @@ where
 }
 
 fn decode_irouter_error(e: alloy::contract::Error) -> anyhow::Error {
+    // Try to decode it as a permit2 error
+    if let Some(permit2_err) = permit2::decode_error(&e) {
+        return anyhow!("permit2 contract error: {permit2_err:?}");
+    }
     // Try to decode it as an IERC20 error
     if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
         return anyhow!("erc20 contract error: {erc20_err:?}");
