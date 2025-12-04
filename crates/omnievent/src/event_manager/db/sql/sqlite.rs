@@ -140,11 +140,12 @@ impl EventsDatabase for SqliteEventDatabase {
         let block_hash = event_occurrence.block_info.hash.to_vec();
         let raw_log_json = serde_json::to_string(&event_occurrence.raw_log)?;
         let fields_json = serde_json::to_string(&event_occurrence.data)?;
+        let tx_hash = event_occurrence.tx_hash.to_vec();
 
         let res = sqlx::query!(
             r#"
-                INSERT INTO event_occurrences (event_id, block_number, block_hash, block_timestamp, raw_log_json, fields_json)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO event_occurrences (event_id, block_number, block_hash, block_timestamp, raw_log_json, fields_json, tx_hash)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
             event_id,
             block_number_padded,
@@ -152,6 +153,7 @@ impl EventsDatabase for SqliteEventDatabase {
             event_occurrence.block_info.timestamp,
             raw_log_json,
             fields_json,
+            tx_hash,
         )
         .execute(&self.pool)
         .await
