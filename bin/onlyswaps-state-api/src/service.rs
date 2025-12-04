@@ -587,7 +587,7 @@ mod tests {
 
     fn create_service(transactions: Vec<SwapTransaction>) -> ChannelStateService {
         let transactions =
-            HashMap::from_iter(transactions.into_iter().map(|tx| (tx.request_id, tx)));
+            LinkedHashMap::from_iter(transactions.into_iter().map(|tx| (tx.request_id, tx)));
         let (_, rx) = watch::channel(AppState { transactions });
         ChannelStateService::new(rx)
     }
