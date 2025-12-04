@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS event_occurrences (
     block_timestamp DATETIME NOT NULL,
     raw_log_json TEXT NOT NULL,
     fields_json TEXT NOT NULL,  -- json encoded fields
-    tx_hash BYTES NOT NULL,
     FOREIGN KEY (event_id) REFERENCES registered_events(id) ON DELETE CASCADE
 );
 
@@ -31,7 +30,6 @@ SELECT
     occurrence.block_timestamp,
     occurrence.raw_log_json,
     occurrence.fields_json,
-    occurrence.tx_hash,
     event.chain_id,
     event.address,
     event.event_name

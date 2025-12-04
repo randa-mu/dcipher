@@ -14,6 +14,9 @@ pub enum SqliteEventDatabaseError {
     #[error("sqlx error: {1}")]
     Sqlx(#[source] sqlx::Error, &'static str),
 
+    #[error("failed to run migrations")]
+    Migrate(#[from] sqlx::migrate::MigrateError),
+
     #[error("number of rows affected by insert != 1")]
     AffectedRowsInsert,
 
@@ -67,20 +70,7 @@ impl SqliteEventDatabase {
 
     /// Executes the schema initialization script.
     pub async fn maybe_initialize_schema(&self) -> Result<(), SqliteEventDatabaseError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| (e, "failed to begin tx"))?;
-
-        // Execute db initialization script
-        sqlx::raw_sql(include_str!("../../../../sql/schema.sql"))
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| (e, "failed to initialize schema"))?;
-        tx.commit()
-            .await
-            .map_err(|e| (e, "failed to commit schema init"))?;
+        sqlx::migrate!("./sql/migrations").run(&self.pool).await?;
 
         Ok(())
     }
