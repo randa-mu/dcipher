@@ -18,7 +18,7 @@ use tokio::time::timeout;
 pub(crate) struct TradeExecutor<'a, P, S> {
     signer: S,
     own_address: Address,
-    routers: HashMap<u64, ChainConfig<'a, P>>,
+    configs: HashMap<u64, ChainConfig<'a, P>>,
     profitability_estimator: ErasedProfitabilityEstimator,
 }
 
@@ -33,7 +33,7 @@ impl<'a, P, S> TradeExecutor<'a, P, S> {
         networks: &'a HashMap<u64, Network<P>>,
         profitability_estimator: ErasedProfitabilityEstimator,
     ) -> Self {
-        let routers = networks
+        let configs = networks
             .iter()
             .map(|(chain_id, net)| {
                 (
@@ -54,7 +54,7 @@ impl<'a, P, S> TradeExecutor<'a, P, S> {
 
         Self {
             signer,
-            routers,
+            configs,
             own_address,
             profitability_estimator,
         }
@@ -79,7 +79,7 @@ where
 
             // then we get the contract bindings for the destination chain
             let config = self
-                .routers
+                .configs
                 .get(&normalise_chain_id(trade.dest_chain_id))
                 .expect("somehow didn't have a router binding for a solved trade");
 
