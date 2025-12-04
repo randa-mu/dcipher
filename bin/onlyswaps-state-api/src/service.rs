@@ -63,7 +63,7 @@ impl StateService for ChannelStateService {
 mod tests {
     use super::*;
     use alloy::primitives::{Address, B256, FixedBytes, U256, address, fixed_bytes};
-    use std::hash::HashMap
+    use hashlink::LinkedHashMap;
     use tokio::sync::watch;
 
     #[test]

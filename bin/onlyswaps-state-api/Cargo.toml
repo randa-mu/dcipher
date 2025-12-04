@@ -16,6 +16,7 @@ clap = { workspace = true, features = ["derive"] }
 config = { workspace = true }
 futures = { workspace = true }
 generated = { workspace = true }
+hashlink = { version = "0.11", features = ["serde_impl"] }
 omnievent = { workspace = true, features = ["sql", "sqlite"] }
 serde = { workspace = true, features = ["derive"] }
 superalloy.workspace = true

@@ -4,7 +4,7 @@ use crate::serde::{LongNumber, ShortNumber};
 use alloy::primitives::{Address, B256, FixedBytes, TxHash, U256};
 use alloy::providers::DynProvider;
 use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
-use std::hash::HashMap;
+use hashlink::LinkedHashMap;
 use serde::Serialize;
 use std::fmt::Display;
 use std::time::SystemTime;
@@ -18,7 +18,8 @@ pub(crate) struct StateMachine {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct AppState {
-    pub transactions: HashMap<RequestId, SwapTransaction>,
+    // hashmap that preserves insert order
+    pub transactions: LinkedHashMap<RequestId, SwapTransaction>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
