@@ -1,7 +1,7 @@
 use crate::proto_types::{self, BlockSafety, RegisterNewEventRequest};
 use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
 use alloy::eips::BlockNumberOrTag;
-use alloy::primitives::{Address, B256, LogData, keccak256};
+use alloy::primitives::{Address, B256, LogData, TxHash, keccak256};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
@@ -296,6 +296,7 @@ pub struct EventOccurrence {
     pub block_info: BlockInfo,
     pub raw_log: LogData,
     pub data: Vec<EventFieldData>,
+    pub tx_hash: TxHash,
 }
 
 impl From<EventOccurrence> for proto_types::EventOccurrence {
@@ -317,6 +318,7 @@ impl From<EventOccurrence> for proto_types::EventOccurrence {
             event_data: data,
             raw_log_data: Some(event.raw_log.data.into()),
             block_info: Some(event.block_info.into()),
+            tx_hash: event.tx_hash.to_vec().into(),
         }
     }
 }

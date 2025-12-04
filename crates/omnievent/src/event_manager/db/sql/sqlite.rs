@@ -2,7 +2,7 @@
 
 use crate::event_manager::db::EventsDatabase;
 use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEventSpec};
-use alloy::primitives::Address;
+use alloy::primitives::{Address, TxHash};
 use chrono::{DateTime, Utc};
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{FromRow, QueryBuilder, Row, Sqlite, SqlitePool};
@@ -214,6 +214,7 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
         let block_timestamp: DateTime<Utc> = row.try_get("block_timestamp")?;
         let raw_log_json: String = row.try_get("raw_log_json")?;
         let fields_json: String = row.try_get("fields_json")?;
+        let tx_hash: Vec<u8> = row.try_get("tx_hash")?;
 
         let address =
             Address::try_from(address.as_slice()).map_err(|e| sqlx::Error::ColumnDecode {
@@ -238,6 +239,11 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
             index: "fields_json".to_owned(),
             source: Box::new(e),
         })?;
+        let tx_hash =
+            TxHash::try_from(tx_hash.as_slice()).map_err(|e| sqlx::Error::ColumnDecode {
+                index: "tx_hash".to_owned(),
+                source: Box::new(e),
+            })?;
 
         Ok(Self {
             event_id: event_id.into(),
@@ -250,6 +256,7 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
             },
             raw_log,
             data,
+            tx_hash,
         })
     }
 }
@@ -320,6 +327,7 @@ mod tests {
                     hash: vec![].into(),
                     timestamp: chrono::DateTime::default(),
                 },
+                tx_hash: Default::default(),
             })
             .await;
 
@@ -363,6 +371,7 @@ mod tests {
                     hash: vec![].into(),
                     timestamp: chrono::DateTime::default(),
                 },
+                tx_hash: Default::default(),
             })
             .await;
 
@@ -405,6 +414,7 @@ mod tests {
                 hash: vec![].into(),
                 timestamp: chrono::DateTime::default(),
             },
+            tx_hash: Default::default(),
         };
 
         db.store_event_occurrence(occurrence.clone())

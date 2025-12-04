@@ -118,6 +118,10 @@ fn event_occurrence_from_decoded_event(decoded_event: DecodedEvent) -> EventOccu
             tracing::error!("Log had invalid block timestamp");
             Default::default()
         });
+    let tx_hash = decoded_event.log.transaction_hash.unwrap_or_else(|| {
+        tracing::error!("Log missing transaction hash");
+        Default::default()
+    });
 
     EventOccurrence {
         event_id: decoded_event.event_id,
@@ -130,5 +134,6 @@ fn event_occurrence_from_decoded_event(decoded_event: DecodedEvent) -> EventOccu
             number: block_number,
             timestamp: block_timestamp,
         },
+        tx_hash,
     }
 }
