@@ -1,5 +1,5 @@
 use alloy::primitives::Address;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use config::agent::AgentConfig;
 use config::timeout::TimeoutConfig;
 use serde::Deserialize;
@@ -16,6 +16,21 @@ pub(crate) struct CliArgs {
 
     #[arg(short = 's', long = "private-key", env = "SOLVER_PRIVATE_KEY")]
     pub private_key: String,
+
+    /// By default, run the solver
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Subcommand, Deserialize, Debug, Clone)]
+pub enum Command {
+    /// Run the solver
+    #[command(about = "Run the solver")]
+    Run,
+
+    /// Setup the solver by submitting token approvals
+    #[command(about = "Setup the solver")]
+    Setup,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -86,5 +101,11 @@ impl Default for ProfitabilityConfig {
             api_key: None,
             pro_api: false,
         }
+    }
+}
+
+impl CliArgs {
+    pub fn command(&self) -> Command {
+        self.command.clone().unwrap_or(Command::Run)
     }
 }
