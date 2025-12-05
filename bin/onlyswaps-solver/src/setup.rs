@@ -1,9 +1,9 @@
+use crate::gasless::fetch_permit2_addresses;
 use crate::network::Network;
 use alloy::primitives::{Address, U160, U256, address};
 use alloy::providers::{DynProvider, Provider};
 use anyhow::Context;
 use futures::TryFutureExt;
-use generated::onlyswaps::permit2_relayer::Permit2Relayer::Permit2RelayerInstance;
 use std::collections::HashMap;
 use std::io::{Write, stdin};
 
@@ -73,7 +73,10 @@ pub async fn setup_allowances(networks: &HashMap<u64, Network<DynProvider>>) -> 
                 .and_then(async move |tx_watch| Ok(tx_watch.watch().await?))
                 .await
                 .inspect(|_| {
-                    println!("> [Chain {chain_id}] approval for {} sent successfully", token.address());
+                    println!(
+                        "> [Chain {chain_id}] approval for {} sent successfully",
+                        token.address()
+                    );
                 })
                 .inspect_err(|_| {
                     println!(
@@ -111,26 +114,27 @@ async fn fetch_allowance_details(
     networks: &HashMap<u64, Network<DynProvider>>,
 ) -> anyhow::Result<HashMap<u64, AllowanceDetails>> {
     // First, fetch the permit2 addresses
-    let permit2_addresses = futures::future::try_join_all(networks.values().map(async |c| {
-        Permit2RelayerInstance::new(c.permit2_relayer_address, c.router.provider())
-            .PERMIT2()
-            .call()
-            .await
-    }))
-    .await
-    .context("failed to get permit2 addresses")?;
+    let permit2_addresses: HashMap<_, _> = fetch_permit2_addresses(networks)
+        .await
+        .context("failed to get permit2 addresses")?
+        .collect();
 
     let current_allowances_per_network =
-        futures::future::try_join_all(networks.iter().zip(permit2_addresses.iter()).map(
-            async |((&chain_id, net), &permit2_addr)| {
-                let mut token_addresses = vec![];
-                let mut multicall = net.router.provider().multicall().dynamic();
-                for token in net.tokens.iter() {
-                    token_addresses.push(*token.address());
-                    multicall = multicall.add_dynamic(token.allowance(net.own_addr, permit2_addr));
-                }
+        futures::future::try_join_all(networks.iter().map(async |(&chain_id, net)| {
+            let permit2_addr = *permit2_addresses
+                .get(&chain_id)
+                .with_context(|| format!("failed to get permit2 address of chain {chain_id}"))?;
+            let mut token_addresses = vec![];
+            let mut multicall = net.router.provider().multicall().dynamic();
+            for token in net.tokens.iter() {
+                token_addresses.push(*token.address());
+                multicall = multicall.add_dynamic(token.allowance(net.own_addr, permit2_addr));
+            }
 
-                multicall.aggregate().await.map(move |allowances| {
+            multicall
+                .aggregate()
+                .await
+                .map(move |allowances| {
                     (
                         chain_id,
                         AllowanceDetails {
@@ -139,8 +143,8 @@ async fn fetch_allowance_details(
                         },
                     )
                 })
-            },
-        ))
+                .context("multicall failed")
+        }))
         .await
         .context("failed to get current allowances")?;
 

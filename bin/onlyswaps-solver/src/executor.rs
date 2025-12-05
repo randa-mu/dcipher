@@ -1,4 +1,6 @@
-use crate::gasless::{Permit2RelayTokensDetails, permit2, permit2_relay_tokens_details};
+use crate::gasless::{
+    Permit2RelayTokensDetails, fetch_permit2_addresses, permit2, permit2_relay_tokens_details,
+};
 use crate::model::{RequestId, Trade};
 use crate::network::Network;
 use crate::profitability::{ErasedProfitabilityEstimator, ProfitabilityEstimator};
@@ -25,26 +27,36 @@ pub(crate) struct TradeExecutor<'a, P, S> {
 pub(crate) struct ChainConfig<'a, P> {
     router: &'a IRouterInstance<P>,
     permit2_relayer_address: Address,
+    permit2_addr: Address,
 }
 
-impl<'a, P, S> TradeExecutor<'a, P, S> {
-    pub fn new(
+impl<'a, P, S> TradeExecutor<'a, P, S>
+where
+    P: Provider,
+{
+    pub async fn new(
         signer: S,
         networks: &'a HashMap<u64, Network<P>>,
         profitability_estimator: ErasedProfitabilityEstimator,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
+        let permit2_addresses: HashMap<_, _> =
+            fetch_permit2_addresses(networks.iter()).await?.collect();
         let configs = networks
             .iter()
-            .map(|(chain_id, net)| {
-                (
+            .map(|(chain_id, net)| -> anyhow::Result<_> {
+                let permit2_addr = *permit2_addresses.get(chain_id).with_context(|| {
+                    format!("failed to get permit2 address of chain {chain_id}")
+                })?;
+                Ok((
                     *chain_id,
                     ChainConfig {
                         router: &net.router,
                         permit2_relayer_address: net.permit2_relayer_address,
+                        permit2_addr,
                     },
-                )
+                ))
             })
-            .collect();
+            .collect::<anyhow::Result<_>>()?;
 
         let own_address = networks
             .iter()
@@ -52,12 +64,12 @@ impl<'a, P, S> TradeExecutor<'a, P, S> {
             .map(|(_, network)| network.own_addr)
             .expect("if we don't have a network by now, something is very wrong");
 
-        Self {
+        Ok(Self {
             signer,
             configs,
             own_address,
             profitability_estimator,
-        }
+        })
     }
 }
 
@@ -90,6 +102,7 @@ where
                     &trade,
                     config.router,
                     config.permit2_relayer_address,
+                    config.permit2_addr,
                     self.own_address,
                     &self.signer,
                     &self.profitability_estimator,
@@ -131,6 +144,7 @@ async fn execute_trade<S>(
     trade: &Trade,
     router: &IRouterInstance<impl Provider>,
     permit2_relayer_address: Address,
+    permit2_addr: Address,
     own_addr: Address,
     signer: &S,
     profitability_estimator: &ErasedProfitabilityEstimator,
@@ -142,7 +156,7 @@ where
         message_hash,
         nonce: permit_nonce,
         deadline: permit_deadline,
-    } = permit2_relay_tokens_details(trade, permit2_relayer_address, own_addr)?;
+    } = permit2_relay_tokens_details(trade, permit2_relayer_address, own_addr, Some(permit2_addr))?;
     let permit2_signed_allowance = signer.sign_hash(&message_hash).await?;
 
     let relay_tokens_call = router.relayTokensPermit2(RelayTokensPermit2Params {

@@ -5,8 +5,12 @@ use crate::gasless::permit2::witness_transfer_from::{
     Permit2CustomWitness, Permit2WitnessError, permit2_witness_transfer_from_message_hash,
 };
 use crate::model::Trade;
+use crate::network::Network;
 use alloy::dyn_abi::DynSolValue;
 use alloy::primitives::{Address, B256, U256};
+use alloy::providers::Provider;
+use anyhow::Context;
+use generated::onlyswaps::permit2_relayer::Permit2Relayer::Permit2RelayerInstance;
 use serde_json::json;
 
 pub mod permit2;
@@ -28,6 +32,7 @@ pub fn permit2_relay_tokens_details(
     trade: &Trade,
     spender_addr: Address,
     own_addr: Address,
+    permit2_override: Option<Address>,
 ) -> Result<Permit2RelayTokensDetails, Permit2WitnessError> {
     let additional_data = DynSolValue::Tuple(vec![DynSolValue::Address(own_addr)]);
     let witness = Permit2CustomWitness {
@@ -67,9 +72,7 @@ pub fn permit2_relay_tokens_details(
         // permit2 params
         deadline: U256::MAX, // infinite
         nonce: rand_nonce,
-
-        // rest is default
-        ..Default::default()
+        permit2_address_override: permit2_override,
     };
 
     let message_hash = permit2_witness_transfer_from_message_hash(params, witness)?;
@@ -78,4 +81,24 @@ pub fn permit2_relay_tokens_details(
         nonce: params.nonce,
         deadline: params.deadline,
     })
+}
+
+pub async fn fetch_permit2_addresses<'a, P>(
+    networks: impl IntoIterator<Item = (&'a u64, &'a Network<P>)>,
+) -> anyhow::Result<impl Iterator<Item = (u64, Address)>>
+where
+    P: Provider + 'a,
+{
+    let permit2_addresses =
+        futures::future::try_join_all(networks.into_iter().map(async |(&id, c)| {
+            Permit2RelayerInstance::new(c.permit2_relayer_address, c.router.provider())
+                .PERMIT2()
+                .call()
+                .await
+                .map(|addr| (id, addr))
+        }))
+        .await
+        .context("failed to get permit2 addresses")?;
+
+    Ok(permit2_addresses.into_iter())
 }
