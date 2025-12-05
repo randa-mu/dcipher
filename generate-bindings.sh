@@ -57,4 +57,5 @@ forge bind --bindings-path "$ROOT_DIR/crates/generated/src/onlyswaps" \
 --select ERC20FaucetToken \
 --select IERC20 \
 --select ErrorsLib \
+--select Permit2Relayer \
 --no-metadata

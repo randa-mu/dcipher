@@ -24,6 +24,7 @@ pub(crate) struct Network<P> {
     pub own_addr: Address,
     pub tokens: Vec<ERC20FaucetTokenInstance<P>>,
     pub router: IRouterInstance<P>,
+    pub permit2_relayer_address: Address,
 }
 
 impl Network<DynProvider> {
@@ -75,6 +76,7 @@ impl Network<DynProvider> {
         Ok(Self {
             tokens,
             router: IRouterInstance::new(config.router_address, provider.clone()),
+            permit2_relayer_address: config.permit2_relayer_address,
             chain_id,
             provider,
             own_addr,

@@ -2,29 +2,49 @@ mod app;
 mod config;
 mod executor;
 mod fee_adapter;
+pub(crate) mod gasless;
 mod model;
 mod network;
 pub mod price_feed;
 mod profitability;
+mod setup;
 mod solver;
 mod util;
 
 use crate::app::App;
-use crate::config::{AppConfig, CliArgs};
+use crate::config::{AppConfig, CliArgs, Command};
 use crate::network::Network;
+use crate::setup::setup_allowances;
 use ::config::file::load_config_file;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
+use alloy::providers::DynProvider;
+use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
 use clap::Parser;
 use dotenv::dotenv;
+use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
     let cli = CliArgs::parse();
+    let command = cli.command();
     let config: AppConfig = load_config_file(cli.config_path)?;
+    let private_key_signer: PrivateKeySigner = cli.private_key.parse()?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
+
+    match command {
+        Command::Run => run(config, private_key_signer, networks).await,
+        Command::Setup => setup(networks).await,
+    }
+}
+
+async fn run(
+    config: AppConfig,
+    private_key_signer: PrivateKeySigner,
+    networks: HashMap<u64, Network<DynProvider>>,
+) -> anyhow::Result<()> {
     let healthcheck_server = HealthcheckServer::new(
         config.agent.healthcheck_listen_addr,
         config.agent.healthcheck_port,
@@ -38,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
 
     // listen for alllll the things!
     tokio::select! {
-        res = App::start(networks, &config.timeout, &config.profitability) => {
+        res = App::start(private_key_signer, networks, &config.timeout, &config.profitability) => {
             match res {
                 Ok(_) => Err(anyhow!("event listener stopped unexpectedly")),
                 Err(e) => Err(anyhow!("event listener stopped unexpectedly: {}", e))
@@ -67,4 +87,8 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         },
     }
+}
+
+async fn setup(networks: HashMap<u64, Network<DynProvider>>) -> anyhow::Result<()> {
+    setup_allowances(&networks).await
 }

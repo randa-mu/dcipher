@@ -9,6 +9,7 @@ use crate::profitability::{
 };
 use crate::solver::Solver;
 use alloy::providers::DynProvider;
+use alloy::signers::local::PrivateKeySigner;
 use config::timeout::TimeoutConfig;
 use futures::StreamExt;
 use futures::future::try_join_all;
@@ -20,6 +21,7 @@ use std::ops::Mul;
 pub struct App {}
 impl App {
     pub async fn start(
+        signer: PrivateKeySigner,
         networks: HashMap<u64, Network<DynProvider>>,
         timeout: &TimeoutConfig,
         profitability: &ProfitabilityConfig,
@@ -52,7 +54,7 @@ impl App {
         let mut stream = Box::pin(select_all(streams));
         let fee_estimator = DefaultFeeAdapter::new();
         let mut solver = Solver::new(&networks, &fee_estimator).await?;
-        let executor = TradeExecutor::new(&networks, pe);
+        let executor = TradeExecutor::new(signer, &networks, pe).await?;
 
         // we pull new chain state every block, so inflight requests may not have been
         // completed yet, so we don't want to attempt to execute them again and waste gas.

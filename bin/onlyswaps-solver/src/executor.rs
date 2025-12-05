@@ -1,43 +1,62 @@
+use crate::gasless::{
+    Permit2RelayTokensDetails, fetch_permit2_addresses, permit2, permit2_relay_tokens_details,
+};
 use crate::model::{RequestId, Trade};
 use crate::network::Network;
 use crate::profitability::{ErasedProfitabilityEstimator, ProfitabilityEstimator};
 use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, TxHash};
 use alloy::providers::Provider;
+use alloy::signers::Signer;
 use anyhow::{Context, anyhow};
 use config::timeout::TimeoutConfig;
-use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken::ERC20FaucetTokenInstance;
 use generated::onlyswaps::errors_lib::ErrorsLib::ErrorsLibErrors;
-use generated::onlyswaps::i_router::IRouter::IRouterInstance;
+use generated::onlyswaps::i_router::IRouter::{IRouterInstance, RelayTokensPermit2Params};
 use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors;
 use moka::future::Cache;
 use std::collections::HashMap;
 use tokio::time::timeout;
 
-pub(crate) struct TradeExecutor<'a, P> {
+pub(crate) struct TradeExecutor<'a, P, S> {
+    signer: S,
     own_address: Address,
-    routers: HashMap<u64, &'a IRouterInstance<P>>,
-    tokens: HashMap<u64, &'a Vec<ERC20FaucetTokenInstance<P>>>,
+    configs: HashMap<u64, ChainConfig<'a, P>>,
     profitability_estimator: ErasedProfitabilityEstimator,
 }
 
-impl<'a, P> TradeExecutor<'a, P>
+pub(crate) struct ChainConfig<'a, P> {
+    router: &'a IRouterInstance<P>,
+    permit2_relayer_address: Address,
+    permit2_addr: Address,
+}
+
+impl<'a, P, S> TradeExecutor<'a, P, S>
 where
     P: Provider,
 {
-    pub fn new(
+    pub async fn new(
+        signer: S,
         networks: &'a HashMap<u64, Network<P>>,
         profitability_estimator: ErasedProfitabilityEstimator,
-    ) -> Self {
-        let routers = networks
+    ) -> anyhow::Result<Self> {
+        let permit2_addresses: HashMap<_, _> =
+            fetch_permit2_addresses(networks.iter()).await?.collect();
+        let configs = networks
             .iter()
-            .map(|(chain_id, net)| (*chain_id, &net.router))
-            .collect();
-
-        let tokens = networks
-            .iter()
-            .map(|(chain_id, net)| (*chain_id, &net.tokens))
-            .collect();
+            .map(|(chain_id, net)| -> anyhow::Result<_> {
+                let permit2_addr = *permit2_addresses.get(chain_id).with_context(|| {
+                    format!("failed to get permit2 address of chain {chain_id}")
+                })?;
+                Ok((
+                    *chain_id,
+                    ChainConfig {
+                        router: &net.router,
+                        permit2_relayer_address: net.permit2_relayer_address,
+                        permit2_addr,
+                    },
+                ))
+            })
+            .collect::<anyhow::Result<_>>()?;
 
         let own_address = networks
             .iter()
@@ -45,13 +64,20 @@ where
             .map(|(_, network)| network.own_addr)
             .expect("if we don't have a network by now, something is very wrong");
 
-        Self {
-            routers,
-            tokens,
+        Ok(Self {
+            signer,
+            configs,
             own_address,
             profitability_estimator,
-        }
+        })
     }
+}
+
+impl<'a, P, S> TradeExecutor<'a, P, S>
+where
+    P: Provider,
+    S: Signer,
+{
     pub async fn execute(
         &self,
         trades: Vec<Trade>,
@@ -64,26 +90,21 @@ where
             in_flight.insert(trade.request_id, ()).await;
 
             // then we get the contract bindings for the destination chain
-            let router = self
-                .routers
+            let config = self
+                .configs
                 .get(&normalise_chain_id(trade.dest_chain_id))
                 .expect("somehow didn't have a router binding for a solved trade");
-            let token = self
-                .tokens
-                .get(&normalise_chain_id(trade.dest_chain_id))
-                .expect("somehow didn't have a token binding for a solved trade")
-                .iter()
-                .find(|contract| contract.address() == &trade.token_out_addr)
-                .expect("somehow didn't have a token contract binding for a solved trade");
 
             // and finally execute the trade with a timeout
             match timeout(
                 timeout_config.request_timeout,
                 execute_trade(
                     &trade,
-                    router,
-                    token,
+                    config.router,
+                    config.permit2_relayer_address,
+                    config.permit2_addr,
                     self.own_address,
+                    &self.signer,
                     &self.profitability_estimator,
                 ),
             )
@@ -119,42 +140,42 @@ where
     }
 }
 
-async fn execute_trade(
+async fn execute_trade<S>(
     trade: &Trade,
     router: &IRouterInstance<impl Provider>,
-    token: &ERC20FaucetTokenInstance<impl Provider>,
+    permit2_relayer_address: Address,
+    permit2_addr: Address,
     own_addr: Address,
+    signer: &S,
     profitability_estimator: &ErasedProfitabilityEstimator,
-) -> anyhow::Result<TxHash> {
-    // in theory, we shouldn't need to wait until the next block because txs will be processed in nonce order
-    // but for whatever reason this doesn't seem to be the case :(
-    let tx = token
-        .approve(*router.address(), trade.amount_out)
-        .send()
-        .await
-        .map_err(|e| {
-            // Try to decode it as an IERC20 error
-            if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
-                return anyhow!("erc20 contract error: {erc20_err:?}");
-            }
-            e.into()
-        })
-        .context("error approving funds")?;
-    tx.watch().await.context("error approving funds")?;
+) -> anyhow::Result<TxHash>
+where
+    S: Signer,
+{
+    let Permit2RelayTokensDetails {
+        message_hash,
+        nonce: permit_nonce,
+        deadline: permit_deadline,
+    } = permit2_relay_tokens_details(trade, permit2_relayer_address, own_addr, Some(permit2_addr))?;
+    let permit2_signed_allowance = signer.sign_hash(&message_hash).await?;
 
-    let relay_tokens_call = router.relayTokens(
-        own_addr,
-        trade.request_id,
-        trade.sender_addr,
-        trade.recipient_addr,
-        trade.token_in_addr,
-        trade.token_out_addr,
-        trade.amount_out,
-        trade.src_chain_id,
-        trade.nonce,
-        trade.pre_hooks.to_vec(),
-        trade.post_hooks.to_vec(),
-    );
+    let relay_tokens_call = router.relayTokensPermit2(RelayTokensPermit2Params {
+        solver: own_addr,
+        solverRefundAddress: own_addr,
+        requestId: trade.request_id,
+        sender: trade.sender_addr,
+        recipient: trade.recipient_addr,
+        tokenIn: trade.token_in_addr,
+        tokenOut: trade.token_out_addr,
+        amountOut: trade.amount_out,
+        srcChainId: trade.src_chain_id,
+        nonce: trade.nonce,
+        permitNonce: permit_nonce,
+        permitDeadline: permit_deadline,
+        signature: permit2_signed_allowance.as_erc2098().into(),
+        preHooks: trade.pre_hooks.to_vec(),
+        postHooks: trade.post_hooks.to_vec(),
+    });
 
     let gas = relay_tokens_call
         .clone()
@@ -193,6 +214,10 @@ async fn execute_trade(
 }
 
 fn decode_irouter_error(e: alloy::contract::Error) -> anyhow::Error {
+    // Try to decode it as a permit2 error
+    if let Some(permit2_err) = permit2::decode_error(&e) {
+        return anyhow!("permit2 contract error: {permit2_err:?}");
+    }
     // Try to decode it as an IERC20 error
     if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
         return anyhow!("erc20 contract error: {erc20_err:?}");
