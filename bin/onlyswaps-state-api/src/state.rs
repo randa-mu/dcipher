@@ -3,7 +3,6 @@ use crate::omnievent::{StateType, StateUpdate, StateUpdateSource};
 use crate::serde::{LongNumber, ShortNumber};
 use alloy::primitives::{Address, B256, FixedBytes, TxHash, U256};
 use alloy::providers::DynProvider;
-use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
 use hashlink::LinkedHashMap;
 use serde::Serialize;
 use std::fmt::Display;
@@ -105,7 +104,7 @@ impl StateMachine {
                         recipient: params.recipient,
                         token_in: params.tokenIn,
                         token_out: params.tokenOut,
-                        amount_in: calculate_amount_in(&params).into(),
+                        amount_in: params.amountIn.into(),
                         amount_out: params.amountOut.into(),
                         solver_fee: params.solverFee.into(),
                         verification_fee: params.verificationFee.into(),
@@ -159,7 +158,7 @@ impl StateMachine {
                         recipient: params.recipient,
                         token_in: params.tokenIn,
                         token_out: params.tokenOut,
-                        amount_in: calculate_amount_in(&params).into(),
+                        amount_in: params.amountIn.into(),
                         amount_out: params.amountOut.into(),
                         solver_fee: params.solverFee.into(),
                         verification_fee: params.verificationFee.into(),
@@ -232,7 +231,7 @@ impl StateMachine {
                 recipient: params.recipient,
                 token_in: params.tokenIn,
                 token_out: params.tokenOut,
-                amount_in: calculate_amount_in(&params).into(),
+                amount_in: params.amountIn.into(),
                 amount_out: params.amountOut.into(),
                 solver_fee: params.solverFee.into(),
                 verification_fee: params.verificationFee.into(),
@@ -260,10 +259,6 @@ impl StateMachine {
 
         Ok(self.state.clone())
     }
-}
-
-fn calculate_amount_in(params: &SwapRequestParametersWithHooks) -> U256 {
-    params.amountOut + params.solverFee + params.verificationFee
 }
 
 fn now() -> anyhow::Result<U256> {
