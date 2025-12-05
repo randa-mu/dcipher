@@ -35,7 +35,13 @@ impl App {
                         event.chain_id
                     ))
                     .and_then(|it| {
-                        it.as_state_update(event.event_id, event.chain_id, &event.data, source)
+                        it.as_state_update(
+                            event.event_id,
+                            event.chain_id,
+                            &event.data,
+                            event.tx_hash,
+                            source,
+                        )
                     })
                     .and_then(|update| next_transition_tx.send(update).map_err(|e| e.into()))
                     .map_err(|e| tracing::error!("error making state update: {}", e));

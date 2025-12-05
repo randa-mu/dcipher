@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO event_occurrences (event_id, block_number, block_hash, block_timestamp, raw_log_json, fields_json, tx_hash)\n                VALUES ($1, $2, $3, $4, $5, $6, $7)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "b83009097f33bf14f0467fd37f5d5ecd2e6525e539ab60b41e87149c696d3e69"
+}
