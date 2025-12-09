@@ -1,21 +1,19 @@
 use crate::config::NetworkConfig;
-use crate::model::{BlockEvent, ChainState, Transfer};
+use crate::model::{ChainState, Transfer};
 use crate::solver::ChainStateProvider;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, U256};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use async_trait::async_trait;
-use futures::Stream;
-use futures::StreamExt;
 use futures::future::try_join_all;
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken;
 use generated::onlyswaps::erc20_faucet_token::ERC20FaucetToken::ERC20FaucetTokenInstance;
 use generated::onlyswaps::i_router::IRouter::IRouterInstance;
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::pin::Pin;
 use std::str::FromStr;
+use std::time::Duration;
 use superalloy::provider::recommended_fillers;
 
 pub(crate) struct Network<P> {
@@ -25,6 +23,7 @@ pub(crate) struct Network<P> {
     pub tokens: Vec<ERC20FaucetTokenInstance<P>>,
     pub router: IRouterInstance<P>,
     pub permit2_relayer_address: Address,
+    pub poll_interval: Duration,
 }
 
 impl Network<DynProvider> {
@@ -80,26 +79,8 @@ impl Network<DynProvider> {
             chain_id,
             provider,
             own_addr,
+            poll_interval: config.poll_interval,
         })
-    }
-}
-
-impl<P: Provider> Network<P> {
-    pub async fn stream_block_numbers(
-        &self,
-    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = BlockEvent> + Send>>> {
-        let chain_id = self.chain_id;
-        let stream = self
-            .provider
-            .subscribe_blocks()
-            .await?
-            .into_stream()
-            .map(move |header| BlockEvent {
-                chain_id,
-                block_number: header.number,
-            });
-
-        Ok(Box::pin(stream))
     }
 }
 

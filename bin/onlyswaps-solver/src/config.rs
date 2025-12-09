@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 use config::agent::AgentConfig;
 use config::timeout::TimeoutConfig;
 use serde::Deserialize;
+use std::time::Duration;
 
 #[derive(Parser, Debug)]
 pub(crate) struct CliArgs {
@@ -54,6 +55,8 @@ pub(crate) struct NetworkConfig {
     pub tx_gas_buffer: u16,
     #[serde(default = "default_tx_gas_price_buffer")]
     pub tx_gas_price_buffer: u16,
+    #[serde(with = "humantime_serde")]
+    pub poll_interval: Duration,
 }
 
 /// 20 percent extra gas to the limit by default

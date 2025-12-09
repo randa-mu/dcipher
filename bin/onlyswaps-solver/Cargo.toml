@@ -15,6 +15,7 @@ dotenv = "0.15.0"
 bigdecimal = "0.4"
 futures.workspace = true
 generated.workspace = true
+humantime-serde.workspace = true
 itertools.workspace = true
 moka = { version = "0.12.10", features = ["future"] }
 onlyswaps-client = { workspace = true, features = ["fee-estimator"] }

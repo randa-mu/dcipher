@@ -1,7 +1,7 @@
 use crate::config::ProfitabilityConfig;
 use crate::executor::TradeExecutor;
 use crate::fee_adapter::DefaultFeeAdapter;
-use crate::model::{BlockEvent, RequestId};
+use crate::model::{RequestId, SolverEvent};
 use crate::network::Network;
 use crate::price_feed::coingecko::CoinGeckoClient;
 use crate::profitability::{
@@ -11,12 +11,11 @@ use crate::solver::Solver;
 use alloy::providers::DynProvider;
 use alloy::signers::local::PrivateKeySigner;
 use config::timeout::TimeoutConfig;
-use futures::StreamExt;
-use futures::future::try_join_all;
-use futures::stream::select_all;
+use futures::{Stream, StreamExt};
 use moka::future::Cache;
 use std::collections::HashMap;
 use std::ops::Mul;
+use tokio_stream::wrappers::IntervalStream;
 
 pub struct App {}
 impl App {
@@ -47,11 +46,8 @@ impl App {
             }
         };
 
-        let block_numbers = networks
-            .values()
-            .map(|network| network.stream_block_numbers());
-        let streams = try_join_all(block_numbers).await?;
-        let mut stream = Box::pin(select_all(streams));
+        let chain_ticker = per_chain_ticker(networks.values()).map(SolverEvent::Poll);
+        let mut stream = Box::pin(futures::stream::select(event_ticker, chain_ticker));
         let fee_estimator = DefaultFeeAdapter::new();
         let mut solver = Solver::new(&networks, &fee_estimator).await?;
         let executor = TradeExecutor::new(signer, &networks, pe).await?;
@@ -64,14 +60,11 @@ impl App {
             .time_to_live(timeout.request_timeout.mul(2))
             .build();
 
-        while let Some(BlockEvent { chain_id, .. }) = stream.next().await {
+        while let Some(event) = stream.next().await {
+            let chain_id = event.chain_id();
             let trades = solver.solve(chain_id, &inflight_requests).await?;
             if !trades.is_empty() {
-                tracing::info!(
-                    chain_id = chain_id,
-                    trade_count = trades.len(),
-                    "executing trades "
-                );
+                tracing::info!(chain_id, trade_count = trades.len(), "executing trades ");
                 executor
                     .execute(trades, &mut inflight_requests, timeout)
                     .await;
@@ -80,4 +73,16 @@ impl App {
 
         anyhow::bail!("stream of blocks ended unexpectedly");
     }
+}
+
+fn per_chain_ticker<'a, P>(
+    networks: impl IntoIterator<Item = &'a Network<P>>,
+) -> impl Stream<Item = u64> + Unpin + 'a
+where
+    P: 'a,
+{
+    futures::stream::select_all(networks.into_iter().map(move |net| {
+        let interval = tokio::time::interval(net.poll_interval);
+        IntervalStream::new(interval).map(|_| net.chain_id)
+    }))
 }
