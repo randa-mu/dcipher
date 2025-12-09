@@ -56,7 +56,7 @@ pub(crate) struct NetworkConfig {
     pub tx_gas_buffer: u16,
     #[serde(default = "default_tx_gas_price_buffer")]
     pub tx_gas_price_buffer: u16,
-    #[serde(with = "humantime_serde")]
+    #[serde(with = "humantime_serde", default = "default_poll_interval")]
     pub poll_interval: Duration,
 }
 
@@ -68,6 +68,11 @@ fn default_tx_gas_buffer() -> u16 {
 /// no extra gas to the price by default
 fn default_tx_gas_price_buffer() -> u16 {
     100
+}
+
+/// default solver poll interval
+fn default_poll_interval() -> Duration {
+    Duration::from_secs(30)
 }
 
 /// Configure the profitability of the solver.
