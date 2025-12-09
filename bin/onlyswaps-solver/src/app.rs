@@ -51,30 +51,10 @@ impl App {
                 }
             }
         });
-
-        let pe = match profitability {
-            ProfitabilityConfig::AlwaysProfitable => {
-                ErasedProfitabilityEstimator::from_estimator(AlwaysProfitable)
-            }
-            ProfitabilityConfig::CheckWithCoinGecko { api_key, pro_api } => {
-                let mut builder = CoinGeckoClient::builder();
-                if let Some(api_key) = api_key {
-                    builder = builder.api_key(api_key.to_owned());
-                }
-                if !pro_api {
-                    builder = builder.use_demo_api()
-                }
-
-                let mut cg_price_feed = builder.build()?;
-                cg_price_feed.init_chain_id_mapping().await?;
-                ErasedProfitabilityEstimator::from_estimator(StdProfitabilityEstimator::new(
-                    cg_price_feed,
-                ))
-            }
-        };
-
         let chain_ticker = per_chain_ticker(networks.values()).map(SolverEvent::Poll);
         let mut stream = Box::pin(futures::stream::select(event_ticker, chain_ticker));
+
+        let pe = get_profitability_estimator(profitability).await?;
         let fee_estimator = DefaultFeeAdapter::new();
         let mut solver = Solver::new(&networks, &fee_estimator).await?;
         let executor = TradeExecutor::new(signer, &networks, pe).await?;
@@ -154,4 +134,29 @@ async fn swap_requested_stream(
         .into_inner();
 
     Ok(event_stream)
+}
+
+async fn get_profitability_estimator(
+    profitability: &ProfitabilityConfig,
+) -> anyhow::Result<ErasedProfitabilityEstimator> {
+    Ok(match profitability {
+        ProfitabilityConfig::AlwaysProfitable => {
+            ErasedProfitabilityEstimator::from_estimator(AlwaysProfitable)
+        }
+        ProfitabilityConfig::CheckWithCoinGecko { api_key, pro_api } => {
+            let mut builder = CoinGeckoClient::builder();
+            if let Some(api_key) = api_key {
+                builder = builder.api_key(api_key.to_owned());
+            }
+            if !pro_api {
+                builder = builder.use_demo_api()
+            }
+
+            let mut cg_price_feed = builder.build()?;
+            cg_price_feed.init_chain_id_mapping().await?;
+            ErasedProfitabilityEstimator::from_estimator(StdProfitabilityEstimator::new(
+                cg_price_feed,
+            ))
+        }
+    })
 }
