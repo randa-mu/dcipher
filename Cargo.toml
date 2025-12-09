@@ -95,6 +95,7 @@ itertools = "0.14"
 rand = "0.8.0"
 strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0"
+tower = "0.5"
 tower-http = { version = "0.6.6" }
 
 [patch.crates-io]

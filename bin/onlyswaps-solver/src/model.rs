@@ -166,12 +166,13 @@ impl Hash for Trade {
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum SolverEvent {
     Poll(u64),
+    ChainEvent(u64),
 }
 
 impl SolverEvent {
     pub fn chain_id(&self) -> u64 {
         match &self {
-            SolverEvent::Poll(chain_id) => *chain_id,
+            SolverEvent::Poll(chain_id) | SolverEvent::ChainEvent(chain_id) => *chain_id,
         }
     }
 }

@@ -37,6 +37,7 @@ pub enum Command {
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AppConfig {
     pub agent: AgentConfig,
+    pub omnievent_endpoint: Option<String>,
     pub networks: Vec<NetworkConfig>,
     #[serde(default)]
     pub timeout: TimeoutConfig,
