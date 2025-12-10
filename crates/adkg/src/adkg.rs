@@ -926,7 +926,7 @@ where
     ) -> Result<Vec<SessionId>, AdkgError> {
         let id = state.id;
         let inner_fn = async move {
-            let mut final_parties: HashSet<SessionId> = HashSet::new();
+            let mut aba_sessions: HashSet<SessionId> = HashSet::new();
             let mut remaining_estimates = state.multi_aba.lock().await.iter_remaining_estimates();
             loop {
                 let Some((j, res)) = remaining_estimates.next().await else {
@@ -945,28 +945,18 @@ where
                     id, j
                 );
 
-                state
-                    .multi_aba
-                    .lock()
-                    .await
-                    .cancel(j)
-                    .await
-                    .unwrap()
-                    .unwrap();
+                match state.multi_aba.lock().await.cancel(j).await {
+                    Some(Ok(())) => (),
+                    Some(Err(e)) => {
+                        warn!(error = ?e, "Failed to send cancel signal to node");
+                    }
+                    None => {
+                        warn!("Failed to send cancel signal to node");
+                    }
+                }
 
                 if let Estimate::One = estimate {
-                    let rbc_parties = match state.rbc_outputs.get(&j) {
-                        Some(rbc_parties) => rbc_parties,
-                        None => {
-                            info!(
-                                "Node `{}` obtained an estimate from ABA with sid `{j}` without having obtained an RBC output, waiting.",
-                                state.id
-                            );
-                            Self::wait_for_rbc_output(&state.rbc_outputs, &j).await
-                        }
-                    };
-
-                    final_parties.extend(rbc_parties.iter());
+                    aba_sessions.insert(j);
 
                     // Input 0 to remaining ABAs
                     let iter_remaining_senders =
@@ -993,7 +983,24 @@ where
                     }
                 }
             }
-            final_parties.into_iter().collect()
+
+            let mut final_sessions = HashSet::with_capacity(state.n);
+            for j in aba_sessions {
+                // Get the list of parties for that session
+                let rbc_sessions = match state.rbc_outputs.get(&j) {
+                    Some(rbc_sessions) => rbc_sessions,
+                    None => {
+                        info!(
+                            "Node `{}` obtained an estimate from ABA with sid `{j}` without having obtained an RBC output, waiting.",
+                            state.id
+                        );
+                        Self::wait_for_rbc_output(&state.rbc_outputs, &j).await
+                    }
+                };
+                final_sessions.extend(rbc_sessions)
+            }
+
+            final_sessions.into_iter().collect()
         };
 
         tokio::select! {
