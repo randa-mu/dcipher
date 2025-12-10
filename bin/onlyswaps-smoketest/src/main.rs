@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
            }
         }
 
-        res = run(app_config) => {
+        res = run(app_config, &cli_config.private_key) => {
            match res {
                 Ok(()) => Err(anyhow!("smoke test stopped unexpectedly without an error")),
                 Err(_) => res.context("smoke test exited unexpectedly"),
@@ -61,8 +61,9 @@ async fn main() -> anyhow::Result<()> {
     } // return branch results
 }
 
-async fn run(app_config: AppConfig) -> anyhow::Result<()> {
-    let signer = PrivateKeySigner::from_slice(app_config.eth_private_key.as_slice())
+async fn run(app_config: AppConfig, eth_private_key: &str) -> anyhow::Result<()> {
+    let signer: PrivateKeySigner = eth_private_key
+        .parse()
         .context("failed to parse eth private key")?;
     let self_recipient = signer.address();
     let wallet = EthereumWallet::from(signer);
