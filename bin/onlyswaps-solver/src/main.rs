@@ -62,7 +62,7 @@ async fn run(
     init_monitoring(&config.agent)?;
 
     let (service, maybe_manager) =
-        get_omnievent_service(config.omnievent_endpoint.clone(), &networks).await?;
+        get_omnievent_service(config.omnievent.endpoint.clone(), &networks).await?;
 
     // start some healthcheck and signal handlers
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;

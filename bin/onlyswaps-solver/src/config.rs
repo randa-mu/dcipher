@@ -37,7 +37,8 @@ pub enum Command {
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AppConfig {
     pub agent: AgentConfig,
-    pub omnievent_endpoint: Option<String>,
+    #[serde(default)]
+    pub omnievent: OmniEventConfig,
     pub networks: Vec<NetworkConfig>,
     #[serde(default)]
     pub timeout: TimeoutConfig,
@@ -111,6 +112,11 @@ impl Default for ProfitabilityConfig {
             pro_api: false,
         }
     }
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub(crate) struct OmniEventConfig {
+    pub endpoint: Option<String>,
 }
 
 impl CliArgs {
