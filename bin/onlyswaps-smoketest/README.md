@@ -14,14 +14,13 @@ The service exposes the following Prometheus metrics on the healthcheck endpoint
 
 ## Configuration
 
-The service is configured via a TOML file. By default, it looks for the config at `~/.config/onlyswaps/smoketest/config.toml`, but this can be overridden.
+The service is configured via a TOML file, and an Ethereum private key.
+By default, it looks for the config at `~/.config/onlyswaps/smoketest/config.toml`, but this can be overridden.
+The Ethereum private key must be either passed as an env variable (`SMOKETEST_PRIVATE_KEY`) or as an argument (`--private-key`).
 
 ### Configuration File Structure
 
 ```toml
-# Private key for signing transactions (32 bytes as hex)
-eth_private_key = "deadbeef"
-
 [agent]
 healthcheck_listen_addr = "0.0.0.0"
 healthcheck_port = 8080

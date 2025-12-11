@@ -1,4 +1,4 @@
-use alloy::primitives::{Address, FixedBytes, U256};
+use alloy::primitives::{Address, U256};
 use config::agent::AgentConfig;
 use config::network::NetworkConfig;
 use onlyswaps_client::config::token::TokenTag;
@@ -11,7 +11,6 @@ use std::time::Duration;
 pub struct AppConfig {
     pub agent: AgentConfig,
     pub networks: Vec<NetworkConfig>,
-    pub eth_private_key: FixedBytes<32>,
     pub swaps: Vec<SwapTest>,
 }
 
