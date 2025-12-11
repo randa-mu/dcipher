@@ -1030,6 +1030,9 @@ where
         let id = state.id;
         let inner_fn = async move {
             loop {
+                // Register interest for notification prior to checking to not lose notifications
+                let notified = state.completed_acss_outputs.notified();
+
                 // Check whether the completed ACSSs is a superset of rbc_parties
                 // i.e., rbc_parties is a subset of completed_acss_outputs
                 if state.completed_acss_outputs.is_superset(&rbc_parties) {
@@ -1076,7 +1079,7 @@ where
                 }
 
                 // If not, wait for an update
-                state.completed_acss_outputs.wait().await;
+                notified.await;
             }
         };
 
@@ -1104,6 +1107,9 @@ where
             let rbc_output = Self::wait_for_rbc_output(&state.rbc_outputs, &sid).await;
 
             loop {
+                // Register interest for notification prior to checking to not lose notifications
+                let notified = state.completed_acss_outputs.notified();
+
                 if state.completed_acss_outputs.is_superset(&rbc_output) {
                     // Get the acss outputs to be used as the coin keys
                     let outputs: Vec<_> = state
@@ -1115,7 +1121,7 @@ where
                 }
 
                 // If not, wait for an update
-                state.completed_acss_outputs.wait().await;
+                notified.await;
             }
         };
 
@@ -1136,11 +1142,14 @@ where
     ) -> HashSet<SessionId> {
         let wait_for_rbc = async {
             loop {
+                // Register interest for notification prior to checking to not lose notifications
+                let notified = rbc_outputs.notified();
+
                 if let Some(rbc_output) = rbc_outputs.get(sid) {
                     return rbc_output;
                 }
 
-                rbc_outputs.wait().await;
+                notified.await;
             }
         };
         wait_for_rbc.await
