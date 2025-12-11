@@ -120,6 +120,8 @@ async fn setup(networks: HashMap<u64, Network<DynProvider>>) -> anyhow::Result<(
 
 type ArcManager = Arc<EventManager<MultiProvider<u64>, NopDatabase>>;
 
+/// Create an omnievent service either by relying on an external endpoint, or by initialising our own
+/// omnievent local service.
 async fn get_omnievent_service(
     maybe_endpoint: Option<
         impl TryInto<Endpoint, Error: std::error::Error + Send + Sync + 'static>,
@@ -127,14 +129,14 @@ async fn get_omnievent_service(
     networks: &HashMap<u64, Network<DynProvider>>,
 ) -> anyhow::Result<(OmniEventBoxService, Option<ArcManager>)> {
     if let Some(endpoint) = maybe_endpoint {
-        // Yay, we have an omnievent instance running already
+        // endpoint specified, we connect to an existing omnievent service
         let endpoint: Endpoint = endpoint.try_into()?;
         let service = endpoint.connect().await?;
 
         return Ok((service.map_err(Into::into).boxed(), None));
     }
 
-    // Start our own omnievent service
+    // No endpoint specified, start our own omnievent service
     let mut multi_provider = MultiProvider::empty();
     multi_provider.extend::<Ethereum>(
         networks
