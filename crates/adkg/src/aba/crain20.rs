@@ -1135,18 +1135,20 @@ async fn future_select_pin<Out>(a: impl Future<Output = Out>, b: impl Future<Out
 
 #[cfg(test)]
 mod tests {
-    use crate::aba::AbaConfig;
-    use crate::aba::crain20::{AbaCrain20Config, AbaInput, CoinKeys};
+    use crate::aba::crain20::{AbaCrain20, AbaCrain20Config, AbaInput, CoinKeys};
     use crate::aba::{Aba, Estimate};
-    use crate::helpers::PartyId;
+    use crate::helpers::{PartyId, SessionId};
     use crate::network::RetryStrategy;
-    use ark_bn254::Bn254;
+    use ark_bn254::{Bn254, Fr};
     use ark_ec::{PrimeGroup, pairing::Pairing};
-    use dcipher_network::topic::dispatcher::TopicDispatcher;
-    use dcipher_network::transports::in_memory::MemoryNetwork;
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly::{DenseUVPolynomial, Polynomial};
+    use ark_std::UniformRand;
+    use dcipher_network::Transport;
+    use dcipher_network::transports::in_memory::{BusMemoryTransport, MemoryNetwork};
+    use itertools::Itertools;
     use rand::rngs::OsRng;
     use std::collections::VecDeque;
-    use std::sync::Arc;
     use tokio::sync::oneshot;
     use tokio::task;
     use tokio::task::JoinSet;
@@ -1154,25 +1156,86 @@ mod tests {
 
     type G = <Bn254 as Pairing>::G1;
 
-    #[tokio::test]
-    async fn test_aba_all_parties_est_one() {
-        _ = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::INFO)
-            .try_init();
+    fn gen_keys(n: u16, t: u16, g: G) -> (Vec<Fr>, G, Vec<G>) {
+        // Build polynomial from coefficients
+        let poly_coeffs = (0..t)
+            .map(|_| <G as PrimeGroup>::ScalarField::rand(&mut OsRng))
+            .collect::<Vec<_>>();
+        let p = DensePolynomial::from_coefficients_slice(&poly_coeffs);
 
+        let sk = p.evaluate(&0.into());
+        let pk = g * sk;
+
+        let sks = (1..=n).map(|i| p.evaluate(&i.into())).collect::<Vec<_>>();
+        let pks = sks.iter().map(|ski| g * ski).collect::<Vec<_>>();
+
+        (sks, pk, pks)
+    }
+
+    #[tokio::test]
+    async fn test_aba_agreement() {
         let t = 2;
         let n = 3 * t + 1;
         let g = G::generator();
+        let sid = SessionId::const_from(0);
+        let est = Estimate::One;
 
-        let (dispatchers, mut tbts): (Vec<_>, VecDeque<_>) =
-            MemoryNetwork::get_transports(PartyId::iter_all(n))
-                .into_iter()
-                .map(|t| {
-                    let mut dispatcher = TopicDispatcher::new();
-                    let tbt = dispatcher.start(t);
-                    (dispatcher, tbt)
-                })
-                .collect();
+        let (sks, pk, pks) = gen_keys(n as u16, t as u16, g);
+        let estimates: Vec<_> = vec![est; n];
+
+        let final_est = run(n, t, sks, pks, pk, g, estimates, sid).await;
+        assert_eq!(est, final_est);
+    }
+
+    #[tokio::test]
+    async fn test_aba_disagreement() {
+        let t = 2;
+        let n = 3 * t + 1;
+        let g = G::generator();
+        let sid = SessionId::const_from(0);
+
+        let (sks, pk, pks) = gen_keys(n as u16, t as u16, g);
+        let estimates: Vec<_> = PartyId::iter_all(n)
+            .map(|i| {
+                //
+                // let est = if thread_rng().gen_bool(0.5) {
+                //     Estimate::One
+                // } else {
+                //     Estimate::Zero
+                // };
+                // 50-50 split or so
+                if i.as_usize() <= n / 2 {
+                    Estimate::One
+                } else {
+                    Estimate::Zero
+                }
+            })
+            .collect();
+
+        run(n, t, sks, pks, pk, g, estimates, sid).await;
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run(
+        n: usize,
+        t: usize,
+        sks: Vec<Fr>,
+        pks: Vec<G>,
+        pk: G,
+        g: G,
+        estimates: Vec<Estimate>,
+        sid: SessionId,
+    ) -> Estimate {
+        let mut coin_keys: VecDeque<_> = sks
+            .into_iter()
+            .map(|sk| CoinKeys {
+                sk,
+                vks: pks.clone(),
+                combined_vk: pk,
+            })
+            .collect();
+
+        let mut transports: VecDeque<_> = MemoryNetwork::get_transports(PartyId::iter_all(n));
         let mut abas: VecDeque<_> = PartyId::iter_all(n)
             .map(|i| AbaCrain20Config::<_, _, sha3::Sha3_256>::new(i, n, t, g, RetryStrategy::None))
             .collect();
@@ -1180,8 +1243,10 @@ mod tests {
         let mut tasks = JoinSet::new();
         for i in PartyId::iter_all(n) {
             tasks.spawn({
-                let transport = tbts.pop_front().unwrap();
+                let mut transport = transports.pop_front().unwrap();
                 let aba_config = abas.pop_front().unwrap();
+                let coin_keys = coin_keys.pop_front().unwrap();
+                let v = estimates[i];
 
                 async move {
                     let (isender, ireceiver) = oneshot::channel();
@@ -1191,17 +1256,21 @@ mod tests {
 
                     // Create input with One estimate
                     let (coin_keys_sender, coin_keys_receiver) = oneshot::channel::<CoinKeys<G>>();
-                    drop(coin_keys_sender); // all nodes input the same estimate, coin must not be used
+                    coin_keys_sender.send(coin_keys).unwrap();
+
                     let est = AbaInput {
-                        v: Estimate::One,
+                        v,
                         coin_keys_receiver,
                     };
 
                     // Spawn aba task
                     let aba_task = task::spawn(async move {
-                        let aba = aba_config
-                            .new_instance(0.into(), Arc::new(transport))
-                            .expect("failed to create aba instance");
+                        let aba = AbaCrain20::<_, _, _, BusMemoryTransport<_>> {
+                            config: aba_config,
+                            receiver: transport.receiver_stream().unwrap(),
+                            sender: transport.sender().unwrap(),
+                            sid,
+                        };
                         aba.propose(ireceiver, osender, cancel_cloned, &mut OsRng)
                             .await
                     });
@@ -1225,14 +1294,15 @@ mod tests {
             });
         }
 
+        let mut ests = vec![];
         while let Some(res) = tasks.join_next().await {
             assert!(res.is_ok());
             let (_, est) = res.unwrap();
-            assert_eq!(est, Estimate::One);
+            assert!([Estimate::Zero, Estimate::One].contains(&est));
+            ests.push(est);
         }
+        assert!(ests.iter().all_equal());
 
-        for d in dispatchers {
-            d.stop().await;
-        }
+        *ests.first().unwrap()
     }
 }
