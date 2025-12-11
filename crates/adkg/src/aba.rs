@@ -57,7 +57,7 @@ pub trait Aba: Send {
 }
 
 /// A binary estimate can either be 0/1, or \bot.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum Estimate {
     Bot,

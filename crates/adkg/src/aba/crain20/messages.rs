@@ -2,6 +2,7 @@ use super::ecdh_coin_toss::{Coin, EcdhCoinTossEval};
 use crate::aba::Estimate;
 use ark_ec::CurveGroup;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 /// Messages sent during the ABA protocol.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -37,24 +38,15 @@ pub struct AuxiliaryMessage {
 }
 
 /// Message used to send a set of estimates, i.e., a view.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AuxiliarySetMessage {
     pub(crate) round: u8,
     pub(crate) view: View,
 }
 
 /// Set of all possible views during the ABA.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(u8)]
-pub enum View {
-    Bot,
-    Zero,
-    One,
-
-    BotZero,
-    BotOne,
-    ZeroOne,
-}
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct View(pub(crate) BTreeSet<Estimate>);
 
 /// Message to send a partial evaluation for the common coin tossing protocol.
 #[serde_with::serde_as]
@@ -105,10 +97,9 @@ impl From<Coin> for Estimate {
 /// Convert single element views into its corresponding estimate, otherwise into Estimate::Bot
 impl From<View> for Estimate {
     fn from(val: View) -> Self {
-        match val {
-            View::Zero => Estimate::Zero,
-            View::One => Estimate::One,
-            _ => Estimate::Bot,
+        if val.0.len() > 1 {
+            return Estimate::Bot;
         }
+        val.0.first().copied().unwrap_or(Estimate::Bot)
     }
 }
