@@ -162,8 +162,17 @@ impl Hash for Trade {
         self.post_hooks.hash(state);
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub(crate) struct BlockEvent {
-    pub chain_id: u64,
-    pub block_number: u64,
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum SolverEvent {
+    Poll(u64),
+    ChainEvent(u64),
+}
+
+impl SolverEvent {
+    pub fn chain_id(&self) -> u64 {
+        match &self {
+            SolverEvent::Poll(chain_id) | SolverEvent::ChainEvent(chain_id) => *chain_id,
+        }
+    }
 }

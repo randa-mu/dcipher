@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 use config::agent::AgentConfig;
 use config::timeout::TimeoutConfig;
 use serde::Deserialize;
+use std::time::Duration;
 
 #[derive(Parser, Debug)]
 pub(crate) struct CliArgs {
@@ -36,6 +37,8 @@ pub enum Command {
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct AppConfig {
     pub agent: AgentConfig,
+    #[serde(default)]
+    pub omnievent: OmniEventConfig,
     pub networks: Vec<NetworkConfig>,
     #[serde(default)]
     pub timeout: TimeoutConfig,
@@ -54,6 +57,8 @@ pub(crate) struct NetworkConfig {
     pub tx_gas_buffer: u16,
     #[serde(default = "default_tx_gas_price_buffer")]
     pub tx_gas_price_buffer: u16,
+    #[serde(with = "humantime_serde", default = "default_poll_interval")]
+    pub poll_interval: Duration,
 }
 
 /// 20 percent extra gas to the limit by default
@@ -64,6 +69,11 @@ fn default_tx_gas_buffer() -> u16 {
 /// no extra gas to the price by default
 fn default_tx_gas_price_buffer() -> u16 {
     100
+}
+
+/// default solver poll interval
+fn default_poll_interval() -> Duration {
+    Duration::from_secs(30)
 }
 
 /// Configure the profitability of the solver.
@@ -102,6 +112,11 @@ impl Default for ProfitabilityConfig {
             pro_api: false,
         }
     }
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub(crate) struct OmniEventConfig {
+    pub endpoint: Option<String>,
 }
 
 impl CliArgs {
