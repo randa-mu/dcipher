@@ -15,13 +15,15 @@ use digest::core_api::BlockSizeUser;
 use digest::crypto_common::rand_core::CryptoRng;
 use digest::{DynDigest, FixedOutputReset};
 use ecdh_coin_toss::{Coin, EcdhCoinTossError, EcdhCoinTossEval};
+use futures::future::Either;
 use messages::{AbaMessage, AuxStage, CoinEvalMessage, View};
 use messages::{AuxiliaryMessage, AuxiliarySetMessage, EstimateMessage};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::hash::Hash;
-use std::ops::{Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
+use std::pin::pin;
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, HashMap, btree_map::Entry},
@@ -33,7 +35,7 @@ use tokio::sync::oneshot::error::RecvError;
 use tokio::sync::{Mutex, Notify, oneshot};
 use tokio::task::JoinError;
 use tokio_util::sync::CancellationToken;
-use tracing::{Level, debug, error, event, info, trace, warn};
+use tracing::{Instrument, Level, debug, error, event, info, trace, warn};
 use utils::hash_to_curve::HashToCurve;
 use utils::serialize::fq::FqSerialize;
 use utils::serialize::point::PointSerializeCompressed;
@@ -155,15 +157,14 @@ where
 }
 
 struct AbaState<CG: CurveGroup, H> {
-    notify_count_est: NotifyMap<(u8, AuxStage)>, // notify upon receiving 2t + 1 binary estimates (Algorithm 3, Line 7)
-
-    bin_values: Mutex<HashMap<u8, BinValues>>, // replace vec by bitset / integer
+    notify_bin_values: NotifyMap<(u8, AuxStage)>, // notify upon receiving 2t + 1 binary estimates (Algorithm 3, Line 7)
+    bin_values: Mutex<HashMap<u8, BinValues>>,
 
     notify_count_aux: NotifyMap<(u8, AuxStage)>, // notify upon receiving n - t aux agreements (Algorithm 4, Line 4)
-    count_aux: Mutex<PerPartyStorage<AuxiliaryMessage, bool>>, // count aux messages
+    aux_views: Mutex<PerPartyStorage<(u8, AuxStage), View>>, // store each views sent through aux messages
 
-    notify_count_auxset: NotifyMap<u8>, // notify upon receiving n - t auxset agreements (Algorithm 5, Line 7)
-    count_auxset: Mutex<PerPartyStorage<AuxiliarySetMessage, bool>>, // count auxset messages
+    notify_count_auxset: NotifyMap<u8>, // notify upon receiving at least n - t auxset agreements (Algorithm 5, Line 7)
+    auxset_views: Mutex<PerPartyStorage<u8, View>>, // store each views sent through auxset messages
 
     notify_enough_coin_evals: NotifyMap<u8>,
     coin_evals: Mutex<PerPartyStorage<u8, EcdhCoinTossEval<CG, H>>>,
@@ -229,12 +230,12 @@ where
 
         // Initialize the ABA state machine
         let state = Arc::new(AbaState::<CG, H> {
-            count_aux: Mutex::new(PerPartyStorage::new()),
+            aux_views: Mutex::new(PerPartyStorage::new()),
             notify_count_aux: NotifyMap::new(),
-            count_auxset: Mutex::new(PerPartyStorage::new()),
+            auxset_views: Mutex::new(PerPartyStorage::new()),
             notify_count_auxset: NotifyMap::new(),
             bin_values: Mutex::new(HashMap::new()),
-            notify_count_est: NotifyMap::new(),
+            notify_bin_values: NotifyMap::new(),
             notify_enough_coin_evals: NotifyMap::new(),
             coin_evals: Mutex::new(PerPartyStorage::new()),
         });
@@ -329,7 +330,7 @@ where
                 info!("Node `{id}` in ABA with sid `{sid}` stopping recv_thread");
             }
 
-            _ = Self::recv_loop(config, receiver, sender, state) => {}
+            _ = Self::recv_loop(config, receiver, sender, state).instrument(tracing::info_span!("recv_loop", ?sid)) => {}
         }
     }
 
@@ -400,7 +401,7 @@ where
                                 "Node {} notifying bin values for round {}",
                                 config.id, est.round
                             );
-                            state.notify_count_est.notify_one((est.round, est.stage))
+                            state.notify_bin_values.notify_one((est.round, est.stage));
                         };
                     } else if count >= config.t + 1 && !sent_estimate.contains(&est) {
                         // 5: if BVAL(v) received from t + 1 different nodes AND BVAL(v) was not sent, then
@@ -418,42 +419,29 @@ where
                     }
                 }
 
-                AbaMessage::Auxiliary(est) => {
-                    // Insert aux message
-                    let mut count_aux = state.count_aux.lock().await;
-                    count_aux.insert_once(est, sender_id, true);
-                    let count_bot = count_aux.get_count(&AuxiliaryMessage {
-                        round: est.round,
-                        stage: est.stage,
-                        estimate: Estimate::Bot,
-                    });
-                    let count_0 = count_aux.get_count(&AuxiliaryMessage {
-                        round: est.round,
-                        stage: est.stage,
-                        estimate: Estimate::Zero,
-                    });
-                    let count_1 = count_aux.get_count(&AuxiliaryMessage {
-                        round: est.round,
-                        stage: est.stage,
-                        estimate: Estimate::One,
-                    });
-                    drop(count_aux); // drop mutex
+                AbaMessage::Auxiliary(aux) => {
+                    let mut aux_views = state.aux_views.lock().await;
+                    // Add the new estimate to the current view
+                    aux_views
+                        .entry((aux.round, aux.stage), sender_id)
+                        .or_default()
+                        .insert(aux.estimate);
 
-                    // Did we receive at least n - t aux for {0}, {1}, or {0, 1}
-                    if count_0 + count_1 + count_bot >= config.n - config.t {
-                        state.notify_count_aux.notify_one((est.round, est.stage));
+                    // notify once we got at least n - t aux messages
+                    if aux_views.get_count(&(aux.round, aux.stage)) >= config.n - config.t {
+                        state.notify_count_aux.notify_one((aux.round, aux.stage));
                     }
                 }
 
-                AbaMessage::AuxiliarySet(set_view) => {
-                    // Insert aux message
-                    // lock count_aux mutex
-                    let mut count_auxset = state.count_auxset.lock().await;
-                    count_auxset.insert_once(set_view, sender_id, true);
-                    drop(count_auxset); // drop mutex
+                AbaMessage::AuxiliarySet(aux_set) => {
+                    // Insert auxset view, at most once per sender_id
+                    let mut auxset_views = state.auxset_views.lock().await;
+                    auxset_views.insert_once(aux_set.round, sender_id, aux_set.view);
 
-                    // notify on each new AUXSET message
-                    state.notify_count_auxset.notify_one(set_view.round);
+                    // notify once we got at least n - t auxset messages
+                    if auxset_views.get_count(&aux_set.round) >= config.n - config.t {
+                        state.notify_count_auxset.notify_one(aux_set.round);
+                    }
                 }
 
                 AbaMessage::CoinEval(msg_eval) => {
@@ -545,12 +533,18 @@ where
                 self.config.id
             );
             let view_r_1 = loop {
-                state.notify_count_auxset.notified(r).await;
+                // wake up each time after having received n - t auxset, or on bin_values update
+                future_select_pin(
+                    state.notify_count_auxset.notified(r),
+                    state.notify_bin_values.notified((r, AuxStage::Stage1)),
+                )
+                .await;
 
-                let count_auxset = state.count_auxset.lock().await;
+                let auxset_views = state.auxset_views.lock().await;
                 let bin_values = state.bin_values.lock().await; // warn: two locks
+                let auxset_views = auxset_views.get(&r).to_owned().unwrap_or_default();
                 let bin_values = &bin_values.get(&r).cloned().unwrap_or_default()[AuxStage::Stage1];
-                if let Some(view) = self.get_view_from_auxset(bin_values, &count_auxset, r) {
+                if let Some(view) = self.construct_view(bin_values, &auxset_views) {
                     event!(
                         Level::DEBUG,
                         "Node `{}` at round `{r}` obtained valid view `{view:?}`",
@@ -569,9 +563,10 @@ where
             let view_r_2 = self.sbv_broadcast(r, AuxStage::Stage2, est, &state).await;
 
             // 11: if view[r, 2] = {v}, v \neq \bot then
-            if view_r_2 == View::Zero || view_r_2 == View::One {
+            let v = Estimate::from(view_r_2.clone());
+            if v != Estimate::Bot {
                 // est \gets v
-                est = view_r_2.into();
+                est = v;
                 info!(
                     "Node {} sid `{}` decided on estimate `{est:?}`",
                     self.config.id, self.sid
@@ -618,14 +613,14 @@ where
             }
 
             // 13: if view[r, 2] = {v, \bot} then est \gets v
-            if view_r_2 == View::BotZero {
+            if view_r_2 == View::bot_zero() {
                 est = Estimate::Zero;
-            } else if view_r_2 == View::BotOne {
+            } else if view_r_2 == View::bot_one() {
                 est = Estimate::One;
             }
 
             // 14: if view[r, 2] = {\bot} then est \gets Coin()
-            if view_r_2 == View::Bot {
+            if view_r_2.is_bot() {
                 let coin_keys = coin_keys
                     .as_ref()
                     .expect("coin_keys cannot be None at this point");
@@ -691,7 +686,7 @@ where
         );
         let bin_values = loop {
             // 2: wait until bin_values \neq \emptyset
-            state.notify_count_est.notified((r, stage)).await;
+            state.notify_bin_values.notified((r, stage)).await;
 
             let bin_values = state.bin_values.lock().await;
             let bin_values = &bin_values.get(&r).cloned().unwrap_or_default()[stage];
@@ -738,14 +733,19 @@ where
                 "Node `{}` waiting for count_aux notification",
                 self.config.id
             );
-            // Wait for condition (2) received from recv thread
-            state.notify_count_aux.notified((r, stage)).await;
 
-            let count_aux = state.count_aux.lock().await;
+            // wake up each time after having received n - t aux, or on bin_values update
+            future_select_pin(
+                state.notify_count_aux.notified((r, stage)),
+                state.notify_bin_values.notified((r, stage)),
+            )
+            .await;
+
+            let aux_views = state.aux_views.lock().await;
             let bin_values = state.bin_values.lock().await; // warn: two locks, could deadlock
+            let aux_views = aux_views.get(&(r, stage)).to_owned().unwrap_or_default();
             let bin_values = &bin_values.get(&r).cloned().unwrap_or_default()[stage];
-
-            let view = self.get_view_from_aux(bin_values, &count_aux, stage, r);
+            let view = self.construct_view(bin_values, &aux_views);
             if let Some(view) = view {
                 event!(
                     Level::DEBUG,
@@ -923,81 +923,30 @@ where
         .serialize()
     }
 
-    /// Try to extract a view from binary values and auxiliary messages.
-    fn get_view_from_aux(
-        &self,
-        bin_values: &[Estimate],
-        count: &PerPartyStorage<AuxiliaryMessage, bool>,
-        stage: AuxStage,
-        round: u8,
-    ) -> Option<View> {
+    /// Try to build a view from the union of views sent by other nodes, filtered by local binary values
+    /// obtained through the BV_broadcast algorithm, Figure 1 of <https://arxiv.org/pdf/2002.08765>.
+    /// Implements filtering of line (05), Figure 3 of <https://arxiv.org/pdf/2002.08765>:
+    /// \exists a view such that its values (i) belong to bin values and comes from views sent by
+    /// (n − t) distinct processes.
+    fn construct_view(&self, bin_values: &[Estimate], views: &[&View]) -> Option<View> {
         assert!(bin_values.len() <= 2);
 
-        // Get possible views, assuming bin_values contains at most 2 elements
-        // views = { {bin_values[0]}, {bin_values[1]}, {bin_values[0], bin_values[1]} }
-        let mut views = vec![vec![bin_values[0]]];
-        if bin_values.len() == 2 {
-            views.append(&mut vec![
-                vec![bin_values[1]],                // either the other value,
-                vec![bin_values[0], bin_values[1]], // or, both values
-            ]);
-        }
+        let bin_values = BTreeSet::from_iter(bin_values.iter().copied());
 
-        // Try to find a view such that the sum of its estimate count is >= than n - t
-        for view in views {
-            let sum: usize = view
-                .iter()
-                .map(|est| {
-                    let m = AuxiliaryMessage {
-                        round,
-                        stage,
-                        estimate: *est,
-                    };
-
-                    count.get_count(&m)
-                })
-                .sum();
-
-            if sum >= self.config.n - self.config.t {
-                return View::from_estimates(bin_values);
-            }
-        }
-
-        None
-    }
-
-    /// Try to extract a view from binary values and auxiliary set messages.
-    fn get_view_from_auxset(
-        &self,
-        bin_values: &[Estimate],
-        count: &PerPartyStorage<AuxiliarySetMessage, bool>,
-        round: u8,
-    ) -> Option<View> {
-        assert!(bin_values.len() <= 2);
-
-        // Get possible views, assuming bin_values contains at most 2 elements
-        // views = { {bin_values[0]}, {bin_values[1]}, {bin_values[0], bin_values[1]} }
-        let mut views = vec![View::from_estimates(&[bin_values[0]])];
-        if bin_values.len() == 2 {
-            views.append(&mut vec![
-                View::from_estimates(&[bin_values[1]]), // either the other value,
-                View::from_estimates(&[bin_values[0], bin_values[1]]), // or, both values
-            ]);
-        }
-
-        // Try to find a view such that its count is >= than n - t
-        for view in views {
-            let Some(view) = view else {
+        // Form a view such that its values (i) belong to bin values and comes from views sent by
+        // (n − t) distinct processes
+        let mut count = 0;
+        let mut view_union = View::default();
+        for &view in views {
+            if !view.is_subset(&bin_values) {
+                // not a subset of bin_values, ignore
                 continue;
-            };
+            }
 
-            let count: usize = view
-                .get_view_superset()
-                .into_iter()
-                .map(|view| count.get_count(&AuxiliarySetMessage { round, view }))
-                .sum();
+            view_union.extend(view.iter()); // equivalent to union
+            count += 1;
             if count >= self.config.n - self.config.t {
-                return Some(view);
+                return Some(view_union);
             }
         }
 
@@ -1039,6 +988,12 @@ where
         PerPartyStorage { db: HashMap::new() }
     }
 
+    /// Get the entry to a key
+    fn entry(&mut self, k: K, party: PartyId) -> Entry<'_, PartyId, V> {
+        let storage = self.db.entry(k).or_default();
+        storage.entry(party)
+    }
+
     /// Only insert if the key is not already present
     fn insert_once(&mut self, k: K, party: PartyId, v: V) {
         let storage = self.db.entry(k).or_default();
@@ -1054,6 +1009,12 @@ where
     fn get_all(&self, k: &K) -> Option<(Vec<PartyId>, Vec<&V>)> {
         let storage = self.db.get(k)?;
         Some(storage.iter().map(|(k, v)| (*k, v)).unzip())
+    }
+
+    /// Returns the values stored for key k
+    fn get(&self, k: &K) -> Option<Vec<&V>> {
+        let storage = self.db.get(k)?;
+        Some(storage.values().collect())
     }
 
     /// Returns the number of values stored for key k amongst all parties.
@@ -1123,34 +1084,31 @@ impl IndexMut<AuxStage> for BinValues {
     }
 }
 
+impl Deref for View {
+    type Target = BTreeSet<Estimate>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for View {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 impl View {
-    /// Creates a view from binary values
-    pub(crate) fn from_estimates(estimates: &[Estimate]) -> Option<Self> {
-        match estimates {
-            &[Estimate::Bot] => Some(View::Bot),
-            &[Estimate::Zero] => Some(View::Zero),
-            &[Estimate::One] => Some(View::One),
-
-            &[Estimate::Bot, Estimate::Zero] | &[Estimate::Zero, Estimate::Bot] => {
-                Some(View::BotZero)
-            }
-            &[Estimate::Bot, Estimate::One] | &[Estimate::One, Estimate::Bot] => Some(View::BotOne),
-            &[Estimate::Zero, Estimate::One] | &[Estimate::One, Estimate::Zero] => {
-                Some(View::ZeroOne)
-            }
-
-            _ => None,
-        }
+    pub(crate) fn bot_zero() -> Self {
+        Self(BTreeSet::from_iter([Estimate::Bot, Estimate::Zero]))
     }
 
-    /// Get the superset of a view, e.g. the superset of Bot is {Bot, BotZero, BotOne}
-    pub(crate) fn get_view_superset(self) -> Vec<Self> {
-        match self {
-            View::Bot => vec![View::Bot, View::BotZero, View::BotOne],
-            View::Zero => vec![View::Zero, View::BotZero, View::ZeroOne],
-            View::One => vec![View::One, View::BotOne, View::ZeroOne],
-            View::BotZero | View::BotOne | View::ZeroOne => vec![self],
-        }
+    pub(crate) fn bot_one() -> Self {
+        Self(BTreeSet::from_iter([Estimate::Bot, Estimate::One]))
+    }
+
+    pub(crate) fn is_bot(&self) -> bool {
+        self.0.first().is_some_and(|est| est == &Estimate::Bot)
     }
 }
 
@@ -1164,6 +1122,14 @@ where
             config: aba20.config,
             sender: aba20.sender,
         }
+    }
+}
+
+async fn future_select_pin<Out>(a: impl Future<Output = Out>, b: impl Future<Output = Out>) -> Out {
+    let a = pin!(a);
+    let b = pin!(b);
+    match futures::future::select(a, b).await {
+        Either::Left((o, _)) | Either::Right((o, _)) => o,
     }
 }
 
