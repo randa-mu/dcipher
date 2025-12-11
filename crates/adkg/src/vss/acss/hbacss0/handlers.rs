@@ -148,7 +148,7 @@ where
 
                         if output
                             .send(Hbacss0Output {
-                                feld_share: shares.feld_share.clone(),
+                                feld_share: shares.feld_share,
                                 shares: shares.ped_shares.clone(),
                                 feld_public_poly: feld_public_poly.to_owned(),
                                 public_polys: ped_public_polys.to_vec(),

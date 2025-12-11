@@ -734,6 +734,7 @@ where
 }
 
 /// Verify that a hybrid encryption ciphertext can be decrypted and is a valid Feldman share for party i.
+#[allow(clippy::too_many_arguments)]
 fn dual_eval_verify<'a, CG>(
     ct: &EphemeralMultiHybridCiphertext<CG>,
     feld_poly: &FeldPublicPoly<CG>,
@@ -775,7 +776,7 @@ where
     }
 
     // Try to verify the shares, or return Err(())
-    if feldman::eval_verify(&feld_poly.0, i, &feld_share, g).is_err() {
+    if feldman::eval_verify(&feld_poly.0, i, feld_share, g).is_err() {
         return Err(());
     }
 
