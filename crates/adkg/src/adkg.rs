@@ -17,7 +17,7 @@ use crate::rand::{AdkgRng, AdkgRngType};
 use crate::rbc::ReliableBroadcastConfig;
 use crate::rbc::multi_rbc::MultiRbc;
 use crate::vss::acss::AcssConfig;
-use crate::vss::acss::hbacss0::PedersenSecret;
+use crate::vss::acss::hbacss0::{Hbacss0Input, PedersenSecret};
 use crate::vss::acss::multi_acss::MultiAcss;
 use ark_ec::{AffineRepr, CurveGroup, PrimeGroup};
 use ark_ff::Zero;
@@ -186,7 +186,7 @@ where
     CG::ScalarField: FqSerialize + FqDeserialize,
     H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     RBCConfig: ReliableBroadcastConfig<'static, PartyId>,
-    ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Vec<PedersenSecret<CG::ScalarField>>>,
+    ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Hbacss0Input<CG::ScalarField>>,
     ACSSConfig::Output: Into<ShareWithPoly<CG>>,
     ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<CG>>,
 {
@@ -286,13 +286,20 @@ where
             .map_err(|e| AdkgError::Rng(e.into(), "failed to get acss secret rng"))?;
 
         // Generate random secret scalars to be used in the node's ACSS
-        let s: Vec<_> = (0..shares_per_acss)
+        let pedersen_in: Vec<_> = (0..shares_per_acss)
             .map(|_| {
                 let a = CG::ScalarField::rand(&mut acss_rng);
                 let a_hat = CG::ScalarField::rand(&mut acss_rng);
                 PedersenSecret { s: a, r: a_hat }
             })
             .collect();
+        // Additional feldman secret used in the coin toss of the multi-valued validated byzantine agreement (MVBA)
+        let feldman_in = CG::ScalarField::rand(&mut acss_rng);
+
+        let s = Hbacss0Input {
+            feld: feldman_in,
+            peds: pedersen_in,
+        };
 
         // Generate predicates for each of the RBCs
         let rbc_predicates: Vec<_> = PartyId::iter_all(self.n)
