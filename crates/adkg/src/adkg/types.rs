@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Notify;
+use tokio::sync::futures::Notified;
 use tracing::warn;
 use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
@@ -173,6 +174,9 @@ impl<S: Send + Sync> RbcPredicate for NotifyPredicate<S> {
         };
 
         loop {
+            // Register interest for notification prior to checking to not lose notifications
+            let notified = self.completed_acss.notified();
+
             // Check that we have at least min_size parties, and that the completed ACSSs is a superset
             // of the parties in the message
             if rbc_parties.v.len() >= self.min_size
@@ -183,7 +187,7 @@ impl<S: Send + Sync> RbcPredicate for NotifyPredicate<S> {
             }
 
             // If not, wait for an update to completed_acss
-            self.completed_acss.wait().await;
+            notified.await;
         }
     }
 }
@@ -201,8 +205,8 @@ impl<S> NotifyMap<S> {
         self.notify.notify_waiters()
     }
 
-    pub async fn wait(self: &Arc<Self>) {
-        self.notify.notified().await
+    pub fn notified(self: &Arc<Self>) -> Notified<'_> {
+        self.notify.notified()
     }
 
     pub fn keys(self: &Arc<Self>) -> Vec<SessionId>
