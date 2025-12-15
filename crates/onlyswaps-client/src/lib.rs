@@ -69,3 +69,6 @@ pub mod fee_estimator;
 
 #[cfg(feature = "fee-estimator")]
 pub use fee_estimator::*;
+
+#[cfg(feature = "permit2")]
+pub mod permit2;

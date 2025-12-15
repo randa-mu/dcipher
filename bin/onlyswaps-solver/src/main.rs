@@ -2,7 +2,6 @@ mod app;
 mod config;
 mod executor;
 mod fee_adapter;
-pub(crate) mod gasless;
 mod model;
 mod network;
 pub mod price_feed;
@@ -47,16 +46,18 @@ async fn main() -> anyhow::Result<()> {
     let config: AppConfig = load_config_file(cli.config_path)?;
     let private_key_signer: PrivateKeySigner = cli.private_key.parse()?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
+    let client = create_onlyswaps_client(&config, &networks);
 
     match command {
-        Command::Run => run(config, private_key_signer, networks).await,
-        Command::Setup => setup(networks).await,
+        Command::Run => run(config, private_key_signer, client, networks).await,
+        Command::Setup => setup(&client, &networks).await,
     }
 }
 
 async fn run(
     config: AppConfig,
     private_key_signer: PrivateKeySigner,
+    client: OnlySwapsClient,
     networks: HashMap<u64, Network<DynProvider>>,
 ) -> anyhow::Result<()> {
     let healthcheck_server = HealthcheckServer::new(
@@ -68,8 +69,6 @@ async fn run(
 
     let (service, maybe_manager) =
         get_omnievent_service(config.omnievent.endpoint.clone(), &networks).await?;
-
-    let client = create_onlyswaps_client(&config, &networks);
 
     // start some healthcheck and signal handlers
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
@@ -121,8 +120,11 @@ async fn run(
     out
 }
 
-async fn setup(networks: HashMap<u64, Network<DynProvider>>) -> anyhow::Result<()> {
-    setup_allowances(&networks).await
+async fn setup(
+    client: &OnlySwapsClient,
+    networks: &HashMap<u64, Network<DynProvider>>,
+) -> anyhow::Result<()> {
+    setup_allowances(client, networks).await
 }
 
 type ArcManager = Arc<EventManager<MultiProvider<u64>, NopDatabase>>;

@@ -18,7 +18,7 @@ generated.workspace = true
 humantime-serde.workspace = true
 itertools.workspace = true
 moka = { version = "0.12.10", features = ["future"] }
-onlyswaps-client = { workspace = true, features = ["fee-estimator", "solver"] }
+onlyswaps-client = { workspace = true, features = ["fee-estimator", "solver", "permit2"] }
 omnievent.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }

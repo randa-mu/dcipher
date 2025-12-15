@@ -1,6 +1,3 @@
-use crate::gasless::{
-    Permit2RelayTokensDetails, fetch_permit2_addresses, permit2, permit2_relay_tokens_details,
-};
 use crate::model::{RequestId, Trade};
 use crate::network::Network;
 use crate::profitability::{ErasedProfitabilityEstimator, ProfitabilityEstimator};
@@ -8,11 +5,10 @@ use crate::util::normalise_chain_id;
 use alloy::primitives::{Address, TxHash};
 use alloy::providers::Provider;
 use alloy::signers::Signer;
-use anyhow::{Context, anyhow};
+use anyhow::Context;
 use config::timeout::TimeoutConfig;
-use generated::onlyswaps::errors_lib::ErrorsLib::ErrorsLibErrors;
-use generated::onlyswaps::i_router::IRouter::{IRouterInstance, RelayTokensPermit2Params};
-use generated::onlyswaps::ierc20_errors::IERC20Errors::IERC20ErrorsErrors as IERC20Errors;
+use generated::onlyswaps::i_router::IRouter::IRouterInstance;
+use generated::onlyswaps::permit2_relayer::Permit2Relayer::Permit2RelayerInstance;
 use moka::future::Cache;
 use onlyswaps_client::client::OnlySwapsClient;
 use onlyswaps_client::client::solver::OnlySwapsTrade;
@@ -104,7 +100,8 @@ where
             match timeout(
                 timeout_config.request_timeout,
                 execute_trade(
-                    &trade,
+                    &self.client,
+                    trade.clone(),
                     config.router,
                     config.permit2_relayer_address,
                     config.permit2_addr,
@@ -146,7 +143,8 @@ where
 }
 
 async fn execute_trade<S>(
-    trade: &Trade,
+    client: &OnlySwapsClient,
+    trade: Trade,
     router: &IRouterInstance<impl Provider>,
     permit2_relayer_address: Address,
     permit2_addr: Address,
@@ -157,44 +155,22 @@ async fn execute_trade<S>(
 where
     S: Signer,
 {
-    let Permit2RelayTokensDetails {
-        message_hash,
-        nonce: permit_nonce,
-        deadline: permit_deadline,
-    } = permit2_relay_tokens_details(trade, permit2_relayer_address, own_addr, Some(permit2_addr))?;
-    let permit2_signed_allowance = signer.sign_hash(&message_hash).await?;
-
-    let relay_tokens_call = router.relayTokensPermit2(RelayTokensPermit2Params {
-        solver: own_addr,
-        solverRefundAddress: own_addr,
-        requestId: trade.request_id,
-        sender: trade.sender_addr,
-        recipient: trade.recipient_addr,
-        tokenIn: trade.token_in_addr,
-        tokenOut: trade.token_out_addr,
-        amountOut: trade.amount_out,
-        srcChainId: trade.src_chain_id,
-        nonce: trade.nonce,
-        permitNonce: permit_nonce,
-        permitDeadline: permit_deadline,
-        signature: permit2_signed_allowance.as_erc2098().into(),
-        preHooks: trade.pre_hooks.to_vec(),
-        postHooks: trade.post_hooks.to_vec(),
-    });
-
-    let gas = relay_tokens_call
-        .clone()
-        .estimate_gas()
+    let sendable_tx = client
+        .relay_tokens_permit2(
+            &trade.clone().try_into().context("invalid trade")?,
+            own_addr,
+            permit2_addr,
+            permit2_relayer_address,
+            signer,
+        )
         .await
-        .map_err(decode_irouter_error)
-        .context("gas estimation failed")?;
+        .context("failed to obtain sendable permit2 tx")?;
 
-    // Currently, we cannot check for profitability earlier, due to the allowance check.
     let gas_cost = estimate_gas_cost(router.provider())
         .await
         .context("gas cost estimation failed")?;
     if !profitability_estimator
-        .is_profitable(trade, gas, gas_cost)
+        .is_profitable(&trade, sendable_tx.gas_estimate(), gas_cost)
         .await
         .context("failed to compute profitability of trade")?
     {
@@ -202,36 +178,11 @@ where
         anyhow::bail!("trade not profitable");
     }
 
-    let tx = relay_tokens_call
+    let receipt = sendable_tx
         .send()
         .await
-        .map_err(decode_irouter_error)
-        .context("failed to send relayTokens tx")?;
-
-    // Fetch the receipt to get the tx status
-    let receipt = tx.get_receipt().await.context("error submitting swap")?;
-    if !receipt.status() {
-        tracing::error!(?receipt, "error submitting swap: tx reverted");
-        anyhow::bail!("error submitting swap: tx reverted");
-    }
-
+        .context("failed to send permit2 tx")?;
     Ok(receipt.transaction_hash)
-}
-
-fn decode_irouter_error(e: alloy::contract::Error) -> anyhow::Error {
-    // Try to decode it as a permit2 error
-    if let Some(permit2_err) = permit2::decode_error(&e) {
-        return anyhow!("permit2 contract error: {permit2_err:?}");
-    }
-    // Try to decode it as an IERC20 error
-    if let Some(erc20_err) = e.as_decoded_interface_error::<IERC20Errors>() {
-        return anyhow!("erc20 contract error: {erc20_err:?}");
-    }
-    // Try to decode it as a Router error
-    if let Some(router_err) = e.as_decoded_interface_error::<ErrorsLibErrors>() {
-        return anyhow!("router contract error: {router_err:?}");
-    }
-    e.into()
 }
 
 /// Get an upper bound estimation of the current gas cost from the provider
@@ -271,4 +222,24 @@ impl TryFrom<Trade> for OnlySwapsTrade {
             post_hooks: value.post_hooks,
         })
     }
+}
+
+pub async fn fetch_permit2_addresses<'a, P>(
+    networks: impl IntoIterator<Item = (&'a u64, &'a Network<P>)>,
+) -> anyhow::Result<impl Iterator<Item = (u64, Address)>>
+where
+    P: Provider + 'a,
+{
+    let permit2_addresses =
+        futures::future::try_join_all(networks.into_iter().map(async |(&id, c)| {
+            Permit2RelayerInstance::new(c.permit2_relayer_address, c.router.provider())
+                .PERMIT2()
+                .call()
+                .await
+                .map(|addr| (id, addr))
+        }))
+        .await
+        .context("failed to get permit2 addresses")?;
+
+    Ok(permit2_addresses.into_iter())
 }
