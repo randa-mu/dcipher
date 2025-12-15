@@ -99,16 +99,7 @@ where
             // and finally execute the trade with a timeout
             match timeout(
                 timeout_config.request_timeout,
-                execute_trade(
-                    &self.client,
-                    trade.clone(),
-                    config.router,
-                    config.permit2_relayer_address,
-                    config.permit2_addr,
-                    self.own_address,
-                    &self.signer,
-                    &self.profitability_estimator,
-                ),
+                self.execute_trade(trade.clone(), config),
             )
             .await
             {
@@ -140,49 +131,43 @@ where
             }
         }
     }
-}
 
-async fn execute_trade<S>(
-    client: &OnlySwapsClient,
-    trade: Trade,
-    router: &IRouterInstance<impl Provider>,
-    permit2_relayer_address: Address,
-    permit2_addr: Address,
-    own_addr: Address,
-    signer: &S,
-    profitability_estimator: &ErasedProfitabilityEstimator,
-) -> anyhow::Result<TxHash>
-where
-    S: Signer,
-{
-    let sendable_tx = client
-        .relay_tokens_permit2(
-            &trade.clone().try_into().context("invalid trade")?,
-            own_addr,
-            permit2_addr,
-            permit2_relayer_address,
-            signer,
-        )
-        .await
-        .context("failed to obtain sendable permit2 tx")?;
+    async fn execute_trade<'aa>(
+        &self,
+        trade: Trade,
+        chain_config: &ChainConfig<'aa, P>,
+    ) -> anyhow::Result<TxHash> {
+        let sendable_tx = self
+            .client
+            .relay_tokens_permit2(
+                &trade.clone().try_into().context("invalid trade")?,
+                self.own_address,
+                chain_config.permit2_addr,
+                chain_config.permit2_relayer_address,
+                &self.signer,
+            )
+            .await
+            .context("failed to obtain sendable permit2 tx")?;
 
-    let gas_cost = estimate_gas_cost(router.provider())
-        .await
-        .context("gas cost estimation failed")?;
-    if !profitability_estimator
-        .is_profitable(&trade, sendable_tx.gas_estimate(), gas_cost)
-        .await
-        .context("failed to compute profitability of trade")?
-    {
-        tracing::warn!("Trade not profitable, refusing fulfillment");
-        anyhow::bail!("trade not profitable");
+        let gas_cost = estimate_gas_cost(chain_config.router.provider())
+            .await
+            .context("gas cost estimation failed")?;
+        if !self
+            .profitability_estimator
+            .is_profitable(&trade, sendable_tx.gas_estimate(), gas_cost)
+            .await
+            .context("failed to compute profitability of trade")?
+        {
+            tracing::warn!("Trade not profitable, refusing fulfillment");
+            anyhow::bail!("trade not profitable");
+        }
+
+        let receipt = sendable_tx
+            .send()
+            .await
+            .context("failed to send permit2 tx")?;
+        Ok(receipt.transaction_hash)
     }
-
-    let receipt = sendable_tx
-        .send()
-        .await
-        .context("failed to send permit2 tx")?;
-    Ok(receipt.transaction_hash)
 }
 
 /// Get an upper bound estimation of the current gas cost from the provider
