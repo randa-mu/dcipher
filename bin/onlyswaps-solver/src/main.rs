@@ -2,7 +2,6 @@ mod app;
 mod config;
 mod executor;
 mod fee_adapter;
-pub(crate) mod gasless;
 mod model;
 mod network;
 pub mod price_feed;
@@ -28,6 +27,11 @@ use omnievent::event_manager::EventManager;
 use omnievent::event_manager::db::NopDatabase;
 use omnievent::grpc::OmniEventServiceImpl;
 use omnievent::proto_types::omni_event_service_server::OmniEventServiceServer;
+use onlyswaps_client::client::OnlySwapsClient;
+use onlyswaps_client::config::OnlySwapsClientConfig;
+use onlyswaps_client::config::chain::ChainConfig;
+use onlyswaps_client::config::token::TokenTag;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use superalloy::provider::MultiProvider;
@@ -42,16 +46,18 @@ async fn main() -> anyhow::Result<()> {
     let config: AppConfig = load_config_file(cli.config_path)?;
     let private_key_signer: PrivateKeySigner = cli.private_key.parse()?;
     let networks = Network::create_many(&cli.private_key, &config.networks).await?;
+    let client = create_onlyswaps_client(&config, &networks);
 
     match command {
-        Command::Run => run(config, private_key_signer, networks).await,
-        Command::Setup => setup(networks).await,
+        Command::Run => run(config, private_key_signer, client, networks).await,
+        Command::Setup => setup(&client, &networks).await,
     }
 }
 
 async fn run(
     config: AppConfig,
     private_key_signer: PrivateKeySigner,
+    client: OnlySwapsClient,
     networks: HashMap<u64, Network<DynProvider>>,
 ) -> anyhow::Result<()> {
     let healthcheck_server = HealthcheckServer::new(
@@ -70,7 +76,7 @@ async fn run(
 
     // listen for alllll the things!
     let out = tokio::select! {
-        res = App::start(private_key_signer, networks, &config.timeout, &config.profitability, service) => {
+        res = App::start(private_key_signer, client, networks, &config.timeout, &config.profitability, service) => {
             match res {
                 Ok(_) => Err(anyhow!("event listener stopped unexpectedly")),
                 Err(e) => Err(anyhow!("event listener stopped unexpectedly: {}", e))
@@ -114,8 +120,11 @@ async fn run(
     out
 }
 
-async fn setup(networks: HashMap<u64, Network<DynProvider>>) -> anyhow::Result<()> {
-    setup_allowances(&networks).await
+async fn setup(
+    client: &OnlySwapsClient,
+    networks: &HashMap<u64, Network<DynProvider>>,
+) -> anyhow::Result<()> {
+    setup_allowances(client, networks).await
 }
 
 type ArcManager = Arc<EventManager<MultiProvider<u64>, NopDatabase>>;
@@ -156,4 +165,29 @@ async fn get_omnievent_service(
     .boxed();
 
     Ok((service, Some(event_manager)))
+}
+
+fn create_onlyswaps_client(
+    config: &AppConfig,
+    networks: &HashMap<u64, Network<DynProvider>>,
+) -> OnlySwapsClient {
+    let mut only_config = OnlySwapsClientConfig::empty();
+    for (chain_id, net) in networks {
+        let tokens = HashMap::from_iter(net.tokens.iter().map(|t| {
+            // Just tag the token with its address
+            let name = Cow::Owned(t.address().to_string());
+            (TokenTag::Other(name), *t.address())
+        }));
+
+        let chain = ChainConfig::new(
+            *chain_id,
+            *net.router.address(),
+            tokens,
+            config.timeout.request_timeout,
+            1,
+        );
+        only_config.add_ethereum_chain_dyn(chain, net.provider.clone(), Some(net.own_addr));
+    }
+
+    OnlySwapsClient::new(only_config)
 }

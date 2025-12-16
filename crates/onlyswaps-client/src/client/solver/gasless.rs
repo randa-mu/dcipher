@@ -1,19 +1,13 @@
 //! Module to solve / relay tokens gaslessly
 
-use crate::gasless::permit2::transfer_from::Permit2TransferFromParameters;
-use crate::gasless::permit2::witness_transfer_from::{
+use crate::client::solver::OnlySwapsTrade;
+use crate::permit2::transfer_from::Permit2TransferFromParameters;
+use crate::permit2::witness_transfer_from::{
     Permit2CustomWitness, Permit2WitnessError, permit2_witness_transfer_from_message_hash,
 };
-use crate::model::Trade;
-use crate::network::Network;
 use alloy::dyn_abi::DynSolValue;
 use alloy::primitives::{Address, B256, U256};
-use alloy::providers::Provider;
-use anyhow::Context;
-use generated::onlyswaps::permit2_relayer::Permit2Relayer::Permit2RelayerInstance;
 use serde_json::json;
-
-pub mod permit2;
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Permit2RelayTokensDetails {
@@ -29,7 +23,7 @@ pub struct Permit2RelayTokensDetails {
 
 /// Compute the message hash to sign to issue a permit2 allowance signature.
 pub fn permit2_relay_tokens_details(
-    trade: &Trade,
+    trade: &OnlySwapsTrade,
     spender_addr: Address,
     own_addr: Address,
     permit2_override: Option<Address>,
@@ -64,7 +58,7 @@ pub fn permit2_relay_tokens_details(
 
     let params = Permit2TransferFromParameters {
         // swap params
-        chain_id: trade.dest_chain_id.try_into().expect("invalid chain_id"),
+        chain_id: trade.dest_chain_id,
         token_addr: trade.token_out_addr,
         token_amount: trade.amount_out,
         spender_addr,
@@ -81,24 +75,4 @@ pub fn permit2_relay_tokens_details(
         nonce: params.nonce,
         deadline: params.deadline,
     })
-}
-
-pub async fn fetch_permit2_addresses<'a, P>(
-    networks: impl IntoIterator<Item = (&'a u64, &'a Network<P>)>,
-) -> anyhow::Result<impl Iterator<Item = (u64, Address)>>
-where
-    P: Provider + 'a,
-{
-    let permit2_addresses =
-        futures::future::try_join_all(networks.into_iter().map(async |(&id, c)| {
-            Permit2RelayerInstance::new(c.permit2_relayer_address, c.router.provider())
-                .PERMIT2()
-                .call()
-                .await
-                .map(|addr| (id, addr))
-        }))
-        .await
-        .context("failed to get permit2 addresses")?;
-
-    Ok(permit2_addresses.into_iter())
 }

@@ -42,8 +42,20 @@ pub enum OnlySwapsClientError {
     #[error("erc20 contract error: {0:?}")]
     Erc20Contract(IERC20Errors),
 
+    #[cfg(feature = "permit2")]
+    #[error(transparent)]
+    Permit2Contract(#[from] crate::permit2::Permit2ContractError),
+
     #[error(transparent)]
     Alloy(#[from] OnlySwapsClientOtherError),
+
+    #[cfg(feature = "solver")]
+    #[error("relay tokens reverted")]
+    RelayTokensReverted,
+
+    #[cfg(all(feature = "solver", feature = "permit2"))]
+    #[error(transparent)]
+    Permit2(#[from] crate::permit2::witness_transfer_from::Permit2WitnessError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -90,6 +102,14 @@ impl From<IERC20Errors> for OnlySwapsClientError {
 
 impl From<(alloy::contract::Error, &'static str)> for OnlySwapsClientError {
     fn from((e, context): (alloy::contract::Error, &'static str)) -> Self {
+        #[cfg(feature = "permit2")]
+        {
+            // Try to decode it as a permit2 error
+            if let Some(e) = crate::permit2::decode_error(&e) {
+                return e.into();
+            }
+        }
+
         // Attempt to decode it as a RouterError
         if let Some(e) = e.as_decoded_interface_error::<ErrorsLibErrors>() {
             return e.into();

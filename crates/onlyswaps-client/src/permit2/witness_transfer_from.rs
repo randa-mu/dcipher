@@ -1,14 +1,9 @@
 //! EIP-712 typed data for permit2's PermitWitnessTransferFrom.
 
-use crate::gasless::permit2::transfer_from::{
-    Permit2TransferFromParameters, permit2_transfer_from_json,
-};
+use crate::permit2::transfer_from::{Permit2TransferFromParameters, permit2_transfer_from_json};
 use alloy::dyn_abi::TypedData;
 use alloy::primitives::B256;
 use serde_json::{Value, json};
-
-// Fixed permit2 witness transfer type string from https://github.com/Uniswap/permit2/blob/cc56ad0f3439c502c246fc5cfcc3db92bb8b7219/src/libraries/PermitHash.sol#L31-L32
-const PERMIT2_WITNESS_TRANSFER_FIXED_TYPE_STR: &str = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Permit2WitnessError {
@@ -120,6 +115,9 @@ mod tests {
 
     #[test]
     fn should_match_expected_permit_witness_transfer_from_type_str() {
+        // Fixed permit2 witness transfer type string from https://github.com/Uniswap/permit2/blob/cc56ad0f3439c502c246fc5cfcc3db92bb8b7219/src/libraries/PermitHash.sol#L31-L32
+        const PERMIT2_WITNESS_TRANSFER_FIXED_TYPE_STR: &str = "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
+
         let typed_data =
             permit2_witness_transfer_from_typed_data(Default::default(), get_custom_witness())
                 .expect("a valid typed data");

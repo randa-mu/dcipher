@@ -4,7 +4,7 @@ use crate::metrics::Metrics;
 use ::config::file::load_config_file;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
-use alloy::network::EthereumWallet;
+use alloy::network::{Ethereum, EthereumWallet, NetworkWallet};
 use alloy::providers::{Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::{Context, anyhow};
@@ -115,7 +115,11 @@ async fn get_client(
             provider.connect_http(network.rpc_url.clone()).erased()
         };
 
-        config.add_ethereum_chain(chain_config, provider)
+        config.add_ethereum_chain_dyn(
+            chain_config,
+            provider,
+            Some(NetworkWallet::<Ethereum>::default_signer_address(&wallet)),
+        )
     }
 
     Ok(OnlySwapsClient::new(config))

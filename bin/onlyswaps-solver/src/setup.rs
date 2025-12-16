@@ -1,16 +1,19 @@
-use crate::gasless::fetch_permit2_addresses;
 use crate::network::Network;
 use alloy::primitives::{Address, U160, U256, address};
 use alloy::providers::{DynProvider, Provider};
 use anyhow::Context;
 use futures::TryFutureExt;
+use onlyswaps_client::client::OnlySwapsClient;
 use std::collections::HashMap;
 use std::io::{Write, stdin};
 
 const PERMIT2_DEFAULT_ADDRESS: Address = address!("0x000000000022D473030F116dDEE9F6B43aC78BA3");
 
-pub async fn setup_allowances(networks: &HashMap<u64, Network<DynProvider>>) -> anyhow::Result<()> {
-    let allowances = fetch_allowance_details(networks).await?;
+pub async fn setup_allowances(
+    client: &OnlySwapsClient,
+    networks: &HashMap<u64, Network<DynProvider>>,
+) -> anyhow::Result<()> {
+    let allowances = fetch_allowance_details(client, networks).await?;
 
     println!("The following allowances are required:");
     println!("{:<10} {:<44} Permit2", "Chain", "Token Address");
@@ -111,10 +114,16 @@ struct AllowanceDetails {
 
 /// Prepare the solver by fetching the current token allowances on each network
 async fn fetch_allowance_details(
+    client: &OnlySwapsClient,
     networks: &HashMap<u64, Network<DynProvider>>,
 ) -> anyhow::Result<HashMap<u64, AllowanceDetails>> {
     // First, fetch the permit2 addresses
-    let permit2_addresses: HashMap<_, _> = fetch_permit2_addresses(networks)
+    let permit2_addresses: HashMap<_, _> = client
+        .fetch_permit2_addresses(
+            networks
+                .iter()
+                .map(|(id, net)| (*id, net.permit2_relayer_address)),
+        )
         .await
         .context("failed to get permit2 addresses")?
         .collect();

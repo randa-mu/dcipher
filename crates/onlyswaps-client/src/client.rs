@@ -4,6 +4,8 @@ mod backoff;
 mod errors;
 mod request;
 pub mod routing;
+#[cfg(feature = "solver")]
+pub mod solver;
 
 pub use errors::*;
 pub use request::*;
@@ -80,25 +82,54 @@ impl OnlySwapsClient {
         token: TokenTag,
         amount: U256,
     ) -> Result<TxHash, OnlySwapsClientError> {
+        let (chain_config, ierc20) = self.approve_config(chain_id, token)?;
+
+        approve_spending(chain_config, &ierc20, amount)
+            .await
+            .map(|r| r.transaction_hash)
+    }
+
+    /// Approve the router contract to spend tokens for upcoming swaps and wait for the approval to be
+    /// effective. The amount must include the fees.
+    /// If the timeout is not specified, uses the default chain timeout specified in the config.
+    pub async fn approve_spending_and_wait(
+        &self,
+        chain_id: u64,
+        token: TokenTag,
+        amount: U256,
+        timeout: Option<std::time::Duration>,
+    ) -> Result<TxHash, OnlySwapsClientError> {
+        let (chain_config, ierc20) = self.approve_config(chain_id, token)?;
+        let timeout = timeout.unwrap_or(chain_config.timeout);
+
+        approve_spending_and_wait(chain_config, &ierc20, amount, Some(timeout))
+            .await
+            .map(|r| r.transaction_hash)
+    }
+
+    /// Get chain config and an ERC20 instance used to approve tokens.
+    fn approve_config(
+        &self,
+        chain_id: u64,
+        token: TokenTag,
+    ) -> Result<(&ChainConfig, IERC20Instance<&DynProvider>), OnlySwapsClientError> {
         let provider = self
             .config
             .get_ethereum_provider(chain_id)
             .ok_or(OnlySwapsClientError::MissingProvider(chain_id))?;
 
-        let chain_config = self
+        let chain_config = &self
             .config
-            .get_chain_config(chain_id)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(chain_id))?;
+            .get_chain(chain_id)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(chain_id))?
+            .config;
 
         let token_addr = *chain_config
             .supported_tokens
             .get(&token)
             .ok_or(OnlySwapsClientError::UnsupportedToken(chain_id, token))?;
         let ierc20 = IERC20::new(token_addr, provider);
-
-        approve_spending(chain_config, &ierc20, amount)
-            .await
-            .map(|r| r.transaction_hash)
+        Ok((chain_config, ierc20))
     }
 
     /// Create a new swap, sending tokens to a recipient
@@ -119,10 +150,11 @@ impl OnlySwapsClient {
             .get_ethereum_provider(routing.src_chain)
             .ok_or(OnlySwapsClientError::MissingProvider(routing.src_chain))?;
 
-        let src_chain_config = self
+        let src_chain_config = &self
             .config
-            .get_chain_config(routing.src_chain)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(routing.src_chain))?;
+            .get_chain(routing.src_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(routing.src_chain))?
+            .config;
 
         Ok((provider, src_chain_config))
     }
