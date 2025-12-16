@@ -68,11 +68,11 @@ jobs:
 
       - name: Build and push docker images
         uses: docker/bake-action@v6
+        env:
+          TAG: ${{ github.ref_name }}
+          REGISTRY: ${{ env.DOCKER_REGISTRY }}
         with:
           files: docker-bake.hcl
-          env:
-            TAG: ${{ github.ref_name }}
-            REGISTRY: ${{ env.DOCKER_REGISTRY }}
           source: .
           push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || env.DOCKER_PUSH == 'true' }}
           set: |
