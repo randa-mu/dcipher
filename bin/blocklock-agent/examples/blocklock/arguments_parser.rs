@@ -123,6 +123,17 @@ pub struct BlockchainArgs {
     #[arg(long, env = "BLOCKLOCK_SYNC_BATCH_SIZE", default_value = "20")]
     pub sync_batch_size: usize,
 
+    /// How often to synchronize the current state against the chain
+    /// This parameter has an impact on the fulfillment delay of blocklock requests. With 30 seconds,
+    /// blocklock requests will be fulfilled on average 30/2 = 15 seconds after the requested block
+    /// height is reached.
+    #[arg(long, env = "BLOCKLOCK_CONTRACT_SYNC_INTERVAL", default_value = "30")]
+    pub contract_sync_interval_secs: u64,
+
+    /// How often to retry submitting transactions / fulfilling pending requests
+    #[arg(long, env = "BLOCKLOCK_FULFILLMENT_INTERVAL", default_value = "60")]
+    pub fulfillment_interval_secs: u64,
+
     /// Address of the deployed BlocklockSender contract
     #[arg(long, env = "BLOCKLOCK_SENDER_CONTRACT_ADDRESS")]
     pub blocklock_sender_addr: alloy::primitives::Address,
