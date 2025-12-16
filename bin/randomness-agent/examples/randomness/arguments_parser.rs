@@ -122,6 +122,14 @@ pub struct ChainArgs {
     #[arg(long, env = "RANDOMNESS_SYNC_BATCH_SIZE", default_value = "20")]
     pub sync_batch_size: usize,
 
+    /// How often to synchronize the current state against the chain
+    #[arg(long, env = "RANDOMNESS_CONTRACT_SYNC_INTERVAL", default_value = "30")]
+    pub contract_sync_interval_secs: u64,
+
+    /// How often to retry submitting transactions / fulfilling pending requests
+    #[arg(long, env = "RANDOMNESS_FULFILLMENT_INTERVAL", default_value = "60")]
+    pub fulfillment_interval_secs: u64,
+
     /// Address of the deployed SignatureSender contract
     #[arg(long, env = "RANDOMNESS_SIGNATURE_SENDER_CONTRACT_ADDRESS")]
     pub signature_sender_addr: alloy::primitives::Address,
