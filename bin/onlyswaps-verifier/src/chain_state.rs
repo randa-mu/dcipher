@@ -1,5 +1,5 @@
 use crate::chain_state_pending::{RequestId, Verification, extract_pending_verifications};
-use crate::config::{AppConfig, TimeoutConfig};
+use crate::config::AppConfig;
 use crate::signing::SignedVerification;
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, FixedBytes};
@@ -7,12 +7,15 @@ use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::anyhow;
 use config::network::NetworkConfig;
+use config::timeout::TimeoutConfig;
 use futures::future::{try_join, try_join_all};
-use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
+use generated::onlyswaps::errors_lib::ErrorsLib::ErrorsLibErrors;
+use generated::onlyswaps::i_router::IRouter::SwapRequestParametersWithHooks;
+use generated::onlyswaps::i_router::IRouter::{IRouterInstance, getSwapRequestReceiptReturn};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
+use superalloy::provider::recommended_fillers;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SwapStatus<ID> {
@@ -28,7 +31,7 @@ pub(crate) struct NetworkBus<P> {
 pub(crate) struct Network<P> {
     chain_id: u64,
     should_write: bool,
-    router: RouterInstance<P>,
+    router: IRouterInstance<P>,
     timeout_config: TimeoutConfig,
 }
 
@@ -71,7 +74,7 @@ impl NetworkBus<DynProvider> {
         &self,
         chain_id: u64,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<SwapRequestParameters> {
+    ) -> anyhow::Result<SwapRequestParametersWithHooks> {
         let transport = self
             .networks
             .get(&chain_id)
@@ -102,7 +105,11 @@ impl Network<DynProvider> {
     ) -> anyhow::Result<Self> {
         let url = config.rpc_url.clone();
         let own_addr = signer.address();
-        let provider = ProviderBuilder::new()
+        let provider = ProviderBuilder::default()
+            .filler(recommended_fillers(
+                config.tx_gas_buffer.into(),
+                config.tx_gas_price_buffer.into(),
+            ))
             .wallet(EthereumWallet::new(signer.clone()))
             .connect_ws(WsConnect::new(url))
             .await?
@@ -116,7 +123,7 @@ impl Network<DynProvider> {
         Ok(Self {
             chain_id: config.chain_id,
             should_write: config.should_write,
-            router: RouterInstance::new(Address(config.router_address), provider.clone()),
+            router: IRouterInstance::new(Address(config.router_address), provider.clone()),
             timeout_config,
         })
     }
@@ -135,7 +142,7 @@ impl<P: Provider> Network<P> {
     pub async fn fetch_transfer_params(
         &self,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<SwapRequestParameters> {
+    ) -> anyhow::Result<SwapRequestParametersWithHooks> {
         Ok(self
             .router
             .getSwapRequestParameters(request_id)
@@ -190,13 +197,13 @@ impl<P: Provider> Network<P> {
         .await
         {
             Ok(Ok(_)) => Ok(()),
-            Ok(Err(e)) => anyhow::bail!("error submitting swap: {:?}", e),
+            Ok(Err(e)) => Err(e.context("error submitting swap"))?,
             Err(_) => anyhow::bail!("request timed out"),
         }
     }
 
     async fn rebalance(&self, verified_swap: &SignedVerification) -> anyhow::Result<()> {
-        let tx = self
+        let tx_submit_res = self
             .router
             .rebalanceSolver(
                 verified_swap.solver,
@@ -205,22 +212,44 @@ impl<P: Provider> Network<P> {
             )
             .block(self.timeout_config.block_safety.into())
             .send()
-            .await?;
+            .await;
+
+        let tx = match tx_submit_res {
+            Ok(tx) => tx,
+            Err(e) => {
+                // Try to decode it as a Router error
+                match e.as_decoded_interface_error::<ErrorsLibErrors>() {
+                    Some(ErrorsLibErrors::AlreadyFulfilled(_)) => {
+                        tracing::info!(request_id = ?verified_swap.request_id, "swap request already fulfilled");
+                        return Ok(());
+                    }
+                    Some(router_err) => {
+                        anyhow::bail!("router contract error: {router_err:?}");
+                    }
+                    None => Err(e)?,
+                }
+            }
+        };
 
         tracing::info!(
             request_id = ?verified_swap.request_id,
             tx_hash = tx.tx_hash().to_string(),
             "swap verification submitting"
         );
-        let tx_hash = tx
+        let receipt = tx
             .with_required_confirmations(1)
             .with_timeout(Some(self.timeout_config.request_timeout))
-            .watch()
+            .get_receipt()
             .await?;
+
+        if !receipt.status() {
+            tracing::error!(request_id = ?verified_swap.request_id, ?receipt, "error submitting swap verification: tx reverted");
+            anyhow::bail!("error submitting swap verification: tx reverted");
+        }
 
         tracing::info!(
             request_id = ?verified_swap.request_id,
-            tx_hash = tx_hash.to_string(),
+            tx_hash = receipt.transaction_hash.to_string(),
             "swap verification finalised"
         );
 

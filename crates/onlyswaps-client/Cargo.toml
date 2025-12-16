@@ -6,10 +6,13 @@ edition.workspace = true
 [features]
 default = ["serde", "fee-estimator"]
 fee-estimator = ["dep:reqwest", "dep:serde"]
+permit2 = ["serde", "dep:serde_json", "alloy/dyn-abi", "alloy/eip712", "alloy/rand"]
 serde = ["dep:serde"]
+solver = []
 
 [dependencies]
 alloy.workspace = true
+backoff.workspace = true
 futures-util.workspace = true
 generated.workspace = true
 superalloy.workspace = true
@@ -19,6 +22,9 @@ thiserror.workspace = true
 # fee-estimator dependencies
 reqwest = { workspace = true, features = ["json"], optional = true }
 serde = { workspace = true, optional = true }
+
+# permit2 dependencies
+serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 alloy = { workspace = true, features = ["reqwest-default-tls", "transports", "provider-ws", "provider-anvil-node"] }

@@ -2,7 +2,7 @@
 
 use crate::event_manager::db::EventsDatabase;
 use crate::types::{BlockInfo, EventId, EventOccurrence, RegisteredEventSpec};
-use alloy::primitives::Address;
+use alloy::primitives::{Address, TxHash};
 use chrono::{DateTime, Utc};
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{FromRow, QueryBuilder, Row, Sqlite, SqlitePool};
@@ -13,6 +13,9 @@ use uuid::Uuid;
 pub enum SqliteEventDatabaseError {
     #[error("sqlx error: {1}")]
     Sqlx(#[source] sqlx::Error, &'static str),
+
+    #[error("failed to run migrations")]
+    Migrate(#[from] sqlx::migrate::MigrateError),
 
     #[error("number of rows affected by insert != 1")]
     AffectedRowsInsert,
@@ -67,20 +70,7 @@ impl SqliteEventDatabase {
 
     /// Executes the schema initialization script.
     pub async fn maybe_initialize_schema(&self) -> Result<(), SqliteEventDatabaseError> {
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| (e, "failed to begin tx"))?;
-
-        // Execute db initialization script
-        sqlx::raw_sql(include_str!("../../../../sql/schema.sql"))
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| (e, "failed to initialize schema"))?;
-        tx.commit()
-            .await
-            .map_err(|e| (e, "failed to commit schema init"))?;
+        sqlx::migrate!("./sql/migrations").run(&self.pool).await?;
 
         Ok(())
     }
@@ -140,11 +130,12 @@ impl EventsDatabase for SqliteEventDatabase {
         let block_hash = event_occurrence.block_info.hash.to_vec();
         let raw_log_json = serde_json::to_string(&event_occurrence.raw_log)?;
         let fields_json = serde_json::to_string(&event_occurrence.data)?;
+        let tx_hash = event_occurrence.tx_hash.to_vec();
 
         let res = sqlx::query!(
             r#"
-                INSERT INTO event_occurrences (event_id, block_number, block_hash, block_timestamp, raw_log_json, fields_json)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO event_occurrences (event_id, block_number, block_hash, block_timestamp, raw_log_json, fields_json, tx_hash)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
             event_id,
             block_number_padded,
@@ -152,6 +143,7 @@ impl EventsDatabase for SqliteEventDatabase {
             event_occurrence.block_info.timestamp,
             raw_log_json,
             fields_json,
+            tx_hash,
         )
         .execute(&self.pool)
         .await
@@ -214,6 +206,7 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
         let block_timestamp: DateTime<Utc> = row.try_get("block_timestamp")?;
         let raw_log_json: String = row.try_get("raw_log_json")?;
         let fields_json: String = row.try_get("fields_json")?;
+        let tx_hash: Vec<u8> = row.try_get("tx_hash")?;
 
         let address =
             Address::try_from(address.as_slice()).map_err(|e| sqlx::Error::ColumnDecode {
@@ -238,6 +231,11 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
             index: "fields_json".to_owned(),
             source: Box::new(e),
         })?;
+        let tx_hash =
+            TxHash::try_from(tx_hash.as_slice()).map_err(|e| sqlx::Error::ColumnDecode {
+                index: "tx_hash".to_owned(),
+                source: Box::new(e),
+            })?;
 
         Ok(Self {
             event_id: event_id.into(),
@@ -250,6 +248,7 @@ impl<'r> FromRow<'r, sqlx::sqlite::SqliteRow> for EventOccurrence {
             },
             raw_log,
             data,
+            tx_hash,
         })
     }
 }
@@ -290,6 +289,7 @@ mod tests {
                     "test_event".to_owned(),
                     vec![],
                     BlockSafety::Latest,
+                    None,
                 )
                 .unwrap(),
             )
@@ -319,6 +319,7 @@ mod tests {
                     hash: vec![].into(),
                     timestamp: chrono::DateTime::default(),
                 },
+                tx_hash: Default::default(),
             })
             .await;
 
@@ -343,6 +344,7 @@ mod tests {
                 "test_event".to_owned(),
                 vec![],
                 BlockSafety::Latest,
+                None,
             )
             .unwrap(),
         )
@@ -361,6 +363,7 @@ mod tests {
                     hash: vec![].into(),
                     timestamp: chrono::DateTime::default(),
                 },
+                tx_hash: Default::default(),
             })
             .await;
 
@@ -385,6 +388,7 @@ mod tests {
                 "test_event".to_owned(),
                 vec![],
                 BlockSafety::Latest,
+                None,
             )
             .unwrap(),
         )
@@ -402,6 +406,7 @@ mod tests {
                 hash: vec![].into(),
                 timestamp: chrono::DateTime::default(),
             },
+            tx_hash: Default::default(),
         };
 
         db.store_event_occurrence(occurrence.clone())

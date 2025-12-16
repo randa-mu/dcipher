@@ -13,6 +13,13 @@ pub struct NetworkConfig {
     pub router_address: FixedBytes<20>,
     #[serde(default = "default_should_write")]
     pub should_write: bool,
+    #[serde(default = "default_tx_gas_buffer")]
+    pub tx_gas_buffer: u16,
+    #[serde(default = "default_tx_gas_price_buffer")]
+    pub tx_gas_price_buffer: u16,
+    #[serde(with = "humantime_serde")]
+    #[serde(default = "default_reregistration_delay")]
+    pub reregistration_delay: Option<std::time::Duration>,
 }
 
 #[serde_as]
@@ -24,6 +31,21 @@ pub struct Libp2pConfig {
 
 fn default_should_write() -> bool {
     false
+}
+
+/// 20 percent extra gas to the limit by default
+fn default_tx_gas_buffer() -> u16 {
+    120
+}
+
+/// no extra gas to the price by default
+fn default_tx_gas_price_buffer() -> u16 {
+    100
+}
+
+/// re-register the stream every 10mins
+fn default_reregistration_delay() -> Option<std::time::Duration> {
+    Some(std::time::Duration::from_mins(10))
 }
 
 #[cfg(test)]

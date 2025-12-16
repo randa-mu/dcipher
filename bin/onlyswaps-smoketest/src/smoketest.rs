@@ -63,13 +63,14 @@ pub fn smoketest_loop(
 
     Ok(async move {
         loop {
+            // First tick resolves immediately
+            interval.tick().await;
+
             let now: DateTime<Utc> = SystemTime::now().into();
             let span = tracing::info_span!("swap_request", timestamp = %now);
             do_swap(&client, &fee_estimator, &swap, req_builder.clone())
                 .instrument(span)
                 .await;
-
-            interval.tick().await;
         }
     })
 }

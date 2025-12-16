@@ -48,7 +48,7 @@ impl StateService for ChannelStateService {
 
         let result = state
             .transactions
-            .iter()
+            .values()
             .filter(|tx| matches(tx, filter.clone()))
             .skip(offset)
             .take(limit)
@@ -62,7 +62,8 @@ impl StateService for ChannelStateService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy::primitives::{Address, FixedBytes, U256, address, fixed_bytes};
+    use alloy::primitives::{Address, B256, FixedBytes, U256, address, fixed_bytes};
+    use hashlink::LinkedHashMap;
     use tokio::sync::watch;
 
     #[test]
@@ -106,7 +107,7 @@ mod tests {
     fn filter_by_chain_id() {
         let txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C1111"),
@@ -114,7 +115,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 3u64.into(),
                 3u64.into(), // same src/dest
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
@@ -140,7 +141,7 @@ mod tests {
         let other = address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cbbbb");
         let txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 sender,
@@ -148,7 +149,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 other,
@@ -174,7 +175,7 @@ mod tests {
         let other = address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cdddd");
         let txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 other,
@@ -182,7 +183,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 recipient,
@@ -207,7 +208,7 @@ mod tests {
         let solver = address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ceeee");
         let txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa"),
@@ -215,7 +216,7 @@ mod tests {
                 Some(solver),
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ccccc"),
@@ -240,7 +241,7 @@ mod tests {
         let addr = address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cffff");
         let txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 addr,
@@ -248,7 +249,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C2222"),
@@ -256,7 +257,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
@@ -264,7 +265,7 @@ mod tests {
                 Some(addr),
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
@@ -287,7 +288,7 @@ mod tests {
     fn filter_by_limit_smaller_all() {
         let addr = address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Cffff");
         let tx1 = create_tx(
-            FixedBytes::default(),
+            B256::random(),
             1u64.into(),
             2u64.into(),
             addr,
@@ -297,7 +298,7 @@ mod tests {
         let txs = vec![
             tx1.clone(),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 2u64.into(),
                 3u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C2222"),
@@ -305,7 +306,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 4u64.into(),
                 5u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
@@ -313,7 +314,7 @@ mod tests {
                 Some(addr),
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 6u64.into(),
                 7u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
@@ -365,7 +366,7 @@ mod tests {
     fn filter_by_requested_time_range() {
         let mut txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C1111"),
@@ -373,7 +374,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
@@ -381,7 +382,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
@@ -412,7 +413,7 @@ mod tests {
     fn filter_by_verified_time_range() {
         let mut txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C1111"),
@@ -420,7 +421,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C3333"),
@@ -428,7 +429,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76C5555"),
@@ -459,7 +460,7 @@ mod tests {
     fn filter_requested_time_defaults_to_full_range() {
         let mut txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa"),
@@ -467,7 +468,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ccccc"),
@@ -489,7 +490,7 @@ mod tests {
     fn filter_verified_time_start_only() {
         let mut txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa"),
@@ -497,7 +498,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ccccc"),
@@ -523,7 +524,7 @@ mod tests {
     fn filter_verified_time_end_only() {
         let mut txs = vec![
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Caaaa"),
@@ -531,7 +532,7 @@ mod tests {
                 None,
             ),
             create_tx(
-                FixedBytes::default(),
+                B256::random(),
                 1u64.into(),
                 2u64.into(),
                 address!("0x17B3cAb3cD7502C6b85ed2E11Fd5988AF76Ccccc"),
@@ -578,10 +579,15 @@ mod tests {
             requested_time: U256::ZERO.into(),
             solved_time: Some(U256::ZERO.into()),
             verified_time: Some(U256::ZERO.into()),
+            requested_tx: Default::default(),
+            solved_tx: None,
+            verified_tx: None,
         }
     }
 
     fn create_service(transactions: Vec<SwapTransaction>) -> ChannelStateService {
+        let transactions =
+            LinkedHashMap::from_iter(transactions.into_iter().map(|tx| (tx.request_id, tx)));
         let (_, rx) = watch::channel(AppState { transactions });
         ChannelStateService::new(rx)
     }

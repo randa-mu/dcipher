@@ -4,8 +4,8 @@ use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
 use alloy::network::Ethereum;
 use alloy::primitives::Address;
-use alloy::providers::{DynProvider, Provider};
-use generated::onlyswaps::router::Router::RouterInstance;
+use alloy::providers::{DynProvider, Provider, WalletProvider};
+use generated::onlyswaps::i_router::IRouter::IRouterInstance;
 use std::collections::HashMap;
 use superalloy::provider::{MultiChainProvider, MultiProvider};
 
@@ -16,10 +16,16 @@ pub mod token;
 #[derive(Clone)]
 pub struct OnlySwapsClientConfig {
     /// a list of chain-specific configuration
-    chains: HashMap<u64, ChainConfig>,
+    chains: HashMap<u64, ChainEntry>,
 
     /// a multichain provider that can be used to interact with chains
     provider: MultiProvider<u64>,
+}
+
+#[derive(Clone)]
+pub struct ChainEntry {
+    pub config: ChainConfig,
+    pub signer_address: Option<Address>,
 }
 
 impl OnlySwapsClientConfig {
@@ -35,11 +41,36 @@ impl OnlySwapsClientConfig {
     pub fn add_ethereum_chain(
         &mut self,
         chain_config: ChainConfig,
-        provider: impl Provider<Ethereum> + 'static,
+        provider: impl Provider<Ethereum> + WalletProvider<Ethereum> + 'static,
     ) {
         let chain_id = chain_config.chain_id;
 
-        self.chains.insert(chain_id, chain_config);
+        self.chains.insert(
+            chain_id,
+            ChainEntry {
+                config: chain_config,
+                signer_address: Some(provider.default_signer_address()),
+            },
+        );
+        self.provider.extend([(chain_id, provider.erased())])
+    }
+
+    /// Add a chain to the configuration alongside its rpc provider
+    pub fn add_ethereum_chain_dyn(
+        &mut self,
+        chain_config: ChainConfig,
+        provider: DynProvider<Ethereum>,
+        signer_address: Option<Address>,
+    ) {
+        let chain_id = chain_config.chain_id;
+
+        self.chains.insert(
+            chain_id,
+            ChainEntry {
+                config: chain_config,
+                signer_address,
+            },
+        );
         self.provider.extend([(chain_id, provider.erased())])
     }
 
@@ -49,26 +80,31 @@ impl OnlySwapsClientConfig {
     }
 
     /// Get the chain configuration for the specified chain id
-    pub fn get_chain_config(&self, chain_id: u64) -> Option<&ChainConfig> {
+    pub fn get_chain(&self, chain_id: u64) -> Option<&ChainEntry> {
         self.chains.get(&chain_id)
     }
 
     /// Get the address of a supported token
     pub fn get_token_address(&self, chain_id: u64, token_tag: &TokenTag) -> Option<Address> {
-        let chain_config = self.get_chain_config(chain_id)?;
+        let chain_config = &self.get_chain(chain_id)?.config;
         Some(*chain_config.supported_tokens.get(token_tag)?)
     }
 
     /// Get the address of the router on the specified chain
     pub fn get_router_address(&self, chain_id: u64) -> Option<Address> {
-        Some(self.get_chain_config(chain_id)?.router_address)
+        Some(self.get_chain(chain_id)?.config.router_address)
     }
 
     /// Get a Router contract instance
-    pub fn get_router_instance(&self, chain_id: u64) -> Option<RouterInstance<&DynProvider>> {
+    pub fn get_router_instance(&self, chain_id: u64) -> Option<IRouterInstance<&DynProvider>> {
         let router_address = self.get_router_address(chain_id)?;
         let provider = self.get_ethereum_provider(chain_id)?;
 
-        Some(RouterInstance::new(router_address, provider))
+        Some(IRouterInstance::new(router_address, provider))
+    }
+
+    /// Get signer address
+    pub fn get_address(&self, chain_id: u64) -> Option<Address> {
+        self.get_chain(chain_id)?.signer_address
     }
 }

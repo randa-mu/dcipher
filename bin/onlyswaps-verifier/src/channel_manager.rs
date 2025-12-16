@@ -1,10 +1,11 @@
 use crate::chain_state_pending::{RequestId, Verification};
-use crate::control_plane::{ControlPlane, ResolvedState, VerificationError};
+use crate::control_plane::{ControlPlane, Event, ResolvedState, VerificationError};
 use crate::retry_runtime::RetrySender;
 use crate::signing::SignedVerification;
 use futures::Stream;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinSet;
 use tokio_stream::StreamExt;
@@ -28,8 +29,8 @@ where
     // dodgy request can block the pipeline for other valid ones
     pub async fn run(
         &self,
-        retry_tx: RetrySender,
-        mut event_stream: Pin<Box<impl Stream<Item = Verification<RequestId>> + Send + 'static>>,
+        retry_tx: RetrySender<Event>,
+        mut event_stream: Pin<Box<impl Stream<Item = Event> + Send + 'static>>,
     ) {
         tracing::info!("starting channel manager");
         let mut tasks = JoinSet::new();
@@ -46,11 +47,20 @@ where
         // 'receive' step
         {
             let tx_verifications = tx_verifications.clone();
+            let tx_submit = tx_submit.clone();
             tasks.spawn(async move {
-                while let Some(verification) = event_stream.next().await {
-                    tx_verifications
-                        .send(verification)
-                        .expect("failed to send verification on channel");
+                while let Some(event) = event_stream.next().await {
+                    match event {
+                        // dispatch to the resolve step / tx_verifications channel
+                        Event::NewVerification(verification) => tx_verifications
+                            .send(verification)
+                            .expect("failed to send verification on channel"),
+
+                        // dispatch to the submit step / tx_submit channel
+                        Event::SignedVerification(signed_verification) => tx_submit
+                            .send(signed_verification)
+                            .expect("failed to send verification on channel"),
+                    }
                 }
             });
         }
@@ -115,9 +125,14 @@ where
                     let tx_err = tx_err.clone();
 
                     tokio::spawn(async move {
-                        match control_plane.sign_state(state.clone()).await {
-                            Ok(v) => tx_submit.send(v).expect("error writing on channel"),
-                            Err(_) => tx_err
+                        match tokio::time::timeout(
+                            Duration::from_secs(30),
+                            control_plane.sign_state(state.clone()),
+                        )
+                        .await
+                        {
+                            Ok(Ok(v)) => tx_submit.send(v).expect("error writing on channel"),
+                            Err(_) | Ok(Err(_)) => tx_err
                                 .send(VerificationError::Sign(state))
                                 .expect("error writing on channel"),
                         }
@@ -144,9 +159,17 @@ where
                             .await
                         {
                             Ok(v) => tx_done.send(v).expect("error writing on channel"),
-                            Err(_) => tx_err
-                                .send(VerificationError::Submit(signed_verification))
-                                .expect("error writing on channel"),
+                            Err(e) => {
+                                tracing::error!(
+                                    error = ?e,
+                                    src_chain_id = %signed_verification.src_chain_id,
+                                    request_id = %signed_verification.request_id,
+                                    "Verification error"
+                                );
+                                tx_err
+                                    .send(VerificationError::Submit(signed_verification))
+                                    .expect("error writing on channel")
+                            }
                         }
                     });
                 }

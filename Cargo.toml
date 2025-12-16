@@ -26,7 +26,7 @@ utils = { path = "./crates/utils", features = ["bn254", "bls12-381"] }
 onlyswaps-client = { path = "./crates/onlyswaps-client" }
 
 # blockchain
-alloy = { version = "1.0.32", features = ["sol-types"] }
+alloy = { version = "1.0.41", features = ["sol-types"] }
 
 # crypto
 ark-bn254 = "0.5.0"
@@ -81,6 +81,7 @@ sqlx = { version = "0.8" }
 
 # misc
 anyhow = "1.0"
+backoff = { version = "0.4", features = ["tokio"] }
 base64 = "0.22"
 bytes = "1.10"
 chrono = "0.4"
@@ -94,6 +95,7 @@ itertools = "0.14"
 rand = "0.8.0"
 strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0"
+tower = "0.5"
 tower-http = { version = "0.6.6" }
 
 [patch.crates-io]

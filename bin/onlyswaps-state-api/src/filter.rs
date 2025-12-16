@@ -51,6 +51,11 @@ fn is_requested_time(tx: &SwapTransaction, start: Option<u64>, end: Option<u64>)
 }
 
 fn is_verified_time(tx: &SwapTransaction, start: Option<u64>, end: Option<u64>) -> bool {
+    // if neither start nor end are specified, return true
+    if start.is_none() && end.is_none() {
+        return true;
+    }
+
     let start = start.unwrap_or(0);
     let end = end.unwrap_or(u64::MAX);
     match &tx.verified_time {

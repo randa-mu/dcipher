@@ -1,24 +1,29 @@
 //! The only swaps client which can be used to swap tokens from one chain to another
 
-pub mod erc20;
+mod backoff;
+mod errors;
 mod request;
 pub mod routing;
+#[cfg(feature = "solver")]
+pub mod solver;
 
+pub use errors::*;
 pub use request::*;
 
-use crate::client::erc20::IERC20;
 use crate::client::routing::SwapRouting;
 use crate::config::OnlySwapsClientConfig;
 use crate::config::chain::ChainConfig;
 use crate::config::token::TokenTag;
 use alloy::network::Ethereum;
-use alloy::primitives::{Address, FixedBytes, LogData, TxHash, U256};
+use alloy::primitives::{FixedBytes, LogData, TxHash, U256};
 use alloy::providers::{DynProvider, Provider};
-use alloy::rpc::types::Log;
+use alloy::rpc::types::{Log, TransactionReceipt};
 use alloy::sol_types::SolEvent;
 use futures_util::StreamExt;
-use generated::onlyswaps::router::Router;
-use generated::onlyswaps::router::Router::RouterInstance;
+use generated::onlyswaps::i_router::IRouter;
+use generated::onlyswaps::i_router::IRouter::IRouterInstance;
+use generated::onlyswaps::ierc20::IERC20;
+use generated::onlyswaps::ierc20::IERC20::IERC20Instance;
 use std::marker::PhantomData;
 
 /// Request id used by only swaps
@@ -54,45 +59,6 @@ pub enum OnlySwapsStatus {
     Verified,
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum OnlySwapsClientError {
-    #[error("no provider for chain id {0}")]
-    MissingProvider(u64),
-
-    #[error("no config for chain id {0}")]
-    UnsupportedChain(u64),
-
-    #[error("token ({0}) not supported on chain id ({1:?})")]
-    UnsupportedToken(u64, TokenTag),
-
-    #[error("contract error: {1}")]
-    Contract(#[source] alloy::contract::Error, &'static str),
-
-    #[error("pending transaction failed")]
-    PendingTransaction(#[from] alloy::providers::PendingTransactionError),
-
-    #[error("failed to sign tx")]
-    SignTx(#[from] alloy::signers::Error),
-
-    #[error("rpc error: {1}")]
-    Rpc(
-        #[source] alloy::transports::RpcError<alloy::transports::TransportErrorKind>,
-        &'static str,
-    ),
-
-    #[error("swap failed: event not in logs")]
-    SwapFailedNotInLogs,
-
-    #[error("swap request not found")]
-    SwapRequestNotFound,
-
-    #[error("failed to get event from log stream")]
-    NoEventInLogStream,
-
-    #[error("incoherent state: verified = {verified}, but completed = {completed}")]
-    IncoherentState { verified: bool, completed: bool },
-}
-
 impl OnlySwapsClient {
     pub fn new(config: OnlySwapsClientConfig) -> Self {
         Self {
@@ -116,22 +82,54 @@ impl OnlySwapsClient {
         token: TokenTag,
         amount: U256,
     ) -> Result<TxHash, OnlySwapsClientError> {
+        let (chain_config, ierc20) = self.approve_config(chain_id, token)?;
+
+        approve_spending(chain_config, &ierc20, amount)
+            .await
+            .map(|r| r.transaction_hash)
+    }
+
+    /// Approve the router contract to spend tokens for upcoming swaps and wait for the approval to be
+    /// effective. The amount must include the fees.
+    /// If the timeout is not specified, uses the default chain timeout specified in the config.
+    pub async fn approve_spending_and_wait(
+        &self,
+        chain_id: u64,
+        token: TokenTag,
+        amount: U256,
+        timeout: Option<std::time::Duration>,
+    ) -> Result<TxHash, OnlySwapsClientError> {
+        let (chain_config, ierc20) = self.approve_config(chain_id, token)?;
+        let timeout = timeout.unwrap_or(chain_config.timeout);
+
+        approve_spending_and_wait(chain_config, &ierc20, amount, Some(timeout))
+            .await
+            .map(|r| r.transaction_hash)
+    }
+
+    /// Get chain config and an ERC20 instance used to approve tokens.
+    fn approve_config(
+        &self,
+        chain_id: u64,
+        token: TokenTag,
+    ) -> Result<(&ChainConfig, IERC20Instance<&DynProvider>), OnlySwapsClientError> {
         let provider = self
             .config
             .get_ethereum_provider(chain_id)
             .ok_or(OnlySwapsClientError::MissingProvider(chain_id))?;
 
-        let chain_config = self
+        let chain_config = &self
             .config
-            .get_chain_config(chain_id)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(chain_id))?;
+            .get_chain(chain_id)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(chain_id))?
+            .config;
 
         let token_addr = *chain_config
             .supported_tokens
             .get(&token)
             .ok_or(OnlySwapsClientError::UnsupportedToken(chain_id, token))?;
-
-        approve_spending(chain_config, provider, token_addr, amount).await
+        let ierc20 = IERC20::new(token_addr, provider);
+        Ok((chain_config, ierc20))
     }
 
     /// Create a new swap, sending tokens to a recipient
@@ -152,10 +150,11 @@ impl OnlySwapsClient {
             .get_ethereum_provider(routing.src_chain)
             .ok_or(OnlySwapsClientError::MissingProvider(routing.src_chain))?;
 
-        let src_chain_config = self
+        let src_chain_config = &self
             .config
-            .get_chain_config(routing.src_chain)
-            .ok_or(OnlySwapsClientError::UnsupportedChain(routing.src_chain))?;
+            .get_chain(routing.src_chain)
+            .ok_or(OnlySwapsClientError::UnsupportedChain(routing.src_chain))?
+            .config;
 
         Ok((provider, src_chain_config))
     }
@@ -166,13 +165,14 @@ impl OnlySwapsClient {
         swap_request: OnlySwapsRequest,
     ) -> Result<OnlySwapsReceipt, OnlySwapsClientError> {
         let (provider, src_chain_config) = self.swap_config(&swap_request.route)?;
+        let ierc20 = IERC20::new(swap_request.route.src_token, provider);
 
         // Approve spending of token on source chain by router contract, before swapping
-        approve_spending(
+        approve_spending_and_wait(
             src_chain_config,
-            provider,
-            swap_request.route.src_token,
-            swap_request.amount + swap_request.fee,
+            &ierc20,
+            swap_request.amount_in + swap_request.fee,
+            Some(src_chain_config.timeout),
         )
         .await?;
 
@@ -195,12 +195,7 @@ impl OnlySwapsClient {
             .getSwapRequestReceipt(request_id)
             .call()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e,
-                    "failed to execute getSwapRequestReceipt RPC static call",
-                )
-            })?;
+            .map_err(|e| (e, "failed to execute getSwapRequestReceipt RPC static call"))?;
 
         if swap_receipt.requestId.is_zero() {
             // if request is not found on destination chain, requestId == 0 => swap not yet fulfilled
@@ -227,12 +222,7 @@ impl OnlySwapsClient {
             .getSwapRequestParameters(request_id)
             .call()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e,
-                    "failed to execute getSwapRequestReceipt RPC static call",
-                )
-            })?;
+            .map_err(|e| (e, "failed to execute getSwapRequestReceipt RPC static call"))?;
 
         // nonce should be non-zero, otherwise swap not found
         if swap_params.nonce.is_zero() {
@@ -297,12 +287,7 @@ impl OnlySwapsClient {
             .topic1(receipt.request_id)
             .subscribe()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e.into(),
-                    "failed to watch SwapRequestFulfilled event",
-                )
-            })?
+            .map_err(|e| (e.into(), "failed to watch SwapRequestFulfilled event"))?
             .into_stream();
 
         // If the event was in the past, issue an RPC call
@@ -322,7 +307,7 @@ impl OnlySwapsClient {
                 OnlySwapsClientError::NoEventInLogStream
             })?
             .map_err(|e| {
-                OnlySwapsClientError::Contract(
+                (
                     alloy::contract::Error::AbiError(e.into()),
                     "failed to obtain obtain SwapRequestFulfilled event occurrence",
                 )
@@ -353,12 +338,7 @@ impl OnlySwapsClient {
             .topic1(receipt.request_id)
             .subscribe()
             .await
-            .map_err(|e| {
-                OnlySwapsClientError::Contract(
-                    e.into(),
-                    "failed to watch SolverPayoutFulfilled event",
-                )
-            })?
+            .map_err(|e| (e.into(), "failed to watch SolverPayoutFulfilled event"))?
             .into_stream();
 
         // If the event was in the past, issue an RPC call
@@ -387,7 +367,7 @@ impl OnlySwapsClient {
                 OnlySwapsClientError::NoEventInLogStream
             })?
             .map_err(|e| {
-                OnlySwapsClientError::Contract(
+                (
                     alloy::contract::Error::AbiError(e.into()),
                     "failed to obtain SolverPayoutFulfilled event occurrence",
                 )
@@ -410,7 +390,7 @@ fn request_id_from_swap_logs<'l>(
 ) -> Option<OnlySwapsRequestId> {
     let swap_requested_logs: Vec<_> = logs
         .into_iter()
-        .filter_map(|log| Router::SwapRequested::decode_log_validate(&log.inner).ok())
+        .filter_map(|log| IRouter::SwapRequested::decode_log_validate(&log.inner).ok())
         .collect();
 
     if swap_requested_logs.is_empty() {
@@ -428,33 +408,60 @@ fn request_id_from_swap_logs<'l>(
     Some(swap_requested_logs[0].requestId)
 }
 
+/// Approve the router contract to spend tokens for upcoming swaps and wait until the allowance is
+/// effective from the RPC's perspective.
+/// The amount must include the fees.
+async fn approve_spending_and_wait(
+    chain_config: &ChainConfig,
+    ierc20: &IERC20Instance<impl Provider>,
+    amount: U256,
+    allowance_timeout: Option<std::time::Duration>,
+) -> Result<TransactionReceipt, OnlySwapsClientError> {
+    let receipt = approve_spending(chain_config, ierc20, amount).await?;
+    backoff::wait_valid_erc20_allowance(
+        receipt.from,
+        chain_config.router_address,
+        amount,
+        allowance_timeout,
+        ierc20,
+    )
+    .await?;
+
+    Ok(receipt)
+}
+
 /// Approve the router contract to spend tokens for upcoming swaps.
 /// The amount must include the fees.
+#[tracing::instrument(skip_all, fields(token_addr = %ierc20.address(), %amount))]
 async fn approve_spending(
     chain_config: &ChainConfig,
-    provider: impl Provider,
-    token_addr: Address,
+    ierc20: &IERC20Instance<impl Provider>,
     amount: U256,
-) -> Result<TxHash, OnlySwapsClientError> {
-    let ierc20 = IERC20::new(token_addr, provider);
+) -> Result<TransactionReceipt, OnlySwapsClientError> {
     let call = ierc20.approve(chain_config.router_address, amount);
 
     let _ = tracing::trace_span!("approve_call", ?call).entered();
-    tracing::debug!(%token_addr, router_address = %chain_config.router_address, %amount, "Sending approve(router_address, amount) transaction for ERC20 token");
+    tracing::debug!(token_addr = %ierc20.address(), router_address = %chain_config.router_address, %amount, "Sending approve(router_address, amount) transaction for ERC20 token");
     let tx_hash = call
         .send()
         .await
-        .map_err(|e| OnlySwapsClientError::Contract(e, "failed to send approve tx"))?
+        .map_err(|e| (e, "failed to send approve tx"))?
         .with_required_confirmations(chain_config.required_confirmations)
         .with_timeout(Some(chain_config.timeout))
         .watch()
         .await?;
-    tracing::debug!(?tx_hash, "approve tx mined");
+    tracing::debug!(%tx_hash, "approve tx mined");
 
-    Ok(tx_hash)
+    let receipt = backoff::get_receipt(tx_hash, ierc20.provider()).await?;
+    if !receipt.status() {
+        // make sure it didn't revert
+        return Err(OnlySwapsClientError::ApproveReverted);
+    }
+
+    Ok(receipt)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[tracing::instrument(skip_all, fields(route = ?swap_request.route))]
 async fn swap(
     src_chain_config: &ChainConfig,
     provider: &DynProvider,
@@ -462,7 +469,8 @@ async fn swap(
 ) -> Result<OnlySwapsReceipt, OnlySwapsClientError> {
     let OnlySwapsRequest {
         recipient,
-        amount,
+        amount_in,
+        amount_out,
         fee,
         route:
             SwapRouting {
@@ -473,11 +481,12 @@ async fn swap(
             },
     } = swap_request;
 
-    let router = RouterInstance::new(src_chain_config.router_address, provider);
+    let router = IRouterInstance::new(src_chain_config.router_address, provider);
     let call = router.requestCrossChainSwap(
         src_token,
         dst_token,
-        amount,
+        amount_in,
+        amount_out,
         fee,
         U256::from(dst_chain),
         recipient,
@@ -485,21 +494,30 @@ async fn swap(
 
     // Do an RPC call first to make sure it works before sending a tx
     tracing::debug!(?call, "Executing requestCrossChainSwap RPC call");
-    let _ = call.clone().call().await.map_err(|e| {
-        OnlySwapsClientError::Contract(e, "failed to execute requestCrossChainSwap RPC static call")
-    })?;
+    let _ = call
+        .clone()
+        .call()
+        .await
+        .map_err(|e| (e, "failed to execute requestCrossChainSwap RPC static call"))?;
 
     // RPC call worked, sign TX and send it
     tracing::debug!(?call, "Sending requestCrossChainSwap transaction");
-    let pending_tx = call.send().await.map_err(|e| {
-        OnlySwapsClientError::Contract(e, "failed to send requestCrossChainSwap transaction")
-    })?;
-    let receipt = pending_tx
+    let pending_tx = call
+        .send()
+        .await
+        .map_err(|e| (e, "failed to send requestCrossChainSwap transaction"))?;
+    let tx_hash = pending_tx
         .with_required_confirmations(src_chain_config.required_confirmations)
         .with_timeout(Some(src_chain_config.timeout))
-        .get_receipt()
+        .watch()
         .await?;
-    tracing::debug!(?receipt, "Got receipt for requestCrossChainSwap");
+    tracing::debug!(%tx_hash, "Got confirmed tx for requestCrossChainSwap");
+
+    let receipt = backoff::get_receipt(tx_hash, router.provider()).await?;
+    if !receipt.status() {
+        // make sure it didn't revert
+        return Err(OnlySwapsClientError::SwapReverted);
+    }
 
     // Parse the logs to recover the request id of the swap
     let request_id = request_id_from_swap_logs(receipt.logs())
@@ -570,17 +588,14 @@ mod tests {
         use crate::config::chain::{AVAX_FUJI, BASE_SEPOLIA};
         use crate::fee_estimator::FeeEstimator;
         use alloy::network::{EthereumWallet, NetworkWallet};
-        use alloy::primitives::utils::Unit;
         use alloy::providers::{ProviderBuilder, WsConnect};
         use alloy::signers::local::PrivateKeySigner;
-        use std::sync::LazyLock;
         use std::time::Duration;
 
         const TESTNETS_PRIVATE_KEY_ENV: &str = "TESTNETS_PRIVATE_KEY";
         const BASE_SEPOLIA_RPC_URL_ENV: &str = "BASE_SEPOLIA_RPC_URL";
         const AVALANCHE_FUJI_RPC_URL_ENV: &str = "AVALANCHE_FUJI_RPC_URL";
         const SWAP_TIMEOUT: Duration = Duration::from_millis(60000); // 60s
-        static SWAP_AMOUNT: LazyLock<U256> = LazyLock::new(|| U256::from(1) * Unit::ETHER.wei());
 
         async fn default_config() -> (EthereumWallet, OnlySwapsClient, FeeEstimator) {
             let testnet_signer: PrivateKeySigner = std::env::var(TESTNETS_PRIVATE_KEY_ENV)
@@ -624,12 +639,14 @@ mod tests {
                 .with_max_level(tracing::Level::DEBUG)
                 .try_init();
 
-            let routing = SwapRouting::new_same_token_from_configs(
+            let routing = SwapRouting::new_from_configs(
                 &BASE_SEPOLIA,
+                &TokenTag::FUSD,
                 &AVAX_FUJI,
                 &TokenTag::RUSD,
             );
-            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, SWAP_TIMEOUT).await;
+            // swap 1 FUSD (6 decimals on Base Sepolia)
+            swap_and_verify_with_timeout(routing, U256::from(1_000_000), SWAP_TIMEOUT).await;
         }
 
         #[tokio::test]
@@ -638,12 +655,14 @@ mod tests {
                 .with_max_level(tracing::Level::DEBUG)
                 .try_init();
 
-            let routing = SwapRouting::new_same_token_from_configs(
+            let routing = SwapRouting::new_from_configs(
                 &AVAX_FUJI,
-                &BASE_SEPOLIA,
                 &TokenTag::RUSD,
+                &BASE_SEPOLIA,
+                &TokenTag::FUSD,
             );
-            swap_and_verify_with_timeout(routing, *SWAP_AMOUNT, SWAP_TIMEOUT).await;
+            // swap 1 RUSD (6 decimals on Avalanche Fuji, apparently not the same on all chains...)
+            swap_and_verify_with_timeout(routing, U256::from(1_000_000), SWAP_TIMEOUT).await;
         }
 
         async fn swap_and_verify_with_timeout(

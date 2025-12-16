@@ -9,4 +9,7 @@ pub(crate) struct CliConfig {
         default_value = "~/.config/onlyswaps/smoketest/config.toml"
     )]
     pub config_path: String,
+
+    #[arg(short = 's', long = "private-key", env = "SMOKETEST_PRIVATE_KEY")]
+    pub private_key: String,
 }

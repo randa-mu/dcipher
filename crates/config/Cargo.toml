@@ -17,6 +17,7 @@ hex.workspace = true
 humantime-serde.workspace = true
 itertools.workspace = true
 libp2p.workspace = true
+omnievent.workspace = true
 serde.workspace = true
 shellexpand = "3.1.1"
 serde_json.workspace = true

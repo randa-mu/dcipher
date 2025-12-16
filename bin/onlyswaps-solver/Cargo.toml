@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-alloy = { workspace = true, features = ["provider-ws", "provider-anvil-node"] }
+alloy = { workspace = true, features = ["provider-ws", "provider-anvil-node", "eip712", "rand"] }
 agent-utils.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
@@ -12,13 +12,28 @@ axum.workspace = true
 clap.workspace = true
 config.workspace = true
 dotenv = "0.15.0"
+bigdecimal = "0.4"
 futures.workspace = true
 generated.workspace = true
+humantime-serde.workspace = true
 itertools.workspace = true
 moka = { version = "0.12.10", features = ["future"] }
+onlyswaps-client = { workspace = true, features = ["fee-estimator", "solver", "permit2"] }
+omnievent.workspace = true
+reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+serde_with.workspace = true
 speculoos = "0.13.0"
 shellexpand = "3.1.1"
+superalloy.workspace = true
+thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
+tokio-stream.workspace = true
+tonic.workspace = true
+tower.workspace = true
 tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tracing-subscriber.workspace = true

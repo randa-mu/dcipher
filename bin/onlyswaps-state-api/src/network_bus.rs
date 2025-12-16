@@ -1,8 +1,9 @@
 use alloy::primitives::{Address, FixedBytes};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder, WsConnect};
 use config::network::NetworkConfig;
-use generated::onlyswaps::router::IRouter::SwapRequestParameters;
-use generated::onlyswaps::router::Router::{RouterInstance, getSwapRequestReceiptReturn};
+use generated::onlyswaps::i_router::IRouter::{
+    IRouterInstance, SwapRequestParametersWithHooks, getSwapRequestReceiptReturn,
+};
 use std::collections::HashMap;
 
 pub(crate) struct NetworkBus<P> {
@@ -23,7 +24,7 @@ impl NetworkBus<DynProvider> {
 }
 
 pub(crate) struct Network<P> {
-    router: RouterInstance<P>,
+    router: IRouterInstance<P>,
 }
 impl Network<DynProvider> {
     pub async fn new_readonly(config: &NetworkConfig) -> anyhow::Result<Self> {
@@ -40,14 +41,14 @@ impl Network<DynProvider> {
         );
 
         Ok(Self {
-            router: RouterInstance::new(Address(config.router_address), provider.clone()),
+            router: IRouterInstance::new(Address(config.router_address), provider.clone()),
         })
     }
 
     pub async fn fetch_parameters(
         &self,
         request_id: FixedBytes<32>,
-    ) -> anyhow::Result<SwapRequestParameters> {
+    ) -> anyhow::Result<SwapRequestParametersWithHooks> {
         Ok(self
             .router
             .getSwapRequestParameters(request_id)

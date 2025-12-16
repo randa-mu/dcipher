@@ -1,7 +1,7 @@
 use crate::proto_types::{self, BlockSafety, RegisterNewEventRequest};
 use alloy::dyn_abi::{DynSolEvent, DynSolType, DynSolValue};
 use alloy::eips::BlockNumberOrTag;
-use alloy::primitives::{Address, B256, LogData, keccak256};
+use alloy::primitives::{Address, B256, LogData, TxHash, keccak256};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
@@ -127,6 +127,9 @@ pub struct ParsedRegisterNewEventRequest {
     pub fields: Vec<ParsedEventField>,
     /// Block safety level - how we want to handle block finality
     pub block_safety: BlockSafety,
+    /// Re-registration delay
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reregistration_delay: Option<std::time::Duration>,
 }
 
 /// An event that has been registered with OmniEvent.
@@ -136,6 +139,7 @@ pub struct RegisteredEventSpec {
     pub chain_id: u64,
     pub address: Address,
     pub block_safety: BlockSafety,
+    pub reregistration_delay: Option<std::time::Duration>,
     pub(crate) event_name: String,
     pub(crate) topic0: B256,
     pub(crate) fields: Vec<ParsedEventField>,
@@ -159,6 +163,7 @@ impl RegisteredEventSpec {
         event_name: String,
         fields: Vec<ParsedEventField>,
         block_safety: BlockSafety,
+        reregistration_delay: Option<std::time::Duration>,
     ) -> Result<Self, NewRegisteredEventSpecError> {
         let indexed_fields: Vec<_> = fields
             .iter()
@@ -198,6 +203,7 @@ impl RegisteredEventSpec {
             chain_id,
             address,
             event_name,
+            reregistration_delay,
             topic0,
             fields,
             sol_event,
@@ -234,9 +240,18 @@ impl TryFrom<ParsedRegisterNewEventRequest> for RegisteredEventSpec {
             event_name,
             fields,
             block_safety,
+            reregistration_delay,
         } = req;
 
-        Self::try_new(id, chain_id, address, event_name, fields, block_safety)
+        Self::try_new(
+            id,
+            chain_id,
+            address,
+            event_name,
+            fields,
+            block_safety,
+            reregistration_delay,
+        )
     }
 }
 
@@ -281,6 +296,7 @@ pub struct EventOccurrence {
     pub block_info: BlockInfo,
     pub raw_log: LogData,
     pub data: Vec<EventFieldData>,
+    pub tx_hash: TxHash,
 }
 
 impl From<EventOccurrence> for proto_types::EventOccurrence {
@@ -302,6 +318,7 @@ impl From<EventOccurrence> for proto_types::EventOccurrence {
             event_data: data,
             raw_log_data: Some(event.raw_log.data.into()),
             block_info: Some(event.block_info.into()),
+            tx_hash: event.tx_hash.to_vec().into(),
         }
     }
 }
@@ -349,6 +366,9 @@ impl TryFrom<RegisterNewEventRequest> for ParsedRegisterNewEventRequest {
             fields,
             event_name: value.event_name,
             chain_id: value.chain_id,
+            reregistration_delay: value
+                .reregistration_delay
+                .map(std::time::Duration::from_secs),
         })
     }
 }
@@ -456,6 +476,7 @@ mod tests {
                 ParsedEventField::new(DynSolType::Uint(256), true),
             ],
             block_safety: BlockSafety::Latest,
+            reregistration_delay: None,
         };
         // cbor diagnostic notation:
         // {

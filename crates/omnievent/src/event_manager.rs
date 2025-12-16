@@ -361,6 +361,7 @@ pub(crate) mod tests {
                     indexed: false,
                 }],
                 block_safety: BlockSafety::Latest.into(),
+                reregistration_delay: None,
             })
             .unwrap()
         }
@@ -503,7 +504,7 @@ pub(crate) mod tests {
             .await
             .unwrap();
         emitter_1338
-            .emitString(event_string_1337.clone())
+            .emitString(event_string_1338.clone())
             .send()
             .await
             .unwrap()

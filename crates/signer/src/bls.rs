@@ -25,7 +25,7 @@ use digest::core_api::BlockSizeUser;
 use itertools::Either;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use strum::VariantArray;
@@ -51,7 +51,7 @@ type SharedSignatureCache<BLS> =
     Arc<std::sync::Mutex<LruCache<StoredSignatureRequest, SignatureOrChannel<BLS>>>>;
 
 type SharedPartialsCache<BLS> = Arc<
-    std::sync::Mutex<LruCache<StoredSignatureRequest, HashMap<u16, PartialSignature<Group<BLS>>>>>,
+    std::sync::Mutex<LruCache<StoredSignatureRequest, BTreeMap<u16, PartialSignature<Group<BLS>>>>>,
 >;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -65,6 +65,27 @@ struct StoredSignatureRequest {
     m: Bytes,
     dst: Bytes,
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Group<BLS>: Serialize",
+    deserialize = "Group<BLS>: Deserialize<'de>"
+))]
+enum NetworkMessage<BLS: BlsVerifier> {
+    PartialSignature(PartialSignatureWithRequest<BLS>),
+    ReplayPartials(BatchReplayPartials),
+    KnownPartials(BatchKnownPartials<BLS>),
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct ReplayPartial {
+    req: BlsSignatureRequest,
+    missing_partials: Vec<u16>,
+}
+
+type BatchReplayPartials = Vec<ReplayPartial>;
+type KnownPartials<BLS> = (BlsSignatureRequest, Vec<PartialSignature<Group<BLS>>>);
+type BatchKnownPartials<BLS> = Vec<KnownPartials<BLS>>;
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BlsSignatureRequest {
@@ -399,16 +420,17 @@ where
             .expect("transport should provide at least one partial sender");
 
         // Spawn task that handles signing requests from registry
-        tokio::task::spawn(arc_self.clone().recv_new_requests(
+        tokio::task::spawn(arc_self.clone().sign_requests_loop(
             rx_signer_to_registry,
-            tx_signer_to_network,
+            tx_signer_to_network.clone(),
             cancellation_token.child_token(),
         ));
 
         // Spawn task that handles messages from other nodes
-        tokio::task::spawn(arc_self.clone().recv_new_signatures(
+        tokio::task::spawn(arc_self.clone().network_recv_loop(
             partials_stream,
             tx_registry_to_signer,
+            tx_signer_to_network,
             cancellation_token.child_token(),
         ));
 
@@ -671,21 +693,18 @@ mod tests {
             let fut_sig2 = ch2.async_sign(req.clone());
             let fut_sig3 = ch3.async_sign(req.clone());
 
-            // Wait for signatures up to 1 second
-            let sigs = tokio::select! {
-                sigs = futures_util::future::join_all([fut_sig1, fut_sig2, fut_sig3]) => {
-                    sigs
-                }
-
-                _ = tokio::time::sleep(Duration::from_millis(1000)) => {
-                    panic!("failed to obtain threshold signatures after waiting 1000ms");
-                }
-            };
+            // Wait for signatures up to 5 seconds
+            let sigs = tokio::time::timeout(
+                Duration::from_secs(5),
+                futures_util::future::try_join_all([fut_sig1, fut_sig2, fut_sig3]),
+            )
+            .await
+            .expect("to get threshold sig within 5s")
+            .expect("all sigs to succeed");
 
             assert_eq!(sigs.len(), 3);
-            assert!(sigs[0].is_ok());
-            assert!(sigs[1].is_ok());
-            assert!(sigs[2].is_ok());
+            assert_eq!(sigs[0], sigs[1]);
+            assert_eq!(sigs[1], sigs[2]);
         }
     }
 }

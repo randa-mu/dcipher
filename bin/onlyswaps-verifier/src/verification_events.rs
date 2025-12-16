@@ -1,6 +1,7 @@
-use crate::config::{AppConfig, TimeoutConfig};
+use crate::config::AppConfig;
 use alloy::providers::Provider;
 use config::network::NetworkConfig;
+use config::timeout::TimeoutConfig;
 use omnievent::event_manager::EventManager;
 use omnievent::event_manager::db::in_memory::InMemoryDatabase;
 use omnievent::proto_types::{EventField, RegisterNewEventRequest};
@@ -65,5 +66,6 @@ fn create_swap_fulfilled_event(
             },
         ],
         block_safety: timeout.block_safety.into(),
+        reregistration_delay: n.reregistration_delay.map(|d| d.as_secs()),
     }
 }

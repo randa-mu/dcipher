@@ -3,7 +3,7 @@ use crate::events::{
     create_fee_updated_event, create_swap_fulfilled, create_swap_requested, create_swap_verified,
 };
 use crate::omnievent::StateType::{FeeUpdated, Fulfilled, Requested, Verified};
-use alloy::primitives::FixedBytes;
+use alloy::primitives::{FixedBytes, TxHash};
 use alloy::providers::Provider;
 use anyhow::Context;
 use config::network::NetworkConfig;
@@ -128,6 +128,7 @@ impl ChainRegistration {
         event_id: EventId,
         chain_id: u64,
         fields: &[EventFieldData],
+        tx_hash: TxHash,
         source: StateUpdateSource,
     ) -> anyhow::Result<StateUpdate> {
         if fields.is_empty() {
@@ -140,6 +141,7 @@ impl ChainRegistration {
             request_id,
             state_type: Requested,
             source,
+            tx_hash,
         };
 
         if self.requested == event_id {
@@ -179,6 +181,7 @@ pub(crate) struct StateUpdate {
     pub request_id: FixedBytes<32>,
     pub state_type: StateType,
     pub source: StateUpdateSource,
+    pub tx_hash: TxHash,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

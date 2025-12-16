@@ -21,6 +21,7 @@ pub(crate) fn create_swap_requested(network_config: &NetworkConfig) -> RegisterN
             },
         ],
         block_safety: BlockSafety::Latest.into(),
+        reregistration_delay: network_config.reregistration_delay.map(|d| d.as_secs()),
     }
 }
 
@@ -34,6 +35,7 @@ pub(crate) fn create_fee_updated_event(network_config: &NetworkConfig) -> Regist
             indexed: true,
         }],
         block_safety: BlockSafety::Latest.into(),
+        reregistration_delay: network_config.reregistration_delay.map(|d| d.as_secs()),
     }
 }
 pub(crate) fn create_swap_fulfilled(network_config: &NetworkConfig) -> RegisterNewEventRequest {
@@ -56,6 +58,7 @@ pub(crate) fn create_swap_fulfilled(network_config: &NetworkConfig) -> RegisterN
             },
         ],
         block_safety: BlockSafety::Latest.into(),
+        reregistration_delay: network_config.reregistration_delay.map(|d| d.as_secs()),
     }
 }
 
@@ -69,5 +72,6 @@ pub(crate) fn create_swap_verified(network_config: &NetworkConfig) -> RegisterNe
             indexed: true,
         }],
         block_safety: BlockSafety::Latest.into(),
+        reregistration_delay: network_config.reregistration_delay.map(|d| d.as_secs()),
     }
 }

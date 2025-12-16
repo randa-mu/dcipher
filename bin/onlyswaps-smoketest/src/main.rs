@@ -4,7 +4,7 @@ use crate::metrics::Metrics;
 use ::config::file::load_config_file;
 use agent_utils::healthcheck_server::HealthcheckServer;
 use agent_utils::monitoring::init_monitoring;
-use alloy::network::EthereumWallet;
+use alloy::network::{Ethereum, EthereumWallet, NetworkWallet};
 use alloy::providers::{Provider, ProviderBuilder, WsConnect};
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::{Context, anyhow};
@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
            }
         }
 
-        res = run(app_config) => {
+        res = run(app_config, &cli_config.private_key) => {
            match res {
                 Ok(()) => Err(anyhow!("smoke test stopped unexpectedly without an error")),
                 Err(_) => res.context("smoke test exited unexpectedly"),
@@ -61,8 +61,9 @@ async fn main() -> anyhow::Result<()> {
     } // return branch results
 }
 
-async fn run(app_config: AppConfig) -> anyhow::Result<()> {
-    let signer = PrivateKeySigner::from_slice(app_config.eth_private_key.as_slice())
+async fn run(app_config: AppConfig, eth_private_key: &str) -> anyhow::Result<()> {
+    let signer: PrivateKeySigner = eth_private_key
+        .parse()
         .context("failed to parse eth private key")?;
     let self_recipient = signer.address();
     let wallet = EthereumWallet::from(signer);
@@ -114,7 +115,11 @@ async fn get_client(
             provider.connect_http(network.rpc_url.clone()).erased()
         };
 
-        config.add_ethereum_chain(chain_config, provider)
+        config.add_ethereum_chain_dyn(
+            chain_config,
+            provider,
+            Some(NetworkWallet::<Ethereum>::default_signer_address(&wallet)),
+        )
     }
 
     Ok(OnlySwapsClient::new(config))
