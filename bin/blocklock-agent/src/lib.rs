@@ -1,11 +1,11 @@
 //! Various functions used by the blocklock agent.
 
-use alloy::primitives::BlockNumber;
 use alloy::providers::Provider;
 use anyhow::anyhow;
 use dcipher_agents::agents::blocklock::agent::BlocklockAgent;
 use dcipher_agents::decryption_sender::DecryptionRequest;
 use dcipher_agents::fulfiller::{RequestChannel, Ticker};
+use dcipher_agents::utils::block_poller;
 use futures::Stream;
 use futures_util::StreamExt;
 use generated::blocklock::decryption_sender::DecryptionSender;
@@ -105,23 +105,6 @@ where
     let events_stream = futures::stream::select(decryption_requested_stream, new_blocks_stream);
 
     Ok(events_stream)
-}
-
-async fn block_poller<P>(
-    provider: P,
-    interval: std::time::Duration,
-) -> anyhow::Result<impl Stream<Item = BlockNumber> + Unpin>
-where
-    P: Provider,
-{
-    let mut block_watcher = provider.watch_full_blocks().await?;
-    block_watcher.set_poll_interval(interval);
-
-    let block_stream = block_watcher
-        .into_stream()
-        .filter_map(|res| std::future::ready(res.ok().map(|b| b.header.number)));
-
-    Ok(block_stream)
 }
 
 impl Ticker for NotifyTicker {
