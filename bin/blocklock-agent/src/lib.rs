@@ -56,25 +56,26 @@ where
 
     let mut events_stream =
         create_events_stream(decryption_sender_contract.clone(), block_poll_interval).await?;
+    let events_loop = async move {
+        loop {
+            match events_stream.next().await {
+                Some(ChainEvent::NewBlock(new_block)) => {
+                    tracing::debug!(block_number = new_block, "ChainEvent::NewBlock");
+
+                    // Update the blocklock state
+                    agent.handle_new_block(new_block.into()).await;
+                }
+                Some(ChainEvent::DecryptionRequested(request)) => {
+                    tracing::info!(request_id = %request.requestId, "ChainEvent::DecryptionRequested");
+                    agent.handle_decryption_requested(request).await;
+                }
+                None => Err(anyhow!("events stream ended prematurely"))?,
+            };
+        }
+    };
+
     tokio::select! {
-        out = async move {
-            loop {
-                match events_stream.next().await {
-                    Some(ChainEvent::NewBlock(new_block)) => {
-                        tracing::debug!(block_number = new_block, "ChainEvent::NewBlock");
-
-                        // Update the blocklock state
-                        agent.handle_new_block(new_block.into()).await;
-                    }
-                    Some(ChainEvent::DecryptionRequested(request)) => {
-                        tracing::info!(request_id = %request.requestId, "ChainEvent::DecryptionRequested");
-                        agent.handle_decryption_requested(request).await;
-                    }
-                    None => Err(anyhow!("events stream ended prematurely"))?,
-                };
-            }
-        } => out,
-
+        out = events_loop => out,
         _ = ticker_fut => unreachable!("ticker fut is always pending"),
     }
 }
@@ -101,7 +102,7 @@ where
     // Transform each stream into a stream of events
     let decryption_requested_stream =
         decryption_requested_stream.map(|(req, _)| ChainEvent::DecryptionRequested(req));
-    let new_blocks_stream = new_blocks_stream.map(|block| ChainEvent::NewBlock(block));
+    let new_blocks_stream = new_blocks_stream.map(ChainEvent::NewBlock);
     let events_stream = futures::stream::select(decryption_requested_stream, new_blocks_stream);
 
     Ok(events_stream)
