@@ -12,24 +12,26 @@ variable "REGISTRY" {
   default = ""
 }
 
+# Sanitize TAG by replacing / with - (branch names like "docker/bake" become "docker-bake")
+sanitized_tag = replace(TAG, "/", "-")
+
 # Helper function to generate image tags
 function "image_tags" {
   params = [name]
   result = REGISTRY != "" ? (
     SHA != "" ? [
-      "${REGISTRY}/${name}:${TAG}",
-      "${REGISTRY}/${name}:${SHA}",
+      "${REGISTRY}/${name}:${sanitized_tag}",
       "${REGISTRY}/${name}:${substr(SHA, 0, 7)}"
     ] : [
-      "${REGISTRY}/${name}:${TAG}"
+      "${REGISTRY}/${name}:${sanitized_tag}"
     ]
   ) : (
     SHA != "" ? [
-      "${name}:${TAG}",
+      "${name}:${sanitized_tag}",
       "${name}:${SHA}",
       "${name}:${substr(SHA, 0, 7)}"
     ] : [
-      "${name}:${TAG}"
+      "${name}:${sanitized_tag}"
     ]
   )
 }
