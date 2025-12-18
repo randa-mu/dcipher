@@ -23,7 +23,9 @@ COPY crates/config ./crates/config
 COPY crates/generated ./crates/generated
 COPY crates/onlyswaps-client ./crates/onlyswaps-client
 COPY crates/superalloy ./crates/superalloy
+COPY crates/omnievent ./crates/omnievent
 COPY crates/utils ./crates/utils
+COPY modules/dcipher-proto ./modules/dcipher-proto
 
 RUN cargo build --release -p onlyswaps-smoketest
 
