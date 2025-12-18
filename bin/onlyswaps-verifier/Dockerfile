@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.92 AS chef
 RUN apt-get update \
  && apt-get install -y protobuf-compiler \
  && rm -rf /var/lib/apt/lists/*

@@ -1,4 +1,7 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.92 AS chef
+RUN apt-get update \
+ && apt-get install -y protobuf-compiler \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 FROM chef AS planner
@@ -19,6 +22,9 @@ COPY crates/agent-utils ./crates/agent-utils
 COPY crates/config ./crates/config
 COPY crates/generated ./crates/generated
 COPY crates/utils ./crates/utils
+COPY crates/omnievent ./crates/omnievent
+COPY crates/superalloy ./crates/superalloy
+COPY modules/dcipher-proto ./modules/dcipher-proto
 
 RUN cargo build --release -p monitoring --bin monitoring
 
