@@ -20,6 +20,8 @@ COPY crates/config ./crates/config
 COPY crates/network ./crates/network
 COPY crates/utils ./crates/utils
 COPY crates/omnievent ./crates/omnievent
+COPY crates/superalloy ./crates/superalloy
+COPY modules/dcipher-proto ./modules/dcipher-proto
 
 # Build application
 RUN cargo build --release -p adkg-cli --bin adkg-cli

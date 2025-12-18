@@ -1,4 +1,7 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1.92 AS chef
+RUN apt-get update \
+ && apt-get install -y protobuf-compiler \
+ && rm -rf /var/lib/apt/lists/*
 RUN apt-get update && apt-get install -y protobuf-compiler
 
 WORKDIR /app
@@ -23,6 +26,7 @@ COPY crates/network ./crates/network
 COPY crates/signer ./crates/signer
 COPY crates/superalloy ./crates/superalloy
 COPY crates/utils ./crates/utils
+COPY crates/omnievent ./crates/omnievent
 COPY modules/dcipher-proto ./modules/dcipher-proto
 
 RUN cargo build --release --example dsigner_legacy_http --all-features -p dsigner
