@@ -1,4 +1,7 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1.92 AS chef
+RUN apt-get update \
+ && apt-get install -y protobuf-compiler \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 FROM chef AS planner
@@ -16,6 +19,8 @@ COPY crates/adkg ./crates/adkg
 COPY crates/config ./crates/config
 COPY crates/network ./crates/network
 COPY crates/utils ./crates/utils
+COPY crates/omnievent ./crates/omnievent
+
 # Build application
 RUN cargo build --release -p adkg-cli --bin adkg-cli
 
