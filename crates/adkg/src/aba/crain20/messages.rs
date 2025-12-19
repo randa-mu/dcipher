@@ -1,6 +1,5 @@
-use super::ecdh_coin_toss::{Coin, EcdhCoinTossEval};
+use super::ecdh_coin_toss::Coin;
 use crate::aba::Estimate;
-use ark_ec::CurveGroup;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -59,28 +58,19 @@ pub struct CoinEvalMessage {
 
 /// Create CoinEvalMessage from an eval and a round number.
 impl CoinEvalMessage {
-    pub(crate) fn new<CG, H>(
-        eval: EcdhCoinTossEval<CG, H>,
-        round: u8,
-    ) -> Result<Self, bson::ser::Error>
+    pub(crate) fn new<T>(eval: T, round: u8) -> Result<Self, bson::ser::Error>
     where
-        CG: CurveGroup,
-        EcdhCoinTossEval<CG, H>: Serialize,
+        T: Serialize,
     {
         let ser = bson::to_vec(&eval)?;
         Ok(CoinEvalMessage { eval: ser, round })
     }
-}
 
-/// Convert a CoinEvalMessage into an eval.
-impl<CG, H> TryInto<EcdhCoinTossEval<CG, H>> for &CoinEvalMessage
-where
-    CG: CurveGroup,
-    EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
-{
-    type Error = bson::de::Error;
-
-    fn try_into(self) -> Result<EcdhCoinTossEval<CG, H>, Self::Error> {
+    /// Convert a CoinEvalMessage into an eval.
+    pub fn deser<T>(&self) -> Result<T, bson::de::Error>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
         bson::from_slice(&self.eval)
     }
 }

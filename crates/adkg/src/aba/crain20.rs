@@ -7,21 +7,19 @@ mod ecdh_coin_toss;
 pub mod messages;
 mod recv_handler;
 
+pub use crate::aba::crain20::coin::CoinToss;
+pub use ecdh_coin_toss::{EcdhCoinToss, EcdhCoinTossParams};
+
 use crate::aba::{Aba, AbaConfig, Estimate};
 use crate::helpers::{PartyId, SessionId};
 use crate::network::{RetryStrategy, broadcast_with_self};
-use ark_ec::CurveGroup;
 use dcipher_network::topic::TopicBasedTransport;
 use dcipher_network::{Transport, TransportSender};
-use digest::core_api::BlockSizeUser;
 use digest::crypto_common::rand_core::CryptoRng;
-use digest::{DynDigest, FixedOutputReset};
-use ecdh_coin_toss::{EcdhCoinTossError, EcdhCoinTossEval};
 use futures::future::Either;
 use messages::AuxiliarySetMessage;
 use messages::{AbaMessage, AuxStage, View};
 use rand::RngCore;
-use serde::Deserialize;
 use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
@@ -37,9 +35,6 @@ use tokio::sync::{Mutex, Notify, oneshot};
 use tokio::task::JoinError;
 use tokio_util::sync::CancellationToken;
 use tracing::{Level, debug, error, event, info};
-use utils::hash_to_curve::HashToCurve;
-use utils::serialize::fq::FqSerialize;
-use utils::serialize::point::PointSerializeCompressed;
 
 const TOPIC: &str = "abacrain20";
 
@@ -51,10 +46,9 @@ pub struct AbaInput<CK> {
 
 /// Keys required to obtain a common coin during the Crain20 ABA
 #[derive(Clone, Debug)]
-pub struct CoinKeys<CG: CurveGroup> {
-    pub sk: CG::ScalarField,
-    pub vks: Vec<CG>,
-    pub combined_vk: CG,
+pub struct CoinKeys<CT: CoinToss> {
+    pub sk: CT::SecretKey,
+    pub params: CT::PublicParams,
 }
 
 /// Errors output by the Crain20 ABA
@@ -73,7 +67,10 @@ pub enum AbaError {
     Receiver(#[source] RecvError, &'static str),
 
     #[error("coin toss error: `{1}`")]
-    CoinToss(#[source] EcdhCoinTossError, &'static str),
+    CoinToss(
+        #[source] Box<dyn std::error::Error + Send + Sync + 'static>,
+        &'static str,
+    ),
 
     #[error("failed to initialize transport")]
     TransportInit,
@@ -89,26 +86,24 @@ pub enum AbaError {
 }
 
 /// Structure used to specify various parameters required by the Crain20 ABA
-pub struct AbaCrain20Config<CG, CK, H> {
+pub struct AbaCrain20Config<CT, CK> {
     id: PartyId,
     n: usize,
     t: usize,
-    g: CG,
     retry_strategy: RetryStrategy,
+    _ct: PhantomData<fn() -> CT>,
     _ck: PhantomData<fn() -> CK>,
-    _h: PhantomData<fn() -> H>,
 }
 
-impl<CG, CK, H> AbaCrain20Config<CG, CK, H> {
-    pub fn new(id: PartyId, n: usize, t: usize, g: CG, retry_strategy: RetryStrategy) -> Arc<Self> {
+impl<CT, CK> AbaCrain20Config<CT, CK> {
+    pub fn new(id: PartyId, n: usize, t: usize, retry_strategy: RetryStrategy) -> Arc<Self> {
         Self {
             id,
             n,
             t,
-            g,
             retry_strategy,
+            _ct: PhantomData,
             _ck: PhantomData,
-            _h: PhantomData,
         }
         .into()
     }
@@ -122,13 +117,10 @@ impl<CG, CK, H> AbaCrain20Config<CG, CK, H> {
     }
 }
 
-impl<'a, CG, CK, H> AbaConfig<'a, PartyId> for AbaCrain20Config<CG, CK, H>
+impl<'a, CT, CK> AbaConfig<'a, PartyId> for AbaCrain20Config<CT, CK>
 where
-    CG: CurveGroup + Copy + HashToCurve + PointSerializeCompressed,
-    CG::ScalarField: FqSerialize,
-    EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
-    CK: Send + Into<CoinKeys<CG>> + 'static,
-    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
+    CT: CoinToss,
+    CK: Send + Into<CoinKeys<CT>> + 'static,
 {
     type Input = AbaInput<CK>;
     type Error = Box<AbaError>;
@@ -148,7 +140,7 @@ where
             .ok_or(AbaError::TransportInit)?;
         let sender = transport.sender().ok_or(AbaError::TransportInit)?;
         let receiver = transport.receiver_stream().ok_or(AbaError::TransportInit)?;
-        Ok(AbaCrain20::<_, _, _, T::Transport> {
+        Ok(AbaCrain20::<_, _, T::Transport> {
             config: self.clone(),
             sid,
             sender,
@@ -157,7 +149,7 @@ where
     }
 }
 
-struct AbaState<CG: CurveGroup, H> {
+struct AbaState<CT: CoinToss> {
     notify_bin_values: NotifyMap<(u8, AuxStage)>, // notify upon receiving 2t + 1 binary estimates (Algorithm 3, Line 7)
     bin_values: Mutex<HashMap<u8, BinValues>>,
 
@@ -168,32 +160,29 @@ struct AbaState<CG: CurveGroup, H> {
     auxset_views: Mutex<PerPartyStorage<u8, View>>, // store each views sent through auxset messages
 
     notify_enough_coin_evals: NotifyMap<u8>,
-    coin_evals: Mutex<PerPartyStorage<u8, EcdhCoinTossEval<CG, H>>>,
+    coin_evals: Mutex<PerPartyStorage<u8, CT::Eval>>,
 }
 
-struct AbaCrain20<CG, CK, H, T>
+struct AbaCrain20<CT, CK, T>
 where
     T: Transport,
 {
-    config: Arc<AbaCrain20Config<CG, CK, H>>,
+    config: Arc<AbaCrain20Config<CT, CK>>,
     sid: SessionId,
     sender: T::Sender,
     receiver: T::ReceiveMessageStream,
 }
 
-struct AbaCrain20Instance<CG, CK, H, TS> {
-    config: Arc<AbaCrain20Config<CG, CK, H>>,
+struct AbaCrain20Instance<CT, CK, TS> {
+    config: Arc<AbaCrain20Config<CT, CK>>,
     sid: SessionId,
     sender: TS,
 }
 
-impl<CG, CK, H, T> Aba for AbaCrain20<CG, CK, H, T>
+impl<CT, CK, T> Aba for AbaCrain20<CT, CK, T>
 where
-    CG: CurveGroup + Copy + HashToCurve + PointSerializeCompressed,
-    CG::ScalarField: FqSerialize,
-    EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
-    CK: Send + Into<CoinKeys<CG>> + 'static,
-    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
+    CT: CoinToss,
+    CK: Send + Into<CoinKeys<CT>> + 'static,
     T: Transport<Identity = PartyId> + 'static,
     T::Sender: Clone,
 {
@@ -227,7 +216,7 @@ where
         debug!("Node `{}` started ABA with sid `{sid}`", config.id);
 
         // Initialize the ABA state machine
-        let state = Arc::new(AbaState::<CG, H> {
+        let state = Arc::new(AbaState::<CT> {
             aux_views: Mutex::new(PerPartyStorage::new()),
             notify_count_aux: NotifyMap::new(),
             auxset_views: Mutex::new(PerPartyStorage::new()),
@@ -302,19 +291,16 @@ where
     }
 }
 
-impl<CG, CK, H, TS> AbaCrain20Instance<CG, CK, H, TS>
+impl<CT, CK, TS> AbaCrain20Instance<CT, CK, TS>
 where
-    CG: CurveGroup + Copy + HashToCurve + PointSerializeCompressed,
-    CG::ScalarField: FqSerialize,
-    EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
-    CK: Send + Into<CoinKeys<CG>> + 'static,
-    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
+    CT: CoinToss,
+    CK: Send + Into<CoinKeys<CT>> + 'static,
     TS: TransportSender<Identity = PartyId> + Clone,
 {
     #[tracing::instrument(skip_all, fields(aba_input = ?aba_input.v))]
     async fn propose_internal<RNG>(
         self,
-        state: Arc<AbaState<CG, H>>,
+        state: Arc<AbaState<CT>>,
         aba_input: AbaInput<CK>,
         sender: oneshot::Sender<Estimate>,
         rng: &mut RNG,
@@ -473,7 +459,7 @@ where
     }
 }
 
-impl<CG, CK, H, TS> AbaCrain20Instance<CG, CK, H, TS> {
+impl<CG, CK, TS> AbaCrain20Instance<CG, CK, TS> {
     /// Try to build a view from the union of views sent by other nodes, filtered by local binary values
     /// obtained through the BV_broadcast algorithm, Figure 1 of <https://arxiv.org/pdf/2002.08765>.
     /// Implements filtering of line (05), Figure 3 of <https://arxiv.org/pdf/2002.08765>:
@@ -643,11 +629,11 @@ impl View {
     }
 }
 
-impl<CG, CK, H, T> From<AbaCrain20<CG, CK, H, T>> for AbaCrain20Instance<CG, CK, H, T::Sender>
+impl<CT, CK, T> From<AbaCrain20<CT, CK, T>> for AbaCrain20Instance<CT, CK, T::Sender>
 where
     T: Transport,
 {
-    fn from(aba20: AbaCrain20<CG, CK, H, T>) -> Self {
+    fn from(aba20: AbaCrain20<CT, CK, T>) -> Self {
         Self {
             sid: aba20.sid,
             config: aba20.config,
