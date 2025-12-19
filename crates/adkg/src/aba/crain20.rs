@@ -484,7 +484,7 @@ impl<CG, CK, H, TS> AbaCrain20Instance<CG, CK, H, TS> {
 
         let bin_values = BTreeSet::from_iter(bin_values.iter().copied());
 
-        // Form a view such that its values (i) belong to bin values and comes from views sent by
+        // Form a view such that its values (i) belong to bin values and come from views sent by
         // (n − t) distinct processes
         let mut count = 0;
         let mut view_union = View::default();
