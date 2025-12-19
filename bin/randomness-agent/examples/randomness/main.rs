@@ -181,9 +181,15 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         },
 
-        err = run_agent(&mut service.agent, service.ticker, signature_sender_contract_ro.clone()) => {
+        err = run_agent(
+            &mut service.agent,
+            service.ticker,
+            signature_sender_contract_ro.clone(),
+            Duration::from_secs(config.chain.contract_sync_interval_secs),
+            Duration::from_secs(config.chain.fulfillment_interval_secs),
+        ) => {
             eprintln!("agent stopped unexpectedly...");
-            err // return Result
+            err
         },
 
         err = start_api(config.healthcheck_listen_addr, config.healthcheck_port) => {

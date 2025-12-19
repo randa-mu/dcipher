@@ -113,7 +113,13 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         },
 
-        err = run_agent(&mut agent, ticker, decryption_sender_contract_ro) => {
+        err = run_agent(
+            &mut agent,
+            ticker,
+            decryption_sender_contract_ro,
+            Duration::from_secs(config.chain.contract_sync_interval_secs),
+            Duration::from_secs(config.chain.fulfillment_interval_secs),
+        ) => {
             eprintln!("agent stopped unexpectedly...");
             err
         },

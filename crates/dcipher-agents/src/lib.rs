@@ -16,6 +16,9 @@ pub mod ibe_helper;
 #[cfg(feature = "evm")]
 pub mod ser;
 
+#[cfg(feature = "evm")]
+pub mod utils;
+
 // Re-exports
 #[cfg(feature = "agents")]
 pub use agents::RequestId;
