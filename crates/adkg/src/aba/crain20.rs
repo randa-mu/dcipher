@@ -477,7 +477,7 @@ impl<CG, CK, H, TS> AbaCrain20Instance<CG, CK, H, TS> {
     /// Try to build a view from the union of views sent by other nodes, filtered by local binary values
     /// obtained through the BV_broadcast algorithm, Figure 1 of <https://arxiv.org/pdf/2002.08765>.
     /// Implements filtering of line (05), Figure 3 of <https://arxiv.org/pdf/2002.08765>:
-    /// \exists a view such that its values (i) belong to bin values and comes from views sent by
+    /// \exists a view such that its values (i) belong to bin values and come from views sent by
     /// (n − t) distinct processes.
     fn construct_view(&self, bin_values: &[Estimate], views: &[&View]) -> Option<View> {
         assert!(bin_values.len() <= 2);
