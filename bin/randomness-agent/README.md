@@ -100,16 +100,18 @@ Note that parameters may also be set through environment variables, see the tabl
 
 #### Blockchain Configuration
 
-| Argument                       | Environment Variable                 | Default     | Description                                       |
-|--------------------------------|--------------------------------------|-------------|---------------------------------------------------|
-| `--chain-id`                   | `RANDOMNESS_CHAIN_ID`                | Auto-detect | Blockchain network chain ID                       |
-| `--tx-fulfillment-disabled`    | `RANDOMNESS_TX_FULFILLMENT_DISABLED` | `false`     | Disable transaction fulfillment (monitoring only) |
-| `--min-confirmations`          | `RANDOMNESS_MIN_CONFIRMATIONS`       | `1`         | Block confirmations required                      |
-| `--confirmations-timeout-secs` | `RANDOMNESS_CONFIRMATIONS_TIMEOUT`   | `60`        | Timeout in seconds for confirmations              |
-| `--max-tx-per-tick`            | `RANDOMNESS_MAX_TX_PER_TICK`         | unlimited   | Maximum transactions per processing cycle         |
-| `--tx-retry-strategy`          | `RANDOMNESS_TX_RETRY_STRATEGY`       | `Never`     | Retry strategy for failed transactions            |
-| `--sync-batch-size`            | `RANDOMNESS_SYNC_BATCH_SIZE`         | `20`        | Batch size for blockchain sync                    |
-| `--sig-compression`            | `RANDOMNESS_SIG_COMPRESSION`         | `false`     | Enable on-chain signature compression             |
+| Argument                        | Environment Variable                 | Default     | Description                                                            |
+|---------------------------------|--------------------------------------|-------------|------------------------------------------------------------------------|
+| `--chain-id`                    | `RANDOMNESS_CHAIN_ID`                | Auto-detect | Blockchain network chain ID                                            |
+| `--tx-fulfillment-disabled`     | `RANDOMNESS_TX_FULFILLMENT_DISABLED` | `false`     | Disable transaction fulfillment (monitoring only)                      |
+| `--min-confirmations`           | `RANDOMNESS_MIN_CONFIRMATIONS`       | `1`         | Block confirmations required                                           |
+| `--confirmations-timeout-secs`  | `RANDOMNESS_CONFIRMATIONS_TIMEOUT`   | `60`        | Timeout in seconds for confirmations                                   |
+| `--max-tx-per-tick`             | `RANDOMNESS_MAX_TX_PER_TICK`         | unlimited   | Maximum transactions per processing cycle                              |
+| `--tx-retry-strategy`           | `RANDOMNESS_TX_RETRY_STRATEGY`       | `Never`     | Retry strategy for failed transactions                                 |
+| `--sync-batch-size`             | `RANDOMNESS_SYNC_BATCH_SIZE`         | `20`        | Batch size for blockchain sync                                         |
+| `--sig-compression`             | `RANDOMNESS_SIG_COMPRESSION`         | `false`     | Enable on-chain signature compression                                  |
+| `--contract-sync-interval-secs` | `RANDOMNESS_CONTRACT_SYNC_INTERVAL`  | `30`        | How often to sync the current state against the chain.                 |
+| `--fulfillment-interval-secs`   | `RANDOMNESS_FULFILLMENT_INTERVAL`    | `60`        | How often to retry sending transactions / fulfilling pending requests. |
 
 #### Gas & Profitability
 

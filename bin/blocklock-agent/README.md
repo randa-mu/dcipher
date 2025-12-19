@@ -97,15 +97,17 @@ cargo run --example blocklock -- \
 
 ### Blockchain Configuration
 
-| Argument                       | Environment Variable                | Default     | Description                     |
-|--------------------------------|-------------------------------------|-------------|---------------------------------|
-| `--chain-id`                   | `BLOCKLOCK_CHAIN_ID`                | Auto-detect | Blockchain chain ID             |
-| `--tx-fulfillment-disabled`    | `BLOCKLOCK_TX_FULFILLMENT_DISABLED` | `false`     | Disable transaction fulfillment |
-| `--min-confirmations`          | `BLOCKLOCK_MIN_CONFIRMATIONS`       | `1`         | Required block confirmations    |
-| `--confirmations-timeout-secs` | `BLOCKLOCK_CONFIRMATIONS_TIMEOUT`   | `60`        | Confirmation timeout (seconds)  |
-| `--max-tx-per-tick`            | `BLOCKLOCK_MAX_TX_PER_TICK`         | unlimited   | Max transactions per tick       |
-| `--tx-retry-strategy`          | `BLOCKLOCK_TX_RETRY_STRATEGY`       | `Never`     | Retry strategy                  |
-| `--sync-batch-size`            | `BLOCKLOCK_SYNC_BATCH_SIZE`         | `20`        | Blockchain sync batch size      |
+| Argument                        | Environment Variable                | Default     | Description                                                            |
+|---------------------------------|-------------------------------------|-------------|------------------------------------------------------------------------|
+| `--chain-id`                    | `BLOCKLOCK_CHAIN_ID`                | Auto-detect | Blockchain chain ID                                                    |
+| `--tx-fulfillment-disabled`     | `BLOCKLOCK_TX_FULFILLMENT_DISABLED` | `false`     | Disable transaction fulfillment                                        |
+| `--min-confirmations`           | `BLOCKLOCK_MIN_CONFIRMATIONS`       | `1`         | Required block confirmations                                           |
+| `--confirmations-timeout-secs`  | `BLOCKLOCK_CONFIRMATIONS_TIMEOUT`   | `60`        | Confirmation timeout (seconds)                                         |
+| `--max-tx-per-tick`             | `BLOCKLOCK_MAX_TX_PER_TICK`         | unlimited   | Max transactions per tick                                              |
+| `--tx-retry-strategy`           | `BLOCKLOCK_TX_RETRY_STRATEGY`       | `Never`     | Retry strategy                                                         |
+| `--sync-batch-size`             | `BLOCKLOCK_SYNC_BATCH_SIZE`         | `20`        | Blockchain sync batch size                                             |
+| `--contract-sync-interval-secs` | `BLOCKLOCK_CONTRACT_SYNC_INTERVAL`  | `30`        | How often to sync the current state / block height against the chain.  |
+| `--fulfillment-interval-secs`   | `BLOCKLOCK_FULFILLMENT_INTERVAL`    | `60`        | How often to retry sending transactions / fulfilling pending requests. |
 
 ### Gas & Profitability
 
