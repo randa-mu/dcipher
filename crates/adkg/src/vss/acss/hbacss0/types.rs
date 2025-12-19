@@ -4,13 +4,15 @@ use crate::nizk::NizkError;
 use crate::pke::ec_hybrid_chacha20poly1305::{
     EphemeralMultiHybridCiphertext, HybridEncryptionError,
 };
-use crate::vss::acss::hbacss0::{Hbacss0Output, PublicPoly};
+use crate::vss::acss::hbacss0::{FeldPublicPoly, Hbacss0Output, PedPublicPoly};
 use crate::vss::pedersen::PedersenPartyShare;
 use ark_ec::CurveGroup;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 use tokio::sync::oneshot;
+use utils::serialize::fq::FqDeserialize;
+use utils::serialize::fq::FqSerialize;
 use utils::serialize::{
     SerializationError,
     point::{PointDeserializeCompressed, PointSerializeCompressed},
@@ -86,10 +88,10 @@ pub(super) enum AcssStatus<CG: CurveGroup> {
     ShareRecovery,
 
     /// A valid share was received, waiting for 2t + 1 oks.
-    WaitingForOks(Vec<PedersenPartyShare<CG::ScalarField>>),
+    WaitingForOks(PartyShares<CG::ScalarField>),
 
     /// Enough ok / readys were received, waiting for 2t + 1 readys.
-    WaitingForReadys(Vec<PedersenPartyShare<CG::ScalarField>>),
+    WaitingForReadys(PartyShares<CG::ScalarField>),
 
     /// A share was recovered, about to exit.
     Complete,
@@ -103,17 +105,17 @@ pub(super) enum AcssStatus<CG: CurveGroup> {
 ))]
 pub(super) struct AcssBroadcastMessage<CG: CurveGroup> {
     pub(super) enc_shares: EphemeralMultiHybridCiphertext<CG>,
-    pub(super) public_polys: Vec<PublicPoly<CG>>,
+    pub(super) feld_public_poly: FeldPublicPoly<CG>,
+    pub(super) ped_public_polys: Vec<PedPublicPoly<CG>>,
 }
 
-/// Wrapper around Vec<PedersenPartyShare<CG::ScalarField>>> for serde
-#[derive(Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "PedersenPartyShare<F>: Serialize",
-    deserialize = "PedersenPartyShare<F>: Deserialize<'de>"
-))]
-pub(super) struct PedersenPartyShares<F> {
-    pub(super) shares: Vec<PedersenPartyShare<F>>,
+/// Shares obtained by the ACSS
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(serialize = "F: FqSerialize", deserialize = "F: FqDeserialize"))]
+pub(super) struct PartyShares<F> {
+    #[serde(with = "utils::serialize::fq::base64_or_bytes")]
+    pub(super) feld_share: F,
+    pub(super) ped_shares: Vec<PedersenPartyShare<F>>,
 }
 
 /// State machine used by handlers to update the state of the node.
@@ -123,7 +125,7 @@ pub(super) struct StateMachine<CG: CurveGroup> {
     // could be replaced by a bitmap
     pub(super) nodes_oks: HashMap<PartyId, bool>, // count the number of parties that are OK
     pub(super) nodes_readys: HashMap<PartyId, bool>, // count the number of parties that are ready
-    pub(super) shares_recovery: HashMap<PartyId, Vec<PedersenPartyShare<CG::ScalarField>>>, // store the parties currently recovering
+    pub(super) shares_recovery: HashMap<PartyId, PartyShares<CG::ScalarField>>, // store the parties currently recovering
 
     pub(super) output: Option<oneshot::Sender<Hbacss0Output<CG>>>, // require an option since we move the sender upon sending
 }

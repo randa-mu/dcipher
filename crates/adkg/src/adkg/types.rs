@@ -6,7 +6,7 @@ use crate::pok::PokProof;
 use crate::rbc::multi_rbc::MultiRbc;
 use crate::rbc::{RbcPredicate, ReliableBroadcastConfig};
 use crate::vss::acss::AcssConfig;
-use crate::vss::acss::hbacss0::PublicPoly;
+use crate::vss::acss::hbacss0::{FeldPublicPoly, PedPublicPoly};
 use crate::vss::acss::multi_acss::MultiAcss;
 use crate::vss::pedersen::PedersenPartyShare;
 use ark_ec::CurveGroup;
@@ -32,8 +32,10 @@ pub struct LazyCoinKeys<CG: CurveGroup> {
 /// ACSS output required by ADKG.
 #[derive(Clone)]
 pub struct ShareWithPoly<CG: CurveGroup> {
+    pub mvba_share: CG::ScalarField,
+    pub mvba_public_poly: FeldPublicPoly<CG>,
     pub shares: Vec<PedersenPartyShare<CG::ScalarField>>,
-    pub public_polys: Vec<PublicPoly<CG>>,
+    pub public_polys: Vec<PedPublicPoly<CG>>,
 }
 
 /// Predicate used by reliable broadcasts.
@@ -120,19 +122,19 @@ impl<CG: CurveGroup> LazyCoinKeys<CG> {
 impl<CG: CurveGroup> From<LazyCoinKeys<CG>> for CoinKeys<CG> {
     fn from(val: LazyCoinKeys<CG>) -> Self {
         // Obtain the combined public polynomial as p_j = \sum_{k \in rbc_parties} p_k(x)
-        // which is the sum of the public polynomial output by each ACSS specified in the j-th RBC
+        // which is the sum of the MVBA public polynomial output by each ACSS specified in the j-th RBC
         let public_poly: Vec<CG> = (0..=val.t)
             .map(|i| {
                 val.outputs
                     .iter()
-                    .map(|(_, out)| out.public_polys[0].as_vec()[i])
+                    .map(|(_, out)| out.mvba_public_poly.0[i])
                     .sum()
             })
             .collect();
 
-        // Our own secret share, the sum of our ACSS shares
+        // Our own secret share, the sum of our ACSS MVBA shares
         // u_{i,j} = \sum_{k \in rbc_parties} s_{k,j} =
-        let u_i_j: CG::ScalarField = val.outputs.iter().map(|(_, out)| out.shares[0].si).sum();
+        let u_i_j: CG::ScalarField = val.outputs.iter().map(|(_, out)| out.mvba_share).sum();
 
         // Obtain commitments to the secret shares of the other parties
         // (g^{u_{1,j}}, ... g^{u_{n,j}}) = (g^p*(1), ..., g^p*(n))
