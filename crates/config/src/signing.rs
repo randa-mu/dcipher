@@ -8,8 +8,6 @@ use utils::serialize::point::PointDeserializeCompressed;
 use utils::serialize::point::PointSerializeCompressed;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-// Deserialize as a CommitteeConfigFiles first, and call try_from to get Self
-#[serde(try_from = "CommitteeConfigFiles")]
 #[serde(bound(
     serialize = "G: PointSerializeCompressed",
     deserialize = "G: PointDeserializeCompressed"
@@ -30,6 +28,7 @@ pub struct CommitteeConfig<G: AffineRepr> {
     // all the details we need to contact and verify messages from other nodes
     pub members: Vec<MemberConfig<G>>,
 }
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CommitteeConfigFiles {
     pub adkg_public: AdkgPublic,
