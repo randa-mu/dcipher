@@ -1,6 +1,6 @@
 # Blocklock Agent
 
-A decentralized blocklock agent that fulfills on-chain blocklock requests through the [`blocklock-solidity`](https://github.com/randa-mu/blocklock-solidity) contracts
+A decentralized blocklock agent that fulfills on-chain blocklock requests through the [`blocklock-solidity`](https://github.com/randa-mu/blocklock-solidity) contracts.
 
 ## Prerequisites
 - Deployed [`blocklock-solidity`](https://github.com/randa-mu/blocklock-solidity) contracts,
