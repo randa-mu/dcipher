@@ -1,6 +1,0 @@
-{
-  "dsigner_legacy_http": {
-    "image_name": "dsigner",
-    "description": "threshold signing daemon"
-  }
-}
