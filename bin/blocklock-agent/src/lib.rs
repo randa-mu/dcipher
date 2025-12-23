@@ -98,7 +98,7 @@ where
         decryption_sender_contract.provider().to_owned(),
         block_poll_interval,
     )
-    .await?;
+    .await;
     // Transform each stream into a stream of events
     let decryption_requested_stream =
         decryption_requested_stream.map(|(req, _)| ChainEvent::DecryptionRequested(req));
