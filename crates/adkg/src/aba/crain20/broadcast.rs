@@ -1,5 +1,6 @@
 //! Implementations of BV_broadcast and SBV_broadcast.
 
+use crate::aba::crain20::coin::CoinToss;
 use crate::aba::crain20::messages::{
     AbaMessage, AuxStage, AuxiliaryMessage, EstimateMessage, View,
 };
@@ -7,14 +8,13 @@ use crate::aba::crain20::{AbaCrain20Instance, AbaState};
 use crate::aba::{Estimate, crain20};
 use crate::helpers::PartyId;
 use crate::network::broadcast_with_self;
-use ark_ec::CurveGroup;
 use dcipher_network::TransportSender;
 use std::sync::Arc;
 use tracing::{Level, error, event};
 
-impl<CG, CK, H, TS> AbaCrain20Instance<CG, CK, H, TS>
+impl<CT, CK, TS> AbaCrain20Instance<CT, CK, TS>
 where
-    CG: CurveGroup,
+    CT: CoinToss,
     TS: TransportSender<Identity = PartyId> + Clone,
 {
     /// Binary-value broadcast described in https://dl.acm.org/doi/10.1145/2785953, Figure 1
@@ -52,7 +52,7 @@ where
         r: u8,
         stage: AuxStage,
         v: Estimate,
-        state: &Arc<AbaState<CG, H>>,
+        state: &Arc<AbaState<CT>>,
     ) -> View {
         // 1: BV_Broadcast(v)
         self.bv_broadcast(r, stage, v).await;

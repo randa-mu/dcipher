@@ -170,7 +170,7 @@ where
             cancel: CancellationToken::new(),
             rbc_task: None,
             acss_task: None,
-            shared_state: SharedState::new(id, n, t, multi_rbc, multi_acss, multi_aba).into(),
+            shared_state: SharedState::new(id, n, t, g, multi_rbc, multi_acss, multi_aba).into(),
             pok_dst,
             _h: PhantomData,
         }
@@ -1024,7 +1024,7 @@ where
                         .completed_acss_outputs
                         .filter_outputs(rbc_parties.iter())
                         .collect();
-                    let coin_keys = LazyCoinKeys::new(state.n, state.t, outputs);
+                    let coin_keys = LazyCoinKeys::new(state.n, state.t, state.g, outputs);
 
                     // Create new channel and send coin_keys through it
                     let (sender, receiver) = oneshot::channel();
@@ -1096,7 +1096,7 @@ where
                         .completed_acss_outputs
                         .filter_outputs(rbc_output.iter())
                         .collect();
-                    let coin_keys = LazyCoinKeys::new(state.n, state.t, outputs);
+                    let coin_keys = LazyCoinKeys::new(state.n, state.t, state.g, outputs);
                     return coin_keys;
                 }
 
@@ -1135,7 +1135,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::aba::crain20::AbaCrain20Config;
+    use crate::aba::crain20::{AbaCrain20Config, EcdhCoinToss};
     use crate::adkg::{APPNAME, Adkg, AdkgOutput};
     use crate::helpers::{PartyId, lagrange_interpolate_at};
     use crate::network::RetryStrategy;
@@ -1263,8 +1263,12 @@ mod tests {
                     h,
                     RetryStrategy::None,
                 );
-                let aba_config =
-                    AbaCrain20Config::<_, _, sha3::Sha3_256>::new(i, n, t, g, RetryStrategy::None);
+                let aba_config = AbaCrain20Config::<EcdhCoinToss<_, sha3::Sha3_256>, _>::new(
+                    i,
+                    n,
+                    t,
+                    RetryStrategy::None,
+                );
 
                 Adkg::<_, H, _, _, _>::new(
                     i,

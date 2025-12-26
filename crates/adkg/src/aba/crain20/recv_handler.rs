@@ -1,34 +1,30 @@
 //! Handles message received by other nodes.
 
-use crate::aba::crain20::ecdh_coin_toss::EcdhCoinTossEval;
+use crate::aba::crain20::coin::CoinToss;
 use crate::aba::crain20::messages::{AbaMessage, EstimateMessage};
 use crate::aba::crain20::{AbaCrain20, AbaCrain20Config, AbaState, PerPartyStorage};
 use crate::helpers::{PartyId, SessionId};
 use crate::network::broadcast_with_self;
-use ark_ec::CurveGroup;
 use dcipher_network::{ReceivedMessage, Transport};
 use futures::StreamExt;
-use serde::Deserialize;
-use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use tracing::{Instrument, debug, error, info, trace, warn};
 
-impl<CG, CK, H, T> AbaCrain20<CG, CK, H, T>
+impl<CT, CK, T> AbaCrain20<CT, CK, T>
 where
-    CG: CurveGroup,
-    EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
+    CT: CoinToss,
     T: Transport<Identity = PartyId>,
 {
     /// Thread responsible for receiving all types of ABA messages and transmitting notifications.
     pub(super) async fn recv_thread(
         sid: SessionId,
-        config: Arc<AbaCrain20Config<CG, CK, H>>,
+        config: Arc<AbaCrain20Config<CT, CK>>,
         receiver: T::ReceiveMessageStream,
         sender: T::Sender,
         cancel: CancellationToken,
-        state: Arc<AbaState<CG, H>>,
+        state: Arc<AbaState<CT>>,
     ) {
         let id = config.id;
         // Stop the thread upon receiving a signal from the cancellation token
@@ -43,10 +39,10 @@ where
 
     /// Infinite loop listening for ABA messages and sending notifications.
     async fn recv_loop(
-        config: Arc<AbaCrain20Config<CG, CK, H>>,
+        config: Arc<AbaCrain20Config<CT, CK>>,
         mut receiver: T::ReceiveMessageStream,
         sender: T::Sender,
-        state: Arc<AbaState<CG, H>>,
+        state: Arc<AbaState<CT>>,
     ) {
         // Local variables
         let mut count_est = PerPartyStorage::new();
@@ -153,8 +149,7 @@ where
 
                 AbaMessage::CoinEval(msg_eval) => {
                     // Deserialize eval
-                    let Ok(eval): Result<EcdhCoinTossEval<CG, _>, _> = msg_eval.borrow().try_into()
-                    else {
+                    let Ok(eval) = msg_eval.deser::<CT::Eval>() else {
                         warn!("Failed to deserialize CoinEvalMessage");
                         continue;
                     };

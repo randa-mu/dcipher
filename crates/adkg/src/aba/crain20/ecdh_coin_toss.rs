@@ -1,5 +1,7 @@
 //! Implementation of the Elliptic Curve Diffie-Hellman Based Threshold Coin-Tossing scheme of https://eprint.iacr.org/2000/034.pdf
 
+use crate::aba::crain20::CoinKeys;
+use crate::aba::crain20::coin::CoinToss;
 use crate::helpers::{PartyId, lagrange_points_interpolate_at};
 use crate::nizk::NIZKDleqProof;
 use ark_ec::CurveGroup;
@@ -8,7 +10,11 @@ use itertools::{Itertools, izip};
 use rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_256};
+use std::collections::BTreeMap;
+use std::marker::PhantomData;
 use thiserror::Error;
+use utils::serialize::SerializationError;
+use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::{
     hash_to_curve::HashToCurve,
     serialize::point::{PointDeserializeCompressed, PointSerializeCompressed},
@@ -23,6 +29,95 @@ const ECDH_COIN_TOSS_NIZK_DST: &[u8] = b"ECDH_COIN_TOSS_H_BN254G1_XMD:SHA3-256";
 pub enum Coin {
     Zero = 0,
     One = 1,
+}
+
+pub struct EcdhCoinToss<CG, H> {
+    _cg: PhantomData<fn() -> CG>,
+    _h: PhantomData<fn(H)>,
+}
+
+pub struct EcdhCoinTossParams<CG> {
+    /// malicious threshold / degree of the polynomial
+    pub t: usize,
+    pub g: CG,
+    pub vk: CG,
+    pub vks: BTreeMap<PartyId, CG>,
+}
+
+pub type EcdhCoinKeys<CG, H> = CoinKeys<EcdhCoinToss<CG, H>>;
+
+impl<CG, H> EcdhCoinKeys<CG, H>
+where
+    EcdhCoinToss<CG, H>:
+        CoinToss<SecretKey = CG::ScalarField, PublicParams = EcdhCoinTossParams<CG>>,
+    CG: CurveGroup,
+{
+    pub fn new(t: usize, sk: CG::ScalarField, g: CG, vk: CG, vks: BTreeMap<PartyId, CG>) -> Self {
+        Self {
+            sk,
+            params: EcdhCoinTossParams { vk, vks, t, g },
+        }
+    }
+}
+
+impl<CG, H> CoinToss for EcdhCoinToss<CG, H>
+where
+    CG: CurveGroup + PointSerializeCompressed + PointDeserializeCompressed + HashToCurve,
+    CG::ScalarField: FqDeserialize + FqSerialize,
+    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
+{
+    type Error = EcdhCoinTossError;
+    type SecretKey = CG::ScalarField;
+    type PublicParams = EcdhCoinTossParams<CG>;
+    type Eval = EcdhCoinTossEval<CG, H>;
+
+    fn eval(
+        sk: &Self::SecretKey,
+        params: &Self::PublicParams,
+        sid: usize,
+        round: u8,
+        rng: &mut (impl CryptoRng + RngCore),
+    ) -> Result<Self::Eval, Self::Error> {
+        let coin_input = coin_input(sid, round, &params.vk).map_err(|_| EcdhCoinTossError)?;
+        EcdhCoinTossEval::<CG, H>::eval(sk, &coin_input, &params.g, rng)
+    }
+
+    fn get_coin<'a, I>(
+        evals: I,
+        params: &Self::PublicParams,
+        sid: usize,
+        round: u8,
+    ) -> Result<Coin, Self::Error>
+    where
+        I: IntoIterator<Item = (PartyId, &'a Self::Eval)> + 'a,
+        Self::Eval: 'a,
+    {
+        let (evals, senders, coin_vks): (Vec<_>, Vec<_>, Vec<_>) = evals
+            .into_iter()
+            .map(|(j, eval)| (eval, j, params.vks[&j]))
+            .collect();
+        EcdhCoinTossEval::get_coin(
+            &evals,
+            &senders,
+            &coin_vks,
+            &coin_input(sid, round, &params.vk).map_err(|_| EcdhCoinTossError)?,
+            &params.g,
+            params.t + 1,
+        )
+    }
+}
+
+fn coin_input<CG>(sid: usize, round: u8, vk: &CG) -> Result<Vec<u8>, SerializationError>
+where
+    CG: CurveGroup + PointSerializeCompressed,
+{
+    let m = [
+        sid.to_be_bytes().to_vec(),
+        round.to_be_bytes().to_vec(),
+        vk.ser_compressed()?,
+    ]
+    .concat();
+    Ok(m)
 }
 
 #[derive(Error, Debug)]

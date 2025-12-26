@@ -1,31 +1,49 @@
 //! Functions used for the coin toss protocol
 
-use crate::aba::crain20::ecdh_coin_toss::{Coin, EcdhCoinTossEval};
+use crate::aba::crain20::ecdh_coin_toss::Coin;
 use crate::aba::crain20::messages::{AbaMessage, CoinEvalMessage};
 use crate::aba::crain20::{AbaCrain20Instance, AbaError, AbaState, CoinKeys};
 use crate::helpers::PartyId;
 use crate::network::broadcast_with_self;
-use ark_ec::CurveGroup;
 use dcipher_network::TransportSender;
-use digest::core_api::BlockSizeUser;
 use digest::crypto_common::rand_core::CryptoRng;
-use digest::{DynDigest, FixedOutputReset};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tracing::{Level, error, event};
-use utils::hash_to_curve::HashToCurve;
-use utils::serialize::fq::FqSerialize;
-use utils::serialize::point::PointSerializeCompressed;
 
-impl<CG, CK, H, TS> AbaCrain20Instance<CG, CK, H, TS>
+pub trait CoinToss: 'static + Send + Sync {
+    type Error: std::error::Error + Send + Sync + 'static;
+
+    type SecretKey: Send + Sync;
+    type PublicParams: Send + Sync;
+
+    type Eval: Send + Sync + Serialize + for<'de> Deserialize<'de>;
+
+    fn eval(
+        sk: &Self::SecretKey,
+        params: &Self::PublicParams,
+        sid: usize,
+        round: u8,
+        rng: &mut (impl CryptoRng + RngCore),
+    ) -> Result<Self::Eval, Self::Error>;
+
+    fn get_coin<'a, I>(
+        evals: I,
+        params: &Self::PublicParams,
+        sid: usize,
+        round: u8,
+    ) -> Result<Coin, Self::Error>
+    where
+        I: IntoIterator<Item = (PartyId, &'a Self::Eval)> + 'a,
+        Self::Eval: 'a;
+}
+
+impl<CT, CK, TS> AbaCrain20Instance<CT, CK, TS>
 where
-    CG: CurveGroup + Copy + HashToCurve + PointSerializeCompressed,
-    CG::ScalarField: FqSerialize,
-    EcdhCoinTossEval<CG, H>: for<'de> Deserialize<'de>,
-    CK: Send + Into<CoinKeys<CG>> + 'static,
-    H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + Send + Sync + 'static,
+    CT: CoinToss,
+    CK: Send + Into<CoinKeys<CT>> + 'static,
     TS: TransportSender<Identity = PartyId>,
 {
     /// Try to get the output from the coin keys receiver, return an error otherwise.
@@ -65,19 +83,23 @@ where
     pub(super) async fn send_coin_eval<RNG>(
         &self,
         r: u8,
-        coin_keys: &CoinKeys<CG>,
+        coin_keys: &CoinKeys<CT>,
         rng: &mut RNG,
     ) -> Result<(), Box<AbaError>>
     where
         RNG: RngCore + CryptoRng,
     {
-        let eval = EcdhCoinTossEval::<CG, H>::eval(
+        // let coin_input = Self::coin_input(usize::from(self.sid), &coin_keys.combined_vk, r)?;
+        let eval = CT::eval(
             &coin_keys.sk,
-            &Self::coin_input(usize::from(self.sid), &coin_keys.combined_vk, r)?,
-            &self.config.g,
+            &coin_keys.params,
+            usize::from(self.sid),
+            r,
             rng,
         )
-        .map_err(|e| AbaError::CoinToss(e, "failed to generate coin toss evaluation: {e}"))?;
+        .map_err(|e| {
+            AbaError::CoinToss(e.into(), "failed to generate coin toss evaluation: {e}")
+        })?;
 
         let msg_coin_eval = AbaMessage::CoinEval(CoinEvalMessage::new(eval, r).unwrap());
 
@@ -97,16 +119,9 @@ where
     pub(super) async fn get_coin(
         &self,
         r: u8,
-        state: &Arc<AbaState<CG, H>>,
-        coin_keys: &CoinKeys<CG>,
+        state: &Arc<AbaState<CT>>,
+        coin_keys: &CoinKeys<CT>,
     ) -> Result<Coin, Box<AbaError>> {
-        // Get the input of the common coin protocol
-        let coin_input = Self::coin_input(
-            usize::from(self.sid),
-            &coin_keys.combined_vk.into_affine().into(),
-            r,
-        )?;
-
         loop {
             // Wait until we have enough valid partial coins evals for the current round
             event!(
@@ -127,7 +142,8 @@ where
                 continue;
             };
 
-            if evals.len() < self.config.t + 1 {
+            let evals_len = evals.len();
+            if evals_len < self.config.t + 1 {
                 event!(
                     Level::DEBUG,
                     "Node `{}` at round `{r}` does not have enough evals: {} < {}",
@@ -139,14 +155,11 @@ where
             };
 
             // Try to get and return the common coin
-            let coin_vks: Vec<_> = senders.iter().map(|&j| coin_keys.vks[j]).collect();
-            match EcdhCoinTossEval::get_coin(
-                &evals,
-                &senders,
-                &coin_vks,
-                &coin_input,
-                &self.config.g,
-                self.config.t + 1,
+            match CT::get_coin(
+                senders.into_iter().zip(evals),
+                &coin_keys.params,
+                self.sid.into(),
+                r,
             ) {
                 Ok(coin) => return Ok(coin),
                 Err(e) => {
@@ -157,7 +170,7 @@ where
                         self.config.id
                     );
 
-                    if evals.len() < self.config.n {
+                    if evals_len < self.config.n {
                         continue;
                     } else {
                         event!(
@@ -166,42 +179,12 @@ where
                             self.config.id
                         );
                         Err(AbaError::CoinToss(
-                            e,
+                            e.into(),
                             "failed to obtain common coin with all evals",
                         ))?
                     }
                 }
             }
         }
-    }
-
-    /// Get the input to the common coin.
-    fn coin_input(sid: usize, combined_vk: &CG, round: u8) -> Result<Vec<u8>, Box<AbaError>> {
-        CoinInput {
-            combined_vk: *combined_vk,
-            sid,
-            round,
-        }
-        .serialize()
-    }
-}
-
-/// Structure used to serialize the input of the coin
-#[derive(Serialize)]
-#[serde(bound(serialize = "CG: PointSerializeCompressed",))]
-struct CoinInput<CG> {
-    #[serde(with = "utils::serialize::point::base64")]
-    combined_vk: CG,
-    sid: usize,
-    round: u8,
-}
-
-impl<CG> CoinInput<CG>
-where
-    CG: PointSerializeCompressed,
-{
-    fn serialize(&self) -> Result<Vec<u8>, Box<AbaError>> {
-        bson::to_vec(&self)
-            .map_err(|e| AbaError::BsonSer(e, "failed to serialize CoinInput to bson").into())
     }
 }
