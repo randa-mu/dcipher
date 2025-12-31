@@ -190,6 +190,7 @@ where
     ACSSConfig::Output: Into<ShareWithPoly<CG>>,
     ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<CG>>,
 {
+    /// Start the ADKG immediately
     pub async fn start<T>(
         &mut self,
         rng: &mut impl AdkgRng,
@@ -198,7 +199,21 @@ where
     where
         T: TopicBasedTransport<Identity = PartyId>,
     {
-        self.execute(rng, transport).await
+        self.execute_internal(std::future::ready(()), rng, transport)
+            .await
+    }
+
+    /// Start the ADKG with a delay
+    pub async fn start_delayed<T>(
+        &mut self,
+        start: impl Future,
+        rng: &mut impl AdkgRng,
+        transport: Arc<T>,
+    ) -> Result<AdkgOutput<CG>, AdkgError>
+    where
+        T: TopicBasedTransport<Identity = PartyId>,
+    {
+        self.execute_internal(start, rng, transport).await
     }
 
     pub async fn stop(mut self) {
@@ -259,8 +274,9 @@ where
         }
     }
 
-    async fn execute<T>(
+    async fn execute_internal<T>(
         &mut self,
+        start_signal: impl Future,
         rng: &mut impl AdkgRng,
         transport: Arc<T>,
     ) -> Result<AdkgOutput<CG>, AdkgError>
@@ -304,11 +320,7 @@ where
             .collect();
 
         // Start the multi RBC, ACSS and ABA
-        state
-            .multi_acss
-            .lock()
-            .await
-            .start(s, rng, transport.clone());
+        state.multi_acss.lock().await.start(rng, transport.clone());
         state
             .multi_rbc
             .lock()
@@ -316,13 +328,21 @@ where
             .start(rbc_predicates, transport.clone());
         state.multi_aba.lock().await.start(rng, transport.clone());
 
+        // Get the ACSS sender
+        let acss_leader_sender = state
+            .multi_acss
+            .lock()
+            .await
+            .get_leader_sender()
+            .expect("failed to get acss leader sender");
+
         // Get the node's own RBC
-        let leader_sender = state
+        let rbc_leader_sender = state
             .multi_rbc
             .lock()
             .await
             .get_leader_sender()
-            .expect("failed to get leader sender");
+            .expect("failed to get rbc leader sender");
 
         // Create cancellation tokens for each subtask
         let acss_cancel = self.cancel.child_token();
@@ -331,7 +351,7 @@ where
 
         // Handler for the key set proposal phase. Manages the termination of
         self.acss_task = Some(task::spawn(Self::acss_task(
-            leader_sender,
+            rbc_leader_sender,
             state.clone(),
             acss_cancel.clone(),
         )));
@@ -343,6 +363,15 @@ where
 
         // Upon termination of jth ABA
         let abas_task = task::spawn(Self::aba_outputs_task(state.clone(), aba_cancel.clone()));
+
+        // Everything has been set-up, wait for the start signal
+        start_signal.await;
+        if acss_leader_sender.send(s).is_err() {
+            error!(
+                "ADKG main thread of node `{}` failed to set ACSS input",
+                self.id
+            );
+        }
 
         // Try to join ABAs task, and obtain the final list of parties.
         info!(
