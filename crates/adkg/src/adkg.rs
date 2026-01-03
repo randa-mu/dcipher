@@ -1,3 +1,4 @@
+use futures::{pin_mut, FutureExt};
 mod randex;
 pub(crate) mod types;
 
@@ -203,17 +204,43 @@ where
             .await
     }
 
-    /// Start the ADKG with a delay
-    pub async fn start_delayed<T>(
-        &mut self,
-        start: impl Future,
-        rng: &mut impl AdkgRng,
+    /// An alternative way to execute the adkg by managing the lifecycle asynchronously.
+    /// The function executes the ADKG once `start` is resolved, and stops `stop` is resolved.
+    ///
+    /// The function returns immediately with a future that resolves upon obtaining an output.
+    pub fn run<T>(
+        mut self,
+        start: impl Future + Send + 'static,
+        stop: impl Future<Output: Send> + Send + 'static,
+        mut rng: impl AdkgRng + 'static,
         transport: Arc<T>,
-    ) -> Result<AdkgOutput<CG>, AdkgError>
+    ) -> impl Future<Output = Option<Result<AdkgOutput<CG>, AdkgError>>>
     where
-        T: TopicBasedTransport<Identity = PartyId>,
+        T: TopicBasedTransport<Identity = PartyId> + Send + Sync + 'static,
     {
-        self.execute_internal(start, rng, transport).await
+        let (output_tx, output_rx) = tokio::sync::oneshot::channel();
+        tokio::spawn({
+            async move {
+                pin_mut!(stop);
+
+                tokio::select! {
+                    out = self.execute_internal(start, &mut rng, transport) => {
+                        // Send output
+                        let _ = output_tx.send(out);
+
+                        // Wait for the stop signal
+                        stop.await;
+                    },
+                    _ = &mut stop => (),
+                }
+
+                // stop signal received, stop ADKG
+                info!("Stop signal received, stopping ADKG");
+                self.stop().await;
+            }
+        });
+
+        output_rx.map(Result::ok)
     }
 
     pub async fn stop(mut self) {
