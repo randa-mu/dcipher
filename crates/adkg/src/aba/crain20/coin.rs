@@ -89,7 +89,6 @@ where
     where
         RNG: RngCore + CryptoRng,
     {
-        // let coin_input = Self::coin_input(usize::from(self.sid), &coin_keys.combined_vk, r)?;
         let eval = CT::eval(
             &coin_keys.sk,
             &coin_keys.params,
