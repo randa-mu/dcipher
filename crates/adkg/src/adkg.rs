@@ -1,4 +1,4 @@
-use futures::{pin_mut, FutureExt};
+use futures::{FutureExt, pin_mut};
 mod randex;
 pub(crate) mod types;
 
