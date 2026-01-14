@@ -36,10 +36,122 @@ function "image_tags" {
   )
 }
 
-# Target for metadata-action integration (if we use metadata-action in CI)
 target "docker-metadata-action" {}
 
-# Default group to build all targets
+# --- CI CACHE TARGETS ---
+
+target "rust-base-internal" {
+  context    = "."
+  dockerfile = "bin/Dockerfile.base"
+  target     = "rust-base-internal"
+}
+
+# --- COMMON CONFIGURATION ---
+
+target "rust-binary-common" {
+  inherits = ["docker-metadata-action"]
+  context  = "."
+  # This creates a proper dependency: binary targets wait for rust-base-internal to build first
+  contexts = {
+    rust-base-internal = "target:rust-base-internal"
+  }
+  args = {
+    base_stage_alias = "rust-base-internal"
+  }
+}
+
+# --- BINARY TARGETS ---
+
+target "adkg-cli" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/adkg-cli/Dockerfile"
+  tags       = image_tags("adkg-cli")
+  labels = {
+    "org.opencontainers.image.title"       = "adkg-cli"
+    "org.opencontainers.image.description" = "ADKG CLI tool"
+  }
+}
+
+target "blocklock-agent" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/blocklock-agent/Dockerfile"
+  tags       = image_tags("blocklock-agent")
+  labels = {
+    "org.opencontainers.image.title"       = "blocklock-agent"
+    "org.opencontainers.image.description" = "Blocklock Agent"
+  }
+}
+
+target "monitoring" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/monitoring/Dockerfile"
+  tags       = image_tags("monitoring")
+  labels = {
+    "org.opencontainers.image.title"       = "monitoring"
+    "org.opencontainers.image.description" = "Monitoring service"
+  }
+}
+
+target "onlyswaps-smoketest" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/onlyswaps-smoketest/Dockerfile"
+  tags       = image_tags("onlyswaps-smoketest")
+  labels = {
+    "org.opencontainers.image.title"       = "onlyswaps-smoketest"
+    "org.opencontainers.image.description" = "OnlySwaps Smoketest"
+  }
+}
+
+target "onlyswaps-solver" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/onlyswaps-solver/Dockerfile"
+  tags       = image_tags("onlyswaps-solver")
+  labels = {
+    "org.opencontainers.image.title"       = "onlyswaps-solver"
+    "org.opencontainers.image.description" = "OnlySwaps Solver"
+  }
+}
+
+target "onlyswaps-state-api" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/onlyswaps-state-api/Dockerfile"
+  tags       = image_tags("onlyswaps-state-api")
+  labels = {
+    "org.opencontainers.image.title"       = "onlyswaps-state-api"
+    "org.opencontainers.image.description" = "OnlySwaps State API"
+  }
+}
+
+target "onlyswaps-verifier" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/onlyswaps-verifier/Dockerfile"
+  tags       = image_tags("onlyswaps-verifier")
+  labels = {
+    "org.opencontainers.image.title"       = "onlyswaps-verifier"
+    "org.opencontainers.image.description" = "OnlySwaps Verifier"
+  }
+}
+
+target "randomness-agent" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/randomness-agent/Dockerfile"
+  tags       = image_tags("randomness-agent")
+  labels = {
+    "org.opencontainers.image.title"       = "randomness-agent"
+    "org.opencontainers.image.description" = "Randomness Agent"
+  }
+}
+
+target "dsigner-legacy-http" {
+  inherits   = ["rust-binary-common"]
+  dockerfile = "bin/dsigner/examples/dsigner_legacy_http/Dockerfile"
+  tags       = image_tags("dsigner-legacy-http")
+  labels = {
+    "org.opencontainers.image.title"       = "dsigner-legacy-http"
+    "org.opencontainers.image.description" = "DSigner Legacy HTTP"
+  }
+}
+
 group "default" {
   targets = [
     "adkg-cli",
@@ -53,121 +165,3 @@ group "default" {
     "dsigner-legacy-http",
   ]
 }
-
-# Group for onlyswaps services only
-group "onlyswaps" {
-  targets = [
-    "onlyswaps-smoketest",
-    "onlyswaps-solver",
-    "onlyswaps-state-api",
-    "onlyswaps-verifier",
-  ]
-}
-
-# Group for agent services
-group "agents" {
-  targets = [
-    "blocklock-agent",
-    "randomness-agent",
-  ]
-}
-
-target "adkg-cli" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/adkg-cli/Dockerfile"
-  tags       = image_tags("adkg-cli")
-  labels = {
-    "org.opencontainers.image.title"       = "adkg-cli"
-    "org.opencontainers.image.description" = "ADKG CLI tool"
-  }
-}
-
-target "blocklock-agent" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/blocklock-agent/Dockerfile"
-  tags       = image_tags("blocklock-agent")
-  labels = {
-    "org.opencontainers.image.title"       = "blocklock-agent"
-    "org.opencontainers.image.description" = "Blocklock Agent"
-  }
-}
-
-target "monitoring" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/monitoring/Dockerfile"
-  tags       = image_tags("monitoring")
-  labels = {
-    "org.opencontainers.image.title"       = "monitoring"
-    "org.opencontainers.image.description" = "Monitoring service"
-  }
-}
-
-target "onlyswaps-smoketest" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/onlyswaps-smoketest/Dockerfile"
-  tags       = image_tags("onlyswaps-smoketest")
-  labels = {
-    "org.opencontainers.image.title"       = "onlyswaps-smoketest"
-    "org.opencontainers.image.description" = "OnlySwaps Smoketest"
-  }
-}
-
-target "onlyswaps-solver" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/onlyswaps-solver/Dockerfile"
-  tags       = image_tags("onlyswaps-solver")
-  labels = {
-    "org.opencontainers.image.title"       = "onlyswaps-solver"
-    "org.opencontainers.image.description" = "OnlySwaps Solver"
-  }
-}
-
-target "onlyswaps-state-api" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/onlyswaps-state-api/Dockerfile"
-  tags       = image_tags("onlyswaps-state-api")
-  labels = {
-    "org.opencontainers.image.title"       = "onlyswaps-state-api"
-    "org.opencontainers.image.description" = "OnlySwaps State API"
-  }
-}
-
-target "onlyswaps-verifier" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/onlyswaps-verifier/Dockerfile"
-  tags       = image_tags("onlyswaps-verifier")
-  labels = {
-    "org.opencontainers.image.title"       = "onlyswaps-verifier"
-    "org.opencontainers.image.description" = "OnlySwaps Verifier"
-  }
-}
-
-target "randomness-agent" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/randomness-agent/Dockerfile"
-  tags       = image_tags("randomness-agent")
-  labels = {
-    "org.opencontainers.image.title"       = "randomness-agent"
-    "org.opencontainers.image.description" = "Randomness Agent"
-  }
-}
-
-target "dsigner-legacy-http" {
-  inherits   = ["docker-metadata-action"]
-  context    = "."
-  dockerfile = "bin/dsigner/examples/dsigner_legacy_http/Dockerfile"
-  tags       = image_tags("dsigner-legacy-http")
-  labels = {
-    "org.opencontainers.image.title"       = "dsigner-legacy-http"
-    "org.opencontainers.image.description" = "DSigner Legacy HTTP"
-  }
-}
-
