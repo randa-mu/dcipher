@@ -1090,7 +1090,7 @@ dependencies = [
 [[package]]
 name = "ark-ff"
 version = "0.5.0"
-source = "git+https://github.com/azixus/algebra?branch=fix%2FfieldHasher-v0.5.0#439d6ba5b981578783769c475c02279d38ec9fbb"
+source = "git+https://github.com/randa-mu/algebra?branch=fix%2FfieldHasher-v0.5.0#439d6ba5b981578783769c475c02279d38ec9fbb"
 dependencies = [
  "ark-ff-asm 0.5.0",
  "ark-ff-macros 0.5.0",
@@ -4506,7 +4506,7 @@ dependencies = [
 [[package]]
 name = "libp2p-floodsub"
 version = "0.46.0"
-source = "git+https://github.com/azixus/rust-libp2p?branch=fix%2Ffloodsub-msg-size#da4ba797fc4d0d11bd0cfd503c7fe4735b4af3d2"
+source = "git+https://github.com/randa-mu/rust-libp2p?branch=fix%2Ffloodsub-msg-size#da4ba797fc4d0d11bd0cfd503c7fe4735b4af3d2"
 dependencies = [
  "asynchronous-codec",
  "bytes",
