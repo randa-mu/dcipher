@@ -9,8 +9,7 @@ use crate::network::RetryStrategy;
 use crate::rbc::ReliableBroadcastConfig;
 use crate::rbc::r4::Rbc4RoundsConfig;
 use crate::vss::acss::AcssConfig;
-use crate::vss::acss::hbacss0::HbAcss0Config;
-use crate::vss::acss::hbacss0::PedersenSecret;
+use crate::vss::acss::hbacss0::{HbAcss0Config, Hbacss0Input};
 use ark_ec::{CurveGroup, PrimeGroup};
 use ark_std::UniformRand;
 use digest::core_api::BlockSizeUser;
@@ -51,7 +50,7 @@ where
             'static,
             Self::Curve,
             PartyId,
-            Input = Vec<PedersenSecret<<Self::Curve as PrimeGroup>::ScalarField>>,
+            Input = Hbacss0Input<<Self::Curve as PrimeGroup>::ScalarField>,
         >;
     type ABAConfig: AbaConfig<'static, PartyId>;
 

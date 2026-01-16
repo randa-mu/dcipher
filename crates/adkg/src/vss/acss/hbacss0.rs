@@ -11,9 +11,9 @@ use crate::helpers::PartyId;
 use crate::network::{RetryStrategy, broadcast_with_self};
 use crate::nizk::NIZKDleqProof;
 use crate::rbc::ReliableBroadcastConfig;
-use crate::vss::acss::hbacss0::types::{PedersenPartyShares, ShareRecoveryMessage};
-use crate::vss::pedersen;
+use crate::vss::acss::hbacss0::types::{PartyShares, ShareRecoveryMessage};
 use crate::vss::pedersen::PedersenPartyShare;
+use crate::vss::{feldman, pedersen};
 use crate::{
     pke::ec_hybrid_chacha20poly1305::{self, EphemeralMultiHybridCiphertext},
     rbc::{RbcPredicate, ReliableBroadcast},
@@ -123,19 +123,35 @@ pub struct PedersenSecret<F> {
     pub r: F,
 }
 
+/// The input of the Feldman + Pedersen-based ACSS.
+pub struct Hbacss0Input<F> {
+    pub feld: F,
+    pub peds: Vec<PedersenSecret<F>>,
+}
+
 /// The public polynomial output by the Pedersen-based ACSS.
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(bound(
     serialize = "CG: PointSerializeCompressed",
     deserialize = "CG: PointDeserializeCompressed"
 ))]
-pub struct PublicPoly<CG>(#[serde(with = "utils::serialize::point::base64::vec")] pub Vec<CG>);
+pub struct PedPublicPoly<CG>(#[serde(with = "utils::serialize::point::base64::vec")] pub Vec<CG>);
+
+/// The public polynomial output by the ACSS.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(bound(
+    serialize = "CG: PointSerializeCompressed",
+    deserialize = "CG: PointDeserializeCompressed"
+))]
+pub struct FeldPublicPoly<CG>(#[serde(with = "utils::serialize::point::base64::vec")] pub Vec<CG>);
 
 /// The output of the Pedersen-based ACSS.
 #[derive(Clone)]
 pub struct Hbacss0Output<CG: CurveGroup> {
+    pub feld_share: CG::ScalarField,
+    pub feld_public_poly: FeldPublicPoly<CG>,
     pub shares: Vec<PedersenPartyShare<CG::ScalarField>>,
-    pub public_polys: Vec<PublicPoly<CG>>,
+    pub public_polys: Vec<PedPublicPoly<CG>>,
 }
 
 impl<'a, CG, H, RBCConfig> AcssConfig<'a, CG, PartyId> for HbAcss0Config<CG, H, RBCConfig>
@@ -146,7 +162,7 @@ where
     H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     RBCConfig: for<'lt_rbc> ReliableBroadcastConfig<'lt_rbc, PartyId> + 'a,
 {
-    type Input = Vec<PedersenSecret<CG::ScalarField>>;
+    type Input = Hbacss0Input<CG::ScalarField>;
     type Output = Hbacss0Output<CG>;
     type Error = Box<AcssError>;
 
@@ -218,12 +234,12 @@ where
     T: Transport<Identity = PartyId>,
 {
     type Error = Box<AcssError>;
-    type Input = Vec<PedersenSecret<CG::ScalarField>>;
+    type Input = Hbacss0Input<CG::ScalarField>;
     type Output = Hbacss0Output<CG>;
 
     async fn deal<RNG>(
         self,
-        ped_sks: Self::Input,
+        s: Self::Input,
         cancel: CancellationToken,
         output: oneshot::Sender<Self::Output>,
         rng: &mut RNG,
@@ -234,7 +250,7 @@ where
         let id = self.config.id;
         let res = select! {
             res = self.acss_dealer(
-                ped_sks,
+                s,
                 cancel.child_token(),
                 output,
                 rng
@@ -307,7 +323,7 @@ where
     /// Beginning of the ACSS protocol as the dealer.
     async fn acss_dealer<RNG>(
         mut self,
-        ped_sks: impl IntoIterator<Item = PedersenSecret<CG::ScalarField>>,
+        s: Hbacss0Input<CG::ScalarField>,
         rbc_cancel: CancellationToken,
         output: oneshot::Sender<Hbacss0Output<CG>>,
         rng: &mut RNG,
@@ -321,7 +337,10 @@ where
         // Pedersen's Polynomial Commitment of degree t where p(0) = s
         let g = self.config.g;
         let h = self.config.h;
-        let vss_shares: Vec<_> = ped_sks
+        let feld_vss_share = feldman::share(&s.feld, &g, self.config.n, self.config.t, rng);
+        let feld_public_poly = FeldPublicPoly(feld_vss_share.get_public_poly().to_vec());
+        let ped_vss_shares: Vec<_> = s
+            .peds
             .into_iter()
             .map(|ped_sk| {
                 pedersen::share(
@@ -335,25 +354,33 @@ where
                 )
             })
             .collect();
-        let public_polys: Vec<_> = vss_shares
+        let ped_public_polys: Vec<_> = ped_vss_shares
             .iter()
             .map(|vss_share| vss_share.get_public_poly().to_vec().into())
             .collect();
 
+        let get_party_shares = |i| {
+            let feld_share = *feld_vss_share
+                .get_party_secrets(i)
+                .expect("feldan output less than n shares");
+            let ped_shares: Vec<_> = ped_vss_shares
+                .iter()
+                .map(|vss_share| {
+                    vss_share
+                        .get_party_secrets(&i)
+                        .expect("feldman output less than n shares") // gen n shares, loop n times
+                })
+                .collect();
+            PartyShares {
+                feld_share,
+                ped_shares,
+            }
+        };
+
         // Encrypt and Disperse
         // Each share is encrypted towards the receiving party
         let shares = PartyId::iter_all(self.config.n)
-            .map(|i| -> Result<Vec<u8>, _> {
-                let shares: Vec<_> = vss_shares
-                    .iter()
-                    .map(|vss_share| {
-                        vss_share
-                            .get_party_secrets(&i)
-                            .expect("feldman output less than n shares") // gen n shares, loop n times
-                    })
-                    .collect();
-                bson::to_vec(&PedersenPartyShares { shares })
-            })
+            .map(|i| -> Result<Vec<u8>, _> { bson::to_vec(&get_party_shares(i)) })
             .collect::<Result<Vec<Vec<u8>>, _>>()
             .map_err(|e| AcssError::BsonSer(e, "dealer failed to serialize vss shares"))?; // unexpected error, abort ACSS
 
@@ -364,7 +391,8 @@ where
         // Disperse encrypted shares and public polynomial through the broadcast channel
         let broadcast = AcssBroadcastMessage {
             enc_shares,
-            public_polys: public_polys.clone(),
+            feld_public_poly: feld_public_poly.clone(),
+            ped_public_polys: ped_public_polys.clone(),
         };
         let m = bson::to_vec(&broadcast)
             .map_err(|e| AcssError::BsonSer(e, "dealer failed to serialize broadcast message"))?; // unexpected error, abort ACSS
@@ -384,14 +412,13 @@ where
 
         // Continue the execution of the acss protocol as a normal participant.
         let id = self.config.id;
+        let shares = get_party_shares(id);
         self.acss_continue(
-            vss_shares
-                .iter()
-                .map(|vss_share| vss_share.get_party_secrets(&id))
-                .collect(),
+            Some(shares),
             output,
             &broadcast.enc_shares,
-            public_polys,
+            feld_public_poly,
+            ped_public_polys,
             rng,
         )
         .await
@@ -446,13 +473,15 @@ where
         // Decrypt and validate share
         let enc_shares = &m.enc_shares;
         let shared_key = enc_shares.derive_shared_key(&self.config.sk);
-        let public_polys = m.public_polys;
+        let feld_public_poly = m.feld_public_poly;
+        let ped_public_polys = m.ped_public_polys;
 
         // If the share is valid, the nodes enters the reconstruction process
         // otherwise, the node enters the recovery process
-        let share = ped_eval_verify(
+        let shares = dual_eval_verify(
             enc_shares,
-            public_polys.iter(),
+            &feld_public_poly,
+            ped_public_polys.iter(),
             &self.config.g,
             &self.config.h,
             self.config.id,
@@ -460,17 +489,25 @@ where
             &self.config.pks[self.config.id],
         )
         .ok();
-        self.acss_continue(share, output, &m.enc_shares, public_polys, rng)
-            .await
+        self.acss_continue(
+            shares,
+            output,
+            &m.enc_shares,
+            feld_public_poly,
+            ped_public_polys,
+            rng,
+        )
+        .await
     }
 
     /// Execute the agreement / implication / share recovery part of the protocol.
     async fn acss_continue<RNG>(
         self,
-        shares: Option<Vec<PedersenPartyShare<CG::ScalarField>>>,
+        shares: Option<PartyShares<CG::ScalarField>>,
         output: oneshot::Sender<Hbacss0Output<CG>>,
         enc_shares: &EphemeralMultiHybridCiphertext<CG>,
-        public_polys: Vec<PublicPoly<CG>>,
+        feld_public_poly: FeldPublicPoly<CG>,
+        ped_public_polys: Vec<PedPublicPoly<CG>>,
         rng: &mut RNG,
     ) -> Result<(), Box<AcssError>>
     where
@@ -582,7 +619,12 @@ where
 
                 AcssMessage::Ready => {
                     hbacss0
-                        .ready_handler(sender, &mut state_machine, &public_polys)
+                        .ready_handler(
+                            sender,
+                            &mut state_machine,
+                            &feld_public_poly,
+                            &ped_public_polys,
+                        )
                         .await
                 }
 
@@ -591,7 +633,8 @@ where
                         .implicate_handler(
                             &ski,
                             enc_shares,
-                            &public_polys,
+                            &feld_public_poly,
+                            &ped_public_polys,
                             sender,
                             &mut state_machine,
                         )
@@ -603,7 +646,8 @@ where
                         .recovery_handler(
                             &shared_key,
                             enc_shares,
-                            &public_polys,
+                            &feld_public_poly,
+                            &ped_public_polys,
                             sender,
                             &mut state_machine,
                         )
@@ -622,13 +666,15 @@ where
 impl<CG: CurveGroup> From<Hbacss0Output<CG>> for ShareWithPoly<CG> {
     fn from(value: Hbacss0Output<CG>) -> Self {
         Self {
+            mvba_public_poly: value.feld_public_poly,
+            mvba_share: value.feld_share,
             public_polys: value.public_polys,
             shares: value.shares,
         }
     }
 }
 
-impl<CG> PublicPoly<CG> {
+impl<CG> PedPublicPoly<CG> {
     pub fn to_vec(self) -> Vec<CG> {
         self.0
     }
@@ -638,7 +684,7 @@ impl<CG> PublicPoly<CG> {
     }
 }
 
-impl<CG> From<Vec<CG>> for PublicPoly<CG> {
+impl<CG> From<Vec<CG>> for PedPublicPoly<CG> {
     fn from(v: Vec<CG>) -> Self {
         Self(v)
     }
@@ -671,10 +717,12 @@ where
         // Decrypt and validate share
         let enc_shares = &m.enc_shares;
         let shared_key = enc_shares.derive_shared_key(&self.sk);
-        let public_poly = &m.public_polys;
-        ped_eval_verify(
+        let feld_public_poly = &m.feld_public_poly;
+        let ped_public_poly = &m.ped_public_polys;
+        dual_eval_verify(
             enc_shares,
-            public_poly,
+            feld_public_poly,
+            ped_public_poly,
             &self.g,
             &self.h,
             self.i,
@@ -686,15 +734,17 @@ where
 }
 
 /// Verify that a hybrid encryption ciphertext can be decrypted and is a valid Feldman share for party i.
-fn ped_eval_verify<'a, CG>(
+#[allow(clippy::too_many_arguments)]
+fn dual_eval_verify<'a, CG>(
     ct: &EphemeralMultiHybridCiphertext<CG>,
-    public_polys: impl IntoIterator<Item = &'a PublicPoly<CG>, IntoIter: ExactSizeIterator>,
+    feld_poly: &FeldPublicPoly<CG>,
+    ped_public_polys: impl IntoIterator<Item = &'a PedPublicPoly<CG>, IntoIter: ExactSizeIterator>,
     g: &CG,
     h: &CG,
     i: PartyId,
     shared_key: &CG,
     recipient_pk: &CG,
-) -> Result<Vec<PedersenPartyShare<CG::ScalarField>>, ()>
+) -> Result<PartyShares<CG::ScalarField>, ()>
 where
     CG: CurveGroup + PointSerializeCompressed,
     CG::ScalarField: FqDeserialize,
@@ -704,36 +754,47 @@ where
     let pt = ct
         .decrypt_one_with_shared_key(i.as_index(), shared_key, recipient_pk)
         .map_err(|_| {
-            warn!("Failed to decrypt pedersen party shares");
+            warn!("Failed to decrypt party shares");
         })?;
 
-    let PedersenPartyShares::<CG::ScalarField> { shares } = bson::from_slice(&pt).map_err(|e| {
-        warn!(error = ?e, "Failed to deserialize pedersen party shares");
+    let party_shares: PartyShares<CG::ScalarField> = bson::from_slice(&pt).map_err(|e| {
+        warn!(error = ?e, "Failed to deserialize party shares");
     })?;
+    let PartyShares {
+        feld_share,
+        ped_shares,
+    } = &party_shares;
 
-    let public_polys = public_polys.into_iter();
-    if public_polys.len() != shares.len() {
+    let public_polys = ped_public_polys.into_iter();
+    if public_polys.len() != ped_shares.len() {
         warn!(
             expected_len = public_polys.len(),
-            len = shares.len(),
+            len = ped_shares.len(),
             "Attempting to verify pedersen shares with invalid length"
         );
         Err(())?
     }
 
     // Try to verify the shares, or return Err(())
-    if public_polys.zip(shares.iter()).all(|(public_poly, share)| {
-        pedersen::eval_verify(
-            &public_poly.to_owned().to_vec(),
-            i.into(),
-            &share.si,
-            &share.ri,
-            g,
-            h,
-        )
-        .is_ok()
-    }) {
-        Ok(shares)
+    if feldman::eval_verify(&feld_poly.0, i, feld_share, g).is_err() {
+        return Err(());
+    }
+
+    if public_polys
+        .zip(ped_shares.iter())
+        .all(|(public_poly, share)| {
+            pedersen::eval_verify(
+                &public_poly.to_owned().to_vec(),
+                i.into(),
+                &share.si,
+                &share.ri,
+                g,
+                h,
+            )
+            .is_ok()
+        })
+    {
+        Ok(party_shares)
     } else {
         Err(())
     }
@@ -777,7 +838,9 @@ mod tests {
     use crate::helpers::PartyId;
     use crate::rbc::r4::Rbc4RoundsConfig;
     use crate::vss::acss::AcssConfig;
-    use crate::vss::acss::hbacss0::{APPNAME, HbAcss0Config, NIZK_DLEQ_SUFFIX, PedersenSecret};
+    use crate::vss::acss::hbacss0::{
+        APPNAME, HbAcss0Config, Hbacss0Input, NIZK_DLEQ_SUFFIX, PedersenSecret,
+    };
     use crate::{
         helpers::{lagrange_interpolate_at, u64_from_usize},
         network::RetryStrategy,
@@ -785,6 +848,7 @@ mod tests {
     };
     use ark_bn254::Bn254;
     use ark_ec::{PrimeGroup, pairing::Pairing};
+    use ark_ff::Zero;
     use ark_std::UniformRand;
     use dcipher_network::topic::dispatcher::TopicDispatcher;
     use dcipher_network::transports::in_memory::MemoryNetwork;
@@ -811,6 +875,7 @@ mod tests {
         let g = G::generator();
         let h = ark_bn254::G1Projective::hash_to_curve(b"PEDERSEN_H", b"TEST_DST_PEDERSEN_H");
 
+        let feld_s = ScalarField::rand(&mut rand::thread_rng());
         let s = ScalarField::rand(&mut rand::thread_rng());
         let r = ScalarField::rand(&mut rand::thread_rng());
         let mut sks: VecDeque<ScalarField> = (1..=n)
@@ -858,7 +923,10 @@ mod tests {
                         .new_instance_with_prefix("hbacss0".to_owned(), Arc::new(transport))
                         .expect("failed to create acss instance");
                     acss.deal(
-                        vec![PedersenSecret { s, r }],
+                        Hbacss0Input {
+                            feld: feld_s,
+                            peds: vec![PedersenSecret { s, r }],
+                        },
                         cancellation_token,
                         sender,
                         &mut OsRng,
@@ -914,18 +982,28 @@ mod tests {
             });
         }
 
-        let mut shares = vec![];
+        let mut feld_shares = vec![];
+        let mut ped_shares = vec![];
         while let Some(res) = tasks.join_next().await {
             assert!(res.is_ok());
             let (i, out) = res.unwrap();
 
-            shares.push((i, out.shares[0].si));
+            ped_shares.push((i, out.shares[0].si));
+            feld_shares.push((i, out.feld_share));
         }
 
-        let s = lagrange_interpolate_at::<G>(&shares[0..=t], 0);
-        let s2 = lagrange_interpolate_at::<G>(&shares[t..=2 * t], 0);
+        let ped_s = lagrange_interpolate_at::<G>(&ped_shares[0..=t], 0);
+        let ped_s2 = lagrange_interpolate_at::<G>(&ped_shares[t..=2 * t], 0);
+        let feld_s = lagrange_interpolate_at::<G>(&feld_shares[0..=t], 0);
+        let feld_s2 = lagrange_interpolate_at::<G>(&feld_shares[t..=2 * t], 0);
 
-        assert_eq!(s, s2)
+        assert_eq!(ped_s, ped_s2);
+        assert!(!ped_s.is_zero());
+
+        assert_eq!(feld_s, feld_s2);
+        assert!(!feld_s.is_zero());
+
+        assert_ne!(ped_s, feld_s);
     }
 
     #[test]
