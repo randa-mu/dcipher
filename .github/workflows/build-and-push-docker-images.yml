@@ -82,7 +82,23 @@ jobs:
             rust-base-internal.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-internal
             rust-base-internal.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-internal,mode=max
 
-            # 3. Binaries: Cache from both bases + their own specific cache
+            # 3. Binaries: Cache from base-internal + their own specific cache
             *.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-internal
-            *.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:${{ TARGET }}
-            *.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:${{ TARGET }},mode=max
+            adkg-cli.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:adkg-cli
+            adkg-cli.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:adkg-cli,mode=max
+            blocklock-agent.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:blocklock-agent
+            blocklock-agent.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:blocklock-agent,mode=max
+            monitoring.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:monitoring
+            monitoring.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:monitoring,mode=max
+            onlyswaps-smoketest.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-smoketest
+            onlyswaps-smoketest.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-smoketest,mode=max
+            onlyswaps-solver.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-solver
+            onlyswaps-solver.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-solver,mode=max
+            onlyswaps-state-api.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-state-api
+            onlyswaps-state-api.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-state-api,mode=max
+            onlyswaps-verifier.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-verifier
+            onlyswaps-verifier.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:onlyswaps-verifier,mode=max
+            randomness-agent.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:randomness-agent
+            randomness-agent.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:randomness-agent,mode=max
+            dsigner-legacy-http.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:dsigner-legacy-http
+            dsigner-legacy-http.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:dsigner-legacy-http,mode=max
