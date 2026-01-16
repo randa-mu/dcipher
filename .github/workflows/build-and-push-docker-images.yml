@@ -73,16 +73,11 @@ jobs:
           source: .
           push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || env.DOCKER_PUSH == 'true' }}
           set: |
-            # 1. Base External: Caches the heavy crates.io downloads/compilations
             rust-binary-common.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-external
             rust-binary-common.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-external,mode=max
-
-            # 2. Base Internal: Caches workspace crates (omnievent, etc.)
             rust-base-internal.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-external
             rust-base-internal.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-internal
             rust-base-internal.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-internal,mode=max
-
-            # 3. Binaries: Cache from base-internal + their own specific cache
             *.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:base-internal
             adkg-cli.cache-from=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:adkg-cli
             adkg-cli.cache-to=type=registry,ref=${{ env.DOCKER_REGISTRY }}/buildkit-cache:adkg-cli,mode=max
