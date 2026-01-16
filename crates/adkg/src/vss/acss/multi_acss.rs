@@ -24,9 +24,19 @@ where
     acss_config: Arc<ACSSConfig>,
 
     // Attributes used to manage the subtasks
-    acss_tasks: JoinSet<(SessionId, Result<(), ACSSConfig::Error>)>, // set of acss tasks
+    acss_tasks: JoinSet<(SessionId, Result<(), MultiAcssError>)>, // set of acss tasks
     acss_receivers: Vec<Option<oneshot::Receiver<ACSSConfig::Output>>>,
+    acss_leader_sender: Option<oneshot::Sender<ACSSConfig::Input>>, // set the leader input
     cancels: Vec<CancellationToken>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum MultiAcssError {
+    #[error(transparent)]
+    Acss(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("failed to get ACSS input from channel: sender dropped")]
+    AcssInputDropped,
 }
 
 impl<CG, ACSSConfig> MultiAcss<CG, ACSSConfig>
@@ -42,12 +52,14 @@ where
             acss_config,
             acss_tasks: JoinSet::new(),
             acss_receivers: vec![],
+            acss_leader_sender: None,
             cancels,
         }
     }
 
     /// Start the n parallel ACSS instances in the background.
-    pub fn start<T>(&mut self, s: ACSSConfig::Input, rng: &mut impl AdkgRng, transport: T)
+    /// Returns a channel used to transmit the ACSS secret.
+    pub fn start<T>(&mut self, rng: &mut impl AdkgRng, transport: T)
     where
         T: TopicBasedTransport<Identity = PartyId>,
     {
@@ -57,7 +69,11 @@ where
             .map(|(sender, receiver)| (sender, Some(receiver)))
             .collect();
         self.acss_receivers = receivers;
-        let mut s = Some(s); // need an option for interior mutability...
+
+        // Create one channel for the ACSS input
+        let (input_tx, input_rx) = oneshot::channel();
+        self.acss_leader_sender = Some(input_tx);
+        let mut input_rx = Some(input_rx); // need an option for interior mutability...
 
         for (sid, cancel, sender) in izip!(
             SessionId::iter_all(self.n_instances),
@@ -77,7 +93,11 @@ where
                 // s is not cloneable, and we only want to move it when sid == node_id
                 // In order to not move s due to the async move below, we take() s only once
                 // here, and use None when sid != node_id. This allows to move the value only once.
-                let s = if sid == node_id { s.take() } else { None };
+                let mut input_rx = if sid == node_id {
+                    input_rx.take()
+                } else {
+                    None
+                };
 
                 let mut rng = rng
                     .get(AdkgRngType::Acss(sid))
@@ -85,24 +105,30 @@ where
                 async move {
                     // Start the acss tasks
                     let res = if sid == node_id {
-                        acss.deal(
-                            s.expect("can only enter once"), // s must be Some(.) since sid == node_id
-                            cancellation_token,
-                            sender,
-                            &mut rng,
-                        )
-                        .instrument(tracing::warn_span!("ACSS::deal", ?sid))
-                        .await
+                        if let Ok(s) = input_rx.take().expect("to enter once").await {
+                            acss.deal(s, cancellation_token, sender, &mut rng)
+                                .instrument(tracing::warn_span!("ACSS::deal", ?sid))
+                                .await
+                                .map_err(|e| MultiAcssError::Acss(e.into()))
+                        } else {
+                            Err(MultiAcssError::AcssInputDropped)
+                        }
                     } else {
                         acss.get_share(sid.into(), cancellation_token, sender, &mut rng)
                             .instrument(tracing::warn_span!("ACSS::get_share", ?sid))
                             .await
+                            .map_err(|e| MultiAcssError::Acss(e.into()))
                     };
 
                     (sid, res)
                 }
             });
         }
+    }
+
+    /// Get the oneshot sender used to set the leader output of the ACSS where self.node_id == sid
+    pub fn get_leader_sender(&mut self) -> Option<oneshot::Sender<ACSSConfig::Input>> {
+        self.acss_leader_sender.take()
     }
 
     /// Create an iterator over the remaining ACSS outputs.
@@ -124,11 +150,11 @@ where
     }
 
     /// Stop the ACSS instances and return Ok(()) if no errors were output, otherwise, return the identifier of failed instances and their errors.
-    pub async fn stop(self) -> Result<(), Vec<(SessionId, ACSSConfig::Error)>> {
+    pub async fn stop(self) -> Result<(), Vec<(SessionId, MultiAcssError)>> {
         // Signal cancellation through each of the cancellation tokens
         self.cancels.iter().for_each(|cancel| cancel.cancel());
 
-        let errors: Vec<(SessionId, ACSSConfig::Error)> = self
+        let errors: Vec<(SessionId, MultiAcssError)> = self
             .acss_tasks
             .join_all()
             .await
