@@ -26,7 +26,7 @@ use utils::serialize::SerializationError;
 use utils::serialize::fq::{FqDeserialize, FqSerialize};
 use utils::serialize::point::{PointDeserializeCompressed, PointSerializeCompressed};
 
-pub const ADKG_VERSION: &str = "v0.1";
+pub const ADKG_VERSION: &str = "v0.2";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AdkgSchemeConfig {

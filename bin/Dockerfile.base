@@ -1,0 +1,55 @@
+FROM lukemathwalker/cargo-chef:latest-rust-1.92 AS chef
+RUN apt-get update \
+ && apt-get install -y protobuf-compiler \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+RUN cargo install cargo-chef sccache --locked
+
+ENV RUSTC_WRAPPER=sccache \
+    SCCACHE_DIR=/sccache
+
+FROM chef AS external-planner
+# Copy workspace root files
+COPY Cargo.toml Cargo.lock ./
+
+# Copy all workspace member Cargo.toml files (cache only busts when deps change)
+# bin/*
+COPY bin/adkg-cli/Cargo.toml bin/adkg-cli/Cargo.toml
+COPY bin/blocklock-agent/Cargo.toml bin/blocklock-agent/Cargo.toml
+COPY bin/dsigner/Cargo.toml bin/dsigner/Cargo.toml
+COPY bin/gen-keys/Cargo.toml bin/gen-keys/Cargo.toml
+COPY bin/monitoring/Cargo.toml bin/monitoring/Cargo.toml
+COPY bin/onlyswaps-smoketest/Cargo.toml bin/onlyswaps-smoketest/Cargo.toml
+COPY bin/onlyswaps-solver/Cargo.toml bin/onlyswaps-solver/Cargo.toml
+COPY bin/onlyswaps-state-api/Cargo.toml bin/onlyswaps-state-api/Cargo.toml
+COPY bin/onlyswaps-verifier/Cargo.toml bin/onlyswaps-verifier/Cargo.toml
+COPY bin/randomness-agent/Cargo.toml bin/randomness-agent/Cargo.toml
+# crates/*
+COPY crates/adkg/Cargo.toml crates/adkg/Cargo.toml
+COPY crates/agent-utils/Cargo.toml crates/agent-utils/Cargo.toml
+COPY crates/config/Cargo.toml crates/config/Cargo.toml
+COPY crates/dcipher-agents/Cargo.toml crates/dcipher-agents/Cargo.toml
+COPY crates/generated/Cargo.toml crates/generated/Cargo.toml
+COPY crates/network/Cargo.toml crates/network/Cargo.toml
+COPY crates/omnievent/Cargo.toml crates/omnievent/Cargo.toml
+COPY crates/onlyswaps-client/Cargo.toml crates/onlyswaps-client/Cargo.toml
+COPY crates/signer/Cargo.toml crates/signer/Cargo.toml
+COPY crates/superalloy/Cargo.toml crates/superalloy/Cargo.toml
+COPY crates/utils/Cargo.toml crates/utils/Cargo.toml
+
+# Create stub source files for each workspace member so cargo metadata works
+RUN find bin crates -name Cargo.toml -execdir sh -c 'mkdir -p src && echo "fn main() {}" > src/main.rs && touch src/lib.rs' \;
+
+RUN mkdir -p bin/dsigner/examples/dsigner_legacy_http && echo "fn main() {}" > bin/dsigner/examples/dsigner_legacy_http/main.rs
+RUN mkdir -p bin/dsigner/examples/dsigner_grpc && echo "fn main() {}" > bin/dsigner/examples/dsigner_grpc/main.rs
+
+RUN cargo chef prepare --recipe-path external.json
+
+FROM chef AS rust-base-internal
+COPY --from=external-planner /app/external.json external.json
+# Caches all external crates.io deps
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    cargo chef cook --release --recipe-path external.json
