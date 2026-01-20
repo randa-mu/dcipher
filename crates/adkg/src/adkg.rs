@@ -1,3 +1,4 @@
+use futures::{FutureExt, pin_mut};
 mod randex;
 pub(crate) mod types;
 
@@ -190,6 +191,7 @@ where
     ACSSConfig::Output: Into<ShareWithPoly<CG>>,
     ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<CG>>,
 {
+    /// Start the ADKG immediately
     pub async fn start<T>(
         &mut self,
         rng: &mut impl AdkgRng,
@@ -198,7 +200,47 @@ where
     where
         T: TopicBasedTransport<Identity = PartyId>,
     {
-        self.execute(rng, transport).await
+        self.execute_internal(std::future::ready(()), rng, transport)
+            .await
+    }
+
+    /// An alternative way to execute the adkg by managing the lifecycle asynchronously.
+    /// The function executes the ADKG once `start` is resolved, and stops `stop` is resolved.
+    ///
+    /// The function returns immediately with a future that resolves upon obtaining an output.
+    pub fn run<T>(
+        mut self,
+        start: impl Future + Send + 'static,
+        stop: impl Future<Output: Send> + Send + 'static,
+        mut rng: impl AdkgRng + 'static,
+        transport: Arc<T>,
+    ) -> impl Future<Output = Option<Result<AdkgOutput<CG>, AdkgError>>>
+    where
+        T: TopicBasedTransport<Identity = PartyId> + Send + Sync + 'static,
+    {
+        let (output_tx, output_rx) = tokio::sync::oneshot::channel();
+        tokio::spawn({
+            async move {
+                pin_mut!(stop);
+
+                tokio::select! {
+                    out = self.execute_internal(start, &mut rng, transport) => {
+                        // Send output
+                        let _ = output_tx.send(out);
+
+                        // Wait for the stop signal
+                        stop.await;
+                    },
+                    _ = &mut stop => (),
+                }
+
+                // stop signal received, stop ADKG
+                info!("Stop signal received, stopping ADKG");
+                self.stop().await;
+            }
+        });
+
+        output_rx.map(Result::ok)
     }
 
     pub async fn stop(mut self) {
@@ -259,8 +301,9 @@ where
         }
     }
 
-    async fn execute<T>(
+    async fn execute_internal<T>(
         &mut self,
+        start_signal: impl Future,
         rng: &mut impl AdkgRng,
         transport: Arc<T>,
     ) -> Result<AdkgOutput<CG>, AdkgError>
@@ -304,11 +347,7 @@ where
             .collect();
 
         // Start the multi RBC, ACSS and ABA
-        state
-            .multi_acss
-            .lock()
-            .await
-            .start(s, rng, transport.clone());
+        state.multi_acss.lock().await.start(rng, transport.clone());
         state
             .multi_rbc
             .lock()
@@ -316,13 +355,21 @@ where
             .start(rbc_predicates, transport.clone());
         state.multi_aba.lock().await.start(rng, transport.clone());
 
+        // Get the ACSS sender
+        let acss_leader_sender = state
+            .multi_acss
+            .lock()
+            .await
+            .get_leader_sender()
+            .expect("failed to get acss leader sender");
+
         // Get the node's own RBC
-        let leader_sender = state
+        let rbc_leader_sender = state
             .multi_rbc
             .lock()
             .await
             .get_leader_sender()
-            .expect("failed to get leader sender");
+            .expect("failed to get rbc leader sender");
 
         // Create cancellation tokens for each subtask
         let acss_cancel = self.cancel.child_token();
@@ -331,7 +378,7 @@ where
 
         // Handler for the key set proposal phase. Manages the termination of
         self.acss_task = Some(task::spawn(Self::acss_task(
-            leader_sender,
+            rbc_leader_sender,
             state.clone(),
             acss_cancel.clone(),
         )));
@@ -343,6 +390,15 @@ where
 
         // Upon termination of jth ABA
         let abas_task = task::spawn(Self::aba_outputs_task(state.clone(), aba_cancel.clone()));
+
+        // Everything has been set-up, wait for the start signal
+        start_signal.await;
+        if acss_leader_sender.send(s).is_err() {
+            error!(
+                "ADKG main thread of node `{}` failed to set ACSS input",
+                self.id
+            );
+        }
 
         // Try to join ABAs task, and obtain the final list of parties.
         info!(
