@@ -18,7 +18,7 @@ use crate::rand::{AdkgRng, AdkgRngType};
 use crate::rbc::ReliableBroadcastConfig;
 use crate::rbc::multi_rbc::MultiRbc;
 use crate::vss::acss::AcssConfig;
-use crate::vss::acss::hbacss0::PedersenSecret;
+use crate::vss::acss::hbacss0::{Hbacss0Input, PedersenSecret};
 use crate::vss::acss::multi_acss::MultiAcss;
 use ark_ec::{AffineRepr, CurveGroup, PrimeGroup};
 use ark_ff::Zero;
@@ -187,7 +187,7 @@ where
     CG::ScalarField: FqSerialize + FqDeserialize,
     H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     RBCConfig: ReliableBroadcastConfig<'static, PartyId>,
-    ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Vec<PedersenSecret<CG::ScalarField>>>,
+    ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Hbacss0Input<CG::ScalarField>>,
     ACSSConfig::Output: Into<ShareWithPoly<CG>>,
     ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<CG>>,
 {
@@ -329,13 +329,20 @@ where
             .map_err(|e| AdkgError::Rng(e.into(), "failed to get acss secret rng"))?;
 
         // Generate random secret scalars to be used in the node's ACSS
-        let s: Vec<_> = (0..shares_per_acss)
+        let pedersen_in: Vec<_> = (0..shares_per_acss)
             .map(|_| {
                 let a = CG::ScalarField::rand(&mut acss_rng);
                 let a_hat = CG::ScalarField::rand(&mut acss_rng);
                 PedersenSecret { s: a, r: a_hat }
             })
             .collect();
+        // Additional feldman secret used in the coin toss of the multi-valued validated byzantine agreement (MVBA)
+        let feldman_in = CG::ScalarField::rand(&mut acss_rng);
+
+        let s = Hbacss0Input {
+            feld: feldman_in,
+            peds: pedersen_in,
+        };
 
         // Generate predicates for each of the RBCs
         let rbc_predicates: Vec<_> = PartyId::iter_all(self.n)
@@ -1208,6 +1215,7 @@ mod tests {
     use std::collections::{HashMap, VecDeque};
     use std::sync::Arc;
     use tokio::task::JoinSet;
+    use tracing_subscriber::EnvFilter;
     use utils::dst::{NamedCurveGroup, NamedDynDigest, Rfc9380DstBuilder};
     use utils::hash_to_curve::HashToCurve;
     use utils::serialize::fq::{FqDeserialize, FqSerialize};
@@ -1237,6 +1245,26 @@ mod tests {
             .into();
 
         CG::hash_to_curve_custom::<H>(b"ADKG_GENERATOR_G", &dst)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 32)]
+    #[ignore]
+    async fn adkg_loop_bn254() {
+        // Static configuration and long term keys
+        let t = 2;
+        let n = 3 * t + 1;
+
+        const SEED: &[u8] = b"ADKG_BN254_TEST_SEED";
+
+        // We use h == Bn254 G1 as the generator for the group public key
+        // and an independent generator g for the ADKG operations.
+        let g = get_generator_g::<_, sha3::Sha3_256>();
+        let h = ark_bn254::G1Projective::generator();
+
+        // run adkg with reconstruction threshold of t
+        loop {
+            run_adkg_test::<_, sha3::Sha3_256>(t, t, n, g, h, SEED).await;
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 32)]
@@ -1287,7 +1315,9 @@ mod tests {
         H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     {
         _ = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::WARN)
+            .with_env_filter(
+                EnvFilter::try_from_env("ADKG_DEBUG").unwrap_or_else(|_| "warn".parse().unwrap()),
+            )
             .try_init();
 
         let sks: VecDeque<CG::ScalarField> = (1..=n)
