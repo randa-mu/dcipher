@@ -1205,7 +1205,7 @@ mod tests {
         let g = get_generator_g::<_, sha3::Sha3_256>();
         let h = ark_bn254::G1Projective::generator();
 
-        // run adkg with reconstruction threshold of t & 2t
+        // run adkg with reconstruction threshold of t
         loop {
             run_adkg_test::<_, sha3::Sha3_256>(t, t, n, g, h, SEED).await;
         }
