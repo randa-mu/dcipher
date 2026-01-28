@@ -1,18 +1,18 @@
 //! Handlers for the various messages sent during the ACSS protocol.
 
 use super::{
-    AcssMessage, AcssStatus, HbAcss0Instance, Hbacss0Output, ImplicateMessage, PublicPoly,
-    StateMachine,
+    AcssMessage, AcssStatus, FeldPublicPoly, HbAcss0Instance, Hbacss0Output, ImplicateMessage,
+    PedPublicPoly, StateMachine,
 };
 use crate::helpers::PartyId;
 use crate::network::broadcast_with_self;
 use crate::rbc::ReliableBroadcastConfig;
-use crate::vss::acss::hbacss0::types::ShareRecoveryMessage;
+use crate::vss::acss::hbacss0::types::{PartyShares, ShareRecoveryMessage};
 use crate::vss::pedersen::PedersenPartyShare;
 use crate::{
     helpers::lagrange_interpolate_at, nizk::NIZKDleqProof,
     pke::ec_hybrid_chacha20poly1305::EphemeralMultiHybridCiphertext,
-    vss::acss::hbacss0::ped_eval_verify,
+    vss::acss::hbacss0::dual_eval_verify,
 };
 use ark_ec::CurveGroup;
 use dcipher_network::TransportSender;
@@ -81,7 +81,8 @@ where
         &self,
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,
-        public_polys: &[PublicPoly<CG>],
+        feld_public_poly: &FeldPublicPoly<CG>,
+        ped_public_polys: &[PedPublicPoly<CG>],
     ) {
         // Skip messages if not waiting for Ok nor Readys nor in ShareRecovery
         match state_machine.status {
@@ -147,8 +148,10 @@ where
 
                         if output
                             .send(Hbacss0Output {
-                                shares: shares.to_owned(),
-                                public_polys: public_polys.to_vec(),
+                                feld_share: shares.feld_share,
+                                shares: shares.ped_shares.clone(),
+                                feld_public_poly: feld_public_poly.to_owned(),
+                                public_polys: ped_public_polys.to_vec(),
                             })
                             .is_err()
                         {
@@ -184,7 +187,8 @@ where
         &self,
         msg: &ImplicateMessage,
         enc_shares: &EphemeralMultiHybridCiphertext<CG>,
-        public_polys: &[PublicPoly<CG>],
+        feld_public_poly: &FeldPublicPoly<CG>,
+        ped_public_polys: &[PedPublicPoly<CG>],
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,
     ) where
@@ -259,9 +263,10 @@ where
         }
 
         // We know that the sender gave us a valid shared key, try to decrypt the original ciphertext sent by the dealer.
-        if ped_eval_verify(
+        if dual_eval_verify(
             enc_shares,
-            public_polys,
+            feld_public_poly,
+            ped_public_polys,
             &self.config.g,
             &self.config.h,
             sender,
@@ -316,7 +321,8 @@ where
         &self,
         shared_key: &[u8],
         enc_shares: &EphemeralMultiHybridCiphertext<CG>,
-        public_polys: &[PublicPoly<CG>],
+        feld_public_poly: &FeldPublicPoly<CG>,
+        ped_public_polys: &[PedPublicPoly<CG>],
         sender: PartyId,
         state_machine: &mut StateMachine<CG>,
     ) where
@@ -344,9 +350,10 @@ where
 
         // We don't verify the source / validity of the shared key.
         // We only need it such that decryption results in a valid dealer's share.
-        let Ok(shares) = ped_eval_verify(
+        let Ok(shares) = dual_eval_verify(
             enc_shares,
-            public_polys,
+            feld_public_poly,
+            ped_public_polys,
             &self.config.g,
             &self.config.h,
             sender,
@@ -368,10 +375,13 @@ where
         #[allow(clippy::int_plus_one)]
         if state_machine.shares_recovery.len() >= self.config.t + 1 {
             // Enough valid shares, interpolate the polynomial
+
             let n = state_machine.shares_recovery.len();
             let mut points_peds: Vec<(Vec<_>, Vec<_>)> = vec![];
+            let mut points_feld = vec![];
             for (&k, shares) in state_machine.shares_recovery.iter() {
-                for (share_idx, share) in shares.iter().enumerate() {
+                points_feld.push((k.into(), shares.feld_share));
+                for (share_idx, share) in shares.ped_shares.iter().enumerate() {
                     if points_peds.len() <= share_idx {
                         points_peds.push((Vec::with_capacity(n), Vec::with_capacity(n)));
                     }
@@ -381,6 +391,7 @@ where
                 }
             }
 
+            let feld_share = lagrange_interpolate_at::<CG>(&points_feld, self.config.id.into());
             let Some(new_shares) = points_peds
                 .into_iter()
                 .map(|(points_si, points_ri)| {
@@ -426,7 +437,10 @@ where
             }
 
             // Update state machine
-            state_machine.status = AcssStatus::WaitingForReadys(new_shares);
+            state_machine.status = AcssStatus::WaitingForReadys(PartyShares {
+                feld_share,
+                ped_shares: new_shares,
+            });
         }
     }
 }

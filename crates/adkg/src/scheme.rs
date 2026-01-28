@@ -1,7 +1,7 @@
 //! Default schemes configurations that can be used for the ADKG.
 
 use crate::aba::AbaConfig;
-use crate::aba::crain20::AbaCrain20Config;
+use crate::aba::crain20::{AbaCrain20Config, EcdhCoinToss};
 use crate::adkg::Adkg;
 use crate::adkg::types::LazyCoinKeys;
 use crate::helpers::PartyId;
@@ -9,8 +9,7 @@ use crate::network::RetryStrategy;
 use crate::rbc::ReliableBroadcastConfig;
 use crate::rbc::r4::Rbc4RoundsConfig;
 use crate::vss::acss::AcssConfig;
-use crate::vss::acss::hbacss0::HbAcss0Config;
-use crate::vss::acss::hbacss0::PedersenSecret;
+use crate::vss::acss::hbacss0::{HbAcss0Config, Hbacss0Input};
 use ark_ec::{CurveGroup, PrimeGroup};
 use ark_std::UniformRand;
 use digest::core_api::BlockSizeUser;
@@ -51,7 +50,7 @@ where
             'static,
             Self::Curve,
             PartyId,
-            Input = Vec<PedersenSecret<<Self::Curve as PrimeGroup>::ScalarField>>,
+            Input = Hbacss0Input<<Self::Curve as PrimeGroup>::ScalarField>,
         >;
     type ABAConfig: AbaConfig<'static, PartyId>;
 
@@ -140,7 +139,8 @@ where
 
     type RBCConfig = Rbc4RoundsConfig;
     type ACSSConfig = HbAcss0Config<Self::Curve, Self::Hash, Self::RBCConfig>;
-    type ABAConfig = AbaCrain20Config<Self::Curve, LazyCoinKeys<Self::Curve>, Self::Hash>;
+    type ABAConfig =
+        AbaCrain20Config<EcdhCoinToss<Self::Curve, Self::Hash>, LazyCoinKeys<Self::Curve>>;
 
     fn generator_g(&self) -> Self::Curve {
         let app_name = format!("ADKG-{ADKG_VERSION}-{}", self.app_name)
@@ -204,7 +204,7 @@ where
             generator_h,
             retry_strategy,
         );
-        let aba_config = AbaCrain20Config::<_, _, _>::new(id, n, t, generator_g, retry_strategy);
+        let aba_config = AbaCrain20Config::<_, _>::new(id, n, t, retry_strategy);
 
         Ok(Adkg::new(
             id,

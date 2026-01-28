@@ -1,12 +1,12 @@
 use crate::aba::AbaConfig;
-use crate::aba::crain20::{AbaInput, CoinKeys};
+use crate::aba::crain20::{AbaInput, CoinKeys, CoinToss, EcdhCoinToss, EcdhCoinTossParams};
 use crate::aba::multi_aba::MultiAba;
 use crate::helpers::{PartyId, SessionId, eval_poly};
 use crate::pok::PokProof;
 use crate::rbc::multi_rbc::MultiRbc;
 use crate::rbc::{RbcPredicate, ReliableBroadcastConfig};
 use crate::vss::acss::AcssConfig;
-use crate::vss::acss::hbacss0::PublicPoly;
+use crate::vss::acss::hbacss0::{FeldPublicPoly, PedPublicPoly};
 use crate::vss::acss::multi_acss::MultiAcss;
 use crate::vss::pedersen::PedersenPartyShare;
 use ark_ec::CurveGroup;
@@ -26,14 +26,17 @@ pub type AbaCrainInput<CG> = AbaInput<LazyCoinKeys<CG>>;
 pub struct LazyCoinKeys<CG: CurveGroup> {
     n: usize,
     t: usize,
+    g: CG,
     outputs: Vec<(SessionId, ShareWithPoly<CG>)>,
 }
 
 /// ACSS output required by ADKG.
 #[derive(Clone)]
 pub struct ShareWithPoly<CG: CurveGroup> {
+    pub mvba_share: CG::ScalarField,
+    pub mvba_public_poly: FeldPublicPoly<CG>,
     pub shares: Vec<PedersenPartyShare<CG::ScalarField>>,
-    pub public_polys: Vec<PublicPoly<CG>>,
+    pub public_polys: Vec<PedPublicPoly<CG>>,
 }
 
 /// Predicate used by reliable broadcasts.
@@ -97,6 +100,7 @@ where
     pub id: PartyId,
     pub n: usize,
     pub t: usize,
+    pub g: CG,
 
     pub multi_rbc: tokio::sync::Mutex<MultiRbc<RBCConfig>>,
     pub multi_acss: tokio::sync::Mutex<MultiAcss<CG, ACSSConfig>>,
@@ -112,43 +116,44 @@ pub(super) struct NotifyMap<S> {
 }
 
 impl<CG: CurveGroup> LazyCoinKeys<CG> {
-    pub fn new(n: usize, t: usize, outputs: Vec<(SessionId, ShareWithPoly<CG>)>) -> Self {
-        Self { n, t, outputs }
+    pub fn new(n: usize, t: usize, g: CG, outputs: Vec<(SessionId, ShareWithPoly<CG>)>) -> Self {
+        Self { n, t, g, outputs }
     }
 }
 
-impl<CG: CurveGroup> From<LazyCoinKeys<CG>> for CoinKeys<CG> {
+impl<CG: CurveGroup, H> From<LazyCoinKeys<CG>> for CoinKeys<EcdhCoinToss<CG, H>>
+where
+    EcdhCoinToss<CG, H>:
+        CoinToss<SecretKey = CG::ScalarField, PublicParams = EcdhCoinTossParams<CG>>,
+    CG: CurveGroup,
+{
     fn from(val: LazyCoinKeys<CG>) -> Self {
         // Obtain the combined public polynomial as p_j = \sum_{k \in rbc_parties} p_k(x)
-        // which is the sum of the public polynomial output by each ACSS specified in the j-th RBC
+        // which is the sum of the MVBA public polynomial output by each ACSS specified in the j-th RBC
         let public_poly: Vec<CG> = (0..=val.t)
             .map(|i| {
                 val.outputs
                     .iter()
-                    .map(|(_, out)| out.public_polys[0].as_vec()[i])
+                    .map(|(_, out)| out.mvba_public_poly.0[i])
                     .sum()
             })
             .collect();
 
-        // Our own secret share, the sum of our ACSS shares
+        // Our own secret share, the sum of our ACSS MVBA shares
         // u_{i,j} = \sum_{k \in rbc_parties} s_{k,j} =
-        let u_i_j: CG::ScalarField = val.outputs.iter().map(|(_, out)| out.shares[0].si).sum();
+        let u_i_j: CG::ScalarField = val.outputs.iter().map(|(_, out)| out.mvba_share).sum();
 
         // Obtain commitments to the secret shares of the other parties
         // (g^{u_{1,j}}, ... g^{u_{n,j}}) = (g^p*(1), ..., g^p*(n))
-        let g_u_is_j: Vec<CG> = PartyId::iter_all(val.n)
-            .map(|i| eval_poly(&u64::from(i).into(), &public_poly))
+        let g_u_is_j = PartyId::iter_all(val.n)
+            .map(|i| (i, eval_poly(&u64::from(i).into(), &public_poly)))
             .collect();
 
         // Interpolate the group public key
         // g^{u_j} = g^{\sum_{k \in rbc_parties} s_k}
         let g_u_j: CG = eval_poly(&0u64.into(), &public_poly);
 
-        CoinKeys {
-            sk: u_i_j,
-            vks: g_u_is_j,
-            combined_vk: g_u_j,
-        }
+        Self::new(val.t, u_i_j, val.g, g_u_j, g_u_is_j)
     }
 }
 
@@ -265,6 +270,7 @@ where
         id: PartyId,
         n: usize,
         t: usize,
+        g: CG,
         multi_rbc: MultiRbc<RBCConfig>,
         multi_acss: MultiAcss<CG, ACSSConfig>,
         multi_aba: MultiAba<ABAConfig>,
@@ -273,6 +279,7 @@ where
             id,
             n,
             t,
+            g,
             multi_rbc: tokio::sync::Mutex::new(multi_rbc),
             multi_acss: tokio::sync::Mutex::new(multi_acss),
             multi_aba: tokio::sync::Mutex::new(multi_aba),

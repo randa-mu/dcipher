@@ -1,3 +1,4 @@
+use futures::{FutureExt, pin_mut};
 mod randex;
 pub(crate) mod types;
 
@@ -17,7 +18,7 @@ use crate::rand::{AdkgRng, AdkgRngType};
 use crate::rbc::ReliableBroadcastConfig;
 use crate::rbc::multi_rbc::MultiRbc;
 use crate::vss::acss::AcssConfig;
-use crate::vss::acss::hbacss0::PedersenSecret;
+use crate::vss::acss::hbacss0::{Hbacss0Input, PedersenSecret};
 use crate::vss::acss::multi_acss::MultiAcss;
 use ark_ec::{AffineRepr, CurveGroup, PrimeGroup};
 use ark_ff::Zero;
@@ -170,7 +171,7 @@ where
             cancel: CancellationToken::new(),
             rbc_task: None,
             acss_task: None,
-            shared_state: SharedState::new(id, n, t, multi_rbc, multi_acss, multi_aba).into(),
+            shared_state: SharedState::new(id, n, t, g, multi_rbc, multi_acss, multi_aba).into(),
             pok_dst,
             _h: PhantomData,
         }
@@ -186,10 +187,11 @@ where
     CG::ScalarField: FqSerialize + FqDeserialize,
     H: Default + DynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     RBCConfig: ReliableBroadcastConfig<'static, PartyId>,
-    ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Vec<PedersenSecret<CG::ScalarField>>>,
+    ACSSConfig: AcssConfig<'static, CG, PartyId, Input = Hbacss0Input<CG::ScalarField>>,
     ACSSConfig::Output: Into<ShareWithPoly<CG>>,
     ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<CG>>,
 {
+    /// Start the ADKG immediately
     pub async fn start<T>(
         &mut self,
         rng: &mut impl AdkgRng,
@@ -198,7 +200,47 @@ where
     where
         T: TopicBasedTransport<Identity = PartyId>,
     {
-        self.execute(rng, transport).await
+        self.execute_internal(std::future::ready(()), rng, transport)
+            .await
+    }
+
+    /// An alternative way to execute the adkg by managing the lifecycle asynchronously.
+    /// The function executes the ADKG once `start` is resolved, and stops `stop` is resolved.
+    ///
+    /// The function returns immediately with a future that resolves upon obtaining an output.
+    pub fn run<T>(
+        mut self,
+        start: impl Future + Send + 'static,
+        stop: impl Future<Output: Send> + Send + 'static,
+        mut rng: impl AdkgRng + 'static,
+        transport: Arc<T>,
+    ) -> impl Future<Output = Option<Result<AdkgOutput<CG>, AdkgError>>>
+    where
+        T: TopicBasedTransport<Identity = PartyId> + Send + Sync + 'static,
+    {
+        let (output_tx, output_rx) = tokio::sync::oneshot::channel();
+        tokio::spawn({
+            async move {
+                pin_mut!(stop);
+
+                tokio::select! {
+                    out = self.execute_internal(start, &mut rng, transport) => {
+                        // Send output
+                        let _ = output_tx.send(out);
+
+                        // Wait for the stop signal
+                        stop.await;
+                    },
+                    _ = &mut stop => (),
+                }
+
+                // stop signal received, stop ADKG
+                info!("Stop signal received, stopping ADKG");
+                self.stop().await;
+            }
+        });
+
+        output_rx.map(Result::ok)
     }
 
     pub async fn stop(mut self) {
@@ -259,8 +301,9 @@ where
         }
     }
 
-    async fn execute<T>(
+    async fn execute_internal<T>(
         &mut self,
+        start_signal: impl Future,
         rng: &mut impl AdkgRng,
         transport: Arc<T>,
     ) -> Result<AdkgOutput<CG>, AdkgError>
@@ -286,13 +329,20 @@ where
             .map_err(|e| AdkgError::Rng(e.into(), "failed to get acss secret rng"))?;
 
         // Generate random secret scalars to be used in the node's ACSS
-        let s: Vec<_> = (0..shares_per_acss)
+        let pedersen_in: Vec<_> = (0..shares_per_acss)
             .map(|_| {
                 let a = CG::ScalarField::rand(&mut acss_rng);
                 let a_hat = CG::ScalarField::rand(&mut acss_rng);
                 PedersenSecret { s: a, r: a_hat }
             })
             .collect();
+        // Additional feldman secret used in the coin toss of the multi-valued validated byzantine agreement (MVBA)
+        let feldman_in = CG::ScalarField::rand(&mut acss_rng);
+
+        let s = Hbacss0Input {
+            feld: feldman_in,
+            peds: pedersen_in,
+        };
 
         // Generate predicates for each of the RBCs
         let rbc_predicates: Vec<_> = PartyId::iter_all(self.n)
@@ -304,11 +354,7 @@ where
             .collect();
 
         // Start the multi RBC, ACSS and ABA
-        state
-            .multi_acss
-            .lock()
-            .await
-            .start(s, rng, transport.clone());
+        state.multi_acss.lock().await.start(rng, transport.clone());
         state
             .multi_rbc
             .lock()
@@ -316,13 +362,21 @@ where
             .start(rbc_predicates, transport.clone());
         state.multi_aba.lock().await.start(rng, transport.clone());
 
+        // Get the ACSS sender
+        let acss_leader_sender = state
+            .multi_acss
+            .lock()
+            .await
+            .get_leader_sender()
+            .expect("failed to get acss leader sender");
+
         // Get the node's own RBC
-        let leader_sender = state
+        let rbc_leader_sender = state
             .multi_rbc
             .lock()
             .await
             .get_leader_sender()
-            .expect("failed to get leader sender");
+            .expect("failed to get rbc leader sender");
 
         // Create cancellation tokens for each subtask
         let acss_cancel = self.cancel.child_token();
@@ -331,7 +385,7 @@ where
 
         // Handler for the key set proposal phase. Manages the termination of
         self.acss_task = Some(task::spawn(Self::acss_task(
-            leader_sender,
+            rbc_leader_sender,
             state.clone(),
             acss_cancel.clone(),
         )));
@@ -343,6 +397,15 @@ where
 
         // Upon termination of jth ABA
         let abas_task = task::spawn(Self::aba_outputs_task(state.clone(), aba_cancel.clone()));
+
+        // Everything has been set-up, wait for the start signal
+        start_signal.await;
+        if acss_leader_sender.send(s).is_err() {
+            error!(
+                "ADKG main thread of node `{}` failed to set ACSS input",
+                self.id
+            );
+        }
 
         // Try to join ABAs task, and obtain the final list of parties.
         info!(
@@ -1024,7 +1087,7 @@ where
                         .completed_acss_outputs
                         .filter_outputs(rbc_parties.iter())
                         .collect();
-                    let coin_keys = LazyCoinKeys::new(state.n, state.t, outputs);
+                    let coin_keys = LazyCoinKeys::new(state.n, state.t, state.g, outputs);
 
                     // Create new channel and send coin_keys through it
                     let (sender, receiver) = oneshot::channel();
@@ -1096,7 +1159,7 @@ where
                         .completed_acss_outputs
                         .filter_outputs(rbc_output.iter())
                         .collect();
-                    let coin_keys = LazyCoinKeys::new(state.n, state.t, outputs);
+                    let coin_keys = LazyCoinKeys::new(state.n, state.t, state.g, outputs);
                     return coin_keys;
                 }
 
@@ -1135,7 +1198,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::aba::crain20::AbaCrain20Config;
+    use crate::aba::crain20::{AbaCrain20Config, EcdhCoinToss};
     use crate::adkg::{APPNAME, Adkg, AdkgOutput};
     use crate::helpers::{PartyId, lagrange_interpolate_at};
     use crate::network::RetryStrategy;
@@ -1152,6 +1215,7 @@ mod tests {
     use std::collections::{HashMap, VecDeque};
     use std::sync::Arc;
     use tokio::task::JoinSet;
+    use tracing_subscriber::EnvFilter;
     use utils::dst::{NamedCurveGroup, NamedDynDigest, Rfc9380DstBuilder};
     use utils::hash_to_curve::HashToCurve;
     use utils::serialize::fq::{FqDeserialize, FqSerialize};
@@ -1181,6 +1245,26 @@ mod tests {
             .into();
 
         CG::hash_to_curve_custom::<H>(b"ADKG_GENERATOR_G", &dst)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 32)]
+    #[ignore]
+    async fn adkg_loop_bn254() {
+        // Static configuration and long term keys
+        let t = 2;
+        let n = 3 * t + 1;
+
+        const SEED: &[u8] = b"ADKG_BN254_TEST_SEED";
+
+        // We use h == Bn254 G1 as the generator for the group public key
+        // and an independent generator g for the ADKG operations.
+        let g = get_generator_g::<_, sha3::Sha3_256>();
+        let h = ark_bn254::G1Projective::generator();
+
+        // run adkg with reconstruction threshold of t
+        loop {
+            run_adkg_test::<_, sha3::Sha3_256>(t, t, n, g, h, SEED).await;
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 32)]
@@ -1231,7 +1315,9 @@ mod tests {
         H: Default + NamedDynDigest + FixedOutputReset + BlockSizeUser + Clone + 'static,
     {
         _ = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::WARN)
+            .with_env_filter(
+                EnvFilter::try_from_env("ADKG_DEBUG").unwrap_or_else(|_| "warn".parse().unwrap()),
+            )
             .try_init();
 
         let sks: VecDeque<CG::ScalarField> = (1..=n)
@@ -1263,8 +1349,12 @@ mod tests {
                     h,
                     RetryStrategy::None,
                 );
-                let aba_config =
-                    AbaCrain20Config::<_, _, sha3::Sha3_256>::new(i, n, t, g, RetryStrategy::None);
+                let aba_config = AbaCrain20Config::<EcdhCoinToss<_, sha3::Sha3_256>, _>::new(
+                    i,
+                    n,
+                    t,
+                    RetryStrategy::None,
+                );
 
                 Adkg::<_, H, _, _, _>::new(
                     i,

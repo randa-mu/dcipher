@@ -128,7 +128,7 @@ async fn adkg_pairing_out_g2<'a, E, S, TBT>(
     adkg_scheme: S,
     topic_transport: Arc<TBT>,
     writer: Option<InMemoryWriter>,
-    mut rng: impl AdkgRng + 'static,
+    rng: impl AdkgRng + 'static,
 ) -> anyhow::Result<()>
 where
     E: Pairing,
@@ -171,7 +171,7 @@ where
                 group_config,
                 topic_transport,
                 adkg_scheme,
-                &mut rng,
+                rng,
                 tx_adkg_out,
             )
             .await
@@ -315,7 +315,7 @@ async fn adkg_dxkr23<S, TBT>(
     group_config: GroupConfig,
     topic_transport: Arc<TBT>,
     adkg_scheme: S,
-    rng: &mut impl AdkgRng,
+    rng: impl AdkgRng + 'static,
     out: oneshot::Sender<AdkgOutput<S::Curve>>,
 ) -> anyhow::Result<()>
 where
@@ -325,9 +325,9 @@ where
     S::ABAConfig: AbaConfig<'static, PartyId, Input = AbaCrainInput<S::Curve>>,
     <S::ACSSConfig as AcssConfig<'static, S::Curve, PartyId>>::Output:
         Into<ShareWithPoly<S::Curve>>,
-    TBT: TopicBasedTransport<Identity = PartyId>,
+    TBT: TopicBasedTransport<Identity = PartyId> + Send + Sync + 'static,
 {
-    let mut adkg = adkg_scheme.new_adkg(
+    let adkg = adkg_scheme.new_adkg(
         adkg_config.id,
         group_config.n,
         group_config.t,
@@ -335,6 +335,10 @@ where
         sk,
         pks.clone(),
     )?;
+
+    let (adkg_start_tx, adkg_start_rx) = oneshot::channel();
+    let (adkg_stop_tx, adkg_stop_rx) = oneshot::channel();
+    let adkg_out = adkg.run(adkg_start_rx, adkg_stop_rx, rng, topic_transport);
 
     // Calculate time to sleep before actively executing the adkg
     let sleep_duration = (group_config.start_time - chrono::Utc::now())
@@ -353,11 +357,14 @@ where
         "Executing ADKG with a timeout of {}",
         humantime::format_duration(adkg_config.timeout)
     );
+    if adkg_start_tx.send(()).is_err() {
+        anyhow::bail!("Failed to send ADKG start signal");
+    }
 
     let res = tokio::select! {
-        output = adkg.start(rng, topic_transport) => {
-            let output = match output {
-                Ok(adkg_out) => {
+        output = adkg_out => {
+            let output: anyhow::Result<_> = match output {
+                Some(Ok(adkg_out)) => {
                     tracing::info!(used_sessions = ?adkg_out.used_sessions, "Successfully obtained secret key & output from ADKG");
                     if out.send(adkg_out).is_err() {
                         // fails if the receiver side is dropped early
@@ -368,9 +375,13 @@ where
                     tokio::time::sleep(adkg_config.grace_period).await;
                     Ok(())
                 }
-                Err(e) => {
+                Some(Err(e)) => {
                     tracing::error!("failed to obtain output from ADKG: {e:?}");
-                    Err(e)
+                    Err(e.into())
+                }
+                None => {
+                    tracing::error!("failed to obtain output from ADKG: stopped before an output");
+                    Err(anyhow!("ADKG stopped before output"))
                 }
             };
 
@@ -384,9 +395,9 @@ where
     };
 
     tracing::warn!("Stopping ADKG...");
-    adkg.stop().await;
+    let _ = adkg_stop_tx.send(());
 
-    Ok(res??)
+    res?
 }
 
 /// Pairing-based DLEQ proof that there exists an s_j s.t. P_1 = [s_j] G_1 \land P_2 = [s_j] G_2,
