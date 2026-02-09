@@ -1,8 +1,9 @@
 use crate::network::Network;
 use alloy::primitives::{Address, U160, U256, address};
-use alloy::providers::{DynProvider, Provider};
+use alloy::providers::{DynProvider, Provider, ProviderBuilder};
 use anyhow::Context;
 use futures::TryFutureExt;
+use generated::onlyswaps::ierc20::IERC20::IERC20Instance;
 use onlyswaps_client::client::OnlySwapsClient;
 use std::collections::HashMap;
 use std::io::{Write, stdin};
@@ -25,11 +26,21 @@ pub async fn setup_allowances(
             .get(&chain_id)
             .context("tried setting allowance for unknown chain??")?;
 
+        // all tokens on a network share the same provider
+        let Some(provider) = net.tokens.first().map(|t| t.provider()) else {
+            continue;
+        };
+        let provider = ProviderBuilder::new()
+            .disable_recommended_fillers()
+            .with_cached_nonce_management() // ensure the provider uses a cached nonce for concurrency
+            .connect_provider(provider);
+
         for (amount, token) in details
             .current_allowances
             .into_iter()
             .zip(net.tokens.iter())
         {
+            let token_address = *token.address();
             if amount > U256::from(U160::MAX) {
                 // we consider anything up to 2**160 a max allowance
                 continue;
@@ -43,9 +54,14 @@ pub async fn setup_allowances(
 
             println!(
                 "{chain_id:<10} {:<44} {permit2_display}",
-                token.address().to_string(),
+                token_address.to_string(),
             );
-            calls.push((chain_id, token, details.permit2_address));
+            calls.push((
+                chain_id,
+                IERC20Instance::new(token_address, provider.clone()),
+                details.permit2_address,
+                net.own_addr,
+            ));
         }
     }
 
@@ -65,12 +81,13 @@ pub async fn setup_allowances(
 
     println!("Sending txs...");
     let results = futures::future::join_all(calls.into_iter().map(
-        async move |(chain_id, token, permit2_address)| {
+        async move |(chain_id, token, permit2_address, own_addr)| {
             println!(
                 "> [Chain {chain_id}] sending approve for {}...",
                 token.address()
             );
-            let approve = token.approve(permit2_address, U256::MAX);
+
+            let approve = token.approve(permit2_address, U256::MAX).from(own_addr);
             let res = approve
                 .send()
                 .and_then(async move |tx_watch| Ok(tx_watch.watch().await?))
